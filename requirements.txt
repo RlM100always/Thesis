@@ -1,0 +1,29 @@
+# AI-Powered Business Analytics System — CSE Thesis
+# Install all dependencies with:
+#   pip install -r requirements.txt
+
+# Core Data Science
+pandas>=2.0.0
+numpy>=1.24.0
+scipy>=1.10.0
+
+# Machine Learning
+scikit-learn>=1.3.0
+xgboost>=2.0.0
+
+# Deep Learning (for LSTM)
+tensorflow>=2.13.0       # or: pip install tensorflow-cpu  (lighter version)
+# Alternative: keras>=2.13.0
+
+# Time Series (for ARIMA)
+statsmodels>=0.14.0
+
+# Explainable AI
+shap>=0.43.0
+
+# Visualization
+matplotlib>=3.7.0
+seaborn>=0.12.0
+
+# Dataset Generation (Step 0 only)
+faker>=19.0.0

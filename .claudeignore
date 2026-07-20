@@ -1,0 +1,34 @@
+# Raw + generated data — large, and never useful to read whole
+BD_Business_Analytics_Dataset.csv
+normalized_data/
+output/*.csv
+output/*.pkl
+output/models/
+output/figures/
+
+# Binaries / caches
+*.png
+*.jpg
+*.pkl
+*.h5
+*.keras
+*.npy
+*.parquet
+*.zip
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+.venv/
+venv/
+env/
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Thesis documents (binary, not code)
+*.pdf
+*.docx
+*.pptx

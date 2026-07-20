@@ -1,0 +1,297 @@
+﻿Logistics_ID,Payment_Method,Order_Channel,Delivery_Status
+LOG-001,Nexus Card,In-Store,In-Store Pickup
+LOG-002,bKash,In-Store,In-Store Pickup
+LOG-003,Cash,Online Website,On-Time
+LOG-004,Cash,In-Store,In-Store Pickup
+LOG-005,Visa Card,Mobile App,Cancelled
+LOG-006,bKash,Mobile App,Delayed
+LOG-007,Visa Card,In-Store,In-Store Pickup
+LOG-008,Cash,Online Website,Delayed
+LOG-009,bKash,Facebook/Social Media,Cancelled
+LOG-010,Upay,In-Store,In-Store Pickup
+LOG-011,Cash,Phone Order,Delayed
+LOG-012,bKash,Facebook/Social Media,On-Time
+LOG-013,Cash,Facebook/Social Media,Delayed
+LOG-014,MasterCard,In-Store,In-Store Pickup
+LOG-015,Cash,Mobile App,Delayed
+LOG-016,Cash,Facebook/Social Media,Returned
+LOG-017,Upay,WhatsApp Order,On-Time
+LOG-018,Dutch-Bangla MFS,Mobile App,On-Time
+LOG-019,Nagad,Online Website,On-Time
+LOG-020,Nexus Card,Online Website,On-Time
+LOG-021,Cash,Phone Order,On-Time
+LOG-022,Rocket,Agent/Reseller,On-Time
+LOG-023,bKash,Online Website,Delayed
+LOG-024,bKash,Facebook/Social Media,Delayed
+LOG-025,Upay,Mobile App,On-Time
+LOG-026,Nagad,Facebook/Social Media,On-Time
+LOG-027,Nagad,In-Store,In-Store Pickup
+LOG-028,Visa Card,Online Website,On-Time
+LOG-029,Nagad,Mobile App,On-Time
+LOG-030,Cash,Mobile App,On-Time
+LOG-031,DBBL Nexus,In-Store,In-Store Pickup
+LOG-032,bKash,Mobile App,On-Time
+LOG-033,MasterCard,Facebook/Social Media,Returned
+LOG-034,bKash,Online Website,On-Time
+LOG-035,Nexus Card,Phone Order,On-Time
+LOG-036,Rocket,Mobile App,Returned
+LOG-037,Visa Card,Agent/Reseller,Cancelled
+LOG-038,bKash,WhatsApp Order,On-Time
+LOG-039,Bank Transfer,In-Store,In-Store Pickup
+LOG-040,Nexus Card,Mobile App,On-Time
+LOG-041,MasterCard,Facebook/Social Media,On-Time
+LOG-042,Cash,WhatsApp Order,On-Time
+LOG-043,Cash,Agent/Reseller,Delayed
+LOG-044,bKash,Phone Order,On-Time
+LOG-045,DBBL Nexus,Phone Order,On-Time
+LOG-046,Visa Card,Mobile App,On-Time
+LOG-047,Rocket,In-Store,In-Store Pickup
+LOG-048,Bank Transfer,Online Website,On-Time
+LOG-049,Cash,Facebook/Social Media,On-Time
+LOG-050,MasterCard,Online Website,On-Time
+LOG-051,Cheque,Facebook/Social Media,On-Time
+LOG-052,Upay,Online Website,Delayed
+LOG-053,Nexus Card,Facebook/Social Media,On-Time
+LOG-054,Nagad,Phone Order,Delayed
+LOG-055,Nagad,Online Website,Returned
+LOG-056,Nagad,Mobile App,Delayed
+LOG-057,Bank Transfer,Phone Order,On-Time
+LOG-058,Nagad,Online Website,Cancelled
+LOG-059,Upay,Agent/Reseller,Delayed
+LOG-060,bKash,WhatsApp Order,Cancelled
+LOG-061,Dutch-Bangla MFS,Online Website,On-Time
+LOG-062,Nagad,Agent/Reseller,Delayed
+LOG-063,Cash,Agent/Reseller,On-Time
+LOG-064,Bank Transfer,Facebook/Social Media,On-Time
+LOG-065,Bank Transfer,Agent/Reseller,Cancelled
+LOG-066,Rocket,Online Website,On-Time
+LOG-067,Nagad,Mobile App,Cancelled
+LOG-068,Rocket,Phone Order,Delayed
+LOG-069,DBBL Nexus,WhatsApp Order,On-Time
+LOG-070,MasterCard,Mobile App,On-Time
+LOG-071,DBBL Nexus,Agent/Reseller,Delayed
+LOG-072,Nexus Card,Facebook/Social Media,Delayed
+LOG-073,Visa Card,Mobile App,Delayed
+LOG-074,bKash,Agent/Reseller,Delayed
+LOG-075,Visa Card,Online Website,Cancelled
+LOG-076,Nagad,Phone Order,On-Time
+LOG-077,Cash,Online Website,Returned
+LOG-078,Visa Card,Facebook/Social Media,On-Time
+LOG-079,Visa Card,Agent/Reseller,On-Time
+LOG-080,Rocket,Phone Order,On-Time
+LOG-081,Cheque,In-Store,In-Store Pickup
+LOG-082,Cheque,Phone Order,On-Time
+LOG-083,bKash,Mobile App,Cancelled
+LOG-084,Visa Card,Mobile App,Returned
+LOG-085,Upay,Agent/Reseller,On-Time
+LOG-086,Cheque,Phone Order,Delayed
+LOG-087,Upay,Facebook/Social Media,On-Time
+LOG-088,Cash,Phone Order,Cancelled
+LOG-089,Visa Card,WhatsApp Order,Returned
+LOG-090,Bank Transfer,Mobile App,On-Time
+LOG-091,Rocket,WhatsApp Order,On-Time
+LOG-092,Cheque,Online Website,On-Time
+LOG-093,Cash,Facebook/Social Media,Cancelled
+LOG-094,MasterCard,WhatsApp Order,Delayed
+LOG-095,bKash,Agent/Reseller,On-Time
+LOG-096,Visa Card,Online Website,Delayed
+LOG-097,Cash,Phone Order,Returned
+LOG-098,Bank Transfer,Phone Order,Delayed
+LOG-099,Visa Card,Phone Order,On-Time
+LOG-100,Nagad,Online Website,Delayed
+LOG-101,MasterCard,Online Website,Cancelled
+LOG-102,Cash,Mobile App,Cancelled
+LOG-103,Nagad,Facebook/Social Media,Delayed
+LOG-104,Rocket,Mobile App,Delayed
+LOG-105,Nagad,Mobile App,Returned
+LOG-106,Nexus Card,WhatsApp Order,On-Time
+LOG-107,Visa Card,WhatsApp Order,On-Time
+LOG-108,Nagad,Agent/Reseller,On-Time
+LOG-109,Visa Card,WhatsApp Order,Delayed
+LOG-110,Cash,WhatsApp Order,Delayed
+LOG-111,Cash,Mobile App,Returned
+LOG-112,Upay,Online Website,On-Time
+LOG-113,Rocket,Mobile App,On-Time
+LOG-114,Cash,Agent/Reseller,Returned
+LOG-115,bKash,Mobile App,Returned
+LOG-116,MasterCard,Online Website,Returned
+LOG-117,MasterCard,Phone Order,On-Time
+LOG-118,Bank Transfer,Agent/Reseller,On-Time
+LOG-119,DBBL Nexus,Mobile App,On-Time
+LOG-120,MasterCard,WhatsApp Order,On-Time
+LOG-121,Nexus Card,Mobile App,Delayed
+LOG-122,Dutch-Bangla MFS,Online Website,Delayed
+LOG-123,Cheque,Online Website,Cancelled
+LOG-124,Bank Transfer,Online Website,Delayed
+LOG-125,Cheque,Mobile App,On-Time
+LOG-126,Dutch-Bangla MFS,WhatsApp Order,Cancelled
+LOG-127,bKash,Online Website,Cancelled
+LOG-128,DBBL Nexus,Online Website,Delayed
+LOG-129,Nagad,WhatsApp Order,Returned
+LOG-130,Dutch-Bangla MFS,In-Store,In-Store Pickup
+LOG-131,MasterCard,Facebook/Social Media,Delayed
+LOG-132,Nagad,Facebook/Social Media,Cancelled
+LOG-133,Rocket,Online Website,Delayed
+LOG-134,Cash,Online Website,Cancelled
+LOG-135,Nexus Card,Agent/Reseller,Delayed
+LOG-136,MasterCard,Mobile App,Cancelled
+LOG-137,DBBL Nexus,Agent/Reseller,On-Time
+LOG-138,Visa Card,Online Website,Returned
+LOG-139,Nagad,WhatsApp Order,On-Time
+LOG-140,bKash,Phone Order,Delayed
+LOG-141,DBBL Nexus,Facebook/Social Media,On-Time
+LOG-142,Bank Transfer,Mobile App,Delayed
+LOG-143,bKash,Agent/Reseller,Cancelled
+LOG-144,DBBL Nexus,Mobile App,Delayed
+LOG-145,Dutch-Bangla MFS,Facebook/Social Media,On-Time
+LOG-146,Nexus Card,Agent/Reseller,On-Time
+LOG-147,Rocket,Phone Order,Returned
+LOG-148,bKash,WhatsApp Order,Delayed
+LOG-149,Rocket,Agent/Reseller,Returned
+LOG-150,Dutch-Bangla MFS,WhatsApp Order,Delayed
+LOG-151,DBBL Nexus,Online Website,On-Time
+LOG-152,bKash,Facebook/Social Media,Returned
+LOG-153,MasterCard,Agent/Reseller,Delayed
+LOG-154,DBBL Nexus,WhatsApp Order,Delayed
+LOG-155,bKash,Online Website,Returned
+LOG-156,Rocket,Facebook/Social Media,Delayed
+LOG-157,Rocket,Facebook/Social Media,On-Time
+LOG-158,bKash,Agent/Reseller,Returned
+LOG-159,MasterCard,Phone Order,Delayed
+LOG-160,Upay,Facebook/Social Media,Returned
+LOG-161,MasterCard,Agent/Reseller,On-Time
+LOG-162,MasterCard,Online Website,Delayed
+LOG-163,Nexus Card,Mobile App,Cancelled
+LOG-164,Upay,Phone Order,On-Time
+LOG-165,Rocket,Online Website,Returned
+LOG-166,MasterCard,Mobile App,Delayed
+LOG-167,Nagad,Facebook/Social Media,Returned
+LOG-168,DBBL Nexus,Online Website,Cancelled
+LOG-169,Cheque,Online Website,Delayed
+LOG-170,Cheque,Agent/Reseller,Returned
+LOG-171,Visa Card,Agent/Reseller,Returned
+LOG-172,Cheque,Agent/Reseller,On-Time
+LOG-173,Dutch-Bangla MFS,Phone Order,On-Time
+LOG-174,MasterCard,WhatsApp Order,Returned
+LOG-175,DBBL Nexus,Phone Order,Cancelled
+LOG-176,Bank Transfer,Facebook/Social Media,Delayed
+LOG-177,Rocket,WhatsApp Order,Delayed
+LOG-178,Visa Card,Facebook/Social Media,Returned
+LOG-179,Nexus Card,Online Website,Cancelled
+LOG-180,Visa Card,Phone Order,Delayed
+LOG-181,Upay,Mobile App,Delayed
+LOG-182,Rocket,Agent/Reseller,Cancelled
+LOG-183,bKash,WhatsApp Order,Returned
+LOG-184,Nagad,Agent/Reseller,Returned
+LOG-185,Visa Card,Facebook/Social Media,Delayed
+LOG-186,Upay,Facebook/Social Media,Cancelled
+LOG-187,Cash,Agent/Reseller,Cancelled
+LOG-188,Nagad,WhatsApp Order,Delayed
+LOG-189,Nexus Card,Mobile App,Returned
+LOG-190,bKash,Phone Order,Cancelled
+LOG-191,Nagad,Phone Order,Returned
+LOG-192,Cash,WhatsApp Order,Returned
+LOG-193,Cheque,Agent/Reseller,Cancelled
+LOG-194,Nexus Card,WhatsApp Order,Cancelled
+LOG-195,Bank Transfer,Online Website,Cancelled
+LOG-196,Rocket,Facebook/Social Media,Cancelled
+LOG-197,Rocket,Agent/Reseller,Delayed
+LOG-198,Visa Card,Agent/Reseller,Delayed
+LOG-199,Cheque,WhatsApp Order,On-Time
+LOG-200,Rocket,Mobile App,Cancelled
+LOG-201,Upay,Phone Order,Returned
+LOG-202,MasterCard,Phone Order,Cancelled
+LOG-203,Nagad,Agent/Reseller,Cancelled
+LOG-204,bKash,Phone Order,Returned
+LOG-205,Bank Transfer,WhatsApp Order,Returned
+LOG-206,Bank Transfer,Mobile App,Cancelled
+LOG-207,Cheque,Online Website,Returned
+LOG-208,DBBL Nexus,Facebook/Social Media,Delayed
+LOG-209,Cheque,Mobile App,Delayed
+LOG-210,Bank Transfer,Agent/Reseller,Returned
+LOG-211,Dutch-Bangla MFS,Agent/Reseller,On-Time
+LOG-212,Nexus Card,Online Website,Returned
+LOG-213,Bank Transfer,Facebook/Social Media,Returned
+LOG-214,Visa Card,WhatsApp Order,Cancelled
+LOG-215,DBBL Nexus,Phone Order,Returned
+LOG-216,Visa Card,Facebook/Social Media,Cancelled
+LOG-217,DBBL Nexus,Mobile App,Cancelled
+LOG-218,Cheque,Mobile App,Cancelled
+LOG-219,Nexus Card,Phone Order,Delayed
+LOG-220,MasterCard,Phone Order,Returned
+LOG-221,Dutch-Bangla MFS,Phone Order,Delayed
+LOG-222,Nexus Card,Facebook/Social Media,Cancelled
+LOG-223,Nagad,Phone Order,Cancelled
+LOG-224,Bank Transfer,Phone Order,Cancelled
+LOG-225,MasterCard,Mobile App,Returned
+LOG-226,Bank Transfer,Facebook/Social Media,Cancelled
+LOG-227,Upay,Online Website,Returned
+LOG-228,Visa Card,Phone Order,Returned
+LOG-229,Cheque,Mobile App,Returned
+LOG-230,Upay,Online Website,Cancelled
+LOG-231,Bank Transfer,WhatsApp Order,On-Time
+LOG-232,Bank Transfer,Phone Order,Returned
+LOG-233,Rocket,Online Website,Cancelled
+LOG-234,Dutch-Bangla MFS,Agent/Reseller,Cancelled
+LOG-235,Cash,WhatsApp Order,Cancelled
+LOG-236,Nexus Card,Online Website,Delayed
+LOG-237,Dutch-Bangla MFS,Facebook/Social Media,Delayed
+LOG-238,MasterCard,Facebook/Social Media,Cancelled
+LOG-239,Dutch-Bangla MFS,Mobile App,Delayed
+LOG-240,MasterCard,Agent/Reseller,Cancelled
+LOG-241,Nexus Card,Facebook/Social Media,Returned
+LOG-242,Upay,Mobile App,Cancelled
+LOG-243,DBBL Nexus,Phone Order,Delayed
+LOG-244,DBBL Nexus,Online Website,Returned
+LOG-245,Upay,Facebook/Social Media,Delayed
+LOG-246,Bank Transfer,Online Website,Returned
+LOG-247,Dutch-Bangla MFS,Agent/Reseller,Returned
+LOG-248,Upay,Mobile App,Returned
+LOG-249,Bank Transfer,Agent/Reseller,Delayed
+LOG-250,Rocket,Phone Order,Cancelled
+LOG-251,Cheque,WhatsApp Order,Delayed
+LOG-252,Dutch-Bangla MFS,Phone Order,Cancelled
+LOG-253,Bank Transfer,WhatsApp Order,Delayed
+LOG-254,DBBL Nexus,Mobile App,Returned
+LOG-255,Dutch-Bangla MFS,WhatsApp Order,On-Time
+LOG-256,Cheque,Phone Order,Returned
+LOG-257,Nexus Card,WhatsApp Order,Delayed
+LOG-258,Cheque,Agent/Reseller,Delayed
+LOG-259,Rocket,WhatsApp Order,Cancelled
+LOG-260,Bank Transfer,Mobile App,Returned
+LOG-261,Nagad,WhatsApp Order,Cancelled
+LOG-262,Dutch-Bangla MFS,Agent/Reseller,Delayed
+LOG-263,DBBL Nexus,Facebook/Social Media,Returned
+LOG-264,Dutch-Bangla MFS,Facebook/Social Media,Returned
+LOG-265,DBBL Nexus,Agent/Reseller,Returned
+LOG-266,Upay,Phone Order,Delayed
+LOG-267,Cheque,Phone Order,Cancelled
+LOG-268,Nexus Card,Phone Order,Cancelled
+LOG-269,DBBL Nexus,Facebook/Social Media,Cancelled
+LOG-270,Dutch-Bangla MFS,Online Website,Cancelled
+LOG-271,Cheque,WhatsApp Order,Returned
+LOG-272,Upay,WhatsApp Order,Delayed
+LOG-273,Upay,WhatsApp Order,Cancelled
+LOG-274,Cheque,Facebook/Social Media,Cancelled
+LOG-275,Visa Card,Phone Order,Cancelled
+LOG-276,MasterCard,WhatsApp Order,Cancelled
+LOG-277,Upay,Phone Order,Cancelled
+LOG-278,Nexus Card,Agent/Reseller,Cancelled
+LOG-279,Rocket,Facebook/Social Media,Returned
+LOG-280,Cheque,Facebook/Social Media,Delayed
+LOG-281,Dutch-Bangla MFS,WhatsApp Order,Returned
+LOG-282,Bank Transfer,WhatsApp Order,Cancelled
+LOG-283,Upay,WhatsApp Order,Returned
+LOG-284,Nexus Card,Phone Order,Returned
+LOG-285,MasterCard,Agent/Reseller,Returned
+LOG-286,Dutch-Bangla MFS,Mobile App,Returned
+LOG-287,DBBL Nexus,Agent/Reseller,Cancelled
+LOG-288,Dutch-Bangla MFS,Facebook/Social Media,Cancelled
+LOG-289,Cheque,WhatsApp Order,Cancelled
+LOG-290,Rocket,WhatsApp Order,Returned
+LOG-291,Upay,Agent/Reseller,Returned
+LOG-292,Nexus Card,Agent/Reseller,Returned
+LOG-293,Dutch-Bangla MFS,Online Website,Returned
+LOG-294,Nexus Card,WhatsApp Order,Returned
+LOG-295,Dutch-Bangla MFS,Mobile App,Cancelled
+LOG-296,Cheque,Facebook/Social Media,Returned

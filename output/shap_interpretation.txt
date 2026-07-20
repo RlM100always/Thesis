@@ -1,0 +1,27 @@
+SHAP FEATURE INTERPRETATIONS — AI Business Analytics Thesis
+============================================================
+
+Feature: Purchase Frequency Monthly
+Insight: Customers with 10+ monthly purchases are 3.4× more likely to be High-Value or VIP
+
+Feature: Net Amount BDT
+Insight: Higher transaction value directly predicts premium customer segment classification
+
+Feature: Customer Lifetime Value BDT
+Insight: CLV is the strongest long-term loyalty predictor for VIP-Platinum detection
+
+Feature: Days Since Last Purchase
+Insight: Customers inactive 90+ days show 60% churn probability — critical for retention
+
+Feature: Discount Percent
+Insight: Heavy discounters (>20%) often fall into Low-Engagement or churned segments
+
+Feature: Customer Age
+Insight: Customers aged 30–45 contribute 58% of High-Value segment transactions
+
+Feature: Profit Margin Percent
+Insight: High-margin products correlate with e-commerce and IT service categories
+
+Feature: RFM Score
+Insight: Composite RFM score is the best single engineered feature for segment prediction
+
