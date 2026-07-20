@@ -28,9 +28,11 @@ Unit of prediction: the CUSTOMER, reusing 01b_customer_features.py, so
 group leakage is impossible by construction.
 
 HOW TO RUN:
-    PYTHONIOENCODING=utf-8 ./.venv312/Scripts/python.exe 08_churn_prediction.py
+    python 08_churn_prediction.py
 """
 
+
+import utf8_console  # noqa: F401  — UTF-8 stdout before any printing
 import os
 import pickle
 import warnings

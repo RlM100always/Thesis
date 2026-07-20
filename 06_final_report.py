@@ -9,6 +9,8 @@ HOW TO RUN (after all steps 1-5):
     python 06_final_report.py
 """
 
+
+import utf8_console  # noqa: F401  — UTF-8 stdout before any printing
 import pickle
 import os
 import numpy as np

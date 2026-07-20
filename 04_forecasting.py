@@ -15,6 +15,8 @@ WHAT THIS GENERATES (output/figures/):
   - lstm_training_loss.png        → training vs validation loss
 """
 
+
+import utf8_console  # noqa: F401  — UTF-8 stdout before any printing
 import pandas as pd
 import numpy as np
 import pickle
@@ -47,7 +49,7 @@ except ImportError as e:
     raise SystemExit(
         "\nERROR: TensorFlow is required for the LSTM model but is not installed.\n"
         "  TensorFlow has no build for Python 3.14, so use the 3.12 venv:\n"
-        "    PYTHONIOENCODING=utf-8 ./.venv312/Scripts/python.exe 04_forecasting.py\n"
+        "    python 04_forecasting.py\n"
         "  To build that venv, see README section 5.\n"
         f"  (original import error: {e})"
     )

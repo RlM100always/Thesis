@@ -18,6 +18,8 @@ WHAT THIS GENERATES (saved in output/figures/):
   (These are the ACTUAL images you put in your thesis Chapter 4)
 """
 
+
+import utf8_console  # noqa: F401  — UTF-8 stdout before any printing
 import numpy as np
 import pickle
 import os

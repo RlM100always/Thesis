@@ -36,12 +36,17 @@ predict.py  ← the ONLY module that opens a pickle
 output/models/*.pkl, output/*.csv
 ```
 
-```bash
+```powershell
 # terminal 1
-PYTHONIOENCODING=utf-8 ./.venv312/Scripts/python.exe -m uvicorn api.main:app --reload
+python run_api.py
 # terminal 2
-cd frontend && npm run dev
+cd frontend; npm run dev
 ```
+
+Use `run_api.py`, not `python -m uvicorn api.main:app` — the latter resolves
+`api.main` against the CWD, so it only works from the project root and fails from
+inside `api/` with `ModuleNotFoundError: No module named 'api'`. The launcher pins
+the root and verifies artifacts exist before starting.
 
 Swagger UI at `http://127.0.0.1:8000/docs`; dashboard at `http://localhost:5173`.
 
@@ -52,21 +57,24 @@ no error. Route handlers must not touch pickles directly.
 Frontend files use `.jsx` when they contain JSX — a `.js` file with JSX fails the
 Vite build.
 
-## Python environments
+## Python environment
 
-Two interpreters, deliberately:
+`.venv312/` (Python 3.12) — TensorFlow has no build for the system's Python 3.14.
+Activate once, then everything is plain `python`:
 
-- **System Python 3.14** — stages 00–03, 05. TensorFlow has no 3.14 build.
-- **`.venv312/` (Python 3.12)** — stage 04 only, because it needs TensorFlow (2.21).
-
-```bash
-PYTHONIOENCODING=utf-8 ./.venv312/Scripts/python.exe 04_forecasting.py
+```powershell
+.\.venv312\Scripts\Activate.ps1   # PowerShell
+python run_all.py
+python run_api.py
 ```
 
-`PYTHONIOENCODING=utf-8` is mandatory on Windows: the console is cp1252 and the
-scripts print `→`/`✓`, so it crashes with `UnicodeEncodeError` without it.
-`run_all.py` uses `sys.executable`, so it will hit the fallback trap below if run
-under 3.14 — run stage 04 by hand.
+**No environment variables are required.** `utf8_console.py` is imported first by
+every script that prints, and reconfigures stdout/stderr to UTF-8. Adding a new
+script that prints `→ ✓ ⚠`? Add `import utf8_console  # noqa: F401` above the other
+imports, or it will die with `UnicodeEncodeError` on a cp1252 console.
+
+Never document `PYTHONIOENCODING=utf-8 ...` or any `VAR=value cmd` form — this user
+is on PowerShell, where that is parsed as a command name and fails.
 
 ## Fixed: the fabricated-forecast trap
 
@@ -99,7 +107,7 @@ Verify a run was real by checking `output/models/lstm_model.h5` and
 
 ## Two pipelines: v1 (leaky) and v2 (honest)
 
-**v1** = `01` → `02`, transaction-level. Its 94.81% is inflated by leakage and is
+**v1** = `01` → `02`, transaction-level. Its 94.69% is inflated by leakage and is
 kept only as the "before" column of the ablation table. **Do not cite v1 numbers
 as results.**
 
@@ -111,8 +119,15 @@ numbers.
 | Features | `01b_customer_features.py` | Aggregates to 4,996 customers (1 row each), so a customer cannot span splits. Scaler fit on train only. CLV excluded. |
 | Classification | `02b_classification_v2.py` | 5-fold CV with per-fold scaling, bootstrap CIs, McNemar, macro metrics, class weighting, ROC + learning curves. |
 
-`INCLUDE_CLV=1 python 01b_customer_features.py` regenerates the leaky variant for
-the ablation; re-run without the env var afterwards to restore honest artifacts.
+To regenerate the leaky variant for the ablation (PowerShell):
+
+```powershell
+$env:INCLUDE_CLV = "1";    python 01b_customer_features.py; python 02b_classification_v2.py
+$env:INCLUDE_CLV = $null;  python 01b_customer_features.py; python 02b_classification_v2.py
+```
+
+The second line is not optional — it restores the honest artifacts that `predict.py`
+and the API serve.
 
 ## Current results (leak-free, verified)
 
@@ -131,7 +146,7 @@ train/CV gap (overfitting; more data would help).
 
 | Variant | XGBoost acc |
 |---|---|
-| v1 transaction-level + CLV (both leaks) | 94.81% |
+| v1 transaction-level + CLV (both leaks) | 94.69% |
 | customer-level + CLV (CLV leak only) | 94.53% |
 | **customer-level, no CLV (honest)** | **67.07%** |
 

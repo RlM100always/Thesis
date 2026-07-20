@@ -27,13 +27,15 @@ It also fixes two other leaks:
     for the comparison table in the thesis.
 
 HOW TO RUN:
-    PYTHONIOENCODING=utf-8 ./.venv312/Scripts/python.exe 01b_customer_features.py
+    python 01b_customer_features.py
 
 OUTPUT:
     output/customer_features.csv   — one row per customer
     output/customer_splits.pkl     — leak-free train/val/test arrays
 """
 
+
+import utf8_console  # noqa: F401  — UTF-8 stdout before any printing
 import os
 import pickle
 
@@ -47,7 +49,10 @@ from sklearn.preprocessing import MinMaxScaler
 # ─────────────────────────────────────────────
 INCLUDE_CLV = os.environ.get("INCLUDE_CLV", "0") == "1"
 # False = honest model | True = reproduces the CLV leak, for the ablation table.
-# Override without editing:  INCLUDE_CLV=1 python 01b_customer_features.py
+# Override without editing the file (PowerShell):
+#     $env:INCLUDE_CLV = "1"   ; python 01b_customer_features.py
+#     $env:INCLUDE_CLV = $null ; python 01b_customer_features.py   # restore honest
+# (bash: INCLUDE_CLV=1 python 01b_customer_features.py)
 
 os.makedirs("output", exist_ok=True)
 

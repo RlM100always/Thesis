@@ -27,7 +27,10 @@ export default function ModelReport() {
       </p>
 
       <div className="callout">
-        <strong>Why accuracy fell from 94.81% to {formatPct(segment.models.XGBoost.accuracy, 2)}</strong>
+        <strong>
+          Why accuracy fell from {formatPct(ablation[0].accuracy, 2)} to{" "}
+          {formatPct(segment.models.XGBoost.accuracy, 2)}
+        </strong>
         The original pipeline leaked the answer into the features in two ways.
         The lower number is the honest one; the drop is the main finding of this
         project, not a regression.

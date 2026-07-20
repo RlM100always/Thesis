@@ -25,9 +25,11 @@ leaked data. This script fixes the validation itself:
      02_classification.py but never actually generated there.
 
 HOW TO RUN:
-    PYTHONIOENCODING=utf-8 ./.venv312/Scripts/python.exe 02b_classification_v2.py
+    python 02b_classification_v2.py
 """
 
+
+import utf8_console  # noqa: F401  — UTF-8 stdout before any printing
 import os
 import pickle
 import warnings
@@ -349,6 +351,6 @@ for n in names:
           f"  [{r['acc_ci'][0]*100:5.2f},{r['acc_ci'][1]*100:6.2f}]"
           f"{r['f1_macro']*100:9.2f}%{c['mean']*100:9.2f}% ±{c['std']*100:.1f}")
 print(f"\n  McNemar XGBoost vs RF: p = {mc.pvalue:.4f} — {verdict}")
-print("\n  ⚠ Accuracy is LOWER than 02_classification.py's 94.81% — that number")
+print("\n  ⚠ Accuracy is LOWER than 02_classification.py's 94.69% — that number")
 print("    came from leaked splits. These numbers are the honest ones.")
 print("=" * 65)

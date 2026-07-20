@@ -18,6 +18,8 @@ Install SHAP first:
     pip install shap
 """
 
+
+import utf8_console  # noqa: F401  — UTF-8 stdout before any printing
 import numpy as np
 import pandas as pd
 import pickle

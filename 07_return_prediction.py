@@ -32,9 +32,11 @@ return" every single time scores ~93% accuracy while being useless. This
 script reports PR-AUC and lift instead, which cannot be gamed that way.
 
 HOW TO RUN:
-    PYTHONIOENCODING=utf-8 ./.venv312/Scripts/python.exe 07_return_prediction.py
+    python 07_return_prediction.py
 """
 
+
+import utf8_console  # noqa: F401  — UTF-8 stdout before any printing
 import os
 import pickle
 import warnings

@@ -4,7 +4,13 @@ FastAPI APPLICATION
 AI-Powered Business Analytics System — CSE 4th Year Thesis
 =============================================================
 HOW TO RUN:
-    PYTHONIOENCODING=utf-8 ./.venv312/Scripts/python.exe -m uvicorn api.main:app --reload
+    python run_api.py
+
+Use the launcher rather than calling uvicorn directly. `python -m uvicorn
+api.main:app` resolves "api.main" against the current directory, so it
+only works from the project root and fails from inside api/ with
+`ModuleNotFoundError: No module named 'api'`. run_api.py pins the working
+directory first and checks that the pipeline artifacts exist.
 
 Then open:
     http://127.0.0.1:8000/docs    interactive Swagger UI
@@ -32,6 +38,9 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+import utf8_console  # noqa: E402,F401  — UTF-8 stdout before any printing
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -48,7 +57,7 @@ app = FastAPI(
         "Customer segmentation, churn and return prediction, sales forecasting "
         "and per-customer SHAP explanations for Bangladeshi retail data.\n\n"
         "**Note on reported accuracy.** The segment model scores 67.07%, not the "
-        "94.81% an earlier version of this project reported. The higher figure came "
+        "94.69% an earlier version of this project reported. The higher figure came "
         "from data leakage (customer-level labels split at transaction level, plus a "
         "CLV feature that nearly determined the label). See `/api/models/metrics` "
         "for the full ablation."

@@ -13,6 +13,8 @@ REQUIREMENTS (install first):
 =============================================================
 """
 
+
+import utf8_console  # noqa: F401  — UTF-8 stdout before any printing
 import subprocess
 import sys
 import time

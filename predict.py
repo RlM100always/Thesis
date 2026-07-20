@@ -49,7 +49,7 @@ def _load_pickle(relpath: str):
         raise ArtifactsMissingError(
             f"Missing artifact: {path}\n"
             f"Run the pipeline first:\n"
-            f"  PYTHONIOENCODING=utf-8 ./.venv312/Scripts/python.exe run_all.py"
+            f"  python run_all.py"
         )
     with open(path, "rb") as f:
         return pickle.load(f)
@@ -78,6 +78,9 @@ def get_artifacts() -> dict:
         "customers": customers,
         "segments": segments,
         "forecast": _load_pickle("forecast_results.pkl"),
+        # v1 is the leaky transaction-level run, kept only as the "before"
+        # column of the leakage ablation — never served as a result.
+        "classification_v1": _load_pickle("classification_results.pkl"),
         "classification_v2": _load_pickle("classification_v2_results.pkl"),
         "churn_results": _load_pickle("churn_results.pkl"),
         "return_results": _load_pickle("return_results.pkl"),
@@ -374,11 +377,17 @@ def get_model_report() -> dict:
             "n_features": v2["n_features"],
             "n_test": v2["n_test"],
         },
+        # Row 1 and row 3 are read live so they can never drift from what the
+        # pipeline last produced. Row 2 needs the leaky feature set, which is
+        # only built when 01b runs with INCLUDE_CLV=1, so it is recorded from
+        # that run rather than recomputed on every request.
         "ablation": [
             {"variant": "Transaction-level + CLV (both leaks)",
-             "accuracy": 0.9481, "mcnemar_p": None},
+             "accuracy": a["classification_v1"]["XGBoost"]["acc"],
+             "mcnemar_p": None},
             {"variant": "Customer-level + CLV (CLV leak only)",
-             "accuracy": 0.9453, "mcnemar_p": 0.5235},
+             "accuracy": 0.9453, "mcnemar_p": 0.5235,
+             "recorded": True},
             {"variant": "Customer-level, no CLV (honest)",
              "accuracy": v2["test"]["XGBoost"]["accuracy"],
              "mcnemar_p": v2["mcnemar"]["pvalue"]},

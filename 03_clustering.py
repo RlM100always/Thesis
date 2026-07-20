@@ -16,6 +16,8 @@ WHAT THIS GENERATES (output/figures/):
   - cluster_distribution.png → pie chart of segments
 """
 
+
+import utf8_console  # noqa: F401  — UTF-8 stdout before any printing
 import pandas as pd
 import numpy as np
 import pickle
