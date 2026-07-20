@@ -62,7 +62,23 @@ for col in df.columns:
 # Return_Reason is empty for non-returned items — this is by design, fill with 'No Return'
 df["Return_Reason"] = df["Return_Reason"].fillna("No Return").replace("", "No Return")
 print("    ✓ Return_Reason: filled empty values with 'No Return'")
-print("    ✓ No other critical missing values found")
+
+# Campaign_Type is empty when a transaction ran outside any campaign, and
+# Marketing_Channel when the acquisition source was not recorded. Both are
+# meaningful absences, not corrupt data, so they get explicit categories.
+# Without this the later .astype(str) in the LabelEncoder silently creates a
+# category literally named "nan" — which for Campaign_Type would be 30% of rows.
+df["Campaign_Type"] = df["Campaign_Type"].fillna("No Campaign").replace("", "No Campaign")
+print("    ✓ Campaign_Type: filled empty values with 'No Campaign'")
+
+df["Marketing_Channel"] = df["Marketing_Channel"].fillna("Unknown").replace("", "Unknown")
+print("    ✓ Marketing_Channel: filled empty values with 'Unknown'")
+
+# Fail loudly rather than let an unnoticed NaN become a "nan" category later
+remaining = df.columns[df.isnull().any()].tolist()
+if remaining:
+    raise ValueError(f"Unhandled missing values remain in: {remaining}")
+print("    ✓ Verified: no unhandled missing values remain")
 
 # ─────────────────────────────────────────────
 # 3. FEATURE ENGINEERING

@@ -11,9 +11,11 @@ Flat repo. Scripts are numbered and run in order; each writes artifacts the next
 |---|---|---|
 | `00_normalize_dataset.py` | Splits flat CSV into a star schema (6 dims + 1 fact), re-joins it | `normalized_data/*.csv`, `output/..._Merged.csv` |
 | `01_preprocessing.py` | Nulls, label encoding, RFM/season/CLV-tier features, MinMax scale, 70/15/15 split | `output/processed_dataset.csv`, `data_splits.pkl`, `scaler.pkl`, `label_encoders.pkl` |
-| `02_classification.py` | XGBoost / RandomForest / LogisticRegression on `Customer_Segment` | `classification_results.pkl`, `models/*.pkl`, figures |
+| `01b_customer_features.py` | **v2.** Aggregates to one row per customer, leak-free split, train-only scaler | `customer_features.csv`, `customer_splits.pkl` |
+| `02_classification.py` | v1 (leaky). Kept for the ablation "before" column only | `classification_results.pkl`, `models/*.pkl`, figures |
+| `02b_classification_v2.py` | **v2.** CV + bootstrap CI + McNemar + ROC + learning curve | `classification_v2_results.pkl`, `models/v2_*.pkl`, `figures/v2_*.png` |
 | `03_clustering.py` | K-Means, elbow + silhouette over K=2..10, `OPTIMAL_K = 4` | `customer_segments.csv`, `models/kmeans_model.pkl`, figures |
-| `04_forecasting.py` | Monthly sales: LSTM (look-back 6, 100 epochs) vs ARIMA(2,1,2) | `forecast_results.pkl`, figures |
+| `04_forecasting.py` | Monthly sales: LSTM (look-back 6) vs ARIMA(2,1,2) vs seasonal-naive | `forecast_results.pkl`, figures |
 | `05_shap_analysis.py` | SHAP over the XGBoost model | `shap_interpretation.txt`, figures |
 | `06_final_report.py` | Reads all `.pkl`s, prints the thesis results tables | stdout only |
 
@@ -35,16 +37,15 @@ scripts print `→`/`✓`, so it crashes with `UnicodeEncodeError` without it.
 `run_all.py` uses `sys.executable`, so it will hit the fallback trap below if run
 under 3.14 — run stage 04 by hand.
 
-## Known trap in `04_forecasting.py`
+## Fixed: the fabricated-forecast trap
 
-If TensorFlow or statsmodels is missing, the `else:` branches **silently fabricate**
-forecasts as `actual + np.random.normal(...)` (5% noise for LSTM, 18% for ARIMA)
-instead of failing. That produced an earlier round of fake results (MAPE 0.74%/1.60%).
-Real results are ~11.31%/13.29%.
+`04_forecasting.py` used to fall back to `actual + np.random.normal(...)` when
+TensorFlow or statsmodels was missing, silently producing fake results (MAPE 0.74%).
+Both fallbacks are now removed — the script raises `SystemExit` with install
+instructions instead. A missing dependency can no longer look like a finding.
 
 Verify a run was real by checking `output/models/lstm_model.h5` and
-`output/figures/lstm_training_loss.png` exist. The block is still in the code and
-should be deleted before submission.
+`output/figures/lstm_training_loss.png` exist.
 
 ## Conventions
 
@@ -65,27 +66,63 @@ should be deleted before submission.
 - Editing a step invalidates every later step — rerun the tail of the pipeline, not just one file.
 - TensorFlow is the heaviest dependency; step 04 is the only consumer.
 
-## Current results (real, verified)
+## Two pipelines: v1 (leaky) and v2 (honest)
 
-- Classification: XGBoost 94.81% acc · RF 92.33% · LogReg 83.58%
-- Clustering: K=4, silhouette **0.1725** — weak, clusters overlap.
-- Forecasting: LSTM RMSE 34.4M / MAPE 11.39% vs ARIMA 43.5M / 13.29%. LSTM −21.0% RMSE.
-  LSTM numbers drift between runs (EarlyStopping epoch varies: 12 → 16); ARIMA is
-  deterministic. Only 36 training sequences; ARIMA logs a convergence warning.
-- 15 figures in `output/figures/`.
-- `output/forecast_results_SIMULATED_backup.pkl` is the old fake run — never cite it.
+**v1** = `01` → `02`, transaction-level. Its 94.81% is inflated by leakage and is
+kept only as the "before" column of the ablation table. **Do not cite v1 numbers
+as results.**
 
-## Known methodological weaknesses (documented in README §৮.৪)
+**v2** = `01` → `01b` → `02b`, customer-level and leak-free. These are the real
+numbers.
 
-Do not present these numbers as clean wins; the README states them honestly.
+| Stage | v2 file | What changed |
+|---|---|---|
+| Features | `01b_customer_features.py` | Aggregates to 4,996 customers (1 row each), so a customer cannot span splits. Scaler fit on train only. CLV excluded. |
+| Classification | `02b_classification_v2.py` | 5-fold CV with per-fold scaling, bootstrap CIs, McNemar, macro metrics, class weighting, ROC + learning curves. |
 
-1. **Target leakage.** `Customer_Lifetime_Value_BDT` nearly determines
-   `Customer_Segment` — the segments sit in near-disjoint CLV bands. A depth-3
-   decision tree on CLV *alone* scores 91.06% vs XGBoost's 94.81% on 42 features.
-   The synthetic generator evidently derived the label from CLV.
-2. **`OPTIMAL_K = 4` is hardcoded** ([03_clustering.py:119](03_clustering.py#L119))
-   and silhouette actually peaks at K=2 (0.2837 vs 0.1725). Defensible as a business
-   choice, but it is not what the metric selected.
-3. **Unhandled nulls.** Stage 01 fixes only `Return_Reason`, then prints "No other
-   critical missing values found" — but `Campaign_Type` is 30.26% null and
-   `Marketing_Channel` 3.8%. `.astype(str)` turns these into a `"nan"` category.
+`INCLUDE_CLV=1 python 01b_customer_features.py` regenerates the leaky variant for
+the ablation; re-run without the env var afterwards to restore honest artifacts.
+
+## Current results (leak-free, verified)
+
+**Classification** (750 held-out customers, 34 features):
+
+| Model | Test acc | 95% CI | F1-macro | 5-fold CV |
+|---|---|---|---|---|
+| XGBoost | 67.07% | [63.87, 70.53] | 69.69% | 67.97% ± 1.18 |
+| Logistic Regression | 64.00% | [60.80, 67.47] | 65.88% | 65.09% ± 1.19 |
+| Random Forest | 62.80% | [59.47, 66.27] | 65.09% | 65.07% ± 0.91 |
+
+McNemar XGBoost vs RF: p = 0.0103 → significant. Learning curve shows a 32-point
+train/CV gap (overfitting; more data would help).
+
+**Leakage ablation** — same leak-free split, only the CLV feature differs:
+
+| Variant | XGBoost acc |
+|---|---|
+| v1 transaction-level + CLV (both leaks) | 94.81% |
+| customer-level + CLV (CLV leak only) | 94.53% |
+| **customer-level, no CLV (honest)** | **67.07%** |
+
+CLV alone accounts for ~27 points. Note McNemar is *not* significant (p = 0.52) in
+the CLV variant — when one feature determines the label, model choice stops mattering.
+
+**Forecasting** — the seasonal-naive baseline **wins**:
+
+| Model | RMSE | MAE | MAPE |
+|---|---|---|---|
+| **Seasonal-naive** | **29,824,641** | **15,313,944** | **6.60%** |
+| LSTM | 35,870,997 | 24,972,834 | 11.91% |
+| ARIMA(2,1,2) | 43,509,553 | 28,922,927 | 13.29% |
+
+"LSTM beats ARIMA" is true but misleading: "same month last year" beats both. State
+this plainly — it is the strongest evidence in the thesis that the series is
+seasonal. LSTM numbers drift slightly between runs (EarlyStopping epoch varies);
+ARIMA and seasonal-naive are deterministic.
+
+**Clustering:** K=4, silhouette 0.1725 — weak, clusters overlap. Silhouette actually
+peaks at K=2 (0.2837); `OPTIMAL_K = 4` is hardcoded
+([03_clustering.py:119](03_clustering.py#L119)). Defensible as a business choice,
+but it is not what the metric selected.
+
+`output/forecast_results_SIMULATED_backup.pkl` is the old fake run — never cite it.

@@ -38,21 +38,29 @@ try:
     from tensorflow.keras.layers import LSTM, Dense, Dropout
     from tensorflow.keras.callbacks import EarlyStopping
     tf.random.set_seed(42)
-    USE_TF = True
-    print("[INFO] TensorFlow found — will train real LSTM model")
-except ImportError:
-    USE_TF = False
-    print("[WARNING] TensorFlow not installed — using simulated LSTM results")
-    print("  Install with: pip install tensorflow")
+    print("[INFO] TensorFlow found — training real LSTM model")
+except ImportError as e:
+    # Previously this fell back to fabricating forecasts as
+    # `actual + random noise`, which silently produced impossible metrics
+    # (MAPE 0.74%) that looked like real results. Failing loudly is the only
+    # safe behaviour: a missing dependency must never look like a finding.
+    raise SystemExit(
+        "\nERROR: TensorFlow is required for the LSTM model but is not installed.\n"
+        "  TensorFlow has no build for Python 3.14, so use the 3.12 venv:\n"
+        "    PYTHONIOENCODING=utf-8 ./.venv312/Scripts/python.exe 04_forecasting.py\n"
+        "  To build that venv, see README section 5.\n"
+        f"  (original import error: {e})"
+    )
 
 # ARIMA
 try:
     from statsmodels.tsa.arima.model import ARIMA
-    USE_ARIMA = True
-except ImportError:
-    USE_ARIMA = False
-    print("[WARNING] statsmodels not installed — using simulated ARIMA results")
-    print("  Install with: pip install statsmodels")
+except ImportError as e:
+    raise SystemExit(
+        "\nERROR: statsmodels is required for the ARIMA baseline but is not installed.\n"
+        "  Install with: pip install statsmodels\n"
+        f"  (original import error: {e})"
+    )
 
 print("=" * 60)
 print("  STEP 4: SALES FORECASTING (LSTM vs ARIMA)")
@@ -99,12 +107,19 @@ print("    → Saved: output/figures/monthly_sales_trend.png")
 # ─────────────────────────────────────────────
 sales_values = monthly_sales["Total_Sales"].values.reshape(-1, 1)
 
-# Normalize
-ts_scaler = MinMaxScaler()
-sales_scaled = ts_scaler.fit_transform(sales_values)
-
 LOOK_BACK = 6  # use last 6 months to predict next month
 TEST_MONTHS = 6
+
+# Normalize — the scaler is fit on TRAINING MONTHS ONLY.
+# Fitting on the whole series (as this script previously did) leaks the
+# test period's min/max into training: the model would implicitly know the
+# highest sales month before ever forecasting it.
+n_train_months = len(sales_values) - TEST_MONTHS
+ts_scaler = MinMaxScaler()
+ts_scaler.fit(sales_values[:n_train_months])
+sales_scaled = ts_scaler.transform(sales_values)
+print(f"    Scaler fit on first {n_train_months} months only "
+      f"(last {TEST_MONTHS} held out)")
 
 def create_sequences(data, look_back):
     X, y = [], []
@@ -130,53 +145,46 @@ print(f"    Test sequences (forecast): {len(X_te)}")
 # ─────────────────────────────────────────────
 print("\n[3] LSTM Model...")
 
-if USE_TF:
-    model = Sequential([
-        LSTM(64, return_sequences=True, input_shape=(LOOK_BACK, 1)),
-        Dropout(0.2),
-        LSTM(32, return_sequences=False),
-        Dropout(0.2),
-        Dense(16, activation="relu"),
-        Dense(1),
-    ])
-    model.compile(optimizer="adam", loss="mse")
-    model.summary()
+model = Sequential([
+    LSTM(64, return_sequences=True, input_shape=(LOOK_BACK, 1)),
+    Dropout(0.2),
+    LSTM(32, return_sequences=False),
+    Dropout(0.2),
+    Dense(16, activation="relu"),
+    Dense(1),
+])
+model.compile(optimizer="adam", loss="mse")
+model.summary()
 
-    es = EarlyStopping(monitor="val_loss", patience=10, restore_best_weights=True)
-    history = model.fit(
-        X_tr, y_tr,
-        epochs=100, batch_size=4,
-        validation_split=0.2,
-        callbacks=[es],
-        verbose=0,
-    )
-    print(f"    Training complete — epochs ran: {len(history.history['loss'])}")
+es = EarlyStopping(monitor="val_loss", patience=10, restore_best_weights=True)
+history = model.fit(
+    X_tr, y_tr,
+    epochs=100, batch_size=4,
+    validation_split=0.2,
+    callbacks=[es],
+    verbose=0,
+)
+print(f"    Training complete — epochs ran: {len(history.history['loss'])}")
 
-    # Training loss plot
-    fig, ax = plt.subplots(figsize=(8, 4))
-    ax.plot(history.history["loss"], label="Training Loss", color="#0D1B2A", linewidth=2)
-    ax.plot(history.history["val_loss"], label="Validation Loss", color="#0A8754", linewidth=2, linestyle="--")
-    ax.set_title("LSTM Training & Validation Loss", fontsize=13, fontweight="bold")
-    ax.set_xlabel("Epoch", fontsize=11)
-    ax.set_ylabel("MSE Loss", fontsize=11)
-    ax.legend(fontsize=10)
-    ax.grid(alpha=0.3)
-    ax.spines[["top","right"]].set_visible(False)
-    plt.tight_layout()
-    plt.savefig("output/figures/lstm_training_loss.png", dpi=150, bbox_inches="tight")
-    plt.close()
-    print("    → Saved: output/figures/lstm_training_loss.png")
+# Training loss plot
+fig, ax = plt.subplots(figsize=(8, 4))
+ax.plot(history.history["loss"], label="Training Loss", color="#0D1B2A", linewidth=2)
+ax.plot(history.history["val_loss"], label="Validation Loss", color="#0A8754", linewidth=2, linestyle="--")
+ax.set_title("LSTM Training & Validation Loss", fontsize=13, fontweight="bold")
+ax.set_xlabel("Epoch", fontsize=11)
+ax.set_ylabel("MSE Loss", fontsize=11)
+ax.legend(fontsize=10)
+ax.grid(alpha=0.3)
+ax.spines[["top","right"]].set_visible(False)
+plt.tight_layout()
+plt.savefig("output/figures/lstm_training_loss.png", dpi=150, bbox_inches="tight")
+plt.close()
+print("    → Saved: output/figures/lstm_training_loss.png")
 
-    lstm_pred_scaled = model.predict(X_te, verbose=0)
-    lstm_pred = ts_scaler.inverse_transform(lstm_pred_scaled).flatten()
-    model.save("output/models/lstm_model.h5")
-    print("    → Saved: output/models/lstm_model.h5")
-else:
-    # Simulated LSTM predictions (realistic noise around actual)
-    print("    [Simulated] Using research-grade LSTM approximation...")
-    actual_last = ts_scaler.inverse_transform(y_te.reshape(-1, 1)).flatten()
-    noise = np.random.normal(0, actual_last.std() * 0.05, len(actual_last))
-    lstm_pred = actual_last + noise
+lstm_pred_scaled = model.predict(X_te, verbose=0)
+lstm_pred = ts_scaler.inverse_transform(lstm_pred_scaled).flatten()
+model.save("output/models/lstm_model.h5")
+print("    → Saved: output/models/lstm_model.h5")
 
 # ─────────────────────────────────────────────
 # 4. ARIMA MODEL
@@ -185,16 +193,25 @@ print("\n[4] ARIMA Model...")
 actual_test = ts_scaler.inverse_transform(y_te.reshape(-1, 1)).flatten()
 train_series = ts_scaler.inverse_transform(y_tr.reshape(-1, 1)).flatten()
 
-if USE_ARIMA:
-    arima_model = ARIMA(train_series, order=(2, 1, 2))
-    arima_result = arima_model.fit()
-    arima_pred = arima_result.forecast(steps=TEST_MONTHS)
-    print(f"    ARIMA(2,1,2) fitted. AIC: {arima_result.aic:.2f}")
-else:
-    print("    [Simulated] Using research-grade ARIMA approximation...")
-    # ARIMA typically overshoots/undershoots more
-    noise_arima = np.random.normal(0, actual_test.std() * 0.18, len(actual_test))
-    arima_pred = actual_test + noise_arima
+arima_model = ARIMA(train_series, order=(2, 1, 2))
+arima_result = arima_model.fit()
+arima_pred = arima_result.forecast(steps=TEST_MONTHS)
+print(f"    ARIMA(2,1,2) fitted. AIC: {arima_result.aic:.2f}")
+
+# ─────────────────────────────────────────────
+# 4b. SEASONAL-NAIVE BASELINE
+# ─────────────────────────────────────────────
+# "Next August will look like last August." This is the baseline any
+# seasonal forecasting claim must beat. The thesis argues Bangladeshi
+# retail is strongly seasonal (Eid, Ramadan, Pohela Boishakh) — if that is
+# true, this trivial rule is hard to beat, and beating ARIMA alone proves
+# much less than it appears to.
+print("\n[4b] Seasonal-naive baseline (value from 12 months earlier)...")
+
+full_sales = monthly_sales["Total_Sales"].values
+test_start_abs = len(full_sales) - TEST_MONTHS
+snaive_pred = np.array([full_sales[i - 12] for i in range(test_start_abs, len(full_sales))])
+print(f"    Forecast for each test month = same month one year earlier")
 
 # ─────────────────────────────────────────────
 # 5. CALCULATE METRICS
@@ -213,12 +230,28 @@ arima_rmse = rmse(actual_test, arima_pred)
 arima_mae  = mean_absolute_error(actual_test, arima_pred)
 arima_mape = mape(actual_test, arima_pred)
 
+snaive_rmse = rmse(actual_test, snaive_pred)
+snaive_mae  = mean_absolute_error(actual_test, snaive_pred)
+snaive_mape = mape(actual_test, snaive_pred)
+
 print(f"\n  FORECASTING RESULTS:")
-print(f"  {'Metric':<15} {'LSTM':>15} {'ARIMA':>15}")
-print(f"  {'-'*45}")
-print(f"  {'RMSE':<15} {lstm_rmse:>15,.2f} {arima_rmse:>15,.2f}")
-print(f"  {'MAE':<15} {lstm_mae:>15,.2f} {arima_mae:>15,.2f}")
-print(f"  {'MAPE (%)':<15} {lstm_mape:>15.2f}% {arima_mape:>15.2f}%")
+print(f"  {'Metric':<12} {'LSTM':>16} {'ARIMA':>16} {'Seasonal-Naive':>16}")
+print(f"  {'-'*62}")
+print(f"  {'RMSE':<12} {lstm_rmse:>16,.0f} {arima_rmse:>16,.0f} {snaive_rmse:>16,.0f}")
+print(f"  {'MAE':<12} {lstm_mae:>16,.0f} {arima_mae:>16,.0f} {snaive_mae:>16,.0f}")
+print(f"  {'MAPE (%)':<12} {lstm_mape:>15.2f}% {arima_mape:>15.2f}% {snaive_mape:>15.2f}%")
+
+# The honest verdict: deep learning has to beat the trivial rule, not just ARIMA
+best_name, best_rmse = min(
+    [("LSTM", lstm_rmse), ("ARIMA", arima_rmse), ("Seasonal-Naive", snaive_rmse)],
+    key=lambda t: t[1],
+)
+print(f"\n  Best by RMSE: {best_name}")
+if best_name != "LSTM":
+    print(f"  ⚠ LSTM does NOT win. {best_name} is better — report this honestly;")
+    print(f"    a negative result is still a result, and hiding it is not defensible.")
+else:
+    print(f"  ✓ LSTM beats both ARIMA and the seasonal-naive baseline")
 
 # ─────────────────────────────────────────────
 # 6. FORECAST COMPARISON PLOT
@@ -233,6 +266,7 @@ ax.plot(range(len(all_actual)), all_actual / 1e6, color="#0D1B2A", linewidth=2.2
 ax.axvline(x=test_start, color="gray", linestyle=":", linewidth=1.5, alpha=0.7, label="Train/Test Split")
 ax.plot(range(test_start, len(all_actual)), lstm_pred / 1e6, "o--", color="#0A8754", linewidth=2, markersize=6, label=f"LSTM Forecast (RMSE={lstm_rmse/1e6:.2f}M)")
 ax.plot(range(test_start, len(all_actual)), arima_pred / 1e6, "s:", color="#E63946", linewidth=2, markersize=6, label=f"ARIMA Forecast (RMSE={arima_rmse/1e6:.2f}M)")
+ax.plot(range(test_start, len(all_actual)), snaive_pred / 1e6, "^-.", color="#F5A623", linewidth=2, markersize=6, label=f"Seasonal-Naive (RMSE={snaive_rmse/1e6:.2f}M)")
 ax.fill_between(range(test_start, len(all_actual)), lstm_pred / 1e6, actual_test / 1e6, alpha=0.15, color="#0A8754", label="LSTM Error Band")
 
 step = max(1, len(periods) // 12)
@@ -251,20 +285,27 @@ print("    → Saved: output/figures/lstm_vs_arima_forecast.png")
 # ─────────────────────────────────────────────
 # 7. ERROR COMPARISON BAR CHART
 # ─────────────────────────────────────────────
-fig, axes = plt.subplots(1, 3, figsize=(11, 4))
+fig, axes = plt.subplots(1, 3, figsize=(12, 4))
 metrics = ["RMSE (BDT M)", "MAE (BDT M)", "MAPE (%)"]
-lstm_v  = [lstm_rmse/1e6, lstm_mae/1e6, lstm_mape]
-arima_v = [arima_rmse/1e6, arima_mae/1e6, arima_mape]
+lstm_v   = [lstm_rmse/1e6, lstm_mae/1e6, lstm_mape]
+arima_v  = [arima_rmse/1e6, arima_mae/1e6, arima_mape]
+snaive_v = [snaive_rmse/1e6, snaive_mae/1e6, snaive_mape]
 
-for i, (ax, m, lv, av) in enumerate(zip(axes, metrics, lstm_v, arima_v)):
-    bars = ax.bar(["LSTM", "ARIMA"], [lv, av], color=["#0A8754", "#E63946"], edgecolor="white", width=0.5)
+labels = ["LSTM", "ARIMA", "Seasonal\nNaive"]
+colors = ["#0A8754", "#E63946", "#F5A623"]
+
+for ax, m, lv, av, sv in zip(axes, metrics, lstm_v, arima_v, snaive_v):
+    vals = [lv, av, sv]
+    bars = ax.bar(labels, vals, color=colors, edgecolor="white", width=0.55)
     ax.set_title(m, fontsize=11, fontweight="bold")
     ax.grid(axis="y", alpha=0.3)
     ax.spines[["top","right"]].set_visible(False)
-    for bar, val in zip(bars, [lv, av]):
-        ax.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 0.01 * bar.get_height(), f"{val:.2f}", ha="center", fontsize=10, fontweight="bold")
+    for bar, val in zip(bars, vals):
+        ax.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 0.01 * bar.get_height(),
+                f"{val:.2f}", ha="center", fontsize=9, fontweight="bold")
 
-plt.suptitle("Forecasting Error Comparison: LSTM vs ARIMA", fontsize=13, fontweight="bold", y=1.02)
+plt.suptitle("Forecasting Error Comparison: LSTM vs ARIMA vs Seasonal-Naive",
+             fontsize=13, fontweight="bold", y=1.02)
 plt.tight_layout()
 plt.savefig("output/figures/forecast_error_comparison.png", dpi=150, bbox_inches="tight")
 plt.close()
@@ -274,14 +315,20 @@ print("    → Saved: output/figures/forecast_error_comparison.png")
 forecast_results = {
     "lstm": {"rmse": lstm_rmse, "mae": lstm_mae, "mape": lstm_mape},
     "arima": {"rmse": arima_rmse, "mae": arima_mae, "mape": arima_mape},
+    "seasonal_naive": {"rmse": snaive_rmse, "mae": snaive_mae, "mape": snaive_mape},
     "actual": actual_test, "lstm_pred": lstm_pred, "arima_pred": arima_pred,
+    "snaive_pred": snaive_pred, "best_model": best_name,
 }
 with open("output/forecast_results.pkl", "wb") as f:
     pickle.dump(forecast_results, f)
 
 print("\n" + "=" * 60)
 print("  ✅ FORECASTING COMPLETE")
-print(f"  LSTM RMSE : {lstm_rmse:,.2f}  | ARIMA RMSE: {arima_rmse:,.2f}")
-print(f"  LSTM wins by {(arima_rmse - lstm_rmse) / arima_rmse * 100:.1f}% lower RMSE")
+print(f"  LSTM  RMSE: {lstm_rmse:,.0f}")
+print(f"  ARIMA RMSE: {arima_rmse:,.0f}")
+print(f"  S-Naive RMSE: {snaive_rmse:,.0f}")
+print(f"  vs ARIMA          : LSTM {(arima_rmse - lstm_rmse) / arima_rmse * 100:+.1f}% RMSE")
+print(f"  vs Seasonal-Naive : LSTM {(snaive_rmse - lstm_rmse) / snaive_rmse * 100:+.1f}% RMSE")
+print(f"  Best: {best_name}")
 print("  Next: Run  python 05_shap_analysis.py")
 print("=" * 60)
