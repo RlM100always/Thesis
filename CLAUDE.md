@@ -68,8 +68,24 @@ should be deleted before submission.
 ## Current results (real, verified)
 
 - Classification: XGBoost 94.81% acc · RF 92.33% · LogReg 83.58%
-- Clustering: K=4, silhouette **0.1725** — weak, clusters overlap. Report honestly.
-- Forecasting: LSTM RMSE 34.1M / MAPE 11.31% vs ARIMA 43.5M / 13.29%. LSTM −21.6% RMSE.
-  Only 36 training sequences; EarlyStopping fired at epoch 12; ARIMA logged a
-  convergence warning.
+- Clustering: K=4, silhouette **0.1725** — weak, clusters overlap.
+- Forecasting: LSTM RMSE 34.4M / MAPE 11.39% vs ARIMA 43.5M / 13.29%. LSTM −21.0% RMSE.
+  LSTM numbers drift between runs (EarlyStopping epoch varies: 12 → 16); ARIMA is
+  deterministic. Only 36 training sequences; ARIMA logs a convergence warning.
+- 15 figures in `output/figures/`.
 - `output/forecast_results_SIMULATED_backup.pkl` is the old fake run — never cite it.
+
+## Known methodological weaknesses (documented in README §৮.৪)
+
+Do not present these numbers as clean wins; the README states them honestly.
+
+1. **Target leakage.** `Customer_Lifetime_Value_BDT` nearly determines
+   `Customer_Segment` — the segments sit in near-disjoint CLV bands. A depth-3
+   decision tree on CLV *alone* scores 91.06% vs XGBoost's 94.81% on 42 features.
+   The synthetic generator evidently derived the label from CLV.
+2. **`OPTIMAL_K = 4` is hardcoded** ([03_clustering.py:119](03_clustering.py#L119))
+   and silhouette actually peaks at K=2 (0.2837 vs 0.1725). Defensible as a business
+   choice, but it is not what the metric selected.
+3. **Unhandled nulls.** Stage 01 fixes only `Return_Reason`, then prints "No other
+   critical missing values found" — but `Campaign_Type` is 30.26% null and
+   `Marketing_Channel` 3.8%. `.astype(str)` turns these into a `"nan"` category.
