@@ -1,0 +1,62 @@
+# ─────────────────────────────────────────────────────────────
+# Python environments
+# .venv312 = Python 3.12 env for stage 04 (TensorFlow). ~2 GB.
+# Rebuild it with the command in README §5 — never commit it.
+# ─────────────────────────────────────────────────────────────
+.venv312/
+.venv/
+venv/
+env/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.ipynb_checkpoints/
+
+# ─────────────────────────────────────────────────────────────
+# Generated pipeline artifacts — all regenerable by run_all.py.
+# Kept out of git so the repo stays reviewable as source, not data.
+# ─────────────────────────────────────────────────────────────
+
+# Stage 00 output: the star-schema tables + re-merged wide CSV (~12 MB)
+normalized_data/
+
+# Stage 01-05 intermediates: splits (11 MB), processed CSV (15 MB),
+# fitted scaler/encoders, per-stage result objects
+output/*.csv
+output/*.pkl
+output/*.txt
+
+# Trained models — rf_model.pkl alone is 9 MB
+output/models/
+
+# The fake-forecast run kept only for local comparison. Never cite it,
+# never commit it.
+output/forecast_results_SIMULATED_backup.pkl
+
+# ─────────────────────────────────────────────────────────────
+# Deliberately TRACKED (do not add ignore rules for these):
+#   BD_Business_Analytics_Dataset.csv  — the source dataset (11 MB).
+#       Everything else is derived from it; without it nothing reproduces.
+#   output/figures/*.png               — the 13 thesis figures (~1.2 MB).
+#       Cited in Chapter 4, so they are deliverables, not scratch.
+# ─────────────────────────────────────────────────────────────
+
+# ─────────────────────────────────────────────────────────────
+# Editor / OS noise
+# ─────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ─────────────────────────────────────────────────────────────
+# Thesis writing artifacts
+# ─────────────────────────────────────────────────────────────
+~$*.docx
+~$*.pptx
+*.aux
+*.log
+*.out
+*.synctex.gz

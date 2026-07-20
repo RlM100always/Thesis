@@ -19,6 +19,33 @@ Flat repo. Scripts are numbered and run in order; each writes artifacts the next
 
 `run_all.py` runs 00→06 sequentially and stops on the first non-zero exit.
 
+## Python environments
+
+Two interpreters, deliberately:
+
+- **System Python 3.14** — stages 00–03, 05. TensorFlow has no 3.14 build.
+- **`.venv312/` (Python 3.12)** — stage 04 only, because it needs TensorFlow (2.21).
+
+```bash
+PYTHONIOENCODING=utf-8 ./.venv312/Scripts/python.exe 04_forecasting.py
+```
+
+`PYTHONIOENCODING=utf-8` is mandatory on Windows: the console is cp1252 and the
+scripts print `→`/`✓`, so it crashes with `UnicodeEncodeError` without it.
+`run_all.py` uses `sys.executable`, so it will hit the fallback trap below if run
+under 3.14 — run stage 04 by hand.
+
+## Known trap in `04_forecasting.py`
+
+If TensorFlow or statsmodels is missing, the `else:` branches **silently fabricate**
+forecasts as `actual + np.random.normal(...)` (5% noise for LSTM, 18% for ARIMA)
+instead of failing. That produced an earlier round of fake results (MAPE 0.74%/1.60%).
+Real results are ~11.31%/13.29%.
+
+Verify a run was real by checking `output/models/lstm_model.h5` and
+`output/figures/lstm_training_loss.png` exist. The block is still in the code and
+should be deleted before submission.
+
 ## Conventions
 
 - Run from the repo root — every path is relative (`output/...`), so CWD matters.
@@ -37,3 +64,12 @@ Flat repo. Scripts are numbered and run in order; each writes artifacts the next
   already cited in the thesis text. Ask first.
 - Editing a step invalidates every later step — rerun the tail of the pipeline, not just one file.
 - TensorFlow is the heaviest dependency; step 04 is the only consumer.
+
+## Current results (real, verified)
+
+- Classification: XGBoost 94.81% acc · RF 92.33% · LogReg 83.58%
+- Clustering: K=4, silhouette **0.1725** — weak, clusters overlap. Report honestly.
+- Forecasting: LSTM RMSE 34.1M / MAPE 11.31% vs ARIMA 43.5M / 13.29%. LSTM −21.6% RMSE.
+  Only 36 training sequences; EarlyStopping fired at epoch 12; ARIMA logged a
+  convergence warning.
+- `output/forecast_results_SIMULATED_backup.pkl` is the old fake run — never cite it.

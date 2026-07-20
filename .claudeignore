@@ -1,34 +1,56 @@
-# Raw + generated data — large, and never useful to read whole
+# Keeps Claude's context small. Different intent from .gitignore:
+# .gitignore = "don't version this"; this file = "don't read this".
+# Some files are tracked in git but still useless to read (PNGs, big CSVs).
+
+# ─────────────────────────────────────────────────────────────
+# Data — far too large to read, and never informative line by line.
+# The schema is documented in README §3 instead.
+# ─────────────────────────────────────────────────────────────
 BD_Business_Analytics_Dataset.csv
 normalized_data/
 output/*.csv
+
+# ─────────────────────────────────────────────────────────────
+# Binary artifacts — unreadable as text
+# ─────────────────────────────────────────────────────────────
 output/*.pkl
 output/models/
 output/figures/
-
-# Binaries / caches
 *.png
 *.jpg
+*.jpeg
 *.pkl
 *.h5
 *.keras
 *.npy
 *.parquet
 *.zip
-__pycache__/
-*.pyc
-.ipynb_checkpoints/
+
+# ─────────────────────────────────────────────────────────────
+# Environments and caches
+# ─────────────────────────────────────────────────────────────
+.venv312/
 .venv/
 venv/
 env/
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
 
+# ─────────────────────────────────────────────────────────────
 # Editor / OS
+# ─────────────────────────────────────────────────────────────
 .vscode/
 .idea/
 .DS_Store
 Thumbs.db
 
-# Thesis documents (binary, not code)
+# ─────────────────────────────────────────────────────────────
+# Thesis documents — binary, not code
+# ─────────────────────────────────────────────────────────────
 *.pdf
 *.docx
 *.pptx
+
+# Note: output/shap_interpretation.txt is intentionally NOT ignored —
+# it is small, plain text, and explains the model's findings.
