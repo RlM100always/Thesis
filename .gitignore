@@ -60,3 +60,11 @@ desktop.ini
 *.log
 *.out
 *.synctex.gz
+
+# ─────────────────────────────────────────────────────────────
+# Frontend — node_modules is huge and fully reproducible from
+# package-lock.json; dist/ is a build artifact.
+# ─────────────────────────────────────────────────────────────
+frontend/node_modules/
+frontend/dist/
+npm-debug.log*

@@ -27,6 +27,8 @@ STEPS = [
     ("Step 4: LSTM vs ARIMA vs Seasonal-Naive", "04_forecasting.py"),
     ("Step 5: SHAP Explainability",          "05_shap_analysis.py"),
     ("Step 6: Final Report",                 "06_final_report.py"),
+    ("Step 7: Return Prediction",            "07_return_prediction.py"),
+    ("Step 8: Churn Prediction",             "08_churn_prediction.py"),
 ]
 
 print("=" * 65)

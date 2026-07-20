@@ -54,3 +54,8 @@ Thumbs.db
 
 # Note: output/shap_interpretation.txt is intentionally NOT ignored —
 # it is small, plain text, and explains the model's findings.
+
+# Frontend build artifacts and dependencies
+frontend/node_modules/
+frontend/dist/
+frontend/package-lock.json

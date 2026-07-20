@@ -180,13 +180,37 @@ PYTHONIOENCODING=utf-8 ./.venv312/Scripts/python.exe 06_final_report.py
 `PYTHONIOENCODING=utf-8` is required on Windows — the console defaults to cp1252 and
 the scripts print `→` and `✓`, which crashes with `UnicodeEncodeError` otherwise.
 
-Stages 00–03 and 05 run fine on the system Python. To rebuild the venv from scratch:
+Stages 00–03, 05, 07 and 08 run fine on the system Python. To rebuild the venv:
 
 ```bash
 py -3.12 -m venv .venv312
 ./.venv312/Scripts/python.exe -m pip install pandas numpy scipy scikit-learn \
-    xgboost statsmodels matplotlib seaborn shap tensorflow-cpu
+    xgboost statsmodels matplotlib seaborn shap tensorflow-cpu fastapi "uvicorn[standard]"
 ```
+
+### Running the application
+
+The pipeline produces artifacts; the application serves them.
+
+```bash
+# terminal 1 — API
+PYTHONIOENCODING=utf-8 ./.venv312/Scripts/python.exe -m uvicorn api.main:app --reload
+
+# terminal 2 — dashboard
+cd frontend && npm install && npm run dev
+```
+
+- Dashboard — <http://localhost:5173>
+- Swagger UI — <http://127.0.0.1:8000/docs>
+
+Three layers, deliberately separated: `predict.py` is the only module that opens a
+pickle, `api/` translates JSON to service calls, and `frontend/` renders. This keeps
+the serving logic testable without HTTP and the HTTP layer inspectable without
+loading a model.
+
+`predict.py` **loads** the training-time scaler and only calls `transform`. Re-fitting
+on request data would scale each request against its own range and return confidently
+wrong answers with no error raised.
 
 ---
 
@@ -308,7 +332,43 @@ training sequences after the 6-month look-back; EarlyStopping halted training at
 12; and the ARIMA fit emitted a maximum-likelihood convergence warning. The comparison
 is fair — both models saw identical data — but neither is data-rich.
 
-### 7.5 Explainability
+### 7.5 Churn and return prediction
+
+| Task | Best model | ROC-AUC | PR-AUC | Random PR-AUC | Lift@10% |
+|---|---|---|---|---|---|
+| **Churn** (`Recency > 90`) | Logistic Regression | 0.712 | 0.4211 | 0.2020 | **2.48x** |
+| **Returns** (pre-dispatch only) | Random Forest | 0.580 | 0.0877 | 0.0697 | 1.38x |
+
+Churn is genuinely usable: a retention team contacting the top-scoring 10% of
+customers reaches 2.48x more true churners than contacting 10% at random.
+
+Returns are a **negative result**, reported as such. Given only what is knowable
+before dispatch, returns in this dataset are close to random.
+
+Accuracy is deliberately not reported for either: at a 6.97% return rate, predicting
+"never returns" scores 93% while being useless. PR-AUC and lift cannot be gamed that way.
+
+### 7.6 A third leak, and the pattern behind all three
+
+The return model first scored ROC-AUC **0.97** — even under logistic regression. The
+cause was `Customer_Satisfaction_Score`: every transaction rated ≥4.1 has a 0.00%
+return rate, no returned item scores above 4.0, and a 2.4 rating carries a 37.45%
+return rate. Satisfaction is recorded *after* the purchase experience, so it is a
+consequence of the return, not a predictor of it.
+
+That is the third instance of one mistake:
+
+| Model | Offending feature | Why it leaks | Inflated → honest |
+|---|---|---|---|
+| Segment | `Customer_Lifetime_Value_BDT` | Labels were derived from CLV bands | 94.81% → 67.07% |
+| Return | `Customer_Satisfaction_Score` | Rated after the return happened | ROC 0.97 → 0.58 |
+| Churn | `Recency` | The target is defined from it | prevented up front |
+
+**The rule:** a feature that restates or follows from the label is not a feature.
+**The warning sign:** results that look too good. Above ROC-AUC 0.95 or 90% accuracy,
+hunt for leakage before celebrating.
+
+### 7.7 Explainability
 
 Behavioural features dominate the SHAP ranking: purchase frequency, net transaction
 amount, customer lifetime value, and recency all outrank demographics. Age and gender
@@ -877,6 +937,183 @@ XGBoost ৪২টা ফিচার নিয়ে পায় ৯৪.৮১%
 `Campaign_Type`-এর ৩০% ডেটা একটা অর্থহীন ক্যাটাগরিতে ঢুকেছে।**
 ঠিক করতে হলে `Return_Reason`-এর মতোই `"No Campaign"` / `"Unknown"` দিয়ে
 `fillna()` করুন।
+
+---
+
+## ৮.৭ নতুন দুটো মডেল — Return ও Churn
+
+### Return Prediction (`07_return_prediction.py`)
+
+`Return_Binary` টার্গেটটা আগেই তৈরি ছিল কিন্তু কোনো মডেল ব্যবহার করেনি।
+এখন করে। কিন্তু **এখানেই তৃতীয় লিকেজটা ধরা পড়ল।**
+
+প্রথম রানে ROC-AUC এসেছিল **০.৯৭** — Logistic Regression পর্যন্ত। যাচাই করে
+দেখা গেল দায়ী `Customer_Satisfaction_Score`:
+
+| CSAT | Return rate |
+|---|---|
+| ২.৪ | ৩৭.৪৫% |
+| ৩.০ | ৭.০৩% |
+| ৪.১ এবং তার উপরে | **০.০০%** |
+
+ফেরত আসা পণ্যের CSAT সর্বোচ্চ ৪.০; ফেরত না আসা পণ্যের সর্বনিম্ন ২.০।
+**সন্তুষ্টির রেটিং দেওয়া হয় কেনার পরে** — ফেরত দিলে কম রেটিং দেয়। অর্থাৎ
+এটা ফেরতের কারণ নয়, **ফলাফল**। সরানোর পর:
+
+| মডেল | PR-AUC | ROC-AUC | Lift@10% |
+|---|---|---|---|
+| **Random Forest** | **০.০৮৭৭** | **০.৫৮০** | ১.৩৮x |
+| Logistic Regression | ০.০৮২৪ | ০.৫৬৯ | ১.১৪x |
+| XGBoost | ০.০৮৪৭ | ০.৫৬৪ | ১.২৫x |
+
+Random baseline PR-AUC = ০.০৬৯৭। **এটা একটা নেগেটিভ রেজাল্ট** — পাঠানোর
+আগে যা জানা যায় তা দিয়ে ফেরত প্রায় অনুমান করা যায় না। থিসিসে এটাই লিখুন;
+১.৩৮x lift মানে ম্যানুয়াল চেকের অগ্রাধিকার ঠিক করতে সামান্য কাজে লাগে,
+স্বয়ংক্রিয় সিদ্ধান্তে নয়।
+
+> **কেন accuracy রিপোর্ট করিনি:** মাত্র ৭% পণ্য ফেরত আসে। "কোনোটাই ফেরত
+> আসবে না" বললেই ৯৩% accuracy — অথচ মডেলটা সম্পূর্ণ অকেজো। তাই
+> **PR-AUC ও lift** ব্যবহার করা হয়েছে, যেগুলো এভাবে ঠকানো যায় না।
+
+### Churn Prediction (`08_churn_prediction.py`)
+
+টার্গেট: `Recency > 90` দিন। ⚠️ তাই **`Recency` ও `RFM_Score` ফিচার থেকে
+বাদ** (RFM-এর ভেতরেও recency আছে — এটাই সূক্ষ্ম ফাঁদ)। assert দিয়ে যাচাই করা।
+
+| মডেল | PR-AUC | ROC-AUC | Recall | Lift@10% |
+|---|---|---|---|---|
+| **Logistic Regression** | **০.৪২১১** | **০.৭১২** | ০.৬৪৩৬ | ২.৪৮x |
+| Random Forest | ০.৩৯৯৮ | ০.৭০৮ | ০.৫০৯৯ | ২.৪৮x |
+| XGBoost | ০.৩৭০০ | ০.৬৯৭ | ০.৩৫১৫ | ২.২৩x |
+
+Random baseline = ০.২০২০। **ROC-AUC ০.৭১ ও ২.৪৮x lift — সত্যিকারের কাজে
+লাগার মতো ফল।** ব্যবহারিক অর্থ: রিটেনশন টিম যদি শুধু শীর্ষ ১০% কাস্টমারকে
+ফোন করে, তারা এলোমেলোভাবে ১০% বাছার চেয়ে **২.৪৮ গুণ বেশি** প্রকৃত চার্নার
+খুঁজে পাবে।
+
+লক্ষণীয় — এখানে **Logistic Regression জিতেছে**, XGBoost নয়। ছোট ডেটায় সরল
+মডেল ভালো করে, seasonal-naive-এর মতোই। থিসিসে এই প্যাটার্নটা উল্লেখ করুন।
+
+---
+
+## ৮.৮ 🎯 তিনটে লিকেজের একটাই প্যাটার্ন
+
+এই প্রজেক্টে **তিনবার একই শ্রেণির ভুল** ধরা পড়েছে:
+
+| # | মডেল | দোষী ফিচার | কেন লিকেজ | ভুয়া স্কোর → আসল |
+|---|---|---|---|---|
+| ১ | Segment | `Customer_Lifetime_Value` | লেবেলই CLV ব্যান্ড থেকে বানানো | ৯৪.৮১% → ৬৭.০৭% |
+| ২ | Return | `Customer_Satisfaction_Score` | রেটিং দেওয়া হয় ফেরতের **পরে** | ROC ০.৯৭ → ০.৫৮ |
+| ৩ | Churn | `Recency` | টার্গেটই Recency থেকে সংজ্ঞায়িত | (আগেই ঠেকানো) |
+
+**সাধারণ নিয়মটা:** যে ফিচার লেবেলের **পুনরাবৃত্তি** বা **পরিণতি**, সেটা
+ফিচার নয়। ডিফেন্সে এই টেবিলটা দেখান — এটা প্রমাণ করে আপনি একটা পদ্ধতিগত
+শৃঙ্খলা তৈরি করেছেন, শুধু একটা বাগ ঠিক করেননি।
+
+**সন্দেহ করার সংকেত:** ফল "খুব ভালো" লাগলেই থামুন। ROC-AUC > ০.৯৫ বা
+accuracy > ৯০% পেলে **আগে লিকেজ খুঁজুন, উদযাপন পরে।**
+
+---
+
+## ৮.৯ 💻 চলমান সিস্টেম — API + ড্যাশবোর্ড
+
+শুধু স্ক্রিপ্ট নয়, এখন একটা **চালিয়ে দেখানোর মতো সিস্টেম** আছে।
+
+### আর্কিটেকচার
+
+```
+┌────────────────────────────────────────┐
+│  React + Vite + Recharts    :5173      │  ← ব্যবহারকারী যা দেখে
+│  Overview · Segments · Customers       │
+│  Forecast · Model Report               │
+└────────────────┬───────────────────────┘
+                 │  fetch / JSON  (CORS)
+┌────────────────▼───────────────────────┐
+│  FastAPI                    :8000      │  ← HTTP স্তর
+│  api/main.py · routes.py · schemas.py  │
+│  স্বয়ংক্রিয় Swagger UI → /docs         │
+└────────────────┬───────────────────────┘
+                 │
+┌────────────────▼───────────────────────┐
+│  predict.py                            │  ← একমাত্র জায়গা যেখানে
+│  মডেল লোড, scaler.transform, SHAP      │     pickle খোলা হয়
+└────────────────┬───────────────────────┘
+                 │
+┌────────────────▼───────────────────────┐
+│  output/models/*.pkl, output/*.csv     │
+└────────────────────────────────────────┘
+```
+
+**কেন এই স্তরবিন্যাস:** যদি React সরাসরি pickle খুলত, কোনো আর্কিটেকচারই
+থাকত না। তিন স্তরে ভাগ করায় — (ক) `predict.py` HTTP ছাড়াই টেস্ট করা যায়,
+(খ) API মডেল লোড না করেই পরিদর্শন করা যায়, (গ) frontend বদলালেও ব্যাকএন্ড
+অপরিবর্তিত থাকে।
+
+### ⚠️ সবচেয়ে গুরুত্বপূর্ণ নিয়ম
+
+`predict.py` প্রশিক্ষণের সময়কার scaler **লোড করে, নতুন করে fit করে না** —
+শুধু `transform`। নতুন করে fit করলে প্রতিটা request নিজের min/max দিয়ে
+স্কেল হতো, আর **কোনো এরর ছাড়াই ভুল উত্তর আসত**। এটাই deployment-এর সবচেয়ে
+সাধারণ নীরব বাগ।
+
+### চালানোর নিয়ম
+
+```bash
+# টার্মিনাল ১ — ব্যাকএন্ড
+PYTHONIOENCODING=utf-8 ./.venv312/Scripts/python.exe -m uvicorn api.main:app --reload
+
+# টার্মিনাল ২ — frontend
+cd frontend && npm install && npm run dev
+```
+
+- ড্যাশবোর্ড: http://localhost:5173
+- **Swagger UI: http://127.0.0.1:8000/docs** ← ডিফেন্সে এটা খুলে live API
+  কল করে দেখান, খুব ভালো প্রভাব ফেলে
+
+### Endpoint সমূহ (১১টি, সবগুলো যাচাইকৃত)
+
+| Endpoint | কী দেয় |
+|---|---|
+| `GET /health` | artifacts লোড হয়েছে কি না |
+| `GET /api/overview` | KPI + ৪৮ মাসের বিক্রয় সিরিজ |
+| `GET /api/segments` | সেগমেন্ট প্রোফাইল + K-Means ক্লাস্টার |
+| `GET /api/customers?q=&page=` | সার্চযোগ্য, পেজিনেটেড তালিকা |
+| `GET /api/customers/{id}` | প্রোফাইল + প্রেডিকশন + SHAP |
+| `GET /api/customers/{id}/explain` | per-customer SHAP contributions |
+| `GET /api/forecast` | তিন মডেলের পূর্বাভাস ও মেট্রিক |
+| `GET /api/models/metrics` | v2 ফল + **ablation টেবিল** |
+| `POST /api/predict/{segment,churn,return}` | ad-hoc প্রেডিকশন |
+| `GET /api/features/{model}` | কোন মডেল কোন ফিচার চায় |
+
+### ড্যাশবোর্ডের পাঁচ পেজ
+
+১. **Overview** — KPI কার্ড, মাসিক বিক্রয় চার্ট
+২. **Segments** — বণ্টন, প্রোফাইল টেবিল, silhouette-এর সীমাবদ্ধতা স্পষ্ট লেখা
+৩. **Customers** — সার্চ → বিস্তারিত → **per-customer SHAP bar** (সবুজ = এই
+   সেগমেন্টের পক্ষে ঠেলেছে, লাল = বিপক্ষে)
+৪. **Forecast** — তিন মডেলের তুলনা, seasonal-naive শীর্ষে
+৫. **Model Report** — **ablation টেবিল সহ**
+
+> **৫ নম্বর পেজটা ইচ্ছাকৃত।** লিকেজ আবিষ্কারের গল্পটা সিস্টেমের ভেতরেই
+> রাখা হয়েছে, আলাদা করে বলতে হয় না। পরীক্ষক নিজেই ক্লিক করে দেখবেন
+> ৯৪.৮১% → ৬৭.০৭% কেন হলো। **সততাটাই ফিচার।**
+
+### API-তেও সততা রাখা হয়েছে
+
+`POST /api/predict/return` উত্তরে ফেরত দেয়:
+
+```json
+{
+  "return_probability": 0.34,
+  "reliability": "low",
+  "note": "Return signal is weak in this dataset; use for ranking
+           manual checks only, not for automated decisions."
+}
+```
+
+দুর্বল মডেলকে আত্মবিশ্বাসী দেখানোর বদলে **সতর্কতাটা উত্তরের সাথেই পাঠানো
+হয়**। একইভাবে `missing_fields` জানিয়ে দেয় কোন ফিচার অনুপস্থিত ছিল, যাতে
+অসম্পূর্ণ payload-এর উত্তর ভুলবশত বিশ্বাস করা না হয়।
 
 ---
 

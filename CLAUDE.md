@@ -18,8 +18,39 @@ Flat repo. Scripts are numbered and run in order; each writes artifacts the next
 | `04_forecasting.py` | Monthly sales: LSTM (look-back 6) vs ARIMA(2,1,2) vs seasonal-naive | `forecast_results.pkl`, figures |
 | `05_shap_analysis.py` | SHAP over the XGBoost model | `shap_interpretation.txt`, figures |
 | `06_final_report.py` | Reads all `.pkl`s, prints the thesis results tables | stdout only |
+| `07_return_prediction.py` | Return prediction. Transaction-level, so `GroupShuffleSplit` on `Customer_ID` | `return_results.pkl`, `models/return_model.pkl` |
+| `08_churn_prediction.py` | Churn (`Recency > 90`). Customer-level via `01b` | `churn_results.pkl`, `models/churn_model.pkl` |
+| `common_eval.py` | Shared binary-task metrics: bootstrap CI, PR/ROC, lift@k | — (imported) |
 
-`run_all.py` runs 00→06 sequentially and stops on the first non-zero exit.
+`run_all.py` runs all 11 stages sequentially and stops on the first non-zero exit.
+
+## Serving layer
+
+```
+frontend/  React + Vite + Recharts (:5173)
+    │ fetch JSON
+api/       FastAPI — main.py · routes.py · schemas.py (:8000)
+    │
+predict.py  ← the ONLY module that opens a pickle
+    │
+output/models/*.pkl, output/*.csv
+```
+
+```bash
+# terminal 1
+PYTHONIOENCODING=utf-8 ./.venv312/Scripts/python.exe -m uvicorn api.main:app --reload
+# terminal 2
+cd frontend && npm run dev
+```
+
+Swagger UI at `http://127.0.0.1:8000/docs`; dashboard at `http://localhost:5173`.
+
+**Rule:** `predict.py` loads the training-time scaler/encoders and only ever calls
+`transform`. Re-fitting on request data would silently produce wrong predictions with
+no error. Route handlers must not touch pickles directly.
+
+Frontend files use `.jsx` when they contain JSX — a `.js` file with JSX fails the
+Vite build.
 
 ## Python environments
 
@@ -119,6 +150,20 @@ the CLV variant — when one feature determines the label, model choice stops ma
 this plainly — it is the strongest evidence in the thesis that the series is
 seasonal. LSTM numbers drift slightly between runs (EarlyStopping epoch varies);
 ARIMA and seasonal-naive are deterministic.
+
+**Churn** (`Recency > 90`, base rate 20.2%): Logistic Regression wins — ROC-AUC 0.712,
+PR-AUC 0.421 vs 0.202 random, **2.48x lift @10%**. Genuinely usable for ranking a
+retention campaign.
+
+**Returns** (base rate 6.97%): Random Forest, ROC-AUC 0.580, PR-AUC 0.0877 vs 0.0697
+random, 1.38x lift. **A negative result — report it as one.** Returns are near-random
+with respect to pre-dispatch features.
+
+> A first version scored ROC-AUC 0.97 because `Customer_Satisfaction_Score` was in the
+> feature set. That score is given *after* the purchase experience: every transaction
+> rated ≥4.1 has a 0.00% return rate and no returned item scores above 4.0. It is a
+> consequence of the return, not a predictor. Same family of bug as the CLV leak —
+> when a binary model looks great, check for post-outcome features first.
 
 **Clustering:** K=4, silhouette 0.1725 — weak, clusters overlap. Silhouette actually
 peaks at K=2 (0.2837); `OPTIMAL_K = 4` is hardcoded
