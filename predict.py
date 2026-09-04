@@ -87,15 +87,43 @@ def get_artifacts() -> dict:
     }
 
 
+@lru_cache(maxsize=1)
+def _feature_medians() -> dict:
+    """
+    Population median of every customer-level feature, as the neutral fill for
+    a partial payload.
+
+    Filling with 0.0 is not neutral: the scalers are MinMax, fit on training
+    data whose minimum is above zero for most features, so a raw 0.0 maps to a
+    negative scaled value and drops the row outside the range the model ever
+    saw. Measured effect — a 4-field churn payload scored 0.93 regardless of
+    what those four fields said, and every customer in an uploaded file came
+    back "High" risk. The median leaves an unsupplied feature at a typical
+    value so the supplied ones actually drive the answer.
+    """
+    df = get_artifacts()["customers"]
+    return {
+        c: float(df[c].median())
+        for c in df.columns
+        if pd.api.types.is_numeric_dtype(df[c])
+    }
+
+
 def _vectorise(payload: dict, feature_names: list[str]) -> np.ndarray:
     """
     Build a model-ready row from a name->value dict.
 
-    Missing features default to 0.0 rather than raising, so a partial
-    payload still returns a prediction; the caller is told which fields
-    were defaulted so the answer can be judged.
+    Missing features fall back to the population median rather than raising, so
+    a partial payload still returns a usable prediction; the caller is told
+    which fields were defaulted, via missing_fields(), so the answer can still
+    be judged. Features with no median available (transaction-level ones, which
+    are absent from the customer table) fall back to 0.0.
     """
-    row = [float(payload.get(name, 0.0)) for name in feature_names]
+    medians = _feature_medians()
+    row = [
+        float(payload.get(name, medians.get(name, 0.0)))
+        for name in feature_names
+    ]
     return np.array(row, dtype=float).reshape(1, -1)
 
 
@@ -329,7 +357,56 @@ def get_segments() -> dict:
                 entry["label"] = str(sub["Segment"].iloc[0])
             clusters.append(entry)
 
-    return {"supervised_profiles": profiles, "kmeans_clusters": clusters}
+    return {
+        "supervised_profiles": profiles,
+        "kmeans_clusters": clusters,
+        "clustering_quality": _clustering_quality(),
+    }
+
+
+@lru_cache(maxsize=1)
+def _clustering_quality() -> dict:
+    """
+    Silhouette for the chosen K against the best K available.
+
+    03_clustering.py prints these but persists no metrics pickle, so they were
+    previously retyped into the dashboard by hand and would silently go stale
+    after a rerun. Recomputed here from customer_segments.csv using the same
+    features and scaler as 03_clustering.py:72-75. Cached — it is a few seconds
+    over ~5k rows.
+    """
+    seg = get_artifacts()["segments"]
+    if seg is None or "Cluster" not in seg.columns:
+        return {}
+
+    try:
+        from sklearn.cluster import KMeans
+        from sklearn.metrics import silhouette_score
+        from sklearn.preprocessing import StandardScaler
+    except ImportError:
+        return {}
+
+    features = ["Recency", "Frequency", "Monetary", "CLV", "Avg_CSAT", "Txn_Count", "Avg_Disc"]
+    if any(f not in seg.columns for f in features):
+        return {}
+
+    X = StandardScaler().fit_transform(seg[features].values)
+    chosen_k = int(seg["Cluster"].nunique())
+    chosen = float(silhouette_score(X, seg["Cluster"].values))
+
+    by_k = {}
+    for k in range(2, 11):
+        labels = KMeans(n_clusters=k, random_state=42, n_init=10).fit_predict(X)
+        by_k[k] = float(silhouette_score(X, labels))
+
+    best_k = max(by_k, key=by_k.get)
+    return {
+        "chosen_k": chosen_k,
+        "chosen_silhouette": chosen,
+        "best_k": best_k,
+        "best_silhouette": by_k[best_k],
+        "silhouette_by_k": {str(k): v for k, v in by_k.items()},
+    }
 
 
 def get_forecast() -> dict:

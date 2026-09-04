@@ -12,16 +12,19 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, File, HTTPException, Query, UploadFile
+from fastapi.responses import StreamingResponse
 
 # predict.py sits at the project root, one level above api/
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import predict as service  # noqa: E402
+import upload_service  # noqa: E402
 
 from .schemas import (  # noqa: E402
-    ChurnPrediction, CustomerList, FeaturePayload, ForecastResponse,
+    ChurnPrediction, ColumnMapping, CustomerList, FeaturePayload, ForecastResponse,
     Overview, ReturnPrediction, SegmentPrediction, ShapContribution,
+    UploadParsed, UploadScore,
 )
 
 router = APIRouter(prefix="/api")
@@ -117,6 +120,93 @@ def predict_return(payload: FeaturePayload):
     than presented as a confident answer.
     """
     return service.predict_return(payload.features)
+
+
+# ─────────────────────────────────────────────
+# Bring-your-own-data: upload, map, score
+# ─────────────────────────────────────────────
+# Scoring only. No model is retrained, so the thesis artifacts in output/
+# are never written by any of these handlers.
+@router.post("/upload", response_model=UploadParsed, tags=["upload"])
+async def upload(file: UploadFile = File(...)):
+    """Parse an uploaded CSV/Excel and suggest a column mapping."""
+    try:
+        return upload_service.parse_upload(await file.read(), file.filename or "upload.csv")
+    except upload_service.UploadError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+
+@router.post("/upload/{token}/score", response_model=UploadScore, tags=["upload"])
+def upload_score(token: str, mapping: ColumnMapping):
+    """Rebuild customer features from the mapping and rank by churn risk."""
+    try:
+        return upload_service.score_upload(token, mapping.model_dump())
+    except upload_service.UploadError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+
+@router.post("/upload/{token}/export", tags=["upload"])
+def upload_export(token: str, mapping: ColumnMapping):
+    """The same scored rows as a downloadable CSV."""
+    try:
+        csv_text = upload_service.export_csv(token, mapping.model_dump())
+    except upload_service.UploadError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+    # utf-8-sig so Excel renders it without mojibake — repo CSV convention.
+    return StreamingResponse(
+        iter([csv_text.encode("utf-8-sig")]),
+        media_type="text/csv",
+        headers={"Content-Disposition": 'attachment; filename="scored_customers.csv"'},
+    )
+
+
+@router.delete("/upload/{token}", tags=["upload"])
+def upload_delete(token: str):
+    return {"deleted": upload_service.drop_session(token)}
+
+
+# The four views below are plain arithmetic over the user's own rows — no
+# trained model is involved, so unlike /score they carry no transfer caveat.
+@router.post("/upload/{token}/overview", tags=["upload"])
+def upload_overview(token: str, mapping: ColumnMapping):
+    """Headline KPIs and the monthly sales series for the uploaded file."""
+    try:
+        return upload_service.overview_for(token, mapping.model_dump())
+    except upload_service.UploadError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+
+@router.post("/upload/{token}/forecast", tags=["upload"])
+def upload_forecast(token: str, mapping: ColumnMapping, horizon: int = Query(3, ge=1, le=12)):
+    """
+    Seasonal-naive forecast for the uploaded file.
+
+    Responds `available: false` with a reason when the file has under 13 months
+    of history, rather than extrapolating from too little data.
+    """
+    try:
+        return upload_service.forecast_for(token, mapping.model_dump(), horizon=horizon)
+    except upload_service.UploadError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+
+@router.post("/upload/{token}/segments", tags=["upload"])
+def upload_segments(token: str, mapping: ColumnMapping, k: int = Query(4, ge=2, le=6)):
+    """K-Means re-fitted on the uploaded customers, with silhouette reported."""
+    try:
+        return upload_service.segments_for(token, mapping.model_dump(), k=k)
+    except upload_service.UploadError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+
+@router.post("/upload/{token}/products", tags=["upload"])
+def upload_products(token: str, mapping: ColumnMapping):
+    """Best sellers. Returns `available: false` when no product column was mapped."""
+    try:
+        return upload_service.products_for(token, mapping.model_dump())
+    except upload_service.UploadError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
 
 
 # ─────────────────────────────────────────────

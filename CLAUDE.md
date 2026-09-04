@@ -24,17 +24,117 @@ Flat repo. Scripts are numbered and run in order; each writes artifacts the next
 
 `run_all.py` runs all 11 stages sequentially and stops on the first non-zero exit.
 
-## Serving layer
+## Two systems live in this repo: the thesis pipeline (above) and B-SMART
+
+The numbered scripts above are the original static thesis pipeline — synthetic
+CSV in, pickles out, `predict.py`/`api/routes.py` serve them read-only. Alongside
+it, a second, actively-developed system ("B-SMART") has grown up: a real
+multi-tenant operational app (SQL-backed CRUD for orgs/branches/products/sales/
+inventory/payments/etc.) plus its own leak-free real-data ML pipeline. **Both
+mount into the same FastAPI app (`api/main.py`) and run side by side** — they
+share no data model yet, only a CSV schema handshake (see below). Read
+`docs/THESIS_PRODUCT_MASTER_PLAN.md`, `docs/FEATURE_STATUS.md`, and
+`docs/REAL_DATA_PROTOCOL.md` before touching either the schema or the ML
+research-question framing; they are the source of truth for B-SMART, not this
+file.
+
+B-SMART layout:
+
+| Module | Does |
+|---|---|
+| `api/database.py`, `api/config.py` | SQLAlchemy engine/session; `DATABASE_URL` (sqlite dev / Postgres prod), JWT settings from `.env` (see `.env.example`) |
+| `api/domain_models.py` | ~20-table multi-tenant schema: Organization, User, Membership, Branch, Product, Customer, Supplier, SalesOrder/Item, Payment, StockMovement, InventoryBalance, Expense, PurchaseOrder/Item, LedgerEntry, SalesReturn/Item, Refund, AuditLog, ImportBatch |
+| `alembic.ini`, `migrations/` | Schema migrations (dev uses `create_all` on startup instead; Alembic owns prod upgrades) |
+| `api/auth.py` | JWT auth + a dev-mode bypass (auto-creates `developer@bsmart.local`); tenant scoping via required `X-Organization-ID` header |
+| `api/app_routes.py`, `commerce_routes.py`, `directory_routes.py`, `finance_routes.py`, `analytics_routes.py` | Org/user, products/inventory/sales, branches/staff/customers/suppliers, purchasing/payments/returns/ledger, operational dashboard — full CRUD against the DB, never touch pickles |
+| `api/data_import_routes.py` | Durable CSV/XLSX intake with provenance (checksum, `ImportBatch`), column-mapping validation, and `/api/app/datasets/sales.csv` export in the canonical `bsmart_sales_anonymized.csv` schema |
+| `ml/real_pipeline.py` | `python -m ml.real_pipeline --input <canonical-sales.csv> [--organization-id <id>]` — trains fresh models (HistGradientBoostingRegressor demand forecast, future-repeat classifier) on real data; **refuses insufficient data, never fabricates a fallback result**. With `--organization-id`, artifacts land in `artifacts/real/<org_id>/` where the live API finds them |
+| `ml/serving.py` | The only module that opens a B-SMART joblib artifact (same rule `predict.py` follows for the thesis pipeline). `predict_daily_rates(org_id, sales_df)` returns per-(branch, SKU) demand predictions, or `{}` when that org has no trained model — never a guessed number |
+| `ml/scalability_benchmark.py` | Explicitly-synthetic scale test (100 → 1M rows); its numbers must never be reported as real-data accuracy |
+| `tests/` | Covers only the B-SMART DB/API layer (`test_auth.py`, `test_domain_database.py`, `test_commerce_api.py`, `test_operational_analytics.py`) — the numbered pipeline has no automated tests |
+
+`/api/app/recommendations` (`api/analytics_routes.py`) now uses that trained
+demand model when one exists for the organization, and falls back to its
+transparent 28-day baseline otherwise. Each action carries
+`"confidence": "model" | "baseline"` and the response's `model_status` is
+`model` / `mixed` / `baseline` — so a heuristic is never presented as an ML
+prediction. Train a model for an org by exporting its sales
+(`/api/app/datasets/sales.csv`) and running `ml/real_pipeline.py` with
+`--organization-id`; the running server picks the artifact up on the next
+request, no restart needed.
+
+The bridge between the two systems is the CSV schema: `data_import_routes.py`
+exports operational sales in exactly the columns `ml/real_pipeline.py` requires
+(`branch_id, invoice_id, line_id, sold_at, customer_pseudo_id, sku, quantity,
+unit_price, discount_amount, line_total`). There is no automatic hookup yet —
+running the real pipeline on live tenant data is a manual export → train step.
+
+`frontend/src/pages/Upload.jsx` intentionally still calls the *old* pickle-era
+`/api/upload*` endpoints (`api/routes.py`) — that page is a one-off scoring
+pass against the thesis pickles for a visitor with no account, and never
+touches the DB. Real, org-owned sales history intake is a separate feature:
+`api/data_import_routes.py`'s `/api/app/imports` → `/api/app/imports/{id}/
+validate-sales` → `/api/app/datasets/sales.csv` flow now has both `api.js`
+functions (`importSalesFile`, `validateSalesImport`, `exportSalesDataset`) and
+a UI section ("প্রকৃত বিক্রয় ইতিহাস আমদানি") on `BusinessSetup.jsx`, gated on
+having an active organization. Smoke-tested end to end with curl: upload →
+validate correctly flags SKUs not yet in the org's product catalog.
+
+Note: `frontend/src/api.js`'s `appRequest` sends `X-Organization-ID` but never
+a bearer token, so every `/api/app/*` call currently relies on `api/auth.py`'s
+development-mode bypass — fine for the local thesis demo, but it means
+`AUTH_MODE=jwt` in production would break the frontend until token handling
+is added client-side (there is also no login/token-issuance endpoint yet to
+add it against — external sign-in is explicitly out of scope per
+`docs/FEATURE_STATUS.md`).
+
+## Old serving layer (thesis pipeline only)
 
 ```
 frontend/  React + Vite + Recharts (:5173)
     │ fetch JSON
 api/       FastAPI — main.py · routes.py · schemas.py (:8000)
     │
+    ├── upload_service.py   ← bring-your-own-CSV scoring (calls predict.py)
 predict.py  ← the ONLY module that opens a pickle
     │
 output/models/*.pkl, output/*.csv
 ```
+
+### Bring-your-own-data
+
+`/upload` takes any transaction CSV/Excel, asks the user to map four columns
+(customer id, date, amount, quantity), rebuilds RFM features, and ranks customers
+by churn risk with a downloadable CSV. `upload_service.py` never opens a pickle —
+it calls `predict.py`, same as the route handlers.
+
+**It scores, it never retrains.** Nothing under `output/` is written by the
+serving layer, so the thesis numbers cannot drift from a dashboard visit.
+
+Two definitions necessarily differ from `01b_customer_features.py`, because an
+uploaded file has no `Days_Since_Last_Purchase` or `Purchase_Frequency_Monthly`
+column to average: recency is derived from the newest date in the file, and
+frequency from transactions per active month. Measured on this project's own
+data cut to the four mappable columns, ranking quality holds up
+(ROC-AUC ≈ 0.77 vs the 0.712 headline). The constants are in
+`upload_service.py`; **re-measure with complete customer histories** — a
+truncated row slice cuts each customer's last purchase and reports ≈0.58 for
+reasons unrelated to the model.
+
+Percentages from an upload are *not* calibrated for a business outside the
+training data. The response carries a `domain_warning` and the UI renders it;
+the `90+ days inactive` column is the dependable one, since it is measured from
+the user's own dates rather than predicted.
+
+### Partial payloads use the median, not zero
+
+`predict._vectorise` fills an absent feature with the **population median**.
+Filling with 0.0 is not neutral — the MinMax scalers were fit on training data
+whose minimum is above zero for most features, so a raw 0.0 scales negative and
+lands outside anything the model saw. Symptom when this was wrong: a four-field
+churn payload returned 0.93 no matter what those fields said, and every customer
+in an uploaded file came back "High" risk. If a prediction looks suspiciously
+uniform, check the fill value first.
 
 ```powershell
 # terminal 1
@@ -95,6 +195,21 @@ Verify a run was real by checking `output/models/lstm_model.h5` and
 - Intermediate state is passed via `pickle`, not re-computed.
 - CSVs are written `encoding="utf-8-sig"` (Excel-friendly, BOM on the header).
 - Amounts are BDT; the currency suffix `_BDT` is part of the column names.
+
+## Real-data candidate files — parked in `candidate_datasets_not_used/`
+
+`online_retail_II.xlsx` (UCI/Kaggle "Online Retail II", UK gift retailer, GBP)
+and `real-datasets.csv` (scraped Daraz.com.bd product-catalog/review listings,
+not transaction data) used to sit untracked at the repo root; moved into
+`candidate_datasets_not_used/` (see its README) since **neither is referenced
+by any script and neither satisfies the thesis's "real data" requirement**:
+Daraz data has no transaction/customer fields needed for RFM/churn/forecast,
+and Online Retail II is real but not Bangladeshi — using it as a primary
+result would undercut the thesis's Bangladeshi-SME claim. If used at all,
+Online Retail II belongs only as an explicitly-labelled non-Bangladeshi
+cross-dataset check, never the headline evidence. The actual path to real
+evidence is `docs/REAL_DATA_PROTOCOL.md` (consenting Bangladeshi SMEs) feeding
+`ml/real_pipeline.py`.
 
 ## Working here
 

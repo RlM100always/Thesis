@@ -2,6 +2,8 @@ import {
   Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from "recharts";
 import { api, formatPct } from "../api";
+import { TermLabel } from "../components/Metric";
+import { useUi } from "../UiContext";
 import { ErrorBox, Loading, useApi } from "../useApi";
 
 export default function ModelReport() {
@@ -12,6 +14,13 @@ export default function ModelReport() {
 
   const { segment, ablation, churn, returns } = data;
   const models = Object.entries(segment.models);
+
+  // Read both p-values off the ablation rather than typing them in: the live
+  // value was already rendered further down the page, so a hardcoded copy here
+  // could contradict it after a rerun.
+  const fmtP = (p) => (p == null ? "—" : p < 0.001 ? "< 0.001" : p.toFixed(2));
+  const leakyP = fmtP(ablation.find((a) => a.mcnemar_p >= 0.05)?.mcnemar_p);
+  const honestP = fmtP(segment.mcnemar?.pvalue);
 
   const ablationChart = ablation.map((a) => ({
     name: a.variant.replace(/ \(.*\)/, ""),
@@ -37,7 +46,7 @@ export default function ModelReport() {
       </div>
 
       <div className="card">
-        <h3>Leakage Ablation</h3>
+        <h3><TermLabel termKey="leakage" /></h3>
         <p className="hint">
           Same task, same split strategy — only the leaks differ.
         </p>
@@ -64,7 +73,7 @@ export default function ModelReport() {
               <tr>
                 <th>Variant</th>
                 <th className="num">Accuracy</th>
-                <th className="num">McNemar p</th>
+                <th className="num"><TermLabel termKey="mcnemar" /></th>
                 <th>Interpretation</th>
               </tr>
             </thead>
@@ -90,9 +99,10 @@ export default function ModelReport() {
         <div className="callout green" style={{ marginTop: 16, marginBottom: 0 }}>
           <strong>The subtler finding</strong>
           With the CLV feature present, McNemar&rsquo;s test says XGBoost and
-          Random Forest are indistinguishable (p = 0.52). Only after removing it
-          does the difference become significant (p = 0.01). A leak does not just
-          inflate a score — it erases the model comparison the thesis rests on.
+          Random Forest are indistinguishable (p = {leakyP}). Only after removing
+          it does the difference become significant (p = {honestP}). A leak does
+          not just inflate a score — it erases the model comparison the thesis
+          rests on.
         </div>
       </div>
 
@@ -107,10 +117,10 @@ export default function ModelReport() {
             <thead>
               <tr>
                 <th>Model</th>
-                <th className="num">Accuracy</th>
-                <th className="num">95% CI</th>
-                <th className="num">F1-macro</th>
-                <th className="num">5-fold CV</th>
+                <th className="num"><TermLabel termKey="accuracy" /></th>
+                <th className="num"><TermLabel termKey="ci" /></th>
+                <th className="num"><TermLabel termKey="f1_macro" /></th>
+                <th className="num"><TermLabel termKey="cv" /></th>
               </tr>
             </thead>
             <tbody>
@@ -144,7 +154,19 @@ export default function ModelReport() {
           subtitle={`Churn = inactive > ${churn.threshold_days} days · base rate ${formatPct(churn.churn_rate)}`}
           results={churn.models}
           best={churn.best_model}
-          verdict="ROC-AUC 0.71 with 2.48x lift in the top 10% — usable to prioritise a retention campaign."
+          verdict={(m) => (
+            <>
+              ROC-AUC {m.roc_auc.toFixed(2)} with {m.lift_10.toFixed(2)}x lift in the top
+              10% — usable to prioritise a retention campaign.
+            </>
+          )}
+          plainVerdict={(m) => (
+            <>
+              Contact the top 10% this model flags and you reach about{" "}
+              {m.lift_10.toFixed(1)} times more customers who really are leaving than
+              picking 10% at random would. Good enough to plan a win-back campaign around.
+            </>
+          )}
           tone="green"
         />
         <BinaryModelCard
@@ -152,7 +174,20 @@ export default function ModelReport() {
           subtitle="Predicting returns from pre-dispatch information only"
           results={returns.models}
           best={returns.best_model}
-          verdict="ROC-AUC 0.58 — a weak signal. Reported as a negative result: returns are close to random with respect to what is knowable before dispatch."
+          verdict={(m) => (
+            <>
+              ROC-AUC {m.roc_auc.toFixed(2)} — a weak signal. Reported as a negative
+              result: returns are close to random with respect to what is knowable before
+              dispatch.
+            </>
+          )}
+          plainVerdict={() => (
+            <>
+              This one does <strong>not</strong> work, and we are reporting that rather
+              than hiding it. Whether an order comes back is almost unrelated to anything
+              we know before it ships, so do not use this to decide which orders to hold.
+            </>
+          )}
           tone="amber"
         />
       </div>
@@ -160,7 +195,13 @@ export default function ModelReport() {
   );
 }
 
-function BinaryModelCard({ title, subtitle, results, best, verdict, tone }) {
+function BinaryModelCard({ title, subtitle, results, best, verdict, plainVerdict, tone }) {
+  const { simple } = useUi();
+  // The verdict quotes the model's own numbers, so it is built from the winning
+  // row rather than written out as a literal that a rerun could falsify.
+  const winner = results[best] ?? Object.values(results)[0];
+  const text = simple && plainVerdict ? plainVerdict(winner) : verdict(winner);
+
   return (
     <div className="card">
       <h3>{title}</h3>
@@ -170,9 +211,9 @@ function BinaryModelCard({ title, subtitle, results, best, verdict, tone }) {
           <thead>
             <tr>
               <th>Model</th>
-              <th className="num">PR-AUC</th>
-              <th className="num">ROC-AUC</th>
-              <th className="num">Lift@10%</th>
+              <th className="num"><TermLabel termKey="pr_auc" /></th>
+              <th className="num"><TermLabel termKey="roc_auc" /></th>
+              <th className="num"><TermLabel termKey="lift" /></th>
             </tr>
           </thead>
           <tbody>
@@ -192,7 +233,7 @@ function BinaryModelCard({ title, subtitle, results, best, verdict, tone }) {
       </div>
       <div className={`callout ${tone === "green" ? "green" : ""}`}
            style={{ marginTop: 14, marginBottom: 0 }}>
-        {verdict}
+        {text}
       </div>
     </div>
   );

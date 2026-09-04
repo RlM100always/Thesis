@@ -17,6 +17,36 @@
   --shadow: 0 1px 3px rgba(16, 24, 40, 0.06), 0 1px 2px rgba(16, 24, 40, 0.04);
 }
 
+/* Dark theme. UiContext stamps data-theme on <html>; the media query is only
+   the first-visit default, so an explicit choice always wins. The accent
+   colours are kept identical to the matplotlib palette and only lightened
+   where they would fail contrast on a dark surface. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0b1220;
+    --surface: #151d2e;
+    --border: #26314a;
+    --text: #e6edf6;
+    --text-muted: #94a3b8;
+    --green: #12b26c;
+    --red: #ff5c6a;
+    --amber: #ffb340;
+    --shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+  }
+}
+
+:root[data-theme="dark"] {
+  --bg: #0b1220;
+  --surface: #151d2e;
+  --border: #26314a;
+  --text: #e6edf6;
+  --text-muted: #94a3b8;
+  --green: #12b26c;
+  --red: #ff5c6a;
+  --amber: #ffb340;
+  --shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+}
+
 * { box-sizing: border-box; }
 
 body {
@@ -27,6 +57,29 @@ body {
   font-size: 15px;
   line-height: 1.5;
 }
+
+input, select, textarea, button { font: inherit; }
+input, select, textarea {
+  width: 100%; padding: 10px 11px; color: var(--text); background: var(--surface);
+  border: 1px solid var(--border); border-radius: 8px;
+}
+label { display: grid; gap: 5px; color: var(--text-muted); font-size: 13px; }
+label.checkbox { display: flex; flex-direction: row; align-items: center; gap: 8px; }
+label.checkbox input { width: auto; }
+.page-head.row { justify-content: space-between; align-items: end; }
+.chart-card { min-height: 330px; }
+.form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.form-grid h3, .form-grid p, .form-grid .sale-total { grid-column: 1 / -1; }
+.inline-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; align-items: end; }
+.btn-primary, .btn-secondary {
+  display: inline-flex; align-items: center; justify-content: center; min-height: 42px;
+  border-radius: 8px; padding: 9px 16px; text-decoration: none; cursor: pointer;
+}
+.btn-primary { border: 0; background: var(--green); color: white; font-weight: 650; }
+.btn-primary:disabled { opacity: .6; cursor: wait; }
+.sale-total { font-size: 24px; font-weight: 750; color: var(--green); }
+.business-chip { margin: -16px 16px 14px; padding: 7px 9px; border-radius: 7px; background: rgba(255,255,255,.08); color: #fff; font-size: 12px; }
+.error-box { padding: 12px; border: 1px solid var(--red); border-radius: 8px; color: var(--red); margin-bottom: 14px; }
 
 .app { display: flex; min-height: 100vh; }
 
@@ -110,11 +163,25 @@ body {
 
 .kpi { background: var(--surface); border: 1px solid var(--border);
        border-radius: var(--radius); padding: 15px 17px; box-shadow: var(--shadow); }
-.kpi .label { font-size: 11.5px; text-transform: uppercase;
+/* block, so a label and its value never run together on one line */
+.kpi .label { display: block; font-size: 11.5px; text-transform: uppercase;
               letter-spacing: 0.4px; color: var(--text-muted); }
-.kpi .value { font-size: 25px; font-weight: 700; margin-top: 5px; }
+.kpi .value { display: block; font-size: 25px; font-weight: 700; margin-top: 5px; }
+.kpi .sub { display: block; font-size: 11.5px; color: var(--text-muted); margin-top: 3px; }
+.kpi.danger .value { color: var(--red); }
 .kpi .value.green { color: var(--green); }
 .kpi .value.red { color: var(--red); }
+
+@media (max-width: 720px) {
+  .app { display: block; }
+  .sidebar { width: 100%; padding: 12px; position: static; }
+  .sidebar nav { flex-direction: row; overflow-x: auto; }
+  .sidebar .nav-heading, .sidebar .footer, .sidebar .toggles { display: none; }
+  .sidebar a { white-space: nowrap; border-left: 0; border-bottom: 3px solid transparent; padding: 9px 11px; }
+  .sidebar a.active { border-left: 0; border-bottom-color: var(--green); }
+  .main { padding: 18px 14px; }
+  .form-grid { grid-template-columns: 1fr; }
+}
 
 /* ── Tables ──────────────────────────────── */
 .table-wrap { overflow-x: auto; }
@@ -124,9 +191,9 @@ th, td { text-align: left; padding: 9px 11px; border-bottom: 1px solid var(--bor
 th { font-weight: 650; color: var(--text-muted); font-size: 11.5px;
      text-transform: uppercase; letter-spacing: 0.3px; white-space: nowrap; }
 td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
-tbody tr:hover { background: #f9fafb; }
+tbody tr:hover { background: color-mix(in srgb, var(--text) 4%, transparent); }
 tbody tr.clickable { cursor: pointer; }
-tbody tr.selected { background: #eef7f2; }
+tbody tr.selected { background: color-mix(in srgb, var(--green) 12%, transparent); }
 
 /* ── Badges ──────────────────────────────── */
 .badge { display: inline-block; padding: 2px 9px; border-radius: 999px;
@@ -142,16 +209,28 @@ tbody tr.selected { background: #eef7f2; }
 .state { padding: 44px; text-align: center; color: var(--text-muted); }
 .state.error { color: var(--red); }
 
+/* Tinted from the accent colour rather than a fixed light hex, so the tint
+   tracks the theme instead of staying cream while the text turns white. */
 .callout {
   border-left: 3px solid var(--amber);
-  background: #fffbf0;
+  background: color-mix(in srgb, var(--amber) 9%, var(--surface));
+  color: var(--text);
   padding: 12px 15px;
   border-radius: 0 var(--radius) var(--radius) 0;
   font-size: 13.5px;
   margin-bottom: 18px;
 }
-.callout.green { border-left-color: var(--green); background: #f0f9f4; }
+.callout.green {
+  border-left-color: var(--green);
+  background: color-mix(in srgb, var(--green) 9%, var(--surface));
+}
+.callout.danger {
+  border-left-color: var(--red);
+  background: color-mix(in srgb, var(--red) 9%, var(--surface));
+}
 .callout strong { display: block; margin-bottom: 3px; }
+.callout p { margin: 6px 0 0; }
+.callout p:first-of-type { margin-top: 3px; }
 
 input[type="text"] {
   padding: 8px 12px; border: 1px solid var(--border); border-radius: 7px;
@@ -163,15 +242,176 @@ button {
   padding: 7px 14px; border: 1px solid var(--border); background: var(--surface);
   border-radius: 7px; cursor: pointer; font-size: 13.5px; font-family: inherit;
 }
-button:hover:not(:disabled) { background: #f1f5f9; }
+button:hover:not(:disabled) { background: color-mix(in srgb, var(--text) 7%, var(--surface)); }
 button:disabled { opacity: 0.45; cursor: not-allowed; }
 
 .row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
 .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(390px, 1fr)); gap: 20px; }
+
+/* ── Sidebar toggles ─────────────────────── */
+.toggles { display: flex; flex-direction: column; gap: 7px; padding: 14px 18px 0; }
+.toggles .toggle {
+  background: rgba(255, 255, 255, 0.07); border: 1px solid rgba(255, 255, 255, 0.14);
+  color: #e2e8f0; text-align: left; display: flex; flex-direction: column;
+  gap: 2px; padding: 8px 11px;
+}
+.toggles .toggle:hover:not(:disabled) { background: rgba(255, 255, 255, 0.14); }
+.toggle-hint { font-size: 11px; opacity: 0.6; }
+
+/* ── Page scaffolding (Upload / WhatIf) ──── */
+.page { display: flex; flex-direction: column; gap: 20px; }
+.page-head h2 { margin: 0 0 4px; }
+.page-head .subtitle { margin: 0; color: var(--text-muted); max-width: 60ch; }
+
+.card > h3 { margin-top: 0; display: flex; align-items: center; gap: 9px; }
+.step-num {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 25px; height: 25px; border-radius: 50%;
+  background: var(--green); color: #fff; font-size: 13px; flex-shrink: 0;
+}
+
+.btn-primary {
+  background: var(--green); color: #fff; border-color: var(--green);
+  padding: 10px 20px; font-size: 15px; font-weight: 600;
+}
+.btn-primary:hover:not(:disabled) { filter: brightness(1.08); background: var(--green); }
+.btn-secondary { background: var(--surface); }
+
+.hint { color: var(--text-muted); font-size: 13px; }
+
+/* ── Upload: dropzone ────────────────────── */
+.dropzone {
+  border: 2px dashed var(--border); border-radius: var(--radius);
+  padding: 38px 20px; text-align: center; cursor: pointer;
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  transition: border-color 0.15s, background 0.15s;
+}
+.dropzone:hover, .dropzone.dragging {
+  border-color: var(--green);
+  background: color-mix(in srgb, var(--green) 7%, transparent);
+}
+.dropzone:focus-visible { outline: 2px solid var(--green); outline-offset: 2px; }
+.dropzone-icon { font-size: 30px; }
+.dropzone span { color: var(--text-muted); font-size: 13px; }
+
+.file-summary { display: flex; justify-content: space-between; align-items: center; gap: 14px; flex-wrap: wrap; }
+.file-summary .hint { display: block; }
+
+/* ── Upload: column mapping ──────────────── */
+.mapping-grid { display: grid; gap: 14px; margin: 16px 0; }
+.mapping-row {
+  display: grid; grid-template-columns: minmax(180px, 1fr) minmax(160px, 260px);
+  gap: 14px; align-items: center;
+}
+.mapping-label { display: flex; flex-direction: column; font-weight: 600; }
+.mapping-label .hint { font-weight: 400; }
+.req { color: var(--red); font-size: 11px; font-style: normal; font-weight: 500; }
+.mapping-row select {
+  padding: 8px 10px; border: 1px solid var(--border); border-radius: 7px;
+  background: var(--surface); color: var(--text); font-family: inherit; font-size: 14px;
+}
+.preview { margin: 14px 0; }
+.preview summary { cursor: pointer; color: var(--text-muted); font-size: 13px; }
+
+/* ── Upload: results ─────────────────────── */
+.results-head {
+  display: flex; justify-content: space-between; align-items: center;
+  gap: 12px; flex-wrap: wrap; margin-top: 20px;
+}
+.results-head h4 { margin: 0; }
+.row-flag { background: color-mix(in srgb, var(--red) 6%, transparent); }
+.action-cell { font-size: 13px; color: var(--text-muted); }
+
+.pill {
+  display: inline-block; padding: 2px 9px; border-radius: 999px;
+  font-size: 11.5px; font-weight: 600; margin-left: 6px;
+  background: color-mix(in srgb, var(--grey) 18%, transparent); color: var(--text);
+}
+.pill.danger { background: color-mix(in srgb, var(--red) 20%, transparent); color: var(--red); }
+.pill.warn { background: color-mix(in srgb, var(--amber) 22%, transparent); color: var(--amber); }
+.pill.ok { background: color-mix(in srgb, var(--green) 18%, transparent); color: var(--green); }
+
+
+/* ── What-if sliders ─────────────────────── */
+.slider-row { display: block; margin-bottom: 18px; }
+.slider-head { display: flex; justify-content: space-between; gap: 12px; margin-bottom: 6px; }
+.slider-row input[type="range"] { width: 100%; accent-color: var(--green); }
+
+.risk-panel { border-top: 3px solid var(--border); }
+.risk-panel.danger { border-top-color: var(--red); }
+.risk-panel.warn { border-top-color: var(--amber); }
+.risk-panel.ok { border-top-color: var(--green); }
+.risk-dial {
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  padding: 20px 0; transition: opacity 0.2s;
+}
+.risk-dial.pending { opacity: 0.45; }
+.risk-pct { font-size: 54px; font-weight: 700; line-height: 1; }
+.risk-advice { text-align: center; color: var(--text-muted); min-height: 3em; }
+
+/* ── Sidebar nav groups ──────────────────── */
+.nav-group { display: flex; flex-direction: column; margin-bottom: 14px; }
+.nav-heading {
+  font-size: 10px; text-transform: uppercase; letter-spacing: 0.9px;
+  opacity: 0.5; padding: 0 18px 5px;
+}
+
+/* ── Whose data is this? ─────────────────── */
+.source-banner {
+  display: flex; justify-content: space-between; align-items: center;
+  gap: 14px; flex-wrap: wrap;
+  padding: 10px 15px; border-radius: var(--radius);
+  font-size: 13.5px; margin-bottom: 18px; border: 1px solid var(--border);
+}
+.source-banner.sample {
+  background: color-mix(in srgb, var(--amber) 12%, var(--surface));
+  border-color: color-mix(in srgb, var(--amber) 40%, var(--border));
+}
+.source-banner.own {
+  background: color-mix(in srgb, var(--green) 10%, var(--surface));
+  border-color: color-mix(in srgb, var(--green) 35%, var(--border));
+}
+.btn-sm { padding: 6px 12px; font-size: 13px; text-decoration: none; display: inline-block; }
+a.btn-primary, a.btn-secondary { text-decoration: none; display: inline-block; }
+
+.empty-cta { text-align: center; display: flex; flex-direction: column;
+             align-items: center; gap: 10px; padding: 34px 20px; }
+.empty-cta h3 { margin: 0; }
+.empty-cta .hint { max-width: 46ch; }
+
+/* ── Glossary terms ──────────────────────── */
+/* Dotted underline signals "hover me for the other reading". */
+.term { border-bottom: 1px dotted currentColor; cursor: help; }
+
+/* ── Recharts ────────────────────────────── */
+/* Recharts renders its tooltip with an inline white background and draws axes
+   in a fixed grey, neither of which follows the theme. Override here rather
+   than passing style props through every chart on every page. */
+.recharts-default-tooltip {
+  background: var(--surface) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 8px;
+  color: var(--text) !important;
+  box-shadow: var(--shadow);
+}
+.recharts-tooltip-label { color: var(--text) !important; }
+.recharts-cartesian-axis-tick text { fill: var(--text-muted); }
+.recharts-cartesian-grid line { stroke: var(--border); }
+.recharts-legend-item-text { color: var(--text) !important; }
+
+/* ── Responsive ──────────────────────────── */
+@media (max-width: 1024px) {
+  .grid-2 { grid-template-columns: 1fr; }
+  .mapping-row { grid-template-columns: 1fr; gap: 6px; }
+  .mapping-row select { max-width: 100%; }
+}
 
 @media (max-width: 760px) {
   .app { flex-direction: column; }
   .sidebar { width: 100%; }
   .sidebar nav { flex-direction: row; overflow-x: auto; }
   .main { padding: 18px; }
+  .toggles { flex-direction: row; }
+  .toggles .toggle { flex: 1; }
+  .risk-pct { font-size: 42px; }
 }

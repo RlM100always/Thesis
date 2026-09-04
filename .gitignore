@@ -10,7 +10,21 @@ env/
 __pycache__/
 *.py[cod]
 *.egg-info/
+*.db
+data/uploads/
+artifacts/real/
+artifacts/*.csv
 .ipynb_checkpoints/
+
+# Real-data candidate files we evaluated and set aside (~54 MB). Kept locally,
+# never committed — see candidate_datasets_not_used/README.md for why neither
+# qualifies as this thesis's real dataset.
+candidate_datasets_not_used/
+
+# One-off safety copy made by fix_annual_revenue.py before it rewrote the
+# Annual_Revenue_BDT column in place. 11 MB, and the tracked dataset is the
+# one everything derives from.
+BD_Business_Analytics_Dataset_ORIGINAL_revenue_backup.csv
 
 # ─────────────────────────────────────────────────────────────
 # Generated pipeline artifacts — all regenerable by run_all.py.

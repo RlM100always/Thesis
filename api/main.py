@@ -49,6 +49,13 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import predict as service  # noqa: E402
 
 from .routes import router  # noqa: E402
+from .app_routes import router as app_router  # noqa: E402
+from .commerce_routes import router as commerce_router  # noqa: E402
+from .directory_routes import router as directory_router  # noqa: E402
+from .finance_routes import router as finance_router  # noqa: E402
+from .data_import_routes import router as data_import_router  # noqa: E402
+from .analytics_routes import router as analytics_router  # noqa: E402
+from .database import create_schema  # noqa: E402
 from .schemas import Health  # noqa: E402
 
 app = FastAPI(
@@ -79,6 +86,18 @@ app.add_middleware(
 )
 
 app.include_router(router)
+app.include_router(app_router)
+app.include_router(commerce_router)
+app.include_router(directory_router)
+app.include_router(finance_router)
+app.include_router(data_import_router)
+app.include_router(analytics_router)
+
+
+@app.on_event("startup")
+def initialize_application_database():
+    """Create the development schema; Alembic will own production upgrades."""
+    create_schema()
 
 
 @app.get("/health", response_model=Health, tags=["system"])

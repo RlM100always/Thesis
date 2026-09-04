@@ -27,3 +27,22 @@ seaborn>=0.12.0
 
 # Dataset Generation (Step 0 only)
 faker>=19.0.0
+
+# Serving layer (api/ + upload scoring)
+fastapi>=0.110.0
+uvicorn>=0.27.0
+python-multipart>=0.0.9  # required by FastAPI for UploadFile / CSV upload
+openpyxl>=3.1.0          # optional: lets users upload .xlsx as well as .csv
+
+# Production application data layer
+SQLAlchemy>=2.0.36
+alembic>=1.14.0
+pydantic-settings>=2.7.0
+
+# Optional application access tokens (external sign-in is deferred)
+PyJWT[crypto]>=2.10.0
+
+# Verification
+pytest>=8.3.0
+httpx2>=0.1.0            # Starlette 1.x TestClient transport
+joblib>=1.4.0

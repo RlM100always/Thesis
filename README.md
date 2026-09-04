@@ -1,5 +1,10 @@
 # AI-Powered Business Analytics System for Bangladeshi Businesses
 
+> Current product status: the local, no-Google-auth thesis MVP now covers the
+> operational retail loop (catalogue → purchase/stock → sale/return → accounts),
+> tenant-scoped dashboards, real-data import/training, and transparent action
+> ranking. See [the feature status](docs/FEATURE_STATUS.md) for exact boundaries.
+
 CSE 4th Year Thesis — an end-to-end machine learning pipeline that turns raw retail
 transaction records into decisions a business owner can actually act on: *who* the
 valuable customers are, *why* the model thinks so, and *what* next quarter's sales
@@ -66,9 +71,10 @@ unit price, discount, net amount, profit margin) · fulfilment (channel, deliver
 status, returns) · behaviour (purchase frequency, recency, CLV) · marketing
 (channel, campaign) · satisfaction score.
 
-Synthetic data is a deliberate choice, not a shortcut: real Bangladeshi transaction
-data at this scale is not publicly releasable, and a reproducible thesis needs a
-dataset the examiner can regenerate.
+This synthetic dataset is retained only as a reproducible demo, leakage case study,
+and scalability fixture. Primary thesis evidence must come from consenting real
+Bangladeshi retail SMEs under `docs/REAL_DATA_PROTOCOL.md`; synthetic and real
+results are stored and reported separately.
 
 ---
 
@@ -432,7 +438,7 @@ around the forecast rather than last month's sales.
 
 ## 8. Limitations and future work
 
-- The dataset is synthetic. Distributions are realistic by construction, so absolute
+- The preliminary/demo dataset is synthetic. Distributions are realistic by construction, so absolute
   accuracy figures should be read as evidence the pipeline works, not as field results.
 - Forecasting operates on monthly aggregates, which gives the LSTM a short series.
   Daily or weekly aggregation would give deep learning more to work with.
@@ -1261,4 +1267,3 @@ Git Bash হলে প্রথম লাইনটা `source .venv312/Scripts/a
 ছাড়া চালালে আবার নকল ফল তৈরি হবে, এবং সেটা দেখে বোঝার উপায় থাকবে না।
 ডিফেন্সে জমা দেওয়ার আগে ওই ব্লকটা মুছে ফেলে সরাসরি এরর দেওয়াই নিরাপদ —
 তাহলে মডেল না চললে চুপচাপ ভুল সংখ্যা না এসে পরিষ্কার এরর আসবে।
-

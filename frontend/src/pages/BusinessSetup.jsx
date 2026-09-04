@@ -1,0 +1,161 @@
+import { useEffect, useRef, useState } from "react";
+import { api } from "../api";
+import { useBusiness } from "../BusinessContext";
+
+const SALES_ROLES = [
+  { key: "invoice_number", label: "চালান নম্বর" },
+  { key: "date", label: "তারিখ" },
+  { key: "sku", label: "পণ্য কোড (SKU)" },
+  { key: "quantity", label: "পরিমাণ" },
+  { key: "unit_price", label: "প্রতি ইউনিট দাম" },
+];
+
+// Feeds the organization's own POS history into the durable import schema
+// (api/data_import_routes.py) for provenance + eventual ml/real_pipeline.py
+// training — separate from the quick one-off scoring on the Upload page.
+function ImportSalesSection({ orgId }) {
+  const [batch, setBatch] = useState(null);
+  const [mapping, setMapping] = useState({});
+  const [report, setReport] = useState(null);
+  const [busy, setBusy] = useState("");
+  const [error, setError] = useState("");
+  const fileRef = useRef(null);
+
+  const reset = () => { setBatch(null); setMapping({}); setReport(null); setError(""); };
+
+  const pickFile = async (file) => {
+    if (!file || !orgId) return;
+    setBusy("ফাইল পড়া হচ্ছে…"); setError(""); setReport(null);
+    try {
+      const data = await api.importSalesFile(orgId, file);
+      setBatch(data);
+      const guess = {};
+      for (const role of SALES_ROLES) {
+        const hit = data.columns.find((c) => c.toLowerCase().replace(/[^a-z]/g, "") === role.key.replace(/_/g, ""));
+        if (hit) guess[role.key] = hit;
+      }
+      setMapping(guess);
+    } catch (e) { setError(e.message); setBatch(null); }
+    finally { setBusy(""); }
+  };
+
+  const ready = SALES_ROLES.every((r) => mapping[r.key]);
+
+  const validate = async () => {
+    setBusy("যাচাই হচ্ছে…"); setError("");
+    try { setReport(await api.validateSalesImport(orgId, batch.id, mapping)); }
+    catch (e) { setError(e.message); }
+    finally { setBusy(""); }
+  };
+
+  const exportDataset = async () => {
+    setBusy("তৈরি হচ্ছে…"); setError("");
+    try {
+      const blob = await api.exportSalesDataset(orgId);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url; a.download = "bsmart_sales_anonymized.csv"; a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) { setError(e.message); }
+    finally { setBusy(""); }
+  };
+
+  return (
+    <section className="card">
+      <h3>প্রকৃত বিক্রয় ইতিহাস আমদানি</h3>
+      <p className="hint">
+        আগের বিক্রয়ের CSV/Excel ফাইল আপলোড করুন — এটি আপনার ব্যবসার রেকর্ড হিসেবে
+        সংরক্ষিত হবে এবং ভবিষ্যতে real-data মডেল প্রশিক্ষণে ব্যবহার করা যাবে।
+      </p>
+      {error && <div className="callout danger"><p>{error}</p></div>}
+      {!batch ? (
+        <>
+          <input
+            ref={fileRef} type="file" accept=".csv,.xlsx"
+            onChange={(e) => pickFile(e.target.files?.[0])}
+          />
+          {busy && <p className="hint">{busy}</p>}
+        </>
+      ) : (
+        <>
+          <p><strong>{batch.filename}</strong> · {batch.row_count.toLocaleString()} সারি · স্ট্যাটাস: {batch.status}</p>
+          <div className="mapping-grid">
+            {SALES_ROLES.map((role) => (
+              <label key={role.key} className="mapping-row">
+                <span className="mapping-label">{role.label}</span>
+                <select
+                  value={mapping[role.key] || ""}
+                  onChange={(e) => setMapping({ ...mapping, [role.key]: e.target.value })}
+                >
+                  <option value="">— নির্বাচন করুন —</option>
+                  {batch.columns.map((c) => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </label>
+            ))}
+          </div>
+          <button type="button" className="btn-primary" disabled={!ready || !!busy} onClick={validate}>
+            {busy || "যাচাই করুন"}
+          </button>
+          <button type="button" className="btn-secondary" onClick={reset}>অন্য ফাইল</button>
+          {report && (
+            <div className={`callout ${report.valid ? "green" : "danger"}`}>
+              <strong>{report.valid ? "যাচাই সফল" : "যাচাই ব্যর্থ"}</strong>
+              <p>
+                {report.rows.toLocaleString()} সারি · {report.invoices.toLocaleString()} চালান
+                {report.date_from && ` · ${report.date_from} থেকে ${report.date_to}`}
+              </p>
+              {report.errors.length > 0 && <ul>{report.errors.map((e) => <li key={e}>{e}</li>)}</ul>}
+              {report.unknown_sku_count > 0 && (
+                <p className="hint">{report.unknown_sku_count}টি SKU পণ্য তালিকায় নেই — আগে পণ্য যোগ করুন।</p>
+              )}
+              {report.valid && (
+                <button type="button" className="btn-secondary" onClick={exportDataset} disabled={!!busy}>
+                  {busy || "গবেষণার জন্য ডেটাসেট ডাউনলোড করুন (CSV)"}
+                </button>
+              )}
+            </div>
+          )}
+        </>
+      )}
+    </section>
+  );
+}
+
+export default function BusinessSetup() {
+  const { active, organizations, select, loading, error, create } = useBusiness();
+  const [form, setForm] = useState({ name: "", slug: "", sector: "retail", size_class: "small", default_branch_name: "প্রধান শাখা" });
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState("");
+  const [branches, setBranches] = useState([]);
+  const [branch, setBranch] = useState({ code:"", name:"", division:"", district:"", address:"" });
+  const activeId = active?.id;
+  useEffect(() => { if (activeId) api.branches(activeId).then(setBranches); }, [activeId]);
+  const change = (key) => (e) => setForm({ ...form, [key]: e.target.value });
+  const submit = async (e) => {
+    e.preventDefault(); setSaving(true); setMessage("");
+    try { await create(form); setMessage("ব্যবসা সফলভাবে তৈরি হয়েছে।"); }
+    catch (err) { setMessage(err.message); }
+    finally { setSaving(false); }
+  };
+  const addBranch = async (e) => {
+    e.preventDefault(); setMessage("");
+    try { await api.createBranch(active.id, {...branch, division:branch.division||null, district:branch.district||null, address:branch.address||null}); setBranches(await api.branches(active.id)); setBranch({code:"",name:"",division:"",district:"",address:""}); setMessage("শাখা যোগ হয়েছে।"); }
+    catch (err) { setMessage(err.message); }
+  };
+  if (loading) return <div className="page"><p>লোড হচ্ছে…</p></div>;
+  return <div className="page">
+    <header className="page-head"><h2>ব্যবসা সেটআপ</h2><p className="subtitle">বাংলাদেশি SME-এর দৈনিক কার্যক্রম এখান থেকে শুরু করুন।</p></header>
+    {error && <div className="error-box">{error}</div>}
+    {active && <><div className="card"><h3>বর্তমান ব্যবসা</h3><label>Workspace<select value={active.id} onChange={e=>select(e.target.value)}>{organizations.map(o=><option key={o.id} value={o.id}>{o.name}</option>)}</select></label><p><strong>{active.name}</strong> · {active.sector} · {active.role}</p></div><form className="card form-grid" onSubmit={addBranch}><h3>শাখা ব্যবস্থাপনা</h3><label>শাখা কোড<input value={branch.code} onChange={e=>setBranch({...branch,code:e.target.value})} required/></label><label>শাখার নাম<input value={branch.name} onChange={e=>setBranch({...branch,name:e.target.value})} required/></label><label>বিভাগ<input value={branch.division} onChange={e=>setBranch({...branch,division:e.target.value})}/></label><label>জেলা<input value={branch.district} onChange={e=>setBranch({...branch,district:e.target.value})}/></label><button className="btn-primary">শাখা যোগ করুন</button><p>{branches.map(b=>`${b.name} (${b.code})`).join(" · ")}</p></form><ImportSalesSection orgId={active.id} /></>}
+    <form className="card form-grid" onSubmit={submit}>
+      <h3>নতুন ব্যবসা</h3>
+      <label>ব্যবসার নাম<input value={form.name} onChange={change("name")} required /></label>
+      <label>ইউনিক কোড<input value={form.slug} onChange={change("slug")} pattern="[a-z0-9]+(?:-[a-z0-9]+)*" placeholder="rakib-store" required /></label>
+      <label>খাত<select value={form.sector} onChange={change("sector")}><option value="retail">রিটেইল</option><option value="ecommerce">ই-কমার্স</option><option value="service">সেবা</option></select></label>
+      <label>SME শ্রেণি<select value={form.size_class} onChange={change("size_class")}><option value="cottage">কুটির</option><option value="micro">মাইক্রো</option><option value="small">ক্ষুদ্র</option><option value="medium">মাঝারি</option></select></label>
+      <label>প্রধান শাখার নাম<input value={form.default_branch_name} onChange={change("default_branch_name")} required /></label>
+      <button className="btn-primary" disabled={saving}>{saving ? "তৈরি হচ্ছে…" : "ব্যবসা তৈরি করুন"}</button>
+      {message && <p>{message}</p>}
+    </form>
+  </div>;
+}

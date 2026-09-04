@@ -120,6 +120,49 @@ class ForecastResponse(BaseModel):
     note: str
 
 
+class ColumnMapping(BaseModel):
+    """Which of the user's columns plays which role. Only four are needed."""
+
+    customer_id: str
+    date: str
+    amount: str
+    quantity: str | None = None
+    product: str | None = None
+
+
+class UploadParsed(BaseModel):
+    token: str
+    filename: str
+    row_count: int
+    columns: list[str]
+    dtypes: dict[str, str]
+    sample_rows: list[dict]
+    suggested_mapping: dict[str, str | None]
+
+
+class ScoredCustomer(BaseModel):
+    customer_id: str
+    # Measured from the uploaded dates, not predicted — this is the field the
+    # UI leads with, so it must survive response filtering.
+    inactive_days: int
+    already_lapsed: bool
+    churn_probability: float
+    risk_band: str
+    monetary: float
+    txn_count: int
+    recency: int
+    avg_order_value: float
+    tenure_days: int
+    action: str
+
+
+class UploadScore(BaseModel):
+    token: str
+    summary: dict
+    domain_warning: str
+    rows: list[ScoredCustomer]
+
+
 class Health(BaseModel):
     status: str
     artifacts_loaded: bool

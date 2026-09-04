@@ -1,11 +1,18 @@
 import { useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import { api, formatBDT, SEGMENT_COLORS } from "../api";
+import { TermLabel } from "../components/Metric";
 import { ErrorBox, Loading, useApi } from "../useApi";
 
 export default function Customers() {
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
-  const [selected, setSelected] = useState(null);
+  // The open customer lives in the URL, not component state, so the view can be
+  // linked to and the back button steps out of it rather than off the page.
+  const { customerId: selected } = useParams();
+  const navigate = useNavigate();
+  const setSelected = (id) =>
+    navigate(id ? `/customers/${encodeURIComponent(id)}` : "/customers");
 
   const { data, error, loading } = useApi(
     () => api.customers(query, page, 20),
@@ -52,8 +59,8 @@ export default function Customers() {
                   <tr>
                     <th>Customer ID</th>
                     <th>Segment</th>
-                    <th className="num">Recency</th>
-                    <th className="num">Frequency</th>
+                    <th className="num"><TermLabel termKey="recency" /></th>
+                    <th className="num"><TermLabel termKey="frequency" /></th>
                     <th className="num">Total Spend</th>
                     <th className="num">Orders</th>
                     <th>Status</th>
@@ -230,7 +237,10 @@ function ShapBars({ contributions }) {
                 {c.contribution > 0 ? "+" : ""}{c.contribution.toFixed(3)}
               </span>
             </div>
-            <div style={{ background: "#eef2f6", borderRadius: 4, height: 9 }}>
+            <div style={{
+              background: "color-mix(in srgb, var(--text) 10%, transparent)",
+              borderRadius: 4, height: 9,
+            }}>
               <div style={{
                 width: `${width}%`, height: "100%", borderRadius: 4,
                 background: positive ? "var(--green)" : "var(--red)",

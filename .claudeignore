@@ -7,8 +7,16 @@
 # The schema is documented in README §3 instead.
 # ─────────────────────────────────────────────────────────────
 BD_Business_Analytics_Dataset.csv
+BD_Business_Analytics_Dataset_ORIGINAL_revenue_backup.csv
+candidate_datasets_not_used/
 normalized_data/
 output/*.csv
+
+# B-SMART dev database, raw import staging, and trained real-data models —
+# binary/large, never read directly
+bsmart.db
+data/uploads/
+artifacts/
 
 # ─────────────────────────────────────────────────────────────
 # Binary artifacts — unreadable as text
