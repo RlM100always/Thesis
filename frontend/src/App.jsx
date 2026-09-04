@@ -15,6 +15,7 @@ import { BusinessProvider, useBusiness } from "./BusinessContext";
 import BusinessSetup from "./pages/BusinessSetup";
 import { AccountsPage, InventoryPage, ProductsPage, SalesPage } from "./pages/Operations";
 import OperationalDashboard from "./pages/OperationalDashboard";
+import RealDataValidation from "./pages/RealDataValidation";
 import { DirectoryPage, PurchasesPage, ReturnsPage, StrategyPage } from "./pages/SupplyChain";
 
 // HashRouter rather than BrowserRouter: the production build is served as
@@ -60,6 +61,7 @@ const RESEARCH_NAV = [
     heading: "থিসিস মূল্যায়ন",
     items: [
       { to: "/models", label: "মডেল রিপোর্ট" },
+      { to: "/real-data-validation", label: "Real-data validation" },
       { to: "/customers", label: "গবেষণা ডেটাসেট" },
       { to: "/whatif", label: "ঝুঁকি ক্যালকুলেটর" },
       { to: "/overview", label: "বিক্রি ওভারভিউ (synthetic)" },
@@ -87,6 +89,7 @@ export default function App() {
                   <Route path="/customers/:customerId" element={<Customers />} />
                   <Route path="/forecast" element={<Forecast />} />
                   <Route path="/models" element={<ModelReport />} />
+                  <Route path="/real-data-validation" element={<RealDataValidation />} />
                   <Route path="/setup" element={<BusinessSetup />} />
                   <Route path="/sales" element={<SalesPage />} />
                   <Route path="/inventory" element={<InventoryPage />} />

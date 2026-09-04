@@ -168,7 +168,7 @@ def train_churn(sales: pd.DataFrame, output: Path, horizon_days: int = 90) -> di
     features = ["recency", "transactions", "monetary", "avg_order", "unique_skus", "discount_share"]
     models = {
         "logistic": Pipeline([("scale", StandardScaler()), ("model", LogisticRegression(class_weight="balanced", max_iter=2000, random_state=42))]),
-        "random_forest": RandomForestClassifier(n_estimators=300, max_depth=10, class_weight="balanced", random_state=42, n_jobs=-1),
+        "random_forest": RandomForestClassifier(n_estimators=300, max_depth=10, class_weight="balanced", random_state=42, n_jobs=2),
     }
     results, fitted = {}, {}
     for name, model in models.items():

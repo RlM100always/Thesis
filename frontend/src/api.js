@@ -58,6 +58,7 @@ export const api = {
   segments: () => request("/api/segments"),
   forecast: () => request("/api/forecast"),
   modelMetrics: () => request("/api/models/metrics"),
+  realDataValidation: () => request("/api/research/real-data-validation"),
   customers: (q = "", page = 1, pageSize = 25) =>
     request(`/api/customers?q=${encodeURIComponent(q)}&page=${page}&page_size=${pageSize}`),
   customer: (id) => request(`/api/customers/${encodeURIComponent(id)}`),

@@ -202,11 +202,14 @@ outcomes belong in Chapter 5.
 **Chapter 5 — Experimental Results** (template file: `experimentalResults.tex`,
 sections 5.1 Results Analysis, 5.2 Summary of the Experimental Results).
 This is where every experiment design below is actually run and reported:
-- *Datasets*: real SME dataset, Bangladeshi public contextual datasets,
-  external real benchmark (labelled non-Bangladeshi if used — see
-  [CLAUDE.md](../CLAUDE.md)'s note on `candidate_datasets_not_used/`),
-  synthetic scalability dataset (labelled separately, never merged into
-  accuracy tables).
+- *Datasets*: real SME dataset (not yet collected), Bangladeshi public
+  contextual datasets (WFP/DAM market prices), external real transaction
+  benchmark (UCI Online Retail II, explicitly labelled non-Bangladeshi),
+  a real Bangladeshi demand-only series (Mendeley 10.17632/xwmbk7n3c8.1,
+  no customer/price fields), synthetic scalability dataset (labelled
+  separately, never merged into accuracy tables). Full detail and results
+  in [REAL_DATA_SOURCES.md](REAL_DATA_SOURCES.md); reproduce with
+  `python -m ml.real_data_validation`.
 - *Forecast comparison*: seasonal-naive, moving average/ETS, Croston,
   SARIMA, XGBoost/LightGBM/CatBoost, LSTM/TFT/N-HiTS (only if data volume
   justifies). Metrics: WAPE, MASE/RMSSE, RMSE, prediction interval coverage,

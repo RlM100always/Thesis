@@ -63,6 +63,28 @@ def model_metrics():
     return service.get_model_report()
 
 
+@router.get("/research/real-data-validation", tags=["dashboard"])
+def real_data_validation():
+    """
+    Real-data validation study, read-only.
+
+    Reports the pre-computed results of `python -m ml.real_data_validation`
+    (a one-off study, not something to retrain on every request) — real
+    forecast/churn metrics from UCI Online Retail II and a real Bangladeshi
+    retailer's demand series, run through the same leak-free training code
+    a B-SMART business's own data uses. Supplements, never replaces, the
+    synthetic thesis pipeline's results reported by /models/metrics.
+    """
+    path = Path("artifacts/real_public/real_data_validation.json")
+    if not path.is_file():
+        raise HTTPException(
+            status_code=404,
+            detail="Not generated yet. Run: python -m ml.real_data_validation",
+        )
+    import json
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
 # ─────────────────────────────────────────────
 # Customers
 # ─────────────────────────────────────────────

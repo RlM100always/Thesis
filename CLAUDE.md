@@ -273,6 +273,18 @@ is "real". Summary of the three tiers:
   the `X_market` price feature and a real forecasting benchmark; it has **no
   quantities, customers, or stock**, so it cannot support demand forecasting,
   churn, or inventory strategy.
+- **Tier 2b/2c (public, transaction-level, দাউনলোড করা)** —
+  `data/real_public/online_retail_II.csv` (UCI Online Retail II, real UK
+  transactions, gitignored at 94 MB — see REAL_DATA_SOURCES.md to
+  reproduce) and `data/real_public/bd_retailer_demand.xlsx` (Mendeley
+  10.17632/xwmbk7n3c8.1, real Bangladeshi daily demand, quantity-only, no
+  customers/price). `ml/external_datasets.py` adapts both into
+  `ml.real_pipeline`'s canonical schema; `python -m ml.real_data_validation`
+  trains forecast (+ churn for Online Retail II) and writes
+  `artifacts/real_public/real_data_validation.json`, served read-only at
+  `GET /api/research/real-data-validation` and shown on গবেষণা মোড's
+  "Real-data validation" page (`RealDataValidation.jsx`) — separate from,
+  never blended with, Model Report's synthetic numbers.
 - **Tier 3 (synthetic)** — `BD_Business_Analytics_Dataset.csv`, everything under
   `output/`.
 
@@ -283,20 +295,16 @@ honest result: the naive last-value baseline wins on 3 of 4 staples and
 gradient boosting loses badly — same baseline-discipline lesson as the
 synthetic pipeline's seasonal-naive finding. Report it as-is.
 
-## Real-data candidate files — parked in `candidate_datasets_not_used/`
+## Rejected candidate file — parked in `candidate_datasets_not_used/`
 
-`online_retail_II.xlsx` (UCI/Kaggle "Online Retail II", UK gift retailer, GBP)
-and `real-datasets.csv` (scraped Daraz.com.bd product-catalog/review listings,
-not transaction data) used to sit untracked at the repo root; moved into
-`candidate_datasets_not_used/` (see its README) since **neither is referenced
-by any script and neither satisfies the thesis's "real data" requirement**:
-Daraz data has no transaction/customer fields needed for RFM/churn/forecast,
-and Online Retail II is real but not Bangladeshi — using it as a primary
-result would undercut the thesis's Bangladeshi-SME claim. If used at all,
-Online Retail II belongs only as an explicitly-labelled non-Bangladeshi
-cross-dataset check, never the headline evidence. The actual path to real
-evidence is `docs/REAL_DATA_PROTOCOL.md` (consenting Bangladeshi SMEs) feeding
-`ml/real_pipeline.py`.
+`real-datasets.csv` (scraped Daraz.com.bd product-catalog/review listings,
+not transaction data) sits there, unused by any script: no transaction or
+customer fields, so no RFM/churn/forecast signal is possible. Online Retail
+II used to sit alongside it as "rejected" — it has since been **promoted**
+to actual use (see Tier 2b above) as an explicitly-labelled non-Bangladeshi
+validation dataset, never the headline evidence. The actual path to primary
+Bangladeshi evidence is still `docs/REAL_DATA_PROTOCOL.md` (consenting SMEs)
+feeding `ml/real_pipeline.py`.
 
 ## Working here
 

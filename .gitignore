@@ -29,6 +29,12 @@ data/real_sme/
 artifacts/real/
 artifacts/real_public/
 
+# Online Retail II converted to CSV is ~94 MB — too large for git and fully
+# reproducible (see docs/REAL_DATA_SOURCES.md's download+conversion steps).
+# The small real datasets in this same folder (WFP prices, the Bangladeshi
+# retailer demand series) ARE tracked — only this one file is excluded.
+data/real_public/online_retail_II.csv
+
 # Real-data candidate files we evaluated and set aside (~54 MB). Kept locally,
 # never committed — see candidate_datasets_not_used/README.md for why neither
 # qualifies as this thesis's real dataset.
