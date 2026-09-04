@@ -276,3 +276,34 @@ problem সমাধান করতে পারুক"*। এটা কাঠ
 **যা পরিবর্তন হয়েছে**: `CategorySelect` (free-text-এর বদলে dropdown, খরচের
 category-তে), স্টক সমন্বয়ে negative quantity হলে `ConfirmDialog`, sidebar-এ
 "স্টক" নেভ-আইটেমে লাল ব্যাজ dot যখন কম স্টকে থাকা পণ্য আছে।
+
+## ৮. দ্বিতীয় দফার audit — visual design system (২০২৬-০৯-০৪)
+
+আগের অডিট মূলত functional bug (ভাষা, success/error, architecture) ধরেছিল।
+ব্যবহারকারী পরে সঠিকভাবে ধরিয়ে দেন: এর আগে বানানো "world-class" mockup
+Artifact (Tiro Bangla + Hind Siliguri font, spacing/elevation system)
+**কখনো আসল `index.css`-এ back-port করা হয়নি** — mockup ছিল শুধু একটা pitch,
+বাস্তবায়ন হয়নি। এটাই "no design planning" অভিযোগের প্রকৃত কারণ। কোডে পাওয়া
+নির্দিষ্ট প্রমাণ:
+
+- কোনো বাংলা-অপ্টিমাইজড ফন্ট ছিল না — শুধু generic `system-ui` stack, যেখানে
+  এখন বেশিরভাগ UI বাংলা টেক্সট।
+- `.btn-primary` **দুইবার** সংজ্ঞায়িত ছিল (ভিন্ন padding/font-size সহ) — এক
+  জায়গায় প্রথমে লেখা, পরে না মুছেই আবার নতুন করে লেখা হয়েছিল।
+- একই বৃত্তাকার-লেবেল কনসেপ্টের জন্য **তিনটা আলাদা class** ছিল (`.badge`,
+  `.pill`, `.badge-confidence`) — ভিন্ন সময়ে ভিন্ন নামে বানানো, কখনো
+  একীভূত করা হয়নি।
+- কোনো spacing scale ছিল না — 14/17/18/20/22/34px এলোমেলো।
+- সব card/kpi একই elevation — কোনো visual hierarchy ছিল না।
+- Loading state শুধু ধূসর টেক্সট, কোনো spinner ছিল না।
+
+**ঠিক করা হয়েছে**: Hind Siliguri (UI টেক্সট) + Tiro Bangla (heading/সংখ্যা)
+ফন্ট যোগ, spacing scale (`--sp-1` থেকে `--sp-8`) ও ৩-স্তরের elevation
+(`--shadow-1/2/3`) টোকেন যোগ, badge/pill/badge-confidence-কে একটা shared
+base rule-এ একীভূত করা (class name বদলানো হয়নি, শুধু CSS duplicate সরানো),
+duplicate `.btn-primary` মুছে একটাই সংজ্ঞা রাখা, `<Loading>`-এ ঘোরানো spinner
+যোগ ও সব পেজে সেটাই ব্যবহার করা (আগে কিছু পেজ প্লেইন `<p>লোড হচ্ছে…</p>`
+ব্যবহার করত)।
+
+**এখনো বাকি** (পরবর্তী ধাপ হতে পারে): icon system, নতুন card layout
+hierarchy আরও গভীরভাবে page-by-page প্রয়োগ, table-এর visual polish।

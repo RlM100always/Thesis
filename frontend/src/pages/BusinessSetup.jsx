@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { api } from "../api";
 import { useBusiness } from "../BusinessContext";
 import { FeedbackBanner, useFeedback } from "../components/FeedbackBanner";
+import { Loading } from "../useApi";
 
 const SALES_ROLES = [
   { key: "invoice_number", label: "চালান নম্বর" },
@@ -220,7 +221,7 @@ export default function BusinessSetup() {
     }
   };
 
-  if (loading) return <div className="page"><p>লোড হচ্ছে…</p></div>;
+  if (loading) return <div className="page"><Loading what="ব্যবসার তথ্য" /></div>;
 
   return (
     <div className="page">

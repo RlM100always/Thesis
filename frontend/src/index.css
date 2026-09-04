@@ -1,6 +1,13 @@
 /* Single stylesheet — no CSS framework, no build step beyond Vite's own.
    Palette matches the matplotlib figures so the dashboard and the thesis
-   figures read as one system. */
+   figures read as one system.
+
+   Design tokens below (spacing scale, elevation levels, type scale) exist
+   so new rules pick a value instead of inventing one — the previous version
+   of this file had no such scale, which is why spacing drifted to ad-hoc
+   numbers (14px, 17px, 18px, 20px, 22px, 34px, ...) with no rhythm. */
+
+@import url('https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&family=Tiro+Bangla&display=swap');
 
 :root {
   --navy: #0d1b2a;
@@ -10,11 +17,30 @@
   --grey: #64748b;
   --bg: #f6f8fa;
   --surface: #ffffff;
+  --surface-2: #eef1f5;
   --border: #e2e8f0;
   --text: #1a202c;
   --text-muted: #64748b;
+  --text-faint: #8c98a8;
   --radius: 10px;
-  --shadow: 0 1px 3px rgba(16, 24, 40, 0.06), 0 1px 2px rgba(16, 24, 40, 0.04);
+  --radius-sm: 7px;
+
+  /* Elevation: 3 levels, not one shadow reused everywhere. Level 1 for cards
+     sitting on the page background, level 2 for a card that should stand out
+     (KPIs, the primary action panel), level 3 for anything overlaying the
+     page (the confirm dialog). */
+  --shadow-1: 0 1px 2px rgba(16, 24, 40, 0.05);
+  --shadow-2: 0 1px 3px rgba(16, 24, 40, 0.08), 0 4px 10px -4px rgba(16, 24, 40, 0.10);
+  --shadow-3: 0 20px 60px rgba(0, 0, 0, 0.25);
+  --shadow: var(--shadow-1); /* kept for older rules that still reference it */
+
+  /* Spacing scale — 4px base. Pick from this instead of a new number. */
+  --sp-1: 4px; --sp-2: 8px; --sp-3: 12px; --sp-4: 16px;
+  --sp-5: 20px; --sp-6: 24px; --sp-7: 32px; --sp-8: 40px;
+
+  /* Type scale */
+  --font-ui: 'Hind Siliguri', system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-display: 'Tiro Bangla', 'Hind Siliguri', georgia, serif;
 }
 
 /* Dark theme. UiContext stamps data-theme on <html>; the media query is only
@@ -51,11 +77,18 @@
 
 body {
   margin: 0;
-  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-family: var(--font-ui);
   background: var(--bg);
   color: var(--text);
   font-size: 15px;
   line-height: 1.5;
+}
+
+/* Large numbers and page/section headings get the display face — this is
+   what makes a KPI figure or a page title feel considered rather than the
+   same weight as a table cell. */
+.page-title, .page-head h2, .kpi .value, .sale-total, .risk-pct {
+  font-family: var(--font-display);
 }
 
 input, select, textarea, button { font: inherit; }
@@ -71,12 +104,20 @@ label.checkbox input { width: auto; }
 .form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
 .form-grid h3, .form-grid p, .form-grid .sale-total { grid-column: 1 / -1; }
 .inline-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; align-items: end; }
+/* One definition each — these used to be defined twice (once here, once
+   further down redeclaring different padding/font-size), which is exactly
+   the kind of drift a missing design system produces. */
 .btn-primary, .btn-secondary {
   display: inline-flex; align-items: center; justify-content: center; min-height: 42px;
-  border-radius: 8px; padding: 9px 16px; text-decoration: none; cursor: pointer;
+  border-radius: var(--radius-sm); padding: var(--sp-2) var(--sp-5);
+  font-size: 15px; font-weight: 600; text-decoration: none; cursor: pointer;
+  transition: filter 0.12s, background 0.12s;
 }
-.btn-primary { border: 0; background: var(--green); color: white; font-weight: 650; }
+.btn-primary { border: 0; background: var(--green); color: white; }
+.btn-primary:hover:not(:disabled) { filter: brightness(1.08); }
 .btn-primary:disabled { opacity: .6; cursor: wait; }
+.btn-secondary { background: var(--surface); border: 1px solid var(--border); color: var(--text); }
+.btn-secondary:hover:not(:disabled) { background: var(--surface-2); }
 .sale-total { font-size: 24px; font-weight: 750; color: var(--green); }
 .business-chip { margin: 10px 0 0; padding: 7px 9px; border-radius: 7px; background: rgba(255,255,255,.08); color: #fff; font-size: 12px; }
 .error-box { padding: 12px; border: 1px solid var(--red); border-radius: 8px; color: var(--red); margin-bottom: 14px; }
@@ -154,27 +195,33 @@ label.checkbox input { width: auto; }
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 18px 20px;
-  box-shadow: var(--shadow);
-  margin-bottom: 20px;
+  padding: var(--sp-5) var(--sp-6);
+  box-shadow: var(--shadow-1);
+  margin-bottom: var(--sp-5);
 }
 
-.card h3 { margin: 0 0 14px; font-size: 15px; font-weight: 650; }
-.card .hint { color: var(--text-muted); font-size: 12.5px; margin: -8px 0 14px; }
+.card h3 { margin: 0 0 var(--sp-4); font-size: 15px; font-weight: 650; }
+.card .hint { color: var(--text-muted); font-size: 12.5px; margin: -8px 0 var(--sp-4); }
 
 .kpi-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(178px, 1fr));
-  gap: 14px;
-  margin-bottom: 22px;
+  gap: var(--sp-4);
+  margin-bottom: var(--sp-6);
 }
 
-.kpi { background: var(--surface); border: 1px solid var(--border);
-       border-radius: var(--radius); padding: 15px 17px; box-shadow: var(--shadow); }
+/* KPIs sit one elevation level above a plain card — they're the numbers a
+   business owner scans first, so they should read as slightly "lifted". */
+.kpi {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: var(--sp-4) var(--sp-5);
+  box-shadow: var(--shadow-2);
+}
 /* block, so a label and its value never run together on one line */
 .kpi .label { display: block; font-size: 11.5px; text-transform: uppercase;
               letter-spacing: 0.4px; color: var(--text-muted); }
-.kpi .value { display: block; font-size: 25px; font-weight: 700; margin-top: 5px; }
+.kpi .value { display: block; font-size: 26px; font-weight: 700; margin-top: var(--sp-1);
+              font-variant-numeric: tabular-nums; }
 .kpi .sub { display: block; font-size: 11.5px; color: var(--text-muted); margin-top: 3px; }
 .kpi.danger .value { color: var(--red); }
 .kpi .value.green { color: var(--green); }
@@ -203,9 +250,16 @@ tbody tr:hover { background: color-mix(in srgb, var(--text) 4%, transparent); }
 tbody tr.clickable { cursor: pointer; }
 tbody tr.selected { background: color-mix(in srgb, var(--green) 12%, transparent); }
 
-/* ── Badges ──────────────────────────────── */
-.badge { display: inline-block; padding: 2px 9px; border-radius: 999px;
-         font-size: 11.5px; font-weight: 600; color: #fff; white-space: nowrap; }
+/* ── Badges / pills / confidence tags ───────
+   One shared shape for every small rounded status label in the app. Used to
+   be three separate rulesets (.badge, .pill, .badge-confidence) each
+   redefining the same padding/radius/font-size — kept as three class names
+   (renaming every call site was out of scope) but now one shared base. */
+.badge, .pill, .badge-confidence {
+  display: inline-flex; align-items: center; padding: 2px 9px; border-radius: 999px;
+  font-size: 11.5px; font-weight: 600; white-space: nowrap;
+}
+.badge { color: #fff; }
 .badge.grey { background: var(--grey); }
 .badge.low { background: var(--green); }
 .badge.medium { background: var(--amber); }
@@ -214,8 +268,20 @@ tbody tr.selected { background: color-mix(in srgb, var(--green) 12%, transparent
                  border: 1px solid var(--border); }
 
 /* ── States ──────────────────────────────── */
-.state { padding: 44px; text-align: center; color: var(--text-muted); }
+.state {
+  padding: 44px; text-align: center; color: var(--text-muted);
+  display: flex; flex-direction: column; align-items: center; gap: var(--sp-3);
+}
 .state.error { color: var(--red); }
+.spinner {
+  width: 22px; height: 22px; border-radius: 50%;
+  border: 3px solid var(--border); border-top-color: var(--green);
+  animation: spin 0.7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .spinner { animation: none; border-top-color: var(--border); }
+}
 
 /* Tinted from the accent colour rather than a fixed light hex, so the tint
    tracks the theme instead of staying cream while the text turns white. */
@@ -278,13 +344,6 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
   background: var(--green); color: #fff; font-size: 13px; flex-shrink: 0;
 }
 
-.btn-primary {
-  background: var(--green); color: #fff; border-color: var(--green);
-  padding: 10px 20px; font-size: 15px; font-weight: 600;
-}
-.btn-primary:hover:not(:disabled) { filter: brightness(1.08); background: var(--green); }
-.btn-secondary { background: var(--surface); }
-
 .hint { color: var(--text-muted); font-size: 13px; }
 
 /* ── Upload: dropzone ────────────────────── */
@@ -330,11 +389,7 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
 .row-flag { background: color-mix(in srgb, var(--red) 6%, transparent); }
 .action-cell { font-size: 13px; color: var(--text-muted); }
 
-.pill {
-  display: inline-block; padding: 2px 9px; border-radius: 999px;
-  font-size: 11.5px; font-weight: 600; margin-left: 6px;
-  background: color-mix(in srgb, var(--grey) 18%, transparent); color: var(--text);
-}
+.pill { margin-left: 6px; background: color-mix(in srgb, var(--grey) 18%, transparent); color: var(--text); }
 .pill.danger { background: color-mix(in srgb, var(--red) 20%, transparent); color: var(--red); }
 .pill.warn { background: color-mix(in srgb, var(--amber) 22%, transparent); color: var(--amber); }
 .pill.ok { background: color-mix(in srgb, var(--green) 18%, transparent); color: var(--green); }
@@ -397,10 +452,7 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
 }
 
 /* ── Confidence badge (trained model vs baseline) ── */
-.badge-confidence {
-  display: inline-flex; align-items: center; padding: 2px 9px; border-radius: 999px;
-  font-size: 11px; font-weight: 700; white-space: nowrap;
-}
+.badge-confidence { font-weight: 700; }
 .badge-confidence.model { background: color-mix(in srgb, var(--green) 16%, transparent); color: var(--green); }
 .badge-confidence.baseline { background: var(--bg); color: var(--text-muted); border: 1px solid var(--border); }
 

@@ -36,7 +36,12 @@ export function useApi(fetcher, deps = []) {
 }
 
 export function Loading({ what = "তথ্য" }) {
-  return <div className="state">{what} লোড হচ্ছে…</div>;
+  return (
+    <div className="state">
+      <div className="spinner" role="status" aria-label="লোড হচ্ছে" />
+      <span>{what} লোড হচ্ছে…</span>
+    </div>
+  );
 }
 
 export function ErrorBox({ message }) {

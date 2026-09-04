@@ -3,6 +3,7 @@ import { api, formatBDT } from "../api";
 import { useBusiness } from "../BusinessContext";
 import { ConfidenceBadge } from "../components/ConfidenceBadge";
 import { FeedbackBanner, useFeedback } from "../components/FeedbackBanner";
+import { Loading } from "../useApi";
 
 function Page({ title, children }) {
   const { active } = useBusiness();
@@ -302,7 +303,7 @@ export function StrategyPage() {
     <Page title="আজকের করণীয় ও অগ্রাধিকার">
       {error && <div className="error-box">{error}</div>}
       {!data ? (
-        <p>হিসাব করা হচ্ছে…</p>
+        <Loading what="সুপারিশ" />
       ) : (
         <>
           <div className="callout">
