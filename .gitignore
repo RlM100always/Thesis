@@ -16,6 +16,19 @@ artifacts/real/
 artifacts/*.csv
 .ipynb_checkpoints/
 
+# ─────────────────────────────────────────────────────────────
+# CONSENTING-SME DATA — NEVER COMMIT.
+# Real shop records collected under docs/REAL_DATA_PROTOCOL.md. Consent was
+# given for university research, not for publication on GitHub. Even
+# pseudonymised, a shop's full sales history is commercially sensitive and
+# re-identifiable from its location and product mix.
+# ─────────────────────────────────────────────────────────────
+data/real_sme/
+
+# Trained model artifacts (joblib) and benchmark outputs — regenerable.
+artifacts/real/
+artifacts/real_public/
+
 # Real-data candidate files we evaluated and set aside (~54 MB). Kept locally,
 # never committed — see candidate_datasets_not_used/README.md for why neither
 # qualifies as this thesis's real dataset.

@@ -18,6 +18,11 @@ bsmart.db
 data/uploads/
 artifacts/
 
+# Real data: the WFP price CSV is 4.4 MB of numbers (schema is documented in
+# docs/REAL_DATA_SOURCES.md), and real_sme/ holds confidential shop records.
+data/real_public/
+data/real_sme/
+
 # ─────────────────────────────────────────────────────────────
 # Binary artifacts — unreadable as text
 # ─────────────────────────────────────────────────────────────

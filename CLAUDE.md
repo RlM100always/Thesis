@@ -196,6 +196,31 @@ Verify a run was real by checking `output/models/lstm_model.h5` and
 - CSVs are written `encoding="utf-8-sig"` (Excel-friendly, BOM on the header).
 - Amounts are BDT; the currency suffix `_BDT` is part of the column names.
 
+## Real data: what actually exists
+
+`docs/REAL_DATA_SOURCES.md` is the register — read it before claiming anything
+is "real". Summary of the three tiers:
+
+- **Tier 1 (primary, NOT YET COLLECTED)** — consenting-SME sales records per
+  `docs/REAL_DATA_PROTOCOL.md`. `docs/SME_DATA_COLLECTION_KIT.md` has the Bangla
+  consent form and CSV template to go collect it. Lands in `data/real_sme/`,
+  which is **gitignored — never commit shop data**.
+- **Tier 2 (public, downloaded)** — `data/real_public/wfp_food_prices_bgd.csv`:
+  real WFP/DAM Bangladeshi market prices, 33,606 rows, 110 markets, BDT,
+  CC BY-IGO (attribution required). Served by `ml/market_prices.py`. Supports
+  the `X_market` price feature and a real forecasting benchmark; it has **no
+  quantities, customers, or stock**, so it cannot support demand forecasting,
+  churn, or inventory strategy.
+- **Tier 3 (synthetic)** — `BD_Business_Analytics_Dataset.csv`, everything under
+  `output/`.
+
+Never blend tiers in one reported number.
+
+`python -m ml.market_prices --all` reruns the real price benchmark. Current
+honest result: the naive last-value baseline wins on 3 of 4 staples and
+gradient boosting loses badly — same baseline-discipline lesson as the
+synthetic pipeline's seasonal-naive finding. Report it as-is.
+
 ## Real-data candidate files — parked in `candidate_datasets_not_used/`
 
 `online_retail_II.xlsx` (UCI/Kaggle "Online Retail II", UK gift retailer, GBP)
