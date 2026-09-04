@@ -200,6 +200,23 @@ def upload_segments(token: str, mapping: ColumnMapping, k: int = Query(4, ge=2, 
         raise HTTPException(status_code=400, detail=str(exc))
 
 
+@router.post("/upload/{token}/train-churn", tags=["upload"])
+def upload_train_churn(token: str, mapping: ColumnMapping, horizon: int = Query(90, ge=30, le=180)):
+    """
+    Train a brand-new future-repeat model on nothing but this upload's own
+    rows and report its held-out performance (PR-AUC, ROC-AUC, Brier, lift).
+
+    Unlike /score, which scores against the fixed churn_model.pkl trained on
+    the synthetic thesis dataset, this fits a fresh model from scratch on
+    whatever was uploaded — genuinely dynamic, same training code the
+    B-SMART "AI মডেল প্রশিক্ষণ" button uses for a business's own database.
+    """
+    try:
+        return upload_service.train_dynamic_churn(token, mapping.model_dump(), horizon_days=horizon)
+    except upload_service.UploadError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+
 @router.post("/upload/{token}/products", tags=["upload"])
 def upload_products(token: str, mapping: ColumnMapping):
     """Best sellers. Returns `available: false` when no product column was mapped."""

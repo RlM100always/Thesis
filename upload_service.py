@@ -23,8 +23,10 @@ untouched.
 from __future__ import annotations
 
 import io
+import tempfile
 import uuid
 from collections import OrderedDict
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -413,6 +415,57 @@ def _action_for(lapsed: bool, band: str) -> str:
         "Medium": "Send a follow-up message or seasonal offer",
         "Low": "No action needed — keep on the regular newsletter",
     }.get(band, "Review manually")
+
+
+def _to_canonical_frame(work: pd.DataFrame) -> pd.DataFrame:
+    """Adapt the loose 4-column upload schema into the canonical columns
+    ml.real_pipeline trains on. One row here = one invoice with a single
+    line — the upload format has no way to know which rows belong to the
+    same purchase, so that is the only sound reading, not an approximation
+    of richer structure that was never in the file.
+    """
+    n = len(work)
+    quantity = work["Quantity"].where(work["Quantity"] > 0, 1.0)
+    return pd.DataFrame({
+        "branch_id": "MAIN",
+        "invoice_id": [f"UP-{i}" for i in range(n)],
+        "line_id": [f"UP-{i}" for i in range(n)],
+        "sold_at": work["Date"],
+        "customer_pseudo_id": work["Customer_ID"],
+        "sku": work["Product"] if "Product" in work.columns else "GENERIC",
+        "quantity": quantity,
+        "unit_price": work["Amount"] / quantity,
+        "discount_amount": 0.0,
+        "line_total": work["Amount"],
+    })
+
+
+def train_dynamic_churn(token: str, mapping: dict, horizon_days: int = 90) -> dict:
+    """Train a brand-new future-repeat model on nothing but this upload's own
+    rows and report its own held-out performance.
+
+    Unlike score_upload() — which scores against the fixed, synthetic-trained
+    churn_model.pkl — this fits a fresh model from scratch on the uploaded
+    file, using the identical training code a B-SMART business's own
+    "AI মডেল প্রশিক্ষণ" button runs (ml.real_pipeline.train_churn). The model
+    is discarded after scoring; only its held-out metrics are returned, since
+    a one-off upload session has nowhere durable to keep an artifact.
+    """
+    from ml.real_pipeline import train_churn, validate_sales
+
+    work = clean_transactions(get_session(token), mapping)
+    if work["Customer_ID"].nunique() < MIN_CUSTOMERS:
+        raise UploadError(
+            f"Only {work['Customer_ID'].nunique()} distinct customers — too few to "
+            "hold out a fair test split for training."
+        )
+    frame = validate_sales(_to_canonical_frame(work))
+    with tempfile.TemporaryDirectory() as tmp:
+        try:
+            result = train_churn(frame, Path(tmp), horizon_days=horizon_days)
+        except ValueError as exc:
+            raise UploadError(str(exc)) from exc
+    return result
 
 
 def export_csv(token: str, mapping: dict) -> str:

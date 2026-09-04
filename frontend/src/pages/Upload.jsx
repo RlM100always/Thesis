@@ -9,6 +9,7 @@
 import { useCallback, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { api, formatBDT } from "../api";
+import { FeedbackBanner, useFeedback } from "../components/FeedbackBanner";
 import { useWorkspace } from "../WorkspaceContext";
 
 const ROLES = [
@@ -134,6 +135,8 @@ export default function Upload() {
           setShowAll={setShowAll}
           onDownload={download}
           busy={busy}
+          token={parsed.token}
+          mapping={mapping}
         />
       )}
     </div>
@@ -260,7 +263,7 @@ function StepMapping({ parsed, mapping, setMapping, ready, busy, onScore }) {
 }
 
 // ── ধাপ ৩ ──────────────────────────────────────────────
-function Results({ result, showAll, setShowAll, onDownload, busy }) {
+function Results({ result, showAll, setShowAll, onDownload, busy, token, mapping }) {
   const s = result.summary;
   const rows = showAll ? result.rows : result.rows.slice(0, 25);
   const pctLapsed = s.total_customers ? Math.round((s.lapsed_count / s.total_customers) * 100) : 0;
@@ -352,6 +355,65 @@ function Results({ result, showAll, setShowAll, onDownload, busy }) {
         <button type="button" className="btn-secondary" onClick={() => setShowAll((v) => !v)}>
           {showAll ? "শুধু শীর্ষ ২৫টি দেখান" : `সব ${result.rows.length.toLocaleString()} জন কাস্টমার দেখান`}
         </button>
+      )}
+
+      <DynamicChurnTraining token={token} mapping={mapping} />
+    </section>
+  );
+}
+
+// ── ধাপ ৪ (ঐচ্ছিক) ────────────────────────────────────
+// The score above uses the fixed churn_model.pkl trained on the synthetic
+// thesis dataset — accurate on this project's own data, but not calibrated
+// for a stranger's business. This trains a brand-new model from scratch on
+// nothing but the uploaded rows and reports its own held-out performance —
+// genuinely dynamic, not a rescoring of the same fixed model.
+function DynamicChurnTraining({ token, mapping }) {
+  const [busy, setBusy] = useState(false);
+  const [metrics, setMetrics] = useState(null);
+  const [feedback, showFeedback] = useFeedback();
+
+  const train = async () => {
+    setBusy(true); setMetrics(null);
+    try {
+      const r = await api.trainUploadChurn(token, mapping);
+      const winner = r.models[r.winner_by_brier];
+      setMetrics({ name: r.winner_by_brier, ...winner, rows: r.train_rows + r.test_rows });
+      showFeedback("success", "নতুন মডেল প্রশিক্ষণ সম্পন্ন — এটা সম্পূর্ণ আপনার নিজের ফাইলের উপর তৈরি।");
+    } catch (e) {
+      showFeedback("error", e.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <section className="card">
+      <h3>নিজের ডেটা দিয়ে নতুন মডেল ট্রেন করুন</h3>
+      <p className="hint">
+        উপরের স্কোর একটি স্থির মডেল দিয়ে হিসাব করা (গবেষণার সিন্থেটিক ডেটায় প্রশিক্ষিত)।
+        এখানে সম্পূর্ণ নতুন একটি মডেল তৈরি হবে — শুধু আপনার এই ফাইলের সারি দিয়ে, এবং তার
+        সঠিকতা আপনার নিজের ডেটায় পরিমাপ করে দেখানো হবে। কমপক্ষে ৩০০+ ব্যবহারযোগ্য নমুনা
+        (যথেষ্ট দিনের ইতিহাস ও পুনরাবৃত্ত কাস্টমার) দরকার — কম থাকলে স্পষ্ট কারণ জানানো হবে।
+      </p>
+      <FeedbackBanner feedback={feedback} />
+      <button type="button" className="btn-primary" onClick={train} disabled={busy}>
+        {busy ? "প্রশিক্ষণ চলছে…" : "নতুন মডেল ট্রেন করুন"}
+      </button>
+      {metrics && (
+        <div className="callout green">
+          <strong>নিজের ডেটায় তৈরি মডেলের সঠিকতা</strong>
+          <p>
+            {metrics.rows.toLocaleString()} নমুনা দিয়ে প্রশিক্ষিত ও পরীক্ষিত ({metrics.name}) ·
+            {" "}ROC-AUC {(metrics.roc_auc * 100).toFixed(1)}% ·
+            {" "}PR-AUC {(metrics.pr_auc * 100).toFixed(1)}% ·
+            {" "}শীর্ষ ১০%-এ লিফট {metrics.lift_at_10.toFixed(2)}×
+          </p>
+          <p className="hint">
+            এই সংখ্যাগুলো সম্পূর্ণভাবে আপনার নিজের ফাইল থেকে, chronological hold-out টেস্টে
+            পরিমাপ করা — কোনো fabricate করা ফলাফল নয়।
+          </p>
+        </div>
       )}
     </section>
   );

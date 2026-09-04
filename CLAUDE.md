@@ -71,6 +71,33 @@ The CLI path (`python -m ml.real_pipeline --organization-id ...`) still works
 identically for scripted/offline training. Either way, the running server
 picks the artifact up on the next request — no restart needed.
 
+### The anonymous Upload flow has a second, genuinely dynamic model too
+
+`/api/upload/{token}/score` (`upload_service.score_upload`) still scores
+against the fixed `churn_model.pkl` — trained once on the synthetic thesis
+dataset, never retrained. That's intentional for that number (see the module
+docstring), but it means a stranger's uploaded file is only ever *scored*,
+never used to train anything, which understates what this codebase can
+actually do with arbitrary data.
+
+`/api/upload/{token}/train-churn` (`upload_service.train_dynamic_churn`)
+closes that gap: it adapts the uploaded file's four columns into the
+canonical schema (`upload_service._to_canonical_frame` — one invoice per
+row, since the loose upload format can't express multi-line invoices) and
+runs it through the *same* `ml.real_pipeline.train_churn` a B-SMART business
+uses, fitting a brand-new model on nothing but that file and returning its
+own chronological hold-out PR-AUC/ROC-AUC/Brier/lift. Nothing is persisted —
+a one-off upload session has no organization to save an artifact under, so
+the model is discarded after scoring; only the honest metrics survive.
+Wired into `Upload.jsx`'s results step as "নিজের ডেটা দিয়ে নতুন মডেল ট্রেন
+করুন", verified end-to-end with a synthetic file with genuine churn/retain
+variation (ROC-AUC 0.897, PR-AUC 0.957 on that specific file — not fixed
+numbers, whatever the uploaded data produces).
+
+`segments_for` and `forecast_for` in the same module were *already* dynamic
+(K-Means re-fit and seasonal-naive computed fresh per upload) — only churn
+scoring was still static before this.
+
 The bridge between the two systems is the CSV schema: `data_import_routes.py`
 exports operational sales in exactly the columns `ml/real_pipeline.py` requires
 (`branch_id, invoice_id, line_id, sold_at, customer_pseudo_id, sku, quantity,

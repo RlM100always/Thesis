@@ -79,6 +79,8 @@ export const api = {
   uploadForecast: (token, mapping) => post(`/api/upload/${token}/forecast`, mapping),
   uploadSegments: (token, mapping) => post(`/api/upload/${token}/segments`, mapping),
   uploadProducts: (token, mapping) => post(`/api/upload/${token}/products`, mapping),
+  trainUploadChurn: (token, mapping, horizon = 90) =>
+    post(`/api/upload/${token}/train-churn?horizon=${horizon}`, mapping),
   exportUpload: async (token, mapping) => {
     const res = await fetch(`${BASE}/api/upload/${token}/export`, {
       method: "POST",
