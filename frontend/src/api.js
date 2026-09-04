@@ -145,6 +145,8 @@ export const api = {
     if (!res.ok) throw new Error(await detailOf(res));
     return res.blob();
   },
+  trainDemandModel: (org) =>
+    appRequest("/api/app/train-demand-model", { method: "POST", organizationId: org }),
 };
 
 // Money is in BDT and runs to billions — plain toLocaleString is unreadable.

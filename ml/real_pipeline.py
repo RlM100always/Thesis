@@ -33,11 +33,14 @@ REQUIRED = {
 }
 
 
-def load_sales(path: Path) -> pd.DataFrame:
-    frame = pd.read_csv(path)
+def validate_sales(frame: pd.DataFrame) -> pd.DataFrame:
+    """Shared validation for a canonical sales frame, whichever way it arrived
+    (CSV file for the CLI, or built straight from the database for the live
+    "train on my own data" endpoint) — one set of rules, never two."""
     missing = sorted(REQUIRED - set(frame.columns))
     if missing:
         raise ValueError(f"Missing canonical columns: {', '.join(missing)}")
+    frame = frame.copy()
     frame["sold_at"] = pd.to_datetime(frame["sold_at"], utc=True, errors="coerce")
     for column in ["quantity", "unit_price", "discount_amount", "line_total"]:
         frame[column] = pd.to_numeric(frame[column], errors="coerce")
@@ -47,6 +50,10 @@ def load_sales(path: Path) -> pd.DataFrame:
     if (frame["quantity"] <= 0).any() or (frame["line_total"] < 0).any():
         raise ValueError("Quantities must be positive and line totals non-negative")
     return frame.sort_values("sold_at").reset_index(drop=True)
+
+
+def load_sales(path: Path) -> pd.DataFrame:
+    return validate_sales(pd.read_csv(path))
 
 
 def wape(actual: np.ndarray, predicted: np.ndarray) -> float:

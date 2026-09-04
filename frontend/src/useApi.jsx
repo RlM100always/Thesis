@@ -35,18 +35,17 @@ export function useApi(fetcher, deps = []) {
   return { data, error, loading };
 }
 
-export function Loading({ what = "data" }) {
-  return <div className="state">Loading {what}…</div>;
+export function Loading({ what = "তথ্য" }) {
+  return <div className="state">{what} লোড হচ্ছে…</div>;
 }
 
 export function ErrorBox({ message }) {
   return (
     <div className="state error">
-      <p><strong>Could not reach the API.</strong></p>
+      <p><strong>সার্ভারের সাথে সংযোগ করা যায়নি।</strong></p>
       <p>{message}</p>
       <p style={{ fontSize: 13, color: "var(--text-muted)" }}>
-        Start the backend with:<br />
-        <code>./.venv312/Scripts/python.exe -m uvicorn api.main:app --reload</code>
+        ইন্টারনেট সংযোগ পরীক্ষা করুন, অথবা কিছুক্ষণ পর আবার চেষ্টা করুন।
       </p>
     </div>
   );

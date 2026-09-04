@@ -58,10 +58,18 @@ demand model when one exists for the organization, and falls back to its
 transparent 28-day baseline otherwise. Each action carries
 `"confidence": "model" | "baseline"` and the response's `model_status` is
 `model` / `mixed` / `baseline` — so a heuristic is never presented as an ML
-prediction. Train a model for an org by exporting its sales
-(`/api/app/datasets/sales.csv`) and running `ml/real_pipeline.py` with
-`--organization-id`; the running server picks the artifact up on the next
-request, no restart needed.
+prediction. `frontend/src/components/ConfidenceBadge.jsx` surfaces this
+distinction in the UI on the "আজকের করণীয়" page — not just a backend field.
+
+Training is a single click, not a CLI step: `BusinessSetup.jsx`'s "AI মডেল
+প্রশিক্ষণ" card calls `POST /api/app/train-demand-model`
+(`api/data_import_routes.py`), which builds the org's canonical sales frame
+via `api/canonical_sales.py` (shared with `analytics_routes.py` so there is
+one query, not two that could drift), validates it with
+`ml.real_pipeline.validate_sales`, and writes to `artifacts/real/<org_id>/`.
+The CLI path (`python -m ml.real_pipeline --organization-id ...`) still works
+identically for scripted/offline training. Either way, the running server
+picks the artifact up on the next request — no restart needed.
 
 The bridge between the two systems is the CSV schema: `data_import_routes.py`
 exports operational sales in exactly the columns `ml/real_pipeline.py` requires
@@ -153,6 +161,33 @@ Swagger UI at `http://127.0.0.1:8000/docs`; dashboard at `http://localhost:5173`
 **Rule:** `predict.py` loads the training-time scaler/encoders and only ever calls
 `transform`. Re-fitting on request data would silently produce wrong predictions with
 no error. Route handlers must not touch pickles directly.
+
+### Frontend UI rules (see `docs/UI_UX_REDESIGN_PLAN.md` for the full audit)
+
+- **ব্যবসা মোড is Bangla-only.** Every label, button, and message a shop
+  owner sees (all of `Operations.jsx`, `SupplyChain.jsx`,
+  `OperationalDashboard.jsx`, `BusinessSetup.jsx`, `Upload.jsx`,
+  `useApi.jsx`'s Loading/ErrorBox) must be Bangla — no mid-sentence English
+  ("Gross profit", "Return:") like the pre-redesign code had. গবেষণা মোড
+  (`Overview.jsx`, `Segments.jsx`, `Forecast.jsx`, `ModelReport.jsx`,
+  `Customers.jsx`, `WhatIf.jsx`) stays technical/English for evaluators — the
+  split is deliberate, not an oversight.
+- **Never write success and failure into the same plain `<p>`.** Use
+  `frontend/src/components/FeedbackBanner.jsx` (`useFeedback()` +
+  `<FeedbackBanner feedback={feedback} />`) — green for success, red for
+  error, both visually distinct.
+- **Confirm before anything that changes stock/money irreversibly.** Use
+  `frontend/src/components/ConfirmDialog.jsx` (`useConfirm()`, render
+  `confirm.dialog` once per page, `await confirm("...")`).
+- **A prediction is not a fact.** Any list backed by
+  `analytics_routes.py`'s `confidence` field must render
+  `<ConfidenceBadge confidence={x.confidence} />`, not plain text.
+- **No free-text category fields that feed analytics.** Use
+  `CategorySelect` (`components/CategorySelect.jsx`) so expense categories
+  stay grouped instead of fragmenting into "ভাড়া"/"rent"/"Bhara" typos.
+- Sidebar navigation is two modes (`App.jsx`'s `BUSINESS_NAV` /
+  `RESEARCH_NAV`), not one flat list — a thesis-evaluation page must never
+  appear next to "বিক্রি" in the default nav.
 
 Frontend files use `.jsx` when they contain JSX — a `.js` file with JSX fails the
 Vite build.

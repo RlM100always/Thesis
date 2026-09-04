@@ -17,6 +17,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from .auth import CurrentMembership, CurrentUser
+from .canonical_sales import canonical_sales_frame
 from .commerce_routes import require_role
 from .database import get_db
 from .domain_models import (
@@ -161,3 +162,33 @@ def export_anonymized_sales(membership: CurrentMembership, db: Db):
         iter([data]), media_type="text/csv; charset=utf-8",
         headers={"Content-Disposition": 'attachment; filename="bsmart_sales_anonymized.csv"'},
     )
+
+
+@router.post("/train-demand-model", tags=["real-data"])
+def train_demand_model(membership: CurrentMembership, db: Db):
+    """One click: train a real demand model on this organization's own sales
+    history and make it immediately available to /api/app/recommendations.
+
+    Previously this was a manual CLI step (export the CSV, then run
+    `python -m ml.real_pipeline`) — the only way an owner's own data flow was
+    dynamic end-to-end. This closes that gap without changing what the CLI
+    path does: same validation, same training code, same output path.
+    """
+    require_role(membership, "owner", "manager", "accountant")
+    from ml.real_pipeline import train_forecast, validate_sales
+
+    frame = canonical_sales_frame(db, membership.organization_id)
+    if frame.empty:
+        raise HTTPException(status_code=422, detail="এই ব্যবসায় এখনো কোনো বিক্রি নথিভুক্ত হয়নি।")
+    try:
+        sales = validate_sales(frame)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    output_dir = Path("artifacts/real") / membership.organization_id
+    output_dir.mkdir(parents=True, exist_ok=True)
+    try:
+        result = train_forecast(sales, output_dir)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return {"status": "trained", "forecast": result}

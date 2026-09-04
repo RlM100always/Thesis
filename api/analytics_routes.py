@@ -22,6 +22,7 @@ import pandas as pd
 from ml.serving import predict_daily_rates
 
 from .auth import CurrentMembership
+from .canonical_sales import canonical_sales_frame
 from .database import get_db
 from .domain_models import (
     Branch, Customer, Expense, InventoryBalance, LedgerEntry, Product,
@@ -35,23 +36,6 @@ Db = Annotated[Session, Depends(get_db)]
 
 def _money(value) -> float:
     return round(float(value or 0), 2)
-
-
-def _canonical_sales_frame(db: Session, org_id: str) -> pd.DataFrame:
-    """The org's full sales history in the schema ml.serving/demand_features expect."""
-    rows = db.execute(
-        select(SalesOrder, SalesOrderItem, Product)
-        .join(SalesOrderItem, SalesOrderItem.order_id == SalesOrder.id)
-        .join(Product, Product.id == SalesOrderItem.product_id)
-        .where(SalesOrder.organization_id == org_id)
-    ).all()
-    if not rows:
-        return pd.DataFrame()
-    return pd.DataFrame([{
-        "branch_id": order.branch_id, "sku": product.sku, "sold_at": order.sold_at,
-        "quantity": float(line.quantity), "unit_price": float(line.unit_price),
-        "discount_amount": float(line.discount_amount), "line_total": float(line.line_total),
-    } for order, line, product in rows])
 
 
 @router.get("/dashboard", tags=["business-analytics"])
@@ -148,7 +132,7 @@ def recommendations(
     default_lead = max(1, round(sum(supplier_leads) / len(supplier_leads))) if supplier_leads else 7
     actions = []
 
-    modeled_rates = predict_daily_rates(org_id, _canonical_sales_frame(db, org_id))
+    modeled_rates = predict_daily_rates(org_id, canonical_sales_frame(db, org_id))
 
     for branch in branches:
         rows = db.execute(

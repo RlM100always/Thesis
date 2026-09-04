@@ -1,47 +1,347 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { api, formatBDT } from "../api";
 import { useBusiness } from "../BusinessContext";
+import { ConfidenceBadge } from "../components/ConfidenceBadge";
+import { FeedbackBanner, useFeedback } from "../components/FeedbackBanner";
 
 function Page({ title, children }) {
   const { active } = useBusiness();
-  if (!active) return <div className="page"><h2>আগে ব্যবসা সেটআপ করুন</h2><a className="btn-primary" href="#/setup">সেটআপে যান</a></div>;
-  return <div className="page"><header className="page-head"><h2>{title}</h2><p className="subtitle">{active.name}</p></header>{children}</div>;
+  if (!active) {
+    return (
+      <div className="page">
+        <h2>আগে ব্যবসা সেটআপ করুন</h2>
+        <a className="btn-primary" href="#/setup">সেটআপে যান</a>
+      </div>
+    );
+  }
+  return (
+    <div className="page">
+      <header className="page-head">
+        <h2>{title}</h2>
+        <p className="subtitle">{active.name}</p>
+      </header>
+      {children}
+    </div>
+  );
+}
+
+function Table({ heads, rows }) {
+  return (
+    <div className="card table-wrap">
+      <table>
+        <thead><tr>{heads.map((h) => <th key={h}>{h}</th>)}</tr></thead>
+        <tbody>{rows.map((r, i) => <tr key={i}>{r.map((x, j) => <td key={j}>{x}</td>)}</tr>)}</tbody>
+      </table>
+      {!rows.length && <p className="hint">এখনো কোনো তথ্য নেই।</p>}
+    </div>
+  );
 }
 
 export function DirectoryPage() {
-  const { active } = useBusiness(); const id = active?.id;
-  const [customers, setCustomers] = useState([]); const [suppliers, setSuppliers] = useState([]); const [msg, setMsg] = useState("");
-  const [customer, setCustomer] = useState({ code:"", display_name:"", phone:"", marketing_consent:false });
-  const [supplier, setSupplier] = useState({ code:"", name:"", typical_lead_days:7 });
-  const load = useCallback(() => id && Promise.all([api.customersApp(id), api.suppliers(id)]).then(([c,s]) => { setCustomers(c); setSuppliers(s); }).catch((e)=>setMsg(e.message)),[id]);
+  const { active } = useBusiness();
+  const id = active?.id;
+  const [customers, setCustomers] = useState([]);
+  const [suppliers, setSuppliers] = useState([]);
+  const [feedback, showFeedback] = useFeedback();
+  const [customer, setCustomer] = useState({ code: "", display_name: "", phone: "", marketing_consent: false });
+  const [supplier, setSupplier] = useState({ code: "", name: "", typical_lead_days: 7 });
+
+  const load = useCallback(
+    () => id && Promise.all([api.customersApp(id), api.suppliers(id)])
+      .then(([c, s]) => { setCustomers(c); setSuppliers(s); })
+      .catch((e) => showFeedback("error", e.message)),
+    [id, showFeedback],
+  );
   useEffect(() => { load(); }, [load]);
-  const addCustomer = async(e) => { e.preventDefault(); try { await api.createCustomer(id, {...customer, phone:customer.phone || null, display_name:customer.display_name || null}); setCustomer({...customer,code:"",display_name:"",phone:""}); load(); setMsg("কাস্টমার যোগ হয়েছে"); } catch(x){setMsg(x.message);} };
-  const addSupplier = async(e) => { e.preventDefault(); try { await api.createSupplier(id,supplier); setSupplier({...supplier,code:"",name:""}); load(); setMsg("সাপ্লায়ার যোগ হয়েছে"); } catch(x){setMsg(x.message);} };
-  return <Page title="কাস্টমার ও সাপ্লায়ার">{msg&&<p>{msg}</p>}<div className="grid-2"><section><form className="card form-grid" onSubmit={addCustomer}><h3>নতুন কাস্টমার</h3><label>কোড<input value={customer.code} onChange={e=>setCustomer({...customer,code:e.target.value})} required/></label><label>নাম<input value={customer.display_name} onChange={e=>setCustomer({...customer,display_name:e.target.value})}/></label><label>ফোন<input value={customer.phone} onChange={e=>setCustomer({...customer,phone:e.target.value})} placeholder="01XXXXXXXXX"/></label><label className="checkbox"><input type="checkbox" checked={customer.marketing_consent} onChange={e=>setCustomer({...customer,marketing_consent:e.target.checked})}/> প্রচারণার সম্মতি আছে</label><button className="btn-primary">যোগ করুন</button></form><Table heads={["কোড","নাম","Consent"]} rows={customers.map(c=>[c.code,c.display_name||"—",c.marketing_consent?"হ্যাঁ":"না"])} /></section><section><form className="card form-grid" onSubmit={addSupplier}><h3>নতুন সাপ্লায়ার</h3><label>কোড<input value={supplier.code} onChange={e=>setSupplier({...supplier,code:e.target.value})} required/></label><label>নাম<input value={supplier.name} onChange={e=>setSupplier({...supplier,name:e.target.value})} required/></label><label>সাধারণ lead time (দিন)<input type="number" min="0" value={supplier.typical_lead_days} onChange={e=>setSupplier({...supplier,typical_lead_days:Number(e.target.value)})}/></label><button className="btn-primary">যোগ করুন</button></form><Table heads={["কোড","নাম","Lead time"]} rows={suppliers.map(s=>[s.code,s.name,`${s.typical_lead_days} দিন`])}/></section></div></Page>;
+
+  const addCustomer = async (e) => {
+    e.preventDefault();
+    try {
+      await api.createCustomer(id, { ...customer, phone: customer.phone || null, display_name: customer.display_name || null });
+      setCustomer({ ...customer, code: "", display_name: "", phone: "" });
+      load();
+      showFeedback("success", "কাস্টমার যোগ হয়েছে।");
+    } catch (x) {
+      showFeedback("error", x.message);
+    }
+  };
+
+  const addSupplier = async (e) => {
+    e.preventDefault();
+    try {
+      await api.createSupplier(id, supplier);
+      setSupplier({ ...supplier, code: "", name: "" });
+      load();
+      showFeedback("success", "সাপ্লায়ার যোগ হয়েছে।");
+    } catch (x) {
+      showFeedback("error", x.message);
+    }
+  };
+
+  return (
+    <Page title="কাস্টমার ও সাপ্লায়ার">
+      <FeedbackBanner feedback={feedback} />
+      <div className="grid-2">
+        <section>
+          <form className="card form-grid" onSubmit={addCustomer}>
+            <h3>নতুন কাস্টমার</h3>
+            <label>কোড<input value={customer.code} onChange={(e) => setCustomer({ ...customer, code: e.target.value })} required /></label>
+            <label>নাম<input value={customer.display_name} onChange={(e) => setCustomer({ ...customer, display_name: e.target.value })} /></label>
+            <label>ফোন<input value={customer.phone} onChange={(e) => setCustomer({ ...customer, phone: e.target.value })} placeholder="01XXXXXXXXX" /></label>
+            <label className="checkbox">
+              <input type="checkbox" checked={customer.marketing_consent} onChange={(e) => setCustomer({ ...customer, marketing_consent: e.target.checked })} />
+              প্রচারণার সম্মতি আছে
+            </label>
+            <button className="btn-primary">যোগ করুন</button>
+          </form>
+          <Table
+            heads={["কোড", "নাম", "সম্মতি"]}
+            rows={customers.map((c) => [c.code, c.display_name || "—", c.marketing_consent ? "হ্যাঁ" : "না"])}
+          />
+        </section>
+        <section>
+          <form className="card form-grid" onSubmit={addSupplier}>
+            <h3>নতুন সাপ্লায়ার</h3>
+            <label>কোড<input value={supplier.code} onChange={(e) => setSupplier({ ...supplier, code: e.target.value })} required /></label>
+            <label>নাম<input value={supplier.name} onChange={(e) => setSupplier({ ...supplier, name: e.target.value })} required /></label>
+            <label>সাধারণ ডেলিভারি সময় (দিন)<input type="number" min="0" value={supplier.typical_lead_days} onChange={(e) => setSupplier({ ...supplier, typical_lead_days: Number(e.target.value) })} /></label>
+            <button className="btn-primary">যোগ করুন</button>
+          </form>
+          <Table
+            heads={["কোড", "নাম", "ডেলিভারি সময়"]}
+            rows={suppliers.map((s) => [s.code, s.name, `${s.typical_lead_days} দিন`])}
+          />
+        </section>
+      </div>
+    </Page>
+  );
 }
 
 export function PurchasesPage() {
-  const {active}=useBusiness(); const id=active?.id; const [branches,setBranches]=useState([]); const [products,setProducts]=useState([]); const [suppliers,setSuppliers]=useState([]); const [rows,setRows]=useState([]); const [msg,setMsg]=useState("");
-  const [form,setForm]=useState({branch_id:"",supplier_id:"",product_id:"",quantity:"1",unit_cost:"",expected_at:""});
-  const load=useCallback(()=>id&&Promise.all([api.branches(id),api.productsApp(id),api.suppliers(id),api.purchases(id)]).then(([b,p,s,r])=>{setBranches(b);setProducts(p);setSuppliers(s);setRows(r);setForm(f=>({...f,branch_id:f.branch_id||b[0]?.id||"",product_id:f.product_id||p[0]?.id||"",supplier_id:f.supplier_id||s[0]?.id||""}));}).catch(e=>setMsg(e.message)),[id]);
-  useEffect(()=>{load();},[load]);
-  const submit=async(e)=>{e.preventDefault();try{await api.createPurchase(id,{branch_id:form.branch_id,supplier_id:form.supplier_id,order_number:`PO-${Date.now()}`,ordered_at:new Date().toISOString(),expected_at:form.expected_at?new Date(form.expected_at).toISOString():null,items:[{product_id:form.product_id,quantity:form.quantity,unit_cost:form.unit_cost}]});setMsg("Purchase order তৈরি হয়েছে");load();}catch(x){setMsg(x.message)}};
-  const receive=async(order)=>{const items=order.items.filter(x=>Number(x.received_quantity)<Number(x.quantity)).map(x=>({purchase_order_item_id:x.id,quantity:(Number(x.quantity)-Number(x.received_quantity)).toString()}));if(!items.length)return;try{await api.receivePurchase(id,order.id,{received_at:new Date().toISOString(),items});setMsg("পণ্য গ্রহণ ও stock update হয়েছে");load();}catch(x){setMsg(x.message)}};
-  return <Page title="ক্রয় ও পণ্য গ্রহণ">{(!products.length||!suppliers.length)&&<div className="callout">Purchase করার আগে অন্তত একটি পণ্য ও supplier যোগ করুন।</div>}<form className="card form-grid" onSubmit={submit}><label>শাখা<select value={form.branch_id} onChange={e=>setForm({...form,branch_id:e.target.value})}>{branches.map(x=><option key={x.id} value={x.id}>{x.name}</option>)}</select></label><label>সাপ্লায়ার<select value={form.supplier_id} onChange={e=>setForm({...form,supplier_id:e.target.value})}>{suppliers.map(x=><option key={x.id} value={x.id}>{x.name}</option>)}</select></label><label>পণ্য<select value={form.product_id} onChange={e=>setForm({...form,product_id:e.target.value})}>{products.map(x=><option key={x.id} value={x.id}>{x.name}</option>)}</select></label><label>পরিমাণ<input type="number" min=".001" step=".001" value={form.quantity} onChange={e=>setForm({...form,quantity:e.target.value})}/></label><label>ক্রয়মূল্য<input type="number" min="0" step=".01" value={form.unit_cost} onChange={e=>setForm({...form,unit_cost:e.target.value})} required/></label><label>প্রত্যাশিত তারিখ<input type="datetime-local" value={form.expected_at} onChange={e=>setForm({...form,expected_at:e.target.value})}/></label><button className="btn-primary" disabled={!products.length||!suppliers.length}>Order করুন</button></form>{msg&&<p>{msg}</p>}<div className="card table-wrap"><table><thead><tr><th>PO</th><th>সাপ্লায়ার</th><th>পণ্য</th><th>মোট</th><th>অবস্থা</th><th></th></tr></thead><tbody>{rows.map(r=><tr key={r.id}><td>{r.order_number}</td><td>{r.supplier_name}</td><td>{r.items.map(x=>`${x.product_name} (${x.received_quantity}/${x.quantity})`).join(", ")}</td><td>{formatBDT(Number(r.total))}</td><td>{r.status}</td><td>{r.status!=="received"&&<button onClick={()=>receive(r)}>সব গ্রহণ</button>}</td></tr>)}</tbody></table></div></Page>;
+  const { active } = useBusiness();
+  const id = active?.id;
+  const [branches, setBranches] = useState([]);
+  const [products, setProducts] = useState([]);
+  const [suppliers, setSuppliers] = useState([]);
+  const [rows, setRows] = useState([]);
+  const [feedback, showFeedback] = useFeedback();
+  const [form, setForm] = useState({ branch_id: "", supplier_id: "", product_id: "", quantity: "1", unit_cost: "", expected_at: "" });
+
+  const load = useCallback(() => {
+    if (!id) return;
+    Promise.all([api.branches(id), api.productsApp(id), api.suppliers(id), api.purchases(id)])
+      .then(([b, p, s, r]) => {
+        setBranches(b); setProducts(p); setSuppliers(s); setRows(r);
+        setForm((f) => ({
+          ...f,
+          branch_id: f.branch_id || b[0]?.id || "",
+          product_id: f.product_id || p[0]?.id || "",
+          supplier_id: f.supplier_id || s[0]?.id || "",
+        }));
+      })
+      .catch((e) => showFeedback("error", e.message));
+  }, [id, showFeedback]);
+  useEffect(() => { load(); }, [load]);
+
+  const submit = async (e) => {
+    e.preventDefault();
+    try {
+      await api.createPurchase(id, {
+        branch_id: form.branch_id, supplier_id: form.supplier_id, order_number: `PO-${Date.now()}`,
+        ordered_at: new Date().toISOString(),
+        expected_at: form.expected_at ? new Date(form.expected_at).toISOString() : null,
+        items: [{ product_id: form.product_id, quantity: form.quantity, unit_cost: form.unit_cost }],
+      });
+      showFeedback("success", "ক্রয় আদেশ তৈরি হয়েছে।");
+      load();
+    } catch (x) {
+      showFeedback("error", x.message);
+    }
+  };
+
+  const receive = async (order) => {
+    const items = order.items
+      .filter((x) => Number(x.received_quantity) < Number(x.quantity))
+      .map((x) => ({ purchase_order_item_id: x.id, quantity: (Number(x.quantity) - Number(x.received_quantity)).toString() }));
+    if (!items.length) return;
+    try {
+      await api.receivePurchase(id, order.id, { received_at: new Date().toISOString(), items });
+      showFeedback("success", "পণ্য গ্রহণ ও স্টক আপডেট হয়েছে।");
+      load();
+    } catch (x) {
+      showFeedback("error", x.message);
+    }
+  };
+
+  return (
+    <Page title="ক্রয় ও পণ্য গ্রহণ">
+      <FeedbackBanner feedback={feedback} />
+      {(!products.length || !suppliers.length) && (
+        <div className="callout">ক্রয় করার আগে অন্তত একটি পণ্য ও সাপ্লায়ার যোগ করুন।</div>
+      )}
+      <form className="card form-grid" onSubmit={submit}>
+        <label>শাখা<select value={form.branch_id} onChange={(e) => setForm({ ...form, branch_id: e.target.value })}>{branches.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}</select></label>
+        <label>সাপ্লায়ার<select value={form.supplier_id} onChange={(e) => setForm({ ...form, supplier_id: e.target.value })}>{suppliers.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}</select></label>
+        <label>পণ্য<select value={form.product_id} onChange={(e) => setForm({ ...form, product_id: e.target.value })}>{products.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}</select></label>
+        <label>পরিমাণ<input type="number" min=".001" step=".001" value={form.quantity} onChange={(e) => setForm({ ...form, quantity: e.target.value })} /></label>
+        <label>ক্রয়মূল্য<input type="number" min="0" step=".01" value={form.unit_cost} onChange={(e) => setForm({ ...form, unit_cost: e.target.value })} required /></label>
+        <label>প্রত্যাশিত তারিখ<input type="datetime-local" value={form.expected_at} onChange={(e) => setForm({ ...form, expected_at: e.target.value })} /></label>
+        <button className="btn-primary" disabled={!products.length || !suppliers.length}>অর্ডার করুন</button>
+      </form>
+      <div className="card table-wrap">
+        <table>
+          <thead><tr><th>আদেশ</th><th>সাপ্লায়ার</th><th>পণ্য</th><th>মোট</th><th>অবস্থা</th><th></th></tr></thead>
+          <tbody>
+            {rows.map((r) => (
+              <tr key={r.id}>
+                <td>{r.order_number}</td>
+                <td>{r.supplier_name}</td>
+                <td>{r.items.map((x) => `${x.product_name} (${x.received_quantity}/${x.quantity})`).join(", ")}</td>
+                <td>{formatBDT(Number(r.total))}</td>
+                <td>{r.status}</td>
+                <td>{r.status !== "received" && <button onClick={() => receive(r)}>সব গ্রহণ</button>}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        {!rows.length && <p className="hint">এখনো কোনো ক্রয় আদেশ নেই।</p>}
+      </div>
+    </Page>
+  );
 }
 
-export function ReturnsPage(){
-  const{active}=useBusiness();const id=active?.id;const[sales,setSales]=useState([]);const[history,setHistory]=useState([]);const[msg,setMsg]=useState("");const[form,setForm]=useState({sale_id:"",line_id:"",quantity:"1",reason:"Customer return",restock:true,refund_method:"cash"});
-  const load=useCallback(()=>id&&Promise.all([api.salesApp(id),api.returns(id)]).then(([s,h])=>{setSales(s);setHistory(h);setForm(f=>({...f,sale_id:f.sale_id||s[0]?.id||"",line_id:f.line_id||s[0]?.items?.[0]?.id||""}));}).catch(e=>setMsg(e.message)),[id]);useEffect(()=>{load();},[load]);
-  const sale=useMemo(()=>sales.find(x=>x.id===form.sale_id),[sales,form.sale_id]);
-  const chooseSale=e=>{const s=sales.find(x=>x.id===e.target.value);setForm({...form,sale_id:e.target.value,line_id:s?.items?.[0]?.id||""});};
-  const submit=async(e)=>{e.preventDefault();try{await api.createReturn(id,form.sale_id,{return_number:`RET-${Date.now()}`,reason:form.reason,returned_at:new Date().toISOString(),items:[{sales_order_item_id:form.line_id,quantity:form.quantity,restock:form.restock}],refund_method:form.refund_method||null});setMsg("Return সম্পন্ন হয়েছে");load();}catch(x){setMsg(x.message)}};
-  return <Page title="বিক্রয় রিটার্ন"><form className="card form-grid" onSubmit={submit}><label>Invoice<select value={form.sale_id} onChange={chooseSale}>{sales.map(x=><option key={x.id} value={x.id}>{x.invoice_number}</option>)}</select></label><label>পণ্য<select value={form.line_id} onChange={e=>setForm({...form,line_id:e.target.value})}>{sale?.items.map(x=><option key={x.id} value={x.id}>{x.product_name} · ফেরতযোগ্য {Number(x.quantity)-Number(x.returned_quantity)}</option>)}</select></label><label>পরিমাণ<input type="number" min=".001" step=".001" value={form.quantity} onChange={e=>setForm({...form,quantity:e.target.value})}/></label><label>কারণ<input value={form.reason} onChange={e=>setForm({...form,reason:e.target.value})}/></label><label>Refund<select value={form.refund_method} onChange={e=>setForm({...form,refund_method:e.target.value})}><option value="cash">ক্যাশ</option><option value="bkash">বিকাশ</option><option value="nagad">নগদ</option><option value="">বাকি সমন্বয়</option></select></label><label className="checkbox"><input type="checkbox" checked={form.restock} onChange={e=>setForm({...form,restock:e.target.checked})}/> বিক্রিযোগ্য stock-এ ফেরত দিন</label><button className="btn-primary" disabled={!form.line_id}>Return করুন</button></form>{msg&&<p>{msg}</p>}<Table heads={["Return","Invoice","কারণ","পরিমাণ"]} rows={history.map(x=>[x.return_number,x.invoice_number,x.reason,formatBDT(Number(x.total))])}/></Page>;
+export function ReturnsPage() {
+  const { active } = useBusiness();
+  const id = active?.id;
+  const [sales, setSales] = useState([]);
+  const [history, setHistory] = useState([]);
+  const [feedback, showFeedback] = useFeedback();
+  const [form, setForm] = useState({ sale_id: "", line_id: "", quantity: "1", reason: "কাস্টমার ফেরত", restock: true, refund_method: "cash" });
+
+  const load = useCallback(() => {
+    if (!id) return;
+    Promise.all([api.salesApp(id), api.returns(id)])
+      .then(([s, h]) => {
+        setSales(s); setHistory(h);
+        setForm((f) => ({ ...f, sale_id: f.sale_id || s[0]?.id || "", line_id: f.line_id || s[0]?.items?.[0]?.id || "" }));
+      })
+      .catch((e) => showFeedback("error", e.message));
+  }, [id, showFeedback]);
+  useEffect(() => { load(); }, [load]);
+
+  const sale = useMemo(() => sales.find((x) => x.id === form.sale_id), [sales, form.sale_id]);
+  const chooseSale = (e) => {
+    const s = sales.find((x) => x.id === e.target.value);
+    setForm({ ...form, sale_id: e.target.value, line_id: s?.items?.[0]?.id || "" });
+  };
+
+  const submit = async (e) => {
+    e.preventDefault();
+    try {
+      await api.createReturn(id, form.sale_id, {
+        return_number: `RET-${Date.now()}`, reason: form.reason, returned_at: new Date().toISOString(),
+        items: [{ sales_order_item_id: form.line_id, quantity: form.quantity, restock: form.restock }],
+        refund_method: form.refund_method || null,
+      });
+      showFeedback("success", "রিটার্ন সম্পন্ন হয়েছে।");
+      load();
+    } catch (x) {
+      showFeedback("error", x.message);
+    }
+  };
+
+  return (
+    <Page title="বিক্রয় রিটার্ন">
+      <FeedbackBanner feedback={feedback} />
+      <form className="card form-grid" onSubmit={submit}>
+        <label>চালান<select value={form.sale_id} onChange={chooseSale}>{sales.map((x) => <option key={x.id} value={x.id}>{x.invoice_number}</option>)}</select></label>
+        <label>
+          পণ্য
+          <select value={form.line_id} onChange={(e) => setForm({ ...form, line_id: e.target.value })}>
+            {sale?.items.map((x) => (
+              <option key={x.id} value={x.id}>{x.product_name} · ফেরতযোগ্য {Number(x.quantity) - Number(x.returned_quantity)}</option>
+            ))}
+          </select>
+        </label>
+        <label>পরিমাণ<input type="number" min=".001" step=".001" value={form.quantity} onChange={(e) => setForm({ ...form, quantity: e.target.value })} /></label>
+        <label>কারণ<input value={form.reason} onChange={(e) => setForm({ ...form, reason: e.target.value })} /></label>
+        <label>
+          ফেরত পদ্ধতি
+          <select value={form.refund_method} onChange={(e) => setForm({ ...form, refund_method: e.target.value })}>
+            <option value="cash">ক্যাশ</option>
+            <option value="bkash">বিকাশ</option>
+            <option value="nagad">নগদ</option>
+            <option value="">বাকি হিসাবে সমন্বয়</option>
+          </select>
+        </label>
+        <label className="checkbox">
+          <input type="checkbox" checked={form.restock} onChange={(e) => setForm({ ...form, restock: e.target.checked })} />
+          বিক্রিযোগ্য স্টকে ফেরত দিন
+        </label>
+        <button className="btn-primary" disabled={!form.line_id}>রিটার্ন করুন</button>
+      </form>
+      <Table
+        heads={["রিটার্ন", "চালান", "কারণ", "পরিমাণ"]}
+        rows={history.map((x) => [x.return_number, x.invoice_number, x.reason, formatBDT(Number(x.total))])}
+      />
+    </Page>
+  );
 }
 
-export function StrategyPage(){
-  const{active}=useBusiness();const id=active?.id;const[data,setData]=useState(null);const[error,setError]=useState("");useEffect(()=>{if(id)api.recommendationsApp(id).then(setData).catch(e=>setError(e.message));},[id]);
-  return <Page title="আজকের করণীয় ও অগ্রাধিকার">{error&&<div className="error-box">{error}</div>}{!data?<p>হিসাব করা হচ্ছে…</p>:<><div className="callout"><strong>Model status: {data.model_status}</strong><p>{data.model_note_bn}</p></div>{data.anomaly&&<div className="callout danger"><strong>{data.anomaly.message_bn}</strong><p>{data.anomaly.date} · z-score {data.anomaly.z_score}</p></div>}<div className="card table-wrap"><table><thead><tr><th>অগ্রাধিকার</th><th>করণীয়</th><th>কারণ</th><th className="num">Utility</th><th>বিশ্বাসযোগ্যতা</th></tr></thead><tbody>{data.actions.map((x,i)=><tr key={`${x.type}-${x.entity_id}-${i}`}><td><span className={`pill ${x.priority==="high"?"danger":"warn"}`}>{x.priority}</span></td><td><strong>{x.title_bn}</strong>{x.recommended_quantity&&<div>{x.recommended_quantity} unit</div>}</td><td>{x.explanation_bn}</td><td className="num">{formatBDT(x.utility_bdt)}</td><td>{x.confidence}<div className="hint">{x.method}</div></td></tr>)}</tbody></table>{!data.actions.length&&<p>এখন কোনো জরুরি action পাওয়া যায়নি। আরও sales/stock data যোগ করুন।</p>}</div>{data.contact_without_consent_excluded>0&&<p className="hint">Consent না থাকায় {data.contact_without_consent_excluded} customer retention list থেকে বাদ গেছে।</p>}</>}</Page>;
-}
+export function StrategyPage() {
+  const { active } = useBusiness();
+  const id = active?.id;
+  const [data, setData] = useState(null);
+  const [error, setError] = useState("");
 
-function Table({heads,rows}){return <div className="card table-wrap"><table><thead><tr>{heads.map(h=><th key={h}>{h}</th>)}</tr></thead><tbody>{rows.map((r,i)=><tr key={i}>{r.map((x,j)=><td key={j}>{x}</td>)}</tr>)}</tbody></table>{!rows.length&&<p className="hint">এখনো কোনো তথ্য নেই।</p>}</div>}
+  useEffect(() => {
+    if (id) api.recommendationsApp(id).then(setData).catch((e) => setError(e.message));
+  }, [id]);
+
+  return (
+    <Page title="আজকের করণীয় ও অগ্রাধিকার">
+      {error && <div className="error-box">{error}</div>}
+      {!data ? (
+        <p>হিসাব করা হচ্ছে…</p>
+      ) : (
+        <>
+          <div className="callout">
+            <strong>মডেলের অবস্থা: {{ model: "প্রশিক্ষিত মডেল ব্যবহৃত হচ্ছে", mixed: "কিছু পণ্যে মডেল, কিছুতে সাধারণ হিসাব", baseline: "সাধারণ হিসাব ব্যবহৃত হচ্ছে" }[data.model_status] || data.model_status}</strong>
+            <p>{data.model_note_bn}</p>
+          </div>
+          {data.anomaly && (
+            <div className="callout danger">
+              <strong>{data.anomaly.message_bn}</strong>
+              <p>{data.anomaly.date} · অস্বাভাবিকতার মাত্রা {data.anomaly.z_score}</p>
+            </div>
+          )}
+          <div className="card table-wrap">
+            <table>
+              <thead>
+                <tr><th>অগ্রাধিকার</th><th>করণীয়</th><th>কারণ</th><th className="num">লাভ (৳)</th><th>বিশ্বাসযোগ্যতা</th></tr>
+              </thead>
+              <tbody>
+                {data.actions.map((x, i) => (
+                  <tr key={`${x.type}-${x.entity_id}-${i}`}>
+                    <td><span className={`pill ${x.priority === "high" ? "danger" : "warn"}`}>{x.priority === "high" ? "জরুরি" : "মাঝারি"}</span></td>
+                    <td>
+                      <strong>{x.title_bn}</strong>
+                      {x.recommended_quantity && <div>{x.recommended_quantity} ইউনিট</div>}
+                    </td>
+                    <td>{x.explanation_bn}</td>
+                    <td className="num">{formatBDT(x.utility_bdt)}</td>
+                    <td><ConfidenceBadge confidence={x.confidence} /></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {!data.actions.length && <p className="hint">এখন কোনো জরুরি করণীয় পাওয়া যায়নি। আরও বিক্রি/স্টক তথ্য যোগ করুন।</p>}
+          </div>
+          {data.contact_without_consent_excluded > 0 && (
+            <p className="hint">সম্মতি না থাকায় {data.contact_without_consent_excluded} জন কাস্টমার এই তালিকা থেকে বাদ গেছে।</p>
+          )}
+        </>
+      )}
+    </Page>
+  );
+}

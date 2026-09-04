@@ -78,7 +78,7 @@ label.checkbox input { width: auto; }
 .btn-primary { border: 0; background: var(--green); color: white; font-weight: 650; }
 .btn-primary:disabled { opacity: .6; cursor: wait; }
 .sale-total { font-size: 24px; font-weight: 750; color: var(--green); }
-.business-chip { margin: -16px 16px 14px; padding: 7px 9px; border-radius: 7px; background: rgba(255,255,255,.08); color: #fff; font-size: 12px; }
+.business-chip { margin: 10px 0 0; padding: 7px 9px; border-radius: 7px; background: rgba(255,255,255,.08); color: #fff; font-size: 12px; }
 .error-box { padding: 12px; border: 1px solid var(--red); border-radius: 8px; color: var(--red); margin-bottom: 14px; }
 
 .app { display: flex; min-height: 100vh; }
@@ -94,17 +94,25 @@ label.checkbox input { width: auto; }
   flex-direction: column;
 }
 
+.sidebar .brand { padding: 0 20px 14px; }
+
 .sidebar h1 {
-  font-size: 15px;
+  font-size: 17px;
   color: #fff;
-  margin: 0 20px 4px;
+  margin: 0;
   line-height: 1.35;
+  letter-spacing: 0.02em;
 }
 
 .sidebar .subtitle {
   font-size: 11.5px;
   color: #8fa3b8;
-  margin: 0 20px 26px;
+  margin: 3px 0 0;
+}
+
+.footer .link-btn {
+  background: none; border: 0; padding: 0; color: #9fc7ff; text-decoration: none;
+  cursor: pointer; font-size: inherit; font-family: inherit;
 }
 
 .sidebar nav { display: flex; flex-direction: column; gap: 2px; }
@@ -176,7 +184,7 @@ label.checkbox input { width: auto; }
   .app { display: block; }
   .sidebar { width: 100%; padding: 12px; position: static; }
   .sidebar nav { flex-direction: row; overflow-x: auto; }
-  .sidebar .nav-heading, .sidebar .footer, .sidebar .toggles { display: none; }
+  .sidebar .nav-heading, .sidebar .footer, .sidebar .toggles, .sidebar .brand, .sidebar .mode-switch { display: none; }
   .sidebar a { white-space: nowrap; border-left: 0; border-bottom: 3px solid transparent; padding: 9px 11px; }
   .sidebar a.active { border-left: 0; border-bottom-color: var(--green); }
   .main { padding: 18px 14px; }
@@ -348,6 +356,71 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
 .risk-dial.pending { opacity: 0.45; }
 .risk-pct { font-size: 54px; font-weight: 700; line-height: 1; }
 .risk-advice { text-align: center; color: var(--text-muted); min-height: 3em; }
+
+/* ── Feedback banner (success/error, replaces bare <p>{msg}</p>) ── */
+.feedback-banner {
+  display: flex; align-items: flex-start; gap: 10px; padding: 11px 14px;
+  border-radius: var(--radius); font-size: 13.5px; margin-bottom: 16px;
+  border: 1px solid transparent; animation: feedback-in 0.2s ease-out;
+}
+@keyframes feedback-in { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+.feedback-banner.success {
+  background: color-mix(in srgb, var(--green) 12%, var(--surface));
+  border-color: color-mix(in srgb, var(--green) 35%, transparent);
+  color: var(--green);
+}
+.feedback-banner.error {
+  background: color-mix(in srgb, var(--red) 12%, var(--surface));
+  border-color: color-mix(in srgb, var(--red) 35%, transparent);
+  color: var(--red);
+}
+.feedback-icon {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 18px; height: 18px; border-radius: 50%; background: currentColor;
+  color: var(--surface); font-size: 11px; font-weight: 700; flex-shrink: 0;
+}
+
+/* ── Confirm dialog ──────────────────────── */
+.confirm-overlay {
+  position: fixed; inset: 0; background: rgba(13, 27, 42, 0.5);
+  display: flex; align-items: center; justify-content: center; z-index: 100; padding: 20px;
+}
+.confirm-box {
+  background: var(--surface); border-radius: var(--radius); padding: 20px 22px;
+  max-width: 380px; box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+}
+.confirm-box p { margin: 0 0 16px; font-size: 14.5px; }
+.confirm-actions { display: flex; justify-content: flex-end; gap: 10px; }
+.btn-danger {
+  border: 0; background: var(--red); color: #fff; border-radius: 8px;
+  padding: 9px 16px; cursor: pointer; font-size: 13.5px; font-weight: 600;
+}
+
+/* ── Confidence badge (trained model vs baseline) ── */
+.badge-confidence {
+  display: inline-flex; align-items: center; padding: 2px 9px; border-radius: 999px;
+  font-size: 11px; font-weight: 700; white-space: nowrap;
+}
+.badge-confidence.model { background: color-mix(in srgb, var(--green) 16%, transparent); color: var(--green); }
+.badge-confidence.baseline { background: var(--bg); color: var(--text-muted); border: 1px solid var(--border); }
+
+/* ── Category select with "অন্যান্য" custom entry ── */
+.category-custom { display: flex; gap: 8px; align-items: center; }
+.btn-link { background: none; border: 0; color: var(--green); font-size: 12px; padding: 0; cursor: pointer; white-space: nowrap; }
+
+/* ── Sidebar mode switch (ব্যবসা মোড / গবেষণা মোড) ── */
+.mode-switch { display: flex; margin: 4px 18px 6px; background: rgba(255,255,255,.06); border-radius: 9px; padding: 3px; gap: 3px; }
+.mode-switch button {
+  flex: 1; border: 0; background: transparent; color: #9fb0c4; cursor: pointer;
+  padding: 7px 6px; border-radius: 7px; font-size: 12.5px; font-weight: 600; font-family: inherit;
+  transition: background .15s, color .15s;
+}
+.mode-switch button.on { background: var(--surface); color: var(--navy); }
+.nav-badge-dot {
+  width: 7px; height: 7px; border-radius: 50%; background: var(--red); flex-shrink: 0;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--red) 25%, transparent);
+}
+.navlink { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 
 /* ── Sidebar nav groups ──────────────────── */
 .nav-group { display: flex; flex-direction: column; margin-bottom: 14px; }
