@@ -1,0 +1,77 @@
+{
+  "generated_by": "ml.real_data_validation",
+  "datasets": {
+    "online_retail_ii": {
+      "label": "UCI Online Retail II \u2014 real transactions, UK (non-Bangladeshi)",
+      "rows_used": 805620,
+      "cancelled_rows_dropped": 22956,
+      "distinct_customers": 5881,
+      "distinct_skus": 4631,
+      "date_from": "2009-12-01",
+      "date_to": "2011-12-09",
+      "forecast_scope_note": "Forecast trained on the top 40 SKUs by quantity sold (53,802 of 805,620 lines) \u2014 full SKU range is not feasible to reindex to a daily grid on this machine. Future-repeat (churn) below uses every customer, no such restriction.",
+      "forecast": {
+        "available": true,
+        "split_date": "2011-07-20T00:00:00",
+        "train_rows": 20305,
+        "test_rows": 5542,
+        "hist_gradient_boosting": {
+          "wape": 1.1382959894001106,
+          "mae": 73.8214320530967,
+          "rmse": 177.53149664887025
+        },
+        "seasonal_naive_7": {
+          "wape": 1.2249779501576181,
+          "mae": 79.44298087333092,
+          "rmse": 235.29581533580978
+        }
+      },
+      "future_repeat": {
+        "available": true,
+        "test_start": "2011-05-25T00:00:00",
+        "purge_days": 90,
+        "train_rows": 27403,
+        "test_rows": 11014,
+        "positive_rate": 0.5355910659161067,
+        "models": {
+          "logistic": {
+            "pr_auc": 0.7910841727154629,
+            "roc_auc": 0.7459729493392935,
+            "brier": 0.2069823758149209,
+            "lift_at_10": 1.7705221808488876
+          },
+          "random_forest": {
+            "pr_auc": 0.7954321625574536,
+            "roc_auc": 0.7486730607122801,
+            "brier": 0.2033633031054226,
+            "lift_at_10": 1.7671336216510904
+          }
+        },
+        "winner_by_brier": "random_forest"
+      }
+    },
+    "bd_retailer_demand": {
+      "label": "Mendeley 10.17632/xwmbk7n3c8.1 \u2014 real Bangladeshi retailer (quantity only)",
+      "rows_used": 1826,
+      "date_from": "2013-01-01",
+      "date_to": "2017-12-31",
+      "note": "No customer or price fields in the source \u2014 forecast only, no churn/revenue.",
+      "forecast": {
+        "available": true,
+        "split_date": "2017-01-06T00:00:00+00:00",
+        "train_rows": 1438,
+        "test_rows": 360,
+        "hist_gradient_boosting": {
+          "wape": 0.19014744711910775,
+          "mae": 4.237647133990559,
+          "rmse": 5.309648864357511
+        },
+        "seasonal_naive_7": {
+          "wape": 0.23794091985541568,
+          "mae": 5.302777777777778,
+          "rmse": 6.654363647679285
+        }
+      }
+    }
+  }
+}

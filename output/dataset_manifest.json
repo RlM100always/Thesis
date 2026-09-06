@@ -1,0 +1,53 @@
+{
+  "verified_at": "2026-09-06",
+  "rule": "Synthetic and real datasets are never blended into one evidence claim.",
+  "datasets": [
+    {
+      "id": "synthetic_bsmart",
+      "path": "BD_Business_Analytics_Dataset.csv",
+      "real": false,
+      "country": "Bangladesh-context generated data",
+      "source": "01_generate_dataset.py (Faker)",
+      "use": "controlled development, leakage and model comparison only",
+      "exists": true,
+      "bytes": 11297429,
+      "sha256": "d9e11b74f490a4b10c11e0bf7c557a910e80de74b951e4591a0b8a12a99c6071"
+    },
+    {
+      "id": "uci_online_retail_ii",
+      "path": "data/real_public/online_retail_II.csv",
+      "real": true,
+      "country": "United Kingdom",
+      "source": "https://archive.ics.uci.edu/dataset/502/online+retail+ii",
+      "doi": "10.24432/C5CG6D",
+      "use": "real transaction daily-demand and future-repeat validation",
+      "exists": true,
+      "bytes": 94248800,
+      "sha256": "834ba7c3c25bcd1d4fdc20b969b6f4f6da5e84b611036bbd18ba47ce3569e542"
+    },
+    {
+      "id": "bangladesh_retailer_demand",
+      "path": "data/real_public/bd_retailer_demand.xlsx",
+      "real": true,
+      "country": "Bangladesh",
+      "source": "https://data.mendeley.com/datasets/xwmbk7n3c8/1",
+      "doi": "10.17632/xwmbk7n3c8.1",
+      "use": "real one-product quantity forecasting only",
+      "exists": true,
+      "bytes": 44765,
+      "sha256": "579765c6e2c276e92383710224fd1dbd503ee3ae7cbf7e9d6b22c3dd653b8524"
+    },
+    {
+      "id": "wfp_bangladesh_food_prices",
+      "path": "data/real_public/wfp_food_prices_bgd.csv",
+      "real": true,
+      "country": "Bangladesh",
+      "source": "https://data.humdata.org/dataset/wfp-food-prices-for-bangladesh",
+      "use": "real observed market-price benchmark; not SME sales",
+      "exists": true,
+      "bytes": 4402593,
+      "sha256": "40d112a21e65f196db322ed599b2ad0b4f9410a82b9b13af4e8130e943a39d8a"
+    }
+  ],
+  "all_files_present": true
+}

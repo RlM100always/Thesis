@@ -1,0 +1,377 @@
+\chapter{Related Works}
+\label{chapter_backStudy}
+
+\section{Background Study}
+
+\subsection{Business Intelligence and Decision Support}
+
+Business intelligence (BI) is the set of data, infrastructure, analytical
+methods and organizational practices used to improve decisions. Its evolution
+from structured enterprise reporting toward web, mobile and sensor analytics is
+described by Chen, Chiang and Storey \cite{chen2012business}. In this thesis,
+\emph{descriptive} analytics summarizes revenue, margin and stock;
+\emph{predictive} analytics estimates future demand or customer inactivity; and
+\emph{prescriptive} analytics ranks feasible actions.
+
+Operational and analytical functions must be connected but separately governed.
+An operational transaction requires atomic consistency and an audit trail. A
+model requires a time-frozen feature view, a reproducible split and versioned
+artifacts. \system{} connects the two through a canonical export instead of
+training directly on mutable application tables.
+
+\subsection{Bangladeshi SME and Payment Context}
+
+This study uses the term SME for the retail-oriented subset of cottage, micro,
+small and medium enterprises (CMSMEs). Exact regulatory thresholds may change;
+the operational research population is therefore defined functionally: an
+inventory-holding Bangladeshi retailer with branch, SKU, sales, purchase and
+payment records, limited analytics staff and owner-managed decisions.
+
+Bangladesh-specific evidence indicates that the perceived advantage, cost,
+organizational support, infrastructure and skills surrounding a technology
+affect adoption \cite{hoque2016ict,shahadat2023digital}. Mobile payments are not
+an optional integration in this context. SME adoption research identifies
+performance expectancy, effort expectancy and cost as significant
+\cite{rahman2023mobile}, while qualitative MFS research emphasizes accessibility,
+mobility and self-service \cite{hazra2021mfs}. The data model consequently treats
+cash, bKash, Nagad, Bangla QR, card and due settlement as first-class choices.
+
+\subsection{Customer Analytics: RFM, CLV and Segmentation}
+
+RFM represents a customer by recency $R$ (how recently the customer purchased),
+frequency $F$ (how often) and monetary value $M$ (how much). These behavioral
+features are inexpensive to derive from invoices and often more actionable than
+demographic attributes. CLV extends the view toward expected future customer
+value; Fader, Hardie and Lee show that equal RFM scores need not imply equal
+future value and formalize the relationship using iso-value curves
+\cite{fader2005rfm}.
+
+Supervised segmentation predicts a pre-existing business label. Unsupervised
+segmentation asks whether coherent groups arise from behavior without such a
+label. K-Means minimizes within-cluster squared distance,
+
+\begin{equation}
+  \underset{\{C_k,\mu_k\}_{k=1}^{K}}{\operatorname{minimize}}
+  \sum_{k=1}^{K}\sum_{x_i\in C_k}\lVert x_i-\mu_k\rVert_2^2.
+  \label{eq:kmeans}
+\end{equation}
+
+Because a clustering algorithm always returns clusters, internal validation is
+essential. The silhouette coefficient compares cohesion with the closest other
+cluster \cite{rousseeuw1987silhouettes}. A low value should be interpreted as
+overlap or continuum, not concealed behind attractive segment names.
+
+\subsection{Demand Forecasting}
+
+A demand forecast estimates units sold at a future horizon. ARIMA models linear
+dependence after differencing; seasonal-naive forecasting repeats the
+corresponding prior-season value; tree ensembles learn nonlinear relations among
+lags, calendar, price and promotion variables. LSTM networks use gates to retain
+or discard state over long sequences \cite{hochreiter1997lstm}, but the extra
+capacity is not automatically beneficial when a shop has only a short history.
+
+Forecasts must be evaluated chronologically. RMSE emphasizes large errors, MAE
+preserves the target unit, WAPE aggregates absolute error relative to aggregate
+demand, and MASE compares error with a naive scale. Hyndman and Koehler warn that
+percentage metrics can be undefined or unstable around zero and recommend scaled
+errors for cross-series comparison \cite{hyndman2006accuracy}. Therefore, final
+SKU evaluation will report WAPE/MASE with baseline-relative and business-cost
+measures rather than one convenient metric.
+
+\subsection{Churn, Future Repeat and Returns}
+
+In a non-contractual retail setting, churn is not an observed cancellation. It
+is defined relative to a cutoff $t$: a customer has no repeat purchase in the
+future interval $(t,t+H]$. Features must be frozen at $t$ and the label window
+must not overlap training and test periods. Returns are similarly predicted only
+from information known before dispatch; satisfaction recorded after delivery is
+an outcome, not a valid feature.
+
+Both problems can be imbalanced. A classifier that predicts the majority class
+may show high accuracy while identifying no useful customer. Precision--recall
+curves, lift, calibration and expected campaign or return cost are more useful
+than accuracy alone \cite{saito2015pr,verbeke2012profit}.
+
+\subsection{Explainability, Leakage and Model Governance}
+
+SHAP attributes the difference between a model output and a reference value to
+input features using a cooperative-game formulation \cite{lundberg2017shap}.
+TreeExplainer provides efficient exact or consistent explanations for common
+tree ensembles and permits aggregation from local to global behavior
+\cite{lundberg2020trees}. An explanation does not prove causality or fairness;
+it states how a fitted model used the encoded input.
+
+Data leakage occurs when the training process receives information that would
+not legitimately be available at prediction time \cite{kaufman2012leakage}.
+Leakage may enter through a target-derived field, repeated entity in multiple
+splits, post-outcome feature or transformation fitted on all data. \system{}
+therefore versions features, separates customers or time periods, purges outcome
+horizons and fits preprocessing on training data only.
+
+\section{Literature Review}
+\label{sec:literature_review}
+
+The following review contains twenty-two core papers, exceeding the minimum of
+twenty requested for the present stage. Each entry states its problem, context,
+method, main contribution and relevance or limitation.
+
+\subsection{Bangladesh and Business Analytics Foundations}
+
+\paragraph{Chen, Chiang and Storey (2012).}
+The paper organizes BI research into successive generations spanning structured
+enterprise data, web intelligence and mobile/sensor contexts
+\cite{chen2012business}. It synthesizes more than a decade of publications and
+identifies research opportunities rather than evaluating one SME implementation.
+It motivates the breadth of \system{}, but leaves local adoption, operational
+integration and field impact to domain-specific studies.
+
+\paragraph{Hoque et al. (2016).}
+This Bangladesh case study investigates the use, impact and adoption of ICT in
+rural SMEs \cite{hoque2016ict}. It identifies factors that influence adoption in
+a context underrepresented by mainstream enterprise-systems research. Its
+contribution is contextual rather than predictive modelling; it supports a
+low-friction local product design but does not provide retail transaction data.
+
+\paragraph{Shahadat et al. (2023).}
+Using a structured survey of 535 SME managers and PLS-SEM, the authors evaluate
+technology, organization and environment factors affecting digital adoption
+\cite{shahadat2023digital}. Relative advantage, cost, management support,
+competitive pressure and government support emerge as important. Survey intent
+does not demonstrate forecasting accuracy, so \system{} complements it with
+transaction-level evaluation.
+
+\paragraph{Rahman and Islam (2023).}
+The authors study mobile-payment adoption among 200 Bangladeshi SMEs using an
+extended UTAUT model and PLS-SEM \cite{rahman2023mobile}. Performance and effort
+expectancy, social influence, cost and voluntariness significantly influence
+behavioral intention. The study justifies native local-payment workflows, but it
+does not address analytics, inventory or longitudinal business outcomes.
+
+\paragraph{Hazra and Priyo (2021).}
+This qualitative study uses affordance theory and interviews to explain how
+Bangladeshi users achieve access, mobility, self-control and disintermediation
+through mobile financial services \cite{hazra2021mfs}. It contributes rich usage
+context that purely technical studies omit. Its user-level qualitative setting
+does not quantify SME model performance, but it informs the system's payment and
+usability assumptions.
+
+\subsection{Customer Analytics and Segmentation}
+
+\paragraph{Ngai, Xiu and Chau (2009).}
+The authors screen 900 papers and classify 87 CRM data-mining studies by customer
+lifecycle dimension and analytical function \cite{ngai2009crm}. Classification
+and association are prominent, and retention receives substantial attention.
+The review provides a taxonomy, but predates current explainability and temporal
+leakage practice; \system{} joins several functions in one governed pipeline.
+
+\paragraph{Fader, Hardie and Lee (2005).}
+The study links RFM behavior to CLV through Pareto/NBD and gamma-gamma components
+and validates the approach on CDNOW customers \cite{fader2005rfm}. Iso-value
+curves demonstrate how different transaction histories can imply comparable
+future value. The method is principled but assumes a non-contractual purchasing
+process and does not solve operational inventory decisions.
+
+\paragraph{Kim et al. (2006).}
+Using six months of Korean wireless-service data covering 16,384 customers, the
+paper develops customer-value dimensions and segment-specific strategies
+\cite{kim2006clv}. It shows how current value, potential value and loyalty can
+support differentiated action. The sector and contractual relationship differ
+from Bangladeshi retail, limiting direct transfer of labels and features.
+
+\paragraph{Cheng and Chen (2009).}
+This work combines quantitative RFM attributes, K-Means and rough-set theory to
+classify customer value \cite{cheng2009rfm}. It explores three, five and seven
+value classes and extracts interpretable decision rules. The contribution is a
+segmentation procedure, while business constraints, temporal validation and
+post-deployment monitoring remain outside its scope.
+
+\subsection{Predictive Models and Forecasting}
+
+\paragraph{Breiman (2001).}
+Random Forests combine decorrelated tree predictors constructed from bootstrap
+samples and random feature subsets \cite{breiman2001rf}. The method offers
+classification, regression, internal error estimation and variable importance,
+with robustness to noise. It is a strong tabular baseline, though raw importance
+does not explain an individual business recommendation.
+
+\paragraph{Chen and Guestrin (2016).}
+XGBoost introduces a scalable regularized tree-boosting system with sparsity-aware
+learning and efficient approximate split finding \cite{chen2016xgboost}. The
+paper reports strong performance across large benchmark tasks. Its engineering
+strength does not remove the need for leakage-safe data or calibration; in this
+thesis it is compared with simpler models rather than assumed to win.
+
+\paragraph{Hochreiter and Schmidhuber (1997).}
+The LSTM architecture addresses decaying error flow in recurrent learning through
+gated memory cells \cite{hochreiter1997lstm}. Experiments on artificial
+long-lag tasks show that it learns dependencies missed by earlier recurrent
+methods. Those results do not guarantee accuracy on a 48-month retail series,
+which motivates the thesis's data-volume rule and naive baseline.
+
+\paragraph{Carbonneau, Laframboise and Vahidov (2008).}
+The authors compare recurrent networks, neural networks and support-vector
+machines with naive, moving-average and regression forecasts on simulated supply
+chains and actual Canadian foundry orders \cite{carbonneau2008supply}. Advanced
+models perform well, but their advantage over regression is not statistically
+significant. This directly supports disciplined baseline comparison in small or
+noisy supply-chain data.
+
+\paragraph{Hyndman and Koehler (2006).}
+This paper evaluates common univariate forecast-accuracy measures and identifies
+degenerate behavior in several percentage formulations
+\cite{hyndman2006accuracy}. It proposes MASE as a scale-free alternative suitable
+across series. The work concerns measurement rather than retail decisions; the
+present thesis adds WAPE, prediction intervals and inventory cost.
+
+\paragraph{Makridakis, Spiliotis and Assimakopoulos (2018).}
+The M4 competition evaluates point and interval forecasts across 100,000 series
+\cite{makridakis2018m4}. Combinations and hybrid methods dominate, while pure ML
+entries often fail to beat statistical benchmarks. The heterogeneous series are
+not Bangladesh-specific, but the result is strong evidence against equating
+model complexity with forecasting quality.
+
+\paragraph{Makridakis, Spiliotis and Assimakopoulos (2022).}
+The M5 competition focuses on 42,840 hierarchical Walmart retail series and
+includes explanatory variables and uncertainty forecasts
+\cite{makridakis2022m5}. It establishes a realistic large-scale retail benchmark
+and highlights hierarchy, intermittency and uncertainty. Walmart's volume and
+infrastructure differ sharply from small Bangladeshi shops, leaving a need for
+low-data, local validation.
+
+\subsection{Churn, Evaluation Integrity and Explainability}
+
+\paragraph{Burez and Van den Poel (2009).}
+The study treats customer churn as an imbalanced classification problem and
+compares under-sampling, gradient boosting and weighted Random Forests using AUC
+and lift \cite{burez2009imbalance}. It demonstrates that imbalance treatment and
+metric choice affect conclusions. Its service-industry setting motivates, but
+does not define, non-contractual retail inactivity.
+
+\paragraph{Verbeke et al. (2012).}
+The authors argue that statistical discrimination alone can select a financially
+inferior churn model and propose a maximum-profit measure
+\cite{verbeke2012profit}. Telecommunications datasets show gains from choosing
+both the model and contact fraction by expected profit. \system{} adopts the
+decision focus, while requiring SME-specific action cost and consent estimates.
+
+\paragraph{Saito and Rehmsmeier (2015).}
+Through theoretical and empirical comparisons, this paper shows why
+precision--recall plots reveal performance differences hidden by ROC plots on
+imbalanced data \cite{saito2015pr}. Its examples are not retail-specific, but the
+metric lesson is general. Accordingly, churn and return experiments report
+PR-AUC, base rate and lift rather than accuracy alone.
+
+\paragraph{Kaufman et al. (2012).}
+The paper formalizes leakage as target information that is illegitimately
+available to a data-mining model and discusses detection and avoidance
+\cite{kaufman2012leakage}. Competition and industrial examples show that leakage
+can produce convincing but invalid scores. It directly explains the thesis's CLV,
+customer-split and post-satisfaction ablations.
+
+\paragraph{Lundberg and Lee (2017).}
+The authors unify several additive feature-attribution methods and introduce SHAP
+values with consistency properties \cite{lundberg2017shap}. The framework
+supports local explanations for complex models and connects them to global
+patterns. SHAP is descriptive of a model rather than causal, so \system{} presents
+it as supporting evidence rather than a reason to automate an action.
+
+\paragraph{Lundberg et al. (2020).}
+This work develops efficient explanation methods for tree models and shows how
+many local explanations reveal global model structure \cite{lundberg2020trees}.
+It makes XGBoost and Random Forest behavior more inspectable at serving time. The
+method still inherits biases and leakage from the fitted model, which is why
+feature/time audits precede explanation in the proposed framework.
+
+\section{Literature Matrix}
+
+Table~\ref{tab:literature_matrix} condenses the core comparison. ``Gap'' states
+the limitation most relevant to this thesis, not a claim that the cited work is
+defective for its own objective.
+
+\begin{landscape}
+\scriptsize
+\begin{longtable}{p{0.055\linewidth}p{0.16\linewidth}p{0.16\linewidth}p{0.20\linewidth}p{0.25\linewidth}}
+\caption{Literature matrix for the current core set of twenty-two papers.}
+\label{tab:literature_matrix}\\
+\toprule
+\textbf{Ref.} & \textbf{Context/data} & \textbf{Method} & \textbf{Contribution} & \textbf{Gap addressed by \system{}} \\
+\midrule
+\endfirsthead
+\toprule
+\textbf{Ref.} & \textbf{Context/data} & \textbf{Method} & \textbf{Contribution} & \textbf{Gap addressed by \system{}} \\
+\midrule
+\endhead
+\cite{chen2012business} & Cross-domain BI literature & Framework and bibliometrics & BI evolution and research agenda & Local SME implementation and measured action loop \\
+\cite{hoque2016ict} & Rural Bangladesh SMEs & Adoption case study & ICT adoption factors & Transaction analytics and impact evaluation \\
+\cite{shahadat2023digital} & 535 SME managers & PLS-SEM / TOE & Adoption determinants & Longitudinal operational evidence \\
+\cite{rahman2023mobile} & 200 Bangladesh SMEs & Extended UTAUT, PLS-SEM & Mobile-payment adoption factors & Native payment records linked to analytics \\
+\cite{hazra2021mfs} & Bangladesh MFS users & Interviews, affordance theory & Contextual MFS uses & SME workflow and model evaluation \\
+\cite{ngai2009crm} & 87 CRM studies & Review taxonomy & CRM/data-mining map & Modern XAI, leakage and integrated system \\
+\cite{fader2005rfm} & CDNOW customer data & Pareto/NBD, gamma-gamma & Formal RFM--CLV link & Operational action constraints \\
+\cite{kim2006clv} & 16,384 Korean telecom users & CLV segmentation & Segment strategies & Non-contractual Bangladesh retail validity \\
+\cite{cheng2009rfm} & Customer-value data & RFM, K-Means, rough sets & Interpretable value classes & Temporal evaluation and action tracking \\
+\cite{breiman2001rf} & General benchmarks & Random Forest & Robust ensemble method & Calibration and decision explanation \\
+\cite{chen2016xgboost} & Large benchmark tasks & Regularized boosting & Scalable sparse tree learning & Low-data and leakage-safe validation \\
+\cite{hochreiter1997lstm} & Artificial sequences & Gated recurrent network & Long-lag learning & Short retail histories and simple baselines \\
+\cite{carbonneau2008supply} & Simulated supply chain + foundry orders & ML vs traditional forecasts & Comparative demand evidence & Bangladesh data and inventory utility \\
+\cite{hyndman2006accuracy} & Forecast benchmarks & Metric analysis & MASE and metric cautions & Business cost and interval coverage \\
+\cite{makridakis2018m4} & 100,000 mixed series & Forecast competition & Hybrid/combination evidence & Small-shop context and actions \\
+\cite{makridakis2022m5} & 42,840 Walmart series & Hierarchical retail competition & Point and uncertainty benchmark & Low-resource local transportability \\
+\cite{burez2009imbalance} & Service churn & Sampling and ensembles & AUC/lift under imbalance & Non-contractual retail label and consent \\
+\cite{verbeke2012profit} & Telecom churn datasets & Profit-based evaluation & Links selection to campaign profit & SME costs and measured outcomes \\
+\cite{saito2015pr} & Imbalanced binary tasks & ROC/PR analysis & PR plots expose minority performance & Lift, calibration and decision cost \\
+\cite{kaufman2012leakage} & Competitions and practice & Leakage taxonomy & Detection/avoidance framework & Entity/time purging and provenance \\
+\cite{lundberg2017shap} & Complex prediction models & Shapley attribution & Unified local explanations & Business-language action explanation \\
+\cite{lundberg2020trees} & Tree ensembles & TreeExplainer & Efficient local-to-global XAI & Governance, causal caution and monitoring \\
+\bottomrule
+\end{longtable}
+\end{landscape}
+
+\section{Problem of Existing Systems}
+\label{sec:existing_systems}
+
+The relevant comparison is between capability patterns rather than brand names,
+because commercial product features and licensing change. Table
+\ref{tab:existing_limitations} states the recurring limitation and the designed
+response.
+
+\small
+\begin{longtable}{p{0.22\textwidth}p{0.32\textwidth}p{0.36\textwidth}}
+\caption{Existing-system limitations and the proposed response.}
+\label{tab:existing_limitations}\\
+\toprule
+\textbf{System/study pattern} & \textbf{Limitation} & \textbf{\system{} response} \\
+\midrule
+\endfirsthead
+\toprule
+\textbf{System/study pattern} & \textbf{Limitation} & \textbf{\system{} response} \\
+\midrule
+\endhead
+Generic POS or bookkeeping & Records transactions and totals but lacks temporal prediction and action evaluation. & Canonical event ledger feeds forecasts, risks and ranked actions. \\
+Generic ERP for larger firms & Configuration, cost and vocabulary may exceed a small owner-managed shop's capacity. & Narrow retail MVP, Bangla-first daily workflows and local payment choices. \\
+Static BI dashboard & Explains past KPIs but provides no forward uncertainty or feasible next step. & Forecast, risk, constraint check, explanation and action rank are connected. \\
+Standalone forecasting paper & Evaluates a series without stock, supplier, budget or deployment workflow. & Forecast enters reorder logic using stock, lead time, safety stock and cost. \\
+Synthetic retail study & Demonstrates a pipeline but cannot establish field validity. & Synthetic evidence is labelled; public-real and future primary-real results are separate. \\
+Randomly split customer model & The same customer or a future-derived attribute can appear on both sides of evaluation. & Grouped or chronological splits, purged horizons and training-only transforms. \\
+Accuracy-only churn model & Majority prediction can appear successful and still contact no useful customer. & PR-AUC, ROC-AUC, Brier score, lift and campaign utility. \\
+Black-box recommendation & Gives a score without evidence, uncertainty or owner-readable reason. & SHAP/supporting factors, confidence source and explicit constraints. \\
+Foreign single global model & Misses Bangladesh calendar/payment context and masks business heterogeneity. & Local context features plus per-business and leave-one-business-out tests. \\
+Unmonitored deployed model & Does not record version, drift, owner response or later outcome. & Versioned artifacts, provenance, audit log and planned outcome tracking. \\
+\bottomrule
+\end{longtable}
+\normalsize
+
+\section{Research Gap and Positioning}
+
+Prior research establishes the value of BI, RFM/CLV, tree ensembles, temporal
+forecasting, churn ranking and explainability. Bangladesh-focused adoption work
+explains why cost, usability, local payments and organizational readiness matter.
+However, no reviewed work jointly provides a Bangladesh-oriented SME operations
+system, leakage-safe temporal models, constraint-aware action ranking, local
+explanations, transparent evidence tiers and measured owner outcomes.
+
+\system{} is positioned in this intersection. Its novelty is the governed
+sequence from business event to evidence-backed action, not a new classifier.
+The current prototype validates feasibility and exposes methodological failure
+modes. The final thesis must still demonstrate transportability and usefulness
+with consenting Bangladeshi SMEs before making claims about real business impact.

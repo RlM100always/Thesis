@@ -1,0 +1,236 @@
+\chapter{Implementation}
+\label{chapter_implementation}
+
+\section{Implementation Status}
+
+As of \reportdate, the repository contains a complete local thesis MVP. It is
+not represented as a finished commercial ERP. The operational, analytical and
+strategy layers execute locally, and current safeguards distinguish a trained
+real-data model from a transparent baseline. External sign-in, public deployment,
+fiscal integration, native mobile/offline synchronization and automated campaigns
+are intentionally deferred.
+
+\begin{table}[H]
+\centering
+\small
+\caption{Current functional status.}
+\label{tab:implementation_status}
+\begin{tabularx}{\textwidth}{p{0.24\textwidth}p{0.14\textwidth}Y}
+\toprule
+\textbf{Component} & \textbf{Status} & \textbf{Implemented boundary} \\
+\midrule
+Business operations & Complete MVP & Catalogue, branch, customer, supplier, stock, sales, purchase, return, expense and ledgers \\
+Data intake & Complete MVP & Durable CSV/XLSX import, validation, checksum/provenance and canonical sales export \\
+Research analytics & Complete MVP & Segmentation, forecasting, churn, return, leakage ablation and SHAP artifacts \\
+Real-data training & Complete MVP & Chronological demand pipeline and purged future-repeat pipeline \\
+Strategy layer & Complete MVP & Constraint-aware reorder and consent-safe retention ranking; baseline/model provenance \\
+API and dashboard & Complete MVP & FastAPI routes plus React research and Bangla-first operational pages \\
+Automated verification & Passing & Six backend tests pass; production frontend builds \\
+Primary SME validation & Pending & Consenting Bangladeshi invoice/stock data and field evaluation required \\
+Association-rule module & Not implemented & Minimum-support scalability experiment remains out of current results \\
+Public production deployment & Deferred & OAuth, managed database, monitoring, billing and hardware integration outside current MVP \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\section{Technology Stack}
+
+The backend uses Python 3.12, FastAPI, Pydantic, SQLAlchemy and Alembic. SQLite
+supports the local prototype, with foreign-key enforcement; the configuration
+layer permits a production database later. The analytical stack comprises
+pandas, NumPy, SciPy, scikit-learn, XGBoost, statsmodels, TensorFlow, SHAP,
+Matplotlib and Seaborn. Models and preprocessing objects are persisted with
+pickle, Joblib or the native Keras format as appropriate.
+
+The frontend uses React, React Router, Recharts and Vite. A HashRouter permits
+the static production build to be served without server-side route rewriting.
+Research views remain technical and English-oriented, while daily operational
+views are Bangla-first. The current local database is \texttt{bsmart.db}; schema
+migrations are versioned under \texttt{migrations/}.
+
+\section{Repository and Layered Architecture}
+
+The implementation separates domain transactions, analytical service code and
+presentation. Table~\ref{tab:code_map} maps major code to its responsibility.
+
+\begin{table}[H]
+\centering
+\small
+\caption{Implementation map.}
+\label{tab:code_map}
+\begin{tabularx}{\textwidth}{p{0.32\textwidth}Y}
+\toprule
+\textbf{Module or directory} & \textbf{Responsibility} \\
+\midrule
+\texttt{api/domain\_models.py} & Multi-tenant operational schema and audit/provenance entities \\
+\texttt{api/commerce\_routes.py} & Products, inventory adjustments and atomic sales \\
+\texttt{api/finance\_routes.py} & Purchases, receiving, payments, returns, refunds, expenses and ledgers \\
+\texttt{api/directory\_routes.py} & Branches, staff, customers and suppliers \\
+\path{api/data_import_routes.py} & Durable imports, validation, canonical export and model-training trigger \\
+\texttt{api/analytics\_routes.py} & Tenant-scoped KPI and constraint-aware recommendations \\
+\texttt{predict.py} & Loads fixed research artifacts and provides inference/service functions \\
+\texttt{upload\_service.py} & Anonymous dataset mapping, analysis and dataset-specific future-repeat training \\
+\texttt{ml/real\_pipeline.py} & Chronological real-data demand and future-repeat training \\
+\texttt{ml/serving.py} & Loads organization-specific demand artifacts for strategy recommendations \\
+\texttt{ml/market\_prices.py} & Bangladesh commodity-price benchmarks and market-context table \\
+\path{ml/real_data_validation.py} & UCI and Bangladeshi public-real method validation \\
+\texttt{frontend/src/pages/} & Operational and research-mode application screens \\
+\texttt{tests/} & Authentication, tenant/database, commerce and analytics invariants \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{figure}[H]
+\centering
+\resizebox{0.98\textwidth}{!}{%
+\begin{tikzpicture}[
+  box/.style={draw,rounded corners,minimum height=1cm,minimum width=3.2cm,align=center,font=\small},
+  arrow/.style={-{Latex[length=2mm]},thick},node distance=0.8cm
+]
+\node[box,fill=softgreen] (react) {React + Vite\\Operational and research UI};
+\node[box,fill=softblue,right=of react] (api) {FastAPI + Pydantic\\HTTP and validation};
+\node[box,fill=softgreen,right=of api] (domain) {SQLAlchemy domain\\SQLite + migrations};
+\node[box,fill=softorange,below=1.1cm of api] (services) {Prediction/import services\\feature transforms + inference};
+\node[box,fill=softorange,left=of services] (models) {Model artifacts\\synthetic, public-real, per-org};
+\node[box,fill=softgray,right=of services] (files) {Provenance + exports\\CSV/XLSX/JSON/figures};
+\draw[arrow,<->] (react)--(api);
+\draw[arrow,<->] (api)--(domain);
+\draw[arrow,<->] (api)--(services);
+\draw[arrow] (models)--(services);
+\draw[arrow,<->] (services)--(files);
+\draw[arrow] (domain)--(files);
+\end{tikzpicture}}
+\caption{Implemented local application architecture.}
+\label{fig:implemented_architecture}
+\end{figure}
+
+\section{Operational Layer}
+
+\subsection{Tenant and Branch Isolation}
+
+An organization contains branches and memberships. Domain rows carry an
+organization identifier, and request dependencies resolve the active membership
+before a query or mutation. Duplicate SKUs are rejected within one tenant while
+separate tenants may use the same SKU text. The current authentication layer
+supports local prototype identity and optional JWT verification; Google or other
+external OAuth is not implemented.
+
+\subsection{Catalogue, Inventory and Sales}
+
+A product stores SKU, category, unit, cost, selling price, barcode and reorder
+level. Inventory adjustment creates an append-only stock movement and updates the
+materialized balance. Sale creation validates stock and records the order, line
+items, payments and stock decrements within one database transaction. Supported
+settlement methods include cash, bKash, Nagad, Bangla QR, card and due sales.
+
+\subsection{Purchasing, Returns and Accounts}
+
+Purchase orders support partial or full receiving; received lines update stock
+and supplier payable state. A sale return can optionally restock goods and can
+create a refund or receivable adjustment. Expenses and payable/receivable ledger
+entries feed a 30-day operational dashboard. These flows create the data needed
+for future demand and business-impact evaluation instead of requiring an
+unrelated research spreadsheet.
+
+\section{Durable Data Intake}
+
+The anonymous research upload flow parses CSV/XLSX columns, suggests mappings,
+cleans transactions and provides overview, forecast, segmentation, product and
+future-repeat analysis. The operational import flow is durable: it writes the
+source file, checksum, row count and validation status to an ImportBatch record.
+The canonical export provides the exact schema expected by the real-data training
+pipeline.
+
+Import validation checks tenant, branch, invoice, line, SKU and timestamp keys;
+monetary identities; return/cancellation treatment; missingness; and cross-tenant
+collisions. Phone data are hashed for the operational customer directory and are
+not included in research features.
+
+\section{Analytical Pipeline}
+
+The original numbered research scripts form a reproducible sequence:
+
+\begin{enumerate}[label=\texttt{\arabic*.},start=0]
+  \item \texttt{00\_normalize\_dataset.py}: convert the flat synthetic CSV to
+  six dimensions and one transaction fact, then create a verified merge.
+  \item \texttt{01\_preprocessing.py} and \texttt{01b\_customer\_features.py}:
+  clean, encode, engineer RFM/calendar features and create leakage-safe customer
+  splits.
+  \item \texttt{02\_classification.py} and
+  \texttt{02b\_classification\_v2.py}: retain the legacy result for ablation and
+  train the honest customer-level XGBoost, Random Forest and Logistic Regression
+  comparison.
+  \item \texttt{03\_clustering.py}: evaluate candidate $K$ values and fit
+  K-Means on RFM profiles.
+  \item \texttt{04\_forecasting.py}: compare LSTM, ARIMA(2,1,2) and a
+  seasonal-naive forecast on the same holdout.
+  \item \texttt{05\_shap\_analysis.py}: generate global/local SHAP artifacts;
+  current legacy plots are interpreted as a leakage audit where relevant.
+  \item \texttt{06\_final\_report.py}: aggregate metrics and figures.
+  \item \path{07_return_prediction.py} and
+  \path{08_churn_prediction.py}: evaluate pre-dispatch return and future
+  inactivity risk using imbalance-aware metrics.
+\end{enumerate}
+
+The separate real-data path uses chronological splits and organization-specific
+artifacts. A trained demand model is stored at
+\begin{center}
+\path{artifacts/real/<organization-id>/demand_model.joblib}.
+\end{center}
+Serving first looks for this artifact; when it does not exist or lacks history
+for a SKU, a clearly labelled 28-day demand-rate baseline is used.
+
+\section{Strategy Optimization Layer}
+
+The recommendation endpoint reads only the active tenant's canonical records.
+For each product it combines observed or modelled demand rate, current stock,
+reorder level and lead time to generate a candidate reorder. For customers it
+uses recency/value information and contact consent to generate retention
+candidates. The action includes estimated utility, reason, method and a
+\texttt{confidence} field with value \texttt{model} or \texttt{baseline}.
+
+This provenance is a scientific and user-interface control. The UI does not
+rename a heuristic as AI while data are insufficient. Automated campaigning is
+not performed; the system ranks consented customers for human review.
+
+\section{API and User Interface}
+
+The API exposes health, research dashboard, customer, prediction, anonymous
+upload, operational commerce, directory, finance, data import, training and
+strategy routes. The React application contains the following page groups:
+
+\begin{itemize}
+  \item \textbf{Daily operations:} setup, sales, products, inventory, purchases,
+  returns, directory, accounts and the 30-day operational dashboard.
+  \item \textbf{Strategy:} constraint-aware action cards with method/confidence.
+  \item \textbf{Research mode:} overview, dataset upload, what-if analysis,
+  segments, customers, forecast, model report and real-data validation.
+\end{itemize}
+
+The current design keeps evaluator-facing model detail in English and
+owner-facing daily tasks in Bangla. A final usability study will test whether
+this split and the explanation cards improve decisions.
+
+\section{Verification and Build Status}
+
+On \reportdate, \texttt{python -m pytest -q} completes successfully with six
+passing tests. The tests cover token behavior, wrong-audience rejection,
+tenant-scoped SKU/stock invariants, duplicate-SKU rejection, atomic sale/stock
+decrement and operational analytics. The set is a high-value smoke suite rather
+than complete coverage; failure-path, concurrency, migration and browser tests
+remain to be expanded.
+
+The command \texttt{npm run build} transforms 611 modules and completes the
+production build successfully. The main minified JavaScript asset is about
+769.61 kB (219.15 kB gzip), triggering a chunk-size warning. Route-level dynamic
+imports and code splitting are therefore an implementation task before public
+deployment, but the warning does not prevent the local thesis demonstration.
+
+\section{Reproducibility}
+
+The Python 3.12 environment is used because TensorFlow support is not available
+for the system's newer default interpreter. Random seeds are set where supported,
+but minor LSTM variation remains possible because early stopping and backend
+operations are not fully deterministic. Deterministic baseline results and stored
+artifacts preserve the ranking. The repository build guide lists the
+commands and output map.

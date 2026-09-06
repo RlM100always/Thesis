@@ -1,0 +1,249 @@
+{
+  "generated_by": "09_retrain_models.py",
+  "seed": 20260905,
+  "segment": {
+    "protocol": {
+      "seed": 20260905,
+      "development_rows": 3996,
+      "untouched_holdout_rows": 1000,
+      "cross_validation": "5-fold stratified; all selection inside development data",
+      "target": "Original four-class customer segment",
+      "excluded": [
+        "Customer_ID",
+        "CLV (target-defining leakage)",
+        "Segment_Label"
+      ]
+    },
+    "majority_accuracy": 0.436,
+    "selected_family_before_holdout": "XGBoost",
+    "holdout_accuracy": 0.699,
+    "holdout_accuracy_ci_95": [
+      0.67,
+      0.726
+    ],
+    "holdout_balanced_accuracy": 0.7033112799973016,
+    "holdout_macro_f1": 0.7151583081197685,
+    "confusion": [
+      [
+        214,
+        57,
+        6,
+        0
+      ],
+      [
+        82,
+        293,
+        60,
+        1
+      ],
+      [
+        7,
+        63,
+        142,
+        5
+      ],
+      [
+        0,
+        1,
+        19,
+        50
+      ]
+    ],
+    "families": {
+      "Extra Trees": {
+        "development_cv_accuracy": 0.6961899249061327,
+        "development_cv_macro_f1_at_selected_params": 0.7100499842362821,
+        "holdout_accuracy": 0.701,
+        "holdout_balanced_accuracy": 0.7034490934740726,
+        "holdout_macro_f1": 0.7198782744503757,
+        "holdout_weighted_f1": 0.7002890838196492,
+        "best_params": {
+          "select__k": 20,
+          "model__n_estimators": 600,
+          "model__min_samples_leaf": 3,
+          "model__max_features": 1.0,
+          "model__max_depth": 8,
+          "model__criterion": "log_loss",
+          "model__class_weight": null
+        },
+        "fit_seconds": 135.5635266000172
+      },
+      "XGBoost": {
+        "development_cv_accuracy": 0.7019483729662077,
+        "development_cv_macro_f1_at_selected_params": 0.7160833763361103,
+        "holdout_accuracy": 0.699,
+        "holdout_balanced_accuracy": 0.7033112799973016,
+        "holdout_macro_f1": 0.7151583081197685,
+        "holdout_weighted_f1": 0.6993477833208462,
+        "best_params": {
+          "select__k": 4,
+          "model__subsample": 0.7,
+          "model__reg_lambda": 30,
+          "model__n_estimators": 400,
+          "model__min_child_weight": 10,
+          "model__max_depth": 3,
+          "model__learning_rate": 0.02,
+          "model__gamma": 0,
+          "model__colsample_bytree": 0.8
+        },
+        "fit_seconds": 61.05836169997929
+      },
+      "Random Forest": {
+        "development_cv_accuracy": 0.6936864831038798,
+        "development_cv_macro_f1_at_selected_params": 0.7105400853452665,
+        "holdout_accuracy": 0.686,
+        "holdout_balanced_accuracy": 0.692500502909012,
+        "holdout_macro_f1": 0.7059242322565241,
+        "holdout_weighted_f1": 0.6863389636949008,
+        "best_params": {
+          "select__k": 8,
+          "model__n_estimators": 350,
+          "model__min_samples_leaf": 7,
+          "model__max_features": 0.5,
+          "model__max_depth": 18,
+          "model__class_weight": null
+        },
+        "fit_seconds": 170.9627191000036
+      },
+      "Histogram Gradient Boosting": {
+        "development_cv_accuracy": 0.6916892991239049,
+        "development_cv_macro_f1_at_selected_params": 0.7066189687196489,
+        "holdout_accuracy": 0.693,
+        "holdout_balanced_accuracy": 0.6991581139065255,
+        "holdout_macro_f1": 0.7128200009996439,
+        "holdout_weighted_f1": 0.6932478626114384,
+        "best_params": {
+          "select__k": 8,
+          "model__min_samples_leaf": 35,
+          "model__max_leaf_nodes": 7,
+          "model__max_iter": 400,
+          "model__learning_rate": 0.03,
+          "model__l2_regularization": 1
+        },
+        "fit_seconds": 83.96504539996386
+      }
+    }
+  },
+  "churn": {
+    "protocol": {
+      "seed": 20260905,
+      "development_rows": 3996,
+      "untouched_holdout_rows": 1000,
+      "group_disjoint": false,
+      "selection_metric": "development cross-validated PR-AUC",
+      "decision_threshold": "maximum F1 on development out-of-fold predictions"
+    },
+    "selected_family_before_holdout": "Logistic Regression",
+    "holdout": {
+      "accuracy": 0.665,
+      "balanced_accuracy": 0.6477518052557135,
+      "f1": 0.42735042735042733,
+      "roc_auc": 0.7217734931387876,
+      "pr_auc": 0.42096607101375483,
+      "base_rate": 0.202,
+      "lift_10": 2.6732673267326734,
+      "threshold_from_development_oof": 0.5181691507266106,
+      "confusion": [
+        [
+          540,
+          258
+        ],
+        [
+          77,
+          125
+        ]
+      ]
+    },
+    "families": {
+      "Logistic Regression": {
+        "development_cv_pr_auc": 0.4485809710840621,
+        "development_cv_pr_auc_std": 0.04666335825039305,
+        "development_cv_roc_auc": 0.7386788125740078
+      },
+      "Extra Trees": {
+        "development_cv_pr_auc": 0.42831936131161513,
+        "development_cv_pr_auc_std": 0.04271004403855901,
+        "development_cv_roc_auc": 0.7262768579503069
+      },
+      "Random Forest": {
+        "development_cv_pr_auc": 0.42654650677938744,
+        "development_cv_pr_auc_std": 0.04783367500926767,
+        "development_cv_roc_auc": 0.7277740621889974
+      },
+      "XGBoost": {
+        "development_cv_pr_auc": 0.42319170871677547,
+        "development_cv_pr_auc_std": 0.051073522426301546,
+        "development_cv_roc_auc": 0.7253698089244601
+      }
+    },
+    "excluded_label_derived_features": [
+      "CLV",
+      "Churned",
+      "Customer_ID",
+      "RFM_Score",
+      "Recency",
+      "Segment_Label"
+    ]
+  },
+  "return": {
+    "protocol": {
+      "seed": 20260905,
+      "development_rows": 25639,
+      "untouched_holdout_rows": 6361,
+      "group_disjoint": true,
+      "selection_metric": "development cross-validated PR-AUC",
+      "decision_threshold": "maximum F1 on development out-of-fold predictions"
+    },
+    "selected_family_before_holdout": "Logistic Regression",
+    "holdout": {
+      "accuracy": 0.5486558717182833,
+      "balanced_accuracy": 0.5532725453000803,
+      "f1": 0.1447721179624665,
+      "roc_auc": 0.5560367133341867,
+      "pr_auc": 0.08321620191067353,
+      "base_rate": 0.0683854739820783,
+      "lift_10": 1.402519337815369,
+      "threshold_from_development_oof": 0.49008163269587024,
+      "confusion": [
+        [
+          3247,
+          2679
+        ],
+        [
+          192,
+          243
+        ]
+      ]
+    },
+    "families": {
+      "Logistic Regression": {
+        "development_cv_pr_auc": 0.08485169912378605,
+        "development_cv_pr_auc_std": 0.0031620747802562762,
+        "development_cv_roc_auc": 0.5663674615052376
+      },
+      "Extra Trees": {
+        "development_cv_pr_auc": 0.0809827066858496,
+        "development_cv_pr_auc_std": 0.0023718132471835405,
+        "development_cv_roc_auc": 0.5536970259340038
+      },
+      "Random Forest": {
+        "development_cv_pr_auc": 0.08163849216702158,
+        "development_cv_pr_auc_std": 0.0009148491792826664,
+        "development_cv_roc_auc": 0.5528186536034411
+      },
+      "XGBoost": {
+        "development_cv_pr_auc": 0.08316777175107895,
+        "development_cv_pr_auc_std": 0.000553354490945601,
+        "development_cv_roc_auc": 0.5645477088276422
+      }
+    },
+    "excluded_post_outcome_features": [
+      "Delivery_Status",
+      "Return_Reason",
+      "Is_Returned",
+      "Return_Binary",
+      "Customer_Satisfaction_Score"
+    ]
+  },
+  "elapsed_seconds": 716.2706428000238
+}

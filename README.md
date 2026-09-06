@@ -5,6 +5,80 @@
 > tenant-scoped dashboards, real-data import/training, and transparent action
 > ranking. See [the feature status](docs/FEATURE_STATUS.md) for exact boundaries.
 
+## Verified current snapshot — 6 September 2026
+
+This is the source of truth for the present thesis state. The final progress
+report is **55 pages** and uses real public datasets as the primary experimental
+evidence. The Faker-generated Bangladesh-context file remains a controlled
+synthetic comparison only.
+
+### What to tell the supervisor about the datasets
+
+| Role | Dataset | What is genuinely observed | What it supports |
+|---|---|---|---|
+| Primary current real demand evidence | [Supply Chain Demand Forecasting Dataset of Bangladeshi Retailer](https://data.mendeley.com/datasets/xwmbk7n3c8/1), DOI `10.17632/xwmbk7n3c8.1` | 1,826 daily quantities for one product, 2013–2017 | Bangladesh quantity forecasting only; no customers or revenue |
+| Real transaction-method validation | [UCI Online Retail II](https://archive.ics.uci.edu/dataset/502/online+retail+ii), DOI `10.24432/C5CG6D` | UK invoices, dates, quantities, prices, SKUs and customer IDs | Daily demand and 90-day future-repeat validation; not evidence of Bangladeshi behaviour |
+| Real Bangladesh price evidence | [WFP Food Prices for Bangladesh](https://data.humdata.org/dataset/wfp-food-prices-for-bangladesh) | Observed market prices compiled with Bangladesh DAM/FAO sources | Commodity-price forecasting and market context; not SME sales |
+| National adoption context | [World Bank Bangladesh FAT Survey 2019](https://microdata.worldbank.org/catalog/8221), DOI `10.48529/hgry-h633` | National firm technology-adoption survey | Context only; not a prediction-training dataset here |
+| Controlled baseline | `BD_Business_Analytics_Dataset.csv` from `01_generate_dataset.py` | Nothing collected from a real firm; all rows are generated | Software tests, leakage study, model comparison and scalability |
+
+The comparable experiment maps only genuinely observed fields to a common daily
+quantity target and includes the generated file strictly as a control. Model
+families and squared/absolute-error variants are ranked using four expanding-time
+CV folds, then evaluated on the fixed final 15%:
+
+| Dataset | Evidence status | Holdout | CV-selected model | WAPE | MAE | R² |
+|---|---|---:|---|---:|---:|---:|
+| Bangladesh retailer demand | Real, Bangladesh | 270 days | Extra Trees | **17.49%** | 4.18 units | 0.411 |
+| UCI Online Retail II | Real, UK | 107 days | XGBoost, absolute error | **30.37%** | 6,676.38 units | 0.437 |
+| Generated B-SMART | Synthetic control | 215 days | Extra Trees, absolute error | **25.28%** | 13.86 units | -0.042 |
+
+The objective-alignment audit expanded the candidate set after the original
+squared-error run. UCI remained near 30% WAPE (29.04% before the audit and
+30.37% for the deterministic CV-selected absolute-error candidate), so the honest conclusion
+is that volatility and limited history—not a simple implementation defect—set
+the current ceiling. Because this audit followed inspection of the earlier
+holdout, these daily-demand results are treated as development evidence; a new
+future or partner-SME period is required for final confirmatory testing.
+
+UCI 90-day future-repeat prediction reaches ROC-AUC **0.749**, PR-AUC
+**0.795**, Brier **0.203**, and top-decile lift **1.77×**. On four real
+Bangladesh WFP/DAM price series, the best holdout WAPE ranges from **3.14% to
+7.85%**; a last-value baseline wins three and SARIMA wins one.
+
+The newly retuned synthetic comparison uses all selection inside 3,996
+development customers and a separate 1,000-customer test. Preselected XGBoost
+scores **69.90% accuracy** (95% bootstrap CI 67.0–72.6%) and **71.52%
+macro-F1**. Synthetic churn reaches **2.67×** lift; return prediction remains a
+negative result (PR-AUC **0.083**). No metric is promoted by choosing a model
+after inspecting its holdout.
+
+Reproducible artifacts:
+
+- `artifacts/real_public/comparable_demand_benchmark.json`
+- `artifacts/real_public/real_data_validation.json`
+- `artifacts/real_public/price_forecast_benchmark.json`
+- `output/retrained_model_results.json`
+- `output/retrained_forecast_results.json`
+- `output/dataset_manifest.json` — source role, size and SHA-256 for every used dataset
+- `output/reference_verification.json` — 27/27 bibliography records verified
+- `output/pdf/Thesis_Progress_Report_2026.pdf`
+
+Current rerun commands (Python 3.12 environment):
+
+```powershell
+.\.venv312\Scripts\python.exe 09_retrain_models.py
+.\.venv312\Scripts\python.exe 10_retrain_forecasting.py
+.\.venv312\Scripts\python.exe -m ml.real_data_validation
+.\.venv312\Scripts\python.exe -m ml.market_prices --all --output artifacts\real_public
+.\.venv312\Scripts\python.exe 11_real_demand_benchmark.py
+.\.venv312\Scripts\python.exe verify_references.py
+```
+
+Primary consenting Bangladesh SME invoice data are still not collected. That is
+the remaining requirement before making field-effectiveness or multi-business
+generalization claims.
+
 CSE 4th Year Thesis — an end-to-end machine learning pipeline that turns raw retail
 transaction records into decisions a business owner can actually act on: *who* the
 valuable customers are, *why* the model thinks so, and *what* next quarter's sales
@@ -110,7 +184,7 @@ BD_Business_Analytics_Dataset.csv          (32,000 × 44, flat)
 │ XGBoost      │  │ K-Means      │  │ LSTM         │       │
 │ RandomForest │  │ elbow K=2-10 │  │   look-back 6│       │
 │ LogisticReg  │  │ silhouette   │  │   100 epochs │       │
-│              │  │ OPTIMAL_K=4  │  │ vs ARIMA     │       │
+│              │  │ K=2 metric;  │  │ + naive      │       │
 │              │  │              │  │   (2,1,2)    │       │
 └──────────────┘  └──────────────┘  └──────────────┘       │
         │                │                 │               │
@@ -169,6 +243,12 @@ python 03_clustering.py
 python 04_forecasting.py
 python 05_shap_analysis.py
 python 06_final_report.py
+python 09_retrain_models.py
+python 10_retrain_forecasting.py
+python 11_real_demand_benchmark.py
+python -m ml.real_data_validation
+python -m ml.market_prices --all --output artifacts/real_public
+python verify_references.py
 ```
 
 Run from the repository root — all paths are relative.
@@ -310,20 +390,23 @@ yet still pointless for an AI assistant to read — the PNGs and the 11 MB CSV a
 
 All figures below are the actual output of `06_final_report.py`.
 
-### 7.1 Classification — leak-free, 750 held-out customers
+### 7.1 Classification — retuned, 1,000 untouched synthetic customers
 
-These come from the v2 pipeline (`01b` → `02b`), which predicts at the customer level
-so no customer spans splits, fits the scaler on training data only, and excludes CLV.
+These come from `09_retrain_models.py`. All preprocessing, feature selection,
+hyperparameter search and family selection occur inside 3,996 development customers;
+CLV and customer ID are excluded. XGBoost is selected before the holdout is opened.
 
-| Model | Accuracy | 95% CI | F1-macro | 5-fold CV |
-|---|---|---|---|---|
-| **XGBoost** | **67.07%** | [63.87, 70.53] | 69.69% | 67.97% ± 1.18 |
-| Logistic Regression | 64.00% | [60.80, 67.47] | 65.88% | 65.09% ± 1.19 |
-| Random Forest | 62.80% | [59.47, 66.27] | 65.09% | 65.07% ± 0.91 |
+| Model | Development CV accuracy | Holdout accuracy | F1-macro |
+|---|---:|---:|---:|
+| **XGBoost (preselected)** | **70.19%** | **69.90%** | 71.52% |
+| Extra Trees | 69.62% | 70.10% | **71.99%** |
+| Random Forest | 69.37% | 68.60% | 70.59% |
+| Histogram Gradient Boosting | 69.17% | 69.30% | 71.28% |
 
-McNemar's test on XGBoost vs Random Forest gives **p = 0.0103**, so the gap is
-statistically real rather than sampling noise. The learning curve shows a 32-point
-train/CV gap — the model overfits, and more customers would help.
+The selected model's bootstrap 95% accuracy interval is **67.0–72.6%**. Extra
+Trees happens to score 0.2 point higher on the holdout, but switching to it after
+seeing the test would be test-set model selection, so 69.90% remains the primary
+reported result.
 
 ### 7.2 The leakage ablation — why 94.69% was not a result
 
@@ -333,18 +416,18 @@ The original pipeline reported 94.69%. Isolating each leak on the same split:
 |---|---|---|
 | Transaction-level + CLV (both leaks) | 94.69% | — |
 | Customer-level + CLV (CLV leak only) | 94.53% | p = 0.52 (not significant) |
-| **Customer-level, no CLV (honest)** | **67.07%** | **p = 0.01 (significant)** |
+| Customer-level, no CLV (earlier audit split) | 67.73% | p = 0.0063 |
+| **New untouched test + development-only tuning** | **69.90%** | Model fixed before test |
 
 Two things worth stating in the defence:
 
-1. **CLV alone accounts for ~27 points.** Removing group leakage barely moves the
+1. **CLV accounts for most of the apparent ~27-point advantage.** Removing group leakage barely moves the
    number, because CLV was already doing all the work — the segments sit in
    near-disjoint CLV bands, so predicting the label was really just reading it back.
-2. **With CLV present, model choice stops mattering** (p = 0.52). Only after removing
-   it does XGBoost separate from Random Forest significantly. A leak does not merely
-   inflate a score; it erases the comparison the thesis is built on.
+2. **With CLV present, model choice stops mattering** (p = 0.52). The new untouched
+   test is reported separately instead of being retrofitted into the older ablation.
 
-### 7.3 Clustering — K-Means, K=4, 4,996 customers
+### 7.3 Clustering — statistical K=2, business view K=4
 
 | Cluster | Customers | Share |
 |---|---|---|
@@ -353,26 +436,29 @@ Two things worth stating in the defence:
 | Moderate-Spender | 877 | 17.6% |
 | High-Value | 297 | 5.9% |
 
-**Silhouette score: 0.1725.** This is weak — the convention is that >0.5 indicates
+The maximum tested silhouette is **0.2837 at K=2**. The four-profile product view
+has **silhouette 0.1725** and is weak — the convention is that >0.5 indicates
 well-separated clusters. Reported as-is: the four groups are commercially usable but
 they overlap rather than sitting in clean, distinct regions of RFM space. The honest
 reading is that customer behaviour here is closer to a continuum than to four natural
 kinds, and the four-way split is a business convenience the data tolerates rather
 than one it demands.
 
-### 7.4 Forecasting — 6 held-out months
+### 7.4 Synthetic forecasting — rolling-origin selection plus 6-month holdout
 
-| Model | RMSE | MAPE |
-|---|---|---|
-| **Seasonal-naive** | **29,824,641** | **6.60%** |
-| LSTM | 35,250,424 | 11.73% |
-| ARIMA(2,1,2) | 43,509,553 | 13.29% |
+Fourteen specifications are ranked using three expanding-window folds inside the
+first 42 months. Additive Holt-Winters is selected at **7.43% mean CV WAPE**.
 
-**The trivial baseline wins.** "This month equals the same month last year" beats
-both trained models — roughly half the MAPE of the LSTM. This is not a failure: it
-is the strongest evidence in the project that the series is genuinely seasonal,
-which is the thesis's central claim about Bangladeshi retail. On 48 monthly points
-(36 training sequences), deep learning is added complexity without added accuracy.
+| Model/status | Holdout WAPE | Holdout MAPE |
+|---|---:|---:|
+| Additive Holt-Winters (preselected) | 13.46% | 12.33% |
+| Seasonal-naive (diagnostic) | **8.13%** | **6.60%** |
+| LSTM baseline rerun | — | 11.65% |
+| ARIMA(2,1,2) baseline rerun | — | 13.29% |
+
+**The diagnostic seasonal-naive baseline wins the final holdout.** It is not
+substituted as the selected model after test inspection. The disagreement between
+rolling CV and the six final months demonstrates uncertainty from only 48 observations.
 
 The earlier claim that "LSTM beats ARIMA by 21%" is technically true and materially
 misleading, because both lose to the baseline. Always report all three.
@@ -387,21 +473,21 @@ training sequences after the 6-month look-back; EarlyStopping halted training at
 12; and the ARIMA fit emitted a maximum-likelihood convergence warning. The comparison
 is fair — both models saw identical data — but neither is data-rich.
 
-### 7.5 Churn and return prediction
+### 7.5 Retuned synthetic churn and return prediction
 
 | Task | Best model | ROC-AUC | PR-AUC | Random PR-AUC | Lift@10% |
 |---|---|---|---|---|---|
-| **Churn** (`Recency > 90`) | Logistic Regression | 0.712 | 0.4211 | 0.2020 | **2.48x** |
-| **Returns** (pre-dispatch only) | Random Forest | 0.580 | 0.0877 | 0.0697 | 1.38x |
+| **Churn** (label-derived fields excluded) | Logistic Regression | 0.722 | 0.4210 | 0.2020 | **2.67x** |
+| **Returns** (pre-dispatch only) | Logistic Regression | 0.556 | 0.0832 | 0.0684 | 1.40x |
 
 Churn is genuinely usable: a retention team contacting the top-scoring 10% of
-customers reaches 2.48x more true churners than contacting 10% at random.
+customers reaches 2.67x more true churners than contacting 10% at random in the generated data.
 
 Returns are a **negative result**, reported as such. Given only what is knowable
 before dispatch, returns in this dataset are close to random.
 
 Accuracy is deliberately not reported for either: at a 6.97% return rate, predicting
-"never returns" scores 93% while being useless. PR-AUC and lift cannot be gamed that way.
+"never returns" scores about 93% while being useless. PR-AUC and lift expose that failure.
 
 ### 7.6 A third leak, and the pattern behind all three
 
@@ -415,8 +501,8 @@ That is the third instance of one mistake:
 
 | Model | Offending feature | Why it leaks | Inflated → honest |
 |---|---|---|---|
-| Segment | `Customer_Lifetime_Value_BDT` | Labels were derived from CLV bands | 94.69% → 67.07% |
-| Return | `Customer_Satisfaction_Score` | Rated after the return happened | ROC 0.97 → 0.58 |
+| Segment | `Customer_Lifetime_Value_BDT` | Labels were derived from CLV bands | 94.69% → 69.90% on new protocol |
+| Return | `Customer_Satisfaction_Score` | Rated after the return happened | ROC 0.97 → 0.556 |
 | Churn | `Recency` | The target is defined from it | prevented up front |
 
 **The rule:** a feature that restates or follows from the label is not a feature.

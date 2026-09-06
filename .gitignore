@@ -7,6 +7,8 @@
 .venv/
 venv/
 env/
+.tools/
+tmp/
 __pycache__/
 *.py[cod]
 *.egg-info/
@@ -90,9 +92,17 @@ desktop.ini
 ~$*.docx
 ~$*.pptx
 *.aux
+*.bbl
+*.blg
+*.loa
+*.lof
+*.lot
 *.log
 *.out
+*.toc
 *.synctex.gz
+thesis_report/main.pdf
+output/*.zip
 
 # ─────────────────────────────────────────────────────────────
 # Frontend — node_modules is huge and fully reproducible from

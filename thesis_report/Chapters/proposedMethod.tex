@@ -1,0 +1,376 @@
+\chapter{Proposed Methodologies}
+\label{chapter_methodology}
+
+\section{Research Design}
+
+The thesis follows a design-science and empirical evaluation approach. A
+software artifact is designed to solve a practical decision problem, while its
+analytical components are tested under reproducible protocols. The research has
+four evidence stages: (i) synthetic data for safe development and failure-mode
+analysis, (ii) public real data for external method validation, (iii) primary
+consenting Bangladeshi SME data for the main claims, and (iv) owner-centered
+usability and decision-impact evaluation.
+
+The unit of forecasting is branch--SKU--day or branch--SKU--week, depending on
+data density. The unit of customer-risk modelling is a customer snapshot at a
+historical cutoff. The unit of strategy evaluation is an eligible action whose
+cost, risk and operational feasibility are known.
+
+\section{Research Questions and Hypotheses}
+
+\begin{description}[style=nextline,leftmargin=0pt]
+  \item[RQ1.] Do Bangladesh-aware calendar, price, promotion and market features
+  improve branch--SKU demand forecasts over seasonal and statistical baselines?
+  \item[RQ2.] How accurately and reliably can historical customer snapshots
+  predict no repeat purchase in the following 60 or 90 days?
+  \item[RQ3.] Does a forecast-driven reorder policy reduce stock-outs and holding
+  cost compared with the participating owner's existing policy?
+  \item[RQ4.] Do concise Bangla action explanations improve task completion,
+  confidence and perceived usability for SME owners?
+\end{description}
+
+The associated hypotheses are:
+
+\begin{description}[style=nextline,leftmargin=0pt]
+  \item[H1.] A model with local calendar, price, promotion and market features
+  produces lower out-of-time WAPE/MASE than its otherwise identical ablation.
+  \item[H2.] A temporally evaluated customer-risk model achieves PR-AUC above the
+  outcome base rate and lift at 10\% above 1.0 on unseen future snapshots.
+  \item[H3.] Under identical demand sequences and constraints, forecast-driven
+  replenishment reduces total stock-out plus holding cost relative to the
+  current-policy baseline.
+  \item[H4.] In a counterbalanced owner study, the explanation condition improves
+  task completion or confidence without a harmful increase in completion time.
+\end{description}
+
+These hypotheses will be evaluated per business and in aggregate. Failure to
+reject a null hypothesis will be reported as a result, not repaired by changing
+the metric after inspection.
+
+\section{Target Population and Data Acquisition}
+
+The target population is inventory-based retail SMEs in Bangladesh. The minimum
+primary target is three to five businesses from a comparable vertical, with
+12--24 months of invoice lines, at least 50,000 lines in total, approximately 500
+SKUs and 2,000 pseudonymous customers. A smaller first partner with six months of
+records may be used to validate collection and import before the full study.
+
+\begin{table}[H]
+\centering
+\small
+\caption{Evidence tiers and their permitted claims.}
+\label{tab:evidence_tiers}
+\begin{tabularx}{\textwidth}{p{0.12\textwidth}p{0.27\textwidth}Y Y}
+\toprule
+\textbf{Tier} & \textbf{Source} & \textbf{Permitted use} & \textbf{Prohibited inference} \\
+\midrule
+1 & Consenting Bangladesh SME invoices and stock records & Primary forecasting, churn, strategy and usability claims & None beyond sampled firms without external validation \\
+2a & WFP/DAM Bangladesh market prices & Real local context and price forecasting benchmark & SKU sales, customer behavior or SME revenue \\
+2b & UCI Online Retail II, UK \cite{chen2012uci} & Real transaction-pipeline and future-repeat validation & Bangladesh purchasing behavior \\
+2c & Bangladesh retailer daily demand \cite{jahin2024dataset} & Real local quantity-forecast validation & Revenue, customer or multi-SKU claims \\
+3 & 32,000-row generated Bangladesh-context dataset & Development, leakage case study, demonstration & Field effectiveness or real customer behavior \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+Each import stores a provenance manifest: organization, date range, export
+system, collector, received date, checksum, row count, permission/license,
+schema version, transformations, exclusions and known limitations.
+
+\section{Ethics, Privacy and Data Governance}
+
+University ethics approval and a signed data-sharing agreement precede primary
+collection. Names, phone numbers, e-mail addresses, national IDs, account
+numbers and wallet numbers are excluded from research tables. Each organization
+receives a different salted pseudonymous customer identifier; any re-identification
+mapping remains under the business's control outside the repository.
+
+The agreement records purpose, permitted researchers, retention deadline,
+publication form and deletion procedure. Only aggregated or separately reviewed
+de-identified outputs may be published. Customer contact recommendations require
+recorded consent. Tenant identifiers are enforced in application queries and
+foreign keys so one organization's data cannot enter another's model or dashboard.
+
+\section{Canonical Data Model}
+
+The operational model contains Organization, Branch, Product, Customer,
+Supplier, SalesOrder, SalesOrderItem, Payment, InventoryBalance,
+StockMovement, PurchaseOrder, Expense, LedgerEntry, SalesReturn, Refund,
+AuditLog and ImportBatch entities. The research export converts these events to
+a canonical invoice-line table, while the synthetic research pipeline also
+demonstrates a star schema with customer, product, date, business, marketing and
+logistics dimensions around a transaction fact.
+
+\begin{figure}[H]
+\centering
+\resizebox{\textwidth}{!}{%
+\begin{tikzpicture}[
+  entity/.style={draw=dugreen,rounded corners,fill=softgreen,minimum width=2.7cm,minimum height=0.9cm,align=center},
+  event/.style={draw=dugold,rounded corners,fill=softorange,minimum width=2.9cm,minimum height=0.9cm,align=center},
+  arrow/.style={-{Latex[length=2mm]},thick,draw=gray!75}
+]
+\node[entity] (org) {Organization\\Branch};
+\node[entity,right=1.2cm of org] (product) {Product\\Supplier};
+\node[entity,right=1.2cm of product] (customer) {Customer\\Consent};
+\node[event,below=1.3cm of product] (sale) {Sale + Line Items\\Payment};
+\node[event,left=1.2cm of sale] (purchase) {Purchase Order\\Receiving};
+\node[event,right=1.2cm of sale] (return) {Return + Refund\\Receivable};
+\node[event,below=1.3cm of sale] (stock) {Append-only Stock Movements\\Inventory Balance};
+\node[entity,left=1.2cm of stock] (finance) {Expense\\Ledger};
+\node[entity,right=1.2cm of stock] (audit) {Import Batch\\Audit Log};
+\draw[arrow] (org) -- (sale);
+\draw[arrow] (product) -- (sale);
+\draw[arrow] (customer) -- (sale);
+\draw[arrow] (purchase) -- (stock);
+\draw[arrow] (sale) -- (stock);
+\draw[arrow] (return) -- (stock);
+\draw[arrow] (sale) -- (return);
+\draw[arrow] (finance) -- (audit);
+\draw[arrow] (stock) -- (audit);
+\end{tikzpicture}}
+\caption{Conceptual operational data model used by the prototype.}
+\label{fig:data_model}
+\end{figure}
+
+\section{Formal Problem Formulation}
+
+For business $b$, branch $l$, product $p$, customer $c$ and time $t$, define
+
+\begin{equation}
+  D=\{\text{Sales, Inventory, Purchase, Expense, Customer, Payment, Context}\}.
+\end{equation}
+
+\subsection{Demand Prediction}
+
+\begin{equation}
+\hat{y}_{b,l,p,t+h}=
+f(X_{\mathrm{history}},X_{\mathrm{price}},X_{\mathrm{promotion}},
+X_{\mathrm{calendar}},X_{\mathrm{market}}),
+\label{eq:demand}
+\end{equation}
+where the output is expected units at horizon $h$. Quantile models or calibrated
+residual intervals will provide a plausible demand range, not only a point.
+
+\subsection{Future Customer Inactivity}
+
+\begin{equation}
+q_{c,t}=P\!\left(\text{no purchase in }(t,t+H]\mid X_{c,t}\right),
+\label{eq:churn}
+\end{equation}
+where every feature in $X_{c,t}$ is computed using timestamps no later than $t$.
+
+\subsection{Strategy Optimization}
+
+For an eligible action $a\in A$,
+
+\begin{equation}
+U(a)=E[\Delta\text{Profit}(a)]-\text{Cost}(a)-\lambda\,\text{Risk}(a),
+\label{eq:utility}
+\end{equation}
+subject to budget, storage, current/incoming stock, supplier lead time, minimum
+order quantity and customer consent. The system returns the top feasible actions
+with model/baseline provenance and supporting factors.
+
+\section{Preprocessing and Historical Feature Construction}
+
+The pipeline validates keys, timestamps, monetary identities and stock movement
+reconciliation before modelling. Duplicates and cancellations remain auditable;
+they do not silently enter revenue. Missingness is profiled. Imputation,
+encoding and scaling are fitted only to training periods or training customers.
+
+Demand features include lagged units, rolling mean/variance, day-of-week, month,
+festival indicators, price, discount, stock-out flag, promotion and external
+market price where available. Customer snapshots include recency, frequency,
+monetary value, order-value statistics, product/category breadth, return rate,
+discount behavior, tenure and purchase rate. The outcome window is separated
+from the observation window by a purge interval for future-repeat modelling.
+
+\section{Analytical Models}
+
+\subsection{Segmentation and Classification}
+
+K-Means on scaled RFM features discovers candidate behavioral groups. Elbow and
+silhouette diagnostics inform $K$, but business interpretability is reported
+separately from natural separation. Logistic Regression, Random Forest
+\cite{breiman2001rf} and XGBoost \cite{chen2016xgboost} predict existing labels
+only after excluding label-derived CLV and grouping records by customer.
+
+\subsection{Forecasting}
+
+The baseline ladder begins with last-value and seasonal-naive forecasts, followed
+by statistical ARIMA/SARIMA, gradient boosting on lagged features, and LSTM only
+when sequence volume supports it. This ordering implements evidence from forecast
+competitions that complex models do not consistently dominate naive/statistical
+benchmarks \cite{makridakis2018m4,makridakis2022m5}.
+
+\subsection{Churn and Return Risk}
+
+Logistic Regression, Random Forest and XGBoost are compared. Churn is a
+future-repeat outcome; return risk uses pre-dispatch features only. Class weights
+and threshold selection may be tuned on validation data. Final selection uses
+PR-AUC, calibration, lift and estimated action value rather than accuracy.
+
+\subsection{Explainability}
+
+SHAP values provide global rankings and local contributions for tree models
+\cite{lundberg2017shap,lundberg2020trees}. Explanations are transformed into
+short supporting statements. They identify associations used by the model and
+are never worded as causal conclusions.
+
+\section{The \system{} Sequential Algorithm}
+
+\begin{algorithm}[H]
+\caption{\system{} Strategy Recommendation}
+\label{alg:bsmart}
+\KwIn{Business data $D$, horizon $H$, constraints $C$, model versions $M$, actions $A$}
+\KwOut{Ranked actionable recommendations $R$}
+Validate schema, timestamps, tenant ownership and missingness\;
+Build a time-aware feature snapshot $X_t$\;
+Predict SKU demand and uncertainty intervals\;
+Predict future customer inactivity probabilities\;
+Calculate KPIs and abnormal deviations\;
+Generate candidate actions from forecasts, risks and KPIs\;
+\ForEach{$a\in A$}{
+  Estimate benefit, cost and risk\;
+  Check $a$ against constraints $C$\;
+  $U(a)\leftarrow E[\Delta\mathrm{Profit}(a)]-\mathrm{Cost}(a)-\lambda\mathrm{Risk}(a)$\;
+}
+Remove infeasible actions and rank the remainder by $U(a)$\;
+Attach explanation, confidence source and supporting evidence\;
+Return the top-$K$ actions and record later owner response/outcome\;
+\end{algorithm}
+
+For $N$ transaction lines and $P$ candidate actions, validation and feature
+aggregation are $O(Nd)$ for $d$ inspected fields, and action filtering/ranking is
+$O(P\log P)$. Training cost depends on the selected model: for example, a forest
+with $T$ trees has an approximate $O(TN\log N)$ construction cost under balanced
+trees. Serving reuses versioned artifacts, so online work is feature retrieval,
+model inference and $O(P\log P)$ ranking rather than retraining.
+
+\section{Architecture and Sequential Flow}
+
+\begin{figure}[H]
+\centering
+\resizebox{0.98\textwidth}{!}{%
+\begin{tikzpicture}[
+  block/.style={draw,rounded corners,minimum width=3.0cm,minimum height=1.05cm,align=center,font=\small},
+  arrow/.style={-{Latex[length=2.2mm]},thick},
+  node distance=0.75cm
+]
+\node[block,fill=softgreen] (ops) {Business Operations\\sales, stock, purchase, returns};
+\node[block,fill=softblue,right=of ops] (canon) {Canonical Data\\validation, provenance, snapshots};
+\node[block,fill=softorange,right=of canon] (ai) {AI Analytics\\forecast, risk, segments, SHAP};
+\node[block,fill=softgreen,right=of ai] (strategy) {Strategy Engine\\constraints, utility, ranking};
+\node[block,fill=softblue,below=1.0cm of strategy] (ui) {Owner Dashboard\\reason, confidence, action};
+\node[block,fill=softgray,left=of ui] (outcome) {Outcome Tracking\\accepted action and result};
+\node[block,fill=softgray,left=of outcome] (monitor) {Monitoring\\drift, calibration, version};
+\draw[arrow] (ops) -- (canon);
+\draw[arrow] (canon) -- (ai);
+\draw[arrow] (ai) -- (strategy);
+\draw[arrow] (strategy) -- (ui);
+\draw[arrow] (ui) -- (outcome);
+\draw[arrow] (outcome) -- (monitor);
+\draw[arrow] (monitor.west) -| ($(ops.south)+(0,-0.15)$) -- (ops.south);
+\end{tikzpicture}}
+\caption{Proposed \system{} end-to-end architecture and feedback loop.}
+\label{fig:bsmart_architecture}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\resizebox{0.92\textwidth}{!}{%
+\begin{tikzpicture}[
+  lane/.style={draw=gray!60,rounded corners,minimum width=3.3cm,minimum height=0.85cm,align=center},
+  arrow/.style={-{Latex[length=2mm]},thick},
+  node distance=0.55cm
+]
+\node[lane,fill=softgreen] (e1) {1. Record/import event};
+\node[lane,fill=softgreen,below=of e1] (e2) {2. Validate and commit transaction};
+\node[lane,fill=softblue,below=of e2] (e3) {3. Freeze historical snapshot};
+\node[lane,fill=softblue,below=of e3] (e4) {4. Transform with training artifacts};
+\node[lane,fill=softorange,below=of e4] (e5) {5. Predict and explain};
+\node[lane,fill=softorange,below=of e5] (e6) {6. Apply constraints and rank};
+\node[lane,fill=softgreen,below=of e6] (e7) {7. Display action and evidence};
+\node[lane,fill=softgray,below=of e7] (e8) {8. Record response and later outcome};
+\foreach \a/\b in {e1/e2,e2/e3,e3/e4,e4/e5,e5/e6,e6/e7,e7/e8}{\draw[arrow] (\a)--(\b);}
+\end{tikzpicture}}
+\caption{Sequential flow from a business event to outcome tracking.}
+\label{fig:sequential_flow}
+\end{figure}
+
+\section{Worked Recommendation Example}
+
+Suppose a shop has the state in Table~\ref{tab:worked_reorder}. Values are a
+privacy-safe illustration, not an experimental result.
+
+\begin{table}[H]
+\centering
+\caption{Worked reorder example.}
+\label{tab:worked_reorder}
+\begin{tabular}{lrrrr}
+\toprule
+\textbf{Product} & \textbf{Last 7-day sales} & \textbf{Stock} & \textbf{Lead time} & \textbf{Forecast} \\
+\midrule
+Soybean Oil & 30 & 12 & 4 days & 34 \\
+Rice 5 kg & 18 & 40 & 3 days & 20 \\
+Sugar 1 kg & 25 & 8 & 5 days & 29 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+For Soybean Oil with safety stock six units and no incoming order,
+
+\begin{equation}
+\mathrm{Reorder}=\max(0,34+6-12)=28\ \text{units}.
+\end{equation}
+
+The interface should state: ``Expected seven-day demand is 34 units (with an
+uncertainty range shown by the model). Current stock is 12 and supplier lead
+time is four days. Order approximately 28 units today to cover forecast demand
+and safety stock.'' If no trained real-data model exists, the same card is
+labelled as a baseline recommendation.
+
+\section{Evaluation Protocol}
+
+\subsection{Forecasting Metrics and Splits}
+
+Models are trained on earlier observations and tested on the final untouched
+period. Rolling-origin evaluation will be used when data volume allows. For
+actual values $y_i$ and forecasts $\hat{y}_i$,
+
+\begin{align}
+\mathrm{MAE} &= \frac{1}{n}\sum_{i=1}^{n}|y_i-\hat{y}_i|,\\
+\mathrm{RMSE} &= \sqrt{\frac{1}{n}\sum_{i=1}^{n}(y_i-\hat{y}_i)^2},\\
+\mathrm{WAPE} &= \frac{\sum_i|y_i-\hat{y}_i|}{\sum_i|y_i|}.
+\end{align}
+
+MASE, interval coverage, stock-out units, holding units and total simulated cost
+will supplement these measures. Calendar, price/promotion, market context and
+business-specific modelling will be removed one group at a time for ablation.
+
+\subsection{Classification and Ranking Metrics}
+
+Customer-risk models report PR-AUC, ROC-AUC, Brier score, calibration plots,
+lift at 10\% and expected campaign profit. Segment classifiers report accuracy,
+macro-F1, confidence intervals and paired McNemar tests. All entity-level tasks
+keep an entity on one side of a split.
+
+\subsection{Clustering Evaluation}
+
+Candidate $K$ values are compared using inertia, silhouette and stability under
+resampling. Cluster profiles are then checked for size, RFM differences and
+actionability. Commercially named clusters are not treated as natural kinds
+when silhouette or stability is weak.
+
+\subsection{Scalability, Usability and Business Impact}
+
+The scalability plan covers 100, 500, 1,000, 10,000, 100,000 and 1,000,000
+synthetic transaction rows, measuring generation, import, preprocessing,
+training, prediction latency, API throughput, peak memory, artifact size and
+database query time. Market-basket minimum-support tests are deferred until an
+association-rule component is implemented; no placeholder values will be used.
+
+Owner usability will measure task completion, completion time, error count,
+confidence and a standard usability questionnaire, with and without explanation
+cards. Reorder impact will compare identical demand sequences under the existing
+policy and \system{} policy, reporting stock-outs, holding cost and total utility.

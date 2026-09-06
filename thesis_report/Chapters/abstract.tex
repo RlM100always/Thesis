@@ -1,0 +1,41 @@
+Small retail businesses in Bangladesh routinely create sales, inventory,
+payment and customer records, yet many lack an integrated mechanism for
+turning those records into forecasts and practical decisions. This thesis
+proposes \system{}, a Bangladesh-focused framework that connects daily business
+operations with leakage-aware machine learning, explainability and
+constraint-aware action ranking. The intended outputs are SKU demand
+forecasts, future customer inactivity scores, customer segments, performance
+indicators and recommendations such as reorder or retention priorities.
+
+As of \reportdate, a local end-to-end minimum viable product is implemented.
+It supports organization and branch isolation, catalogue and inventory
+management, sales, purchases, returns, expenses, ledgers, durable CSV/XLSX
+imports, model training, a FastAPI service and a React dashboard. The research
+pipeline includes supervised and unsupervised segmentation, LSTM and ARIMA
+forecasting with a seasonal-naive baseline, churn and return prediction, SHAP
+analysis, and chronological real-data validation. Six automated backend tests
+pass and the production frontend builds successfully.
+
+Current experiments are real-data first. Under an identical daily-demand target,
+expanding-window selection and fixed chronological holdouts, dataset-specific
+models obtain 17.49\% WAPE on a 1,826-day real Bangladeshi retailer series and 30.37\%
+on UCI Online Retail II. On UCI customer snapshots, 90-day future-repeat
+prediction reaches ROC-AUC 0.749, PR-AUC 0.795 and 1.77x top-decile lift. A
+separate WFP/DAM Bangladesh price benchmark gives holdout WAPE between 3.14\%
+and 7.85\% for the winning method across four staple series; simple last-value
+forecasts win three. Controlled generated-data experiments are reported only as
+comparisons: development-only tuning selects XGBoost at 69.90\% segment holdout
+accuracy (95\% CI [67.0\%, 72.6\%]), synthetic churn reaches 2.67x lift, and
+return prediction remains weak (PR-AUC 0.083). These outcomes expose why
+leakage control, untouched tests and strong baselines matter more than selecting
+a model after observing favourable test accuracy.
+
+These are prototype and external-validation results, not final field claims.
+The primary unfinished dependency is consenting invoice-level data from
+Bangladeshi SMEs. Work through February 2027 therefore focuses on ethics and
+data agreements, primary data collection, calibrated temporal evaluation,
+ablation and scalability studies, owner usability testing, business-impact
+simulation or pilot evaluation, and final thesis consolidation.
+
+\textbf{Keywords:} Bangladesh SMEs, business analytics, demand forecasting,
+customer segmentation, churn prediction, explainable AI, decision support.

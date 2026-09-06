@@ -1,0 +1,66 @@
+\chapter{Completion and Academic Audit Checklist}
+\label{appendix_audit}
+
+\section{Supervisor Requirement Mapping}
+
+\begin{longtable}{p{0.37\textwidth}p{0.14\textwidth}p{0.38\textwidth}}
+\caption{Mapping of supplied planning notes to this progress report.}\\
+\toprule
+\textbf{Requirement} & \textbf{Status} & \textbf{Location / note} \\
+\midrule
+\endfirsthead
+\toprule
+\textbf{Requirement} & \textbf{Status} & \textbf{Location / note} \\
+\midrule
+\endhead
+English LaTeX report & Complete & Full source under \texttt{thesis\_report/} \\
+Chapter 1: motivation, objectives, contributions, challenges, organization & Complete & Chapter~\ref{chapter_introduction} \\
+Background definitions and theory & Complete for current stage & Chapter~\ref{chapter_backStudy}, Background Study \\
+Minimum 20 papers, 3--4 lines each & Complete & Twenty-two core-paper summaries in Section~\ref{sec:literature_review} \\
+Existing-system limitation table & Complete & Table~\ref{tab:existing_limitations} \\
+Proposed problem formulation & Complete & Equations~\ref{eq:demand}--\ref{eq:utility} \\
+Sequential algorithm and flowchart & Complete & Algorithm~\ref{alg:bsmart}, Figures~\ref{fig:bsmart_architecture} and \ref{fig:sequential_flow} \\
+Worked example & Complete & Table~\ref{tab:worked_reorder} and reorder calculation \\
+Experimental results with honest current evidence & Complete & Chapter~\ref{chapter_experimentalResults} \\
+Scalability table/graph & Partial & Actual 100/500/1,000-row smoke results; full range pending \\
+Minimum-support association-rule experiment & Blocked by scope & No association-rule implementation; no values fabricated \\
+Next work and February 2026--February 2027 timeline & Complete & Chapter~\ref{chapter_conclusion}, Table~\ref{tab:gantt} \\
+Publication reference/plan & Planned & Final manuscript topic listed in expected outputs \\
+\bottomrule
+\end{longtable}
+
+\section{Evidence Integrity Checklist}
+
+Before final submission the authors will verify each item:
+
+\begin{enumerate}[label=\arabic*.]
+  \item Every empirical number links to a committed code version, dataset
+  manifest and saved artifact.
+  \item Synthetic, public-real and primary-real results appear in separate
+  tables and are described with their permitted claims.
+  \item No customer or later outcome crosses a training/test boundary.
+  \item Encoders, imputers, scalers and thresholds are fitted only on training
+  or validation data as appropriate.
+  \item Every forecast model is compared with a relevant naive baseline on an
+  untouched future period.
+  \item Imbalanced tasks report PR-AUC, base rate, lift and calibration, not
+  accuracy alone.
+  \item SHAP explanations are generated from the final audited model and are not
+  written as causal findings.
+  \item Partner permissions, anonymization, retention and deletion are documented.
+  \item Figures, tables and pseudocode are produced by the authors and every
+  external idea, dataset or result has a verifiable citation.
+  \item The final draft is reviewed under University of Dhaka policy, including
+  the supervisor's similarity target and any required disclosure of AI assistance.
+  \item Both authors can reproduce and explain every reported experiment and
+  recommendation calculation.
+\end{enumerate}
+
+\section{Known Open Items}
+
+The critical open item is primary partner data. Other open items are the 40+ work
+final literature review, corrected v2 SHAP generation, full scalability runs,
+calibration and drift evaluation, strategy-policy simulation, owner usability,
+frontend bundle splitting, wider automated testing and final presentation. The
+current B-SMART name should also be checked against the literature before it is
+frozen for publication.

@@ -1,0 +1,167 @@
+\chapter{Conclusions}
+\label{chapter_conclusion}
+
+\section{Research Summary}
+\label{researchsummary}
+
+This thesis addresses the gap between recording small-business transactions and
+making defensible operational decisions from them. The proposed \system{}
+framework connects an auditable retail operations layer, leakage-safe predictive
+analytics, explanation, business constraints and action ranking. The system is
+Bangladesh-oriented through its payment methods, calendar/context features,
+currency, Bangla-first daily interface and primary data plan.
+
+The current implementation is a working local MVP. It covers branch and tenant
+isolation, products, inventory, sales, purchases, returns, finance, customers,
+suppliers, durable imports, canonical exports, model training, an API, a web
+dashboard and strategy recommendations. The codebase passes its current six-test
+backend suite and produces a valid production frontend build.
+
+The strongest current evidence comes from public real data. A task-aligned
+daily-demand benchmark selects a model within each development period and
+obtains fixed-holdout WAPE of 17.49\% on the Bangladesh retailer
+series and 30.37\% on UCI Online Retail II. UCI future-repeat prediction reaches
+PR-AUC 0.795 and ROC-AUC 0.749. On WFP/DAM Bangladesh commodity prices,
+last-value forecasts win three of four series and SARIMA wins one. Complexity
+must therefore be earned by out-of-time evidence.
+
+The controlled synthetic results provide a second methodological lesson. A
+legacy segment score of 94.69\% is invalid because CLV nearly reconstructs the
+label. With a new untouched 1,000-customer test, training-only feature selection
+and model-family choice, selected XGBoost obtains 69.90\% accuracy and 71.52\%
+macro-F1. Synthetic churn reaches 2.67x top-decile lift, while return prediction
+remains weak. Negative results are retained rather than concealed.
+
+The report does not conclude that the system improves real SME performance yet.
+That claim requires consenting invoice and stock histories, calibrated
+per-business tests, an owner study and strategy impact measurement. The present
+contribution is a technically complete platform and a scientifically honest path
+to that evidence.
+
+\section{Current Completion Assessment}
+
+\begin{table}[H]
+\centering
+\small
+\caption{Progress assessment at \reportdate.}
+\label{tab:completion_assessment}
+\begin{tabularx}{\textwidth}{p{0.29\textwidth}p{0.18\textwidth}Y}
+\toprule
+\textbf{Work package} & \textbf{Assessment} & \textbf{Evidence / exit condition} \\
+\midrule
+Problem and scope & Complete for current stage & Approved title, retail SME scope and four research questions \\
+Core literature review & Complete for current stage & Twenty-two synthesized papers, 27 verified references and literature matrix; expand for final \\
+Operations MVP & Complete for local thesis use & End-to-end commerce, inventory, finance, import and audit flows \\
+Analytics MVP & Complete for current stage & Segmentation, forecast, churn, return, SHAP and leakage experiments \\
+Strategy MVP & Complete for current stage & Reorder/retention ranking with baseline/model provenance \\
+Public-real validation & Complete for current stage & Comparable UCI/Bangladesh demand, UCI future-repeat and WFP/DAM benchmark artifacts \\
+Primary SME acquisition & Critical pending item & Ethics approval, agreements and 3--5 comparable businesses \\
+Final empirical study & Pending & Temporal/leave-one-business-out tests, ablations, calibration and costs \\
+Owner usability and impact & Pending & Counterbalanced tasks plus policy simulation or pilot \\
+Final thesis and defence & In progress & Verified report, final figures, similarity audit and presentation \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\section{Future Work Plan}
+\label{futureplans}
+
+\subsection{Priority 1: Ethics and Primary Data}
+
+The immediate task is to finalize the target retail vertical, ethics submission,
+consent form, data-sharing agreement and data dictionary. Three to five partners
+will be recruited. Each file will pass provenance, privacy, key, monetary,
+stock/return reconciliation, missingness and date-range checks before modelling.
+
+\subsection{Priority 2: Final Leakage-Safe Experiments}
+
+Demand models will use rolling or final-period evaluation. The baseline ladder
+will include last-value, seasonal-naive and statistical methods before gradient
+boosting or sequence models. Future-repeat snapshots will be horizon-purged and
+evaluated with PR-AUC, ROC-AUC, Brier score, calibration and lift. Results will be
+reported per business and under leave-one-business-out transfer. Corrected SHAP
+artifacts will be generated only from the final leakage-safe models.
+
+\subsection{Priority 3: Ablation, Scalability and Strategy Value}
+
+Ablations will remove calendar, market-price, price/promotion and customer
+features and will compare global with business-specific models. Scalability runs
+will extend through one million synthetic rows with repetitions and uncertainty.
+The reorder policy will be evaluated on identical demand paths against owner or
+standard baselines using stock-out and holding costs. Association-rule
+minimum-support experiments will be conducted only if market-basket analysis is
+implemented within the final scope.
+
+\subsection{Priority 4: Owner-Centered Evaluation and Hardening}
+
+Representative users will complete operational and decision tasks with and
+without concise explanation cards. The study will record completion, time,
+errors, confidence and usability. Engineering work includes broader failure and
+concurrency tests, frontend code splitting, backup/restore, calibration/drift
+views and versioned outcome tracking. OAuth, statutory accounting and native
+offline mobile support remain optional extensions unless required for the study.
+
+\section[Project Timeline: February 2026--February 2027]{Project Timeline:\\February 2026--February 2027}
+
+Table~\ref{tab:gantt} uses C for completed work, A for active work at the status
+date and P for planned work. A blank cell means the work package is not scheduled
+for that month. Because the status date is early September, September contains
+both completed/current and active work packages.
+
+\begin{landscape}
+\fontsize{6.6}{7.2}\selectfont
+\begin{table}[H]
+\centering
+\caption{Thesis work plan from February 2026 to February 2027.}
+\label{tab:gantt}
+\setlength{\tabcolsep}{2.2pt}
+\renewcommand{\arraystretch}{0.88}
+\begin{tabularx}{\linewidth}{Y*{13}{c}}
+\toprule
+\textbf{Work package} & \makecell{Feb\\26} & \makecell{Mar\\26} & \makecell{Apr\\26} & \makecell{May\\26} & \makecell{Jun\\26} & \makecell{Jul\\26} & \makecell{Aug\\26} & \makecell{Sep\\26} & \makecell{Oct\\26} & \makecell{Nov\\26} & \makecell{Dec\\26} & \makecell{Jan\\27} & \makecell{Feb\\27} \\
+\midrule
+Problem, proposal and scope & \cmark & \cmark & & & & & & & & & & & \\
+Background and core literature & \cmark & \cmark & \cmark & \cmark & & & & \amark & \pmark & \pmark & \pmark & \pmark & \\
+Synthetic data and initial pipeline & & \cmark & \cmark & \cmark & \cmark & \cmark & & & & & & & \\
+Leakage audit and corrected models & & & & \cmark & \cmark & \cmark & \cmark & & & & & & \\
+Operations/API/frontend MVP & & & \cmark & \cmark & \cmark & \cmark & \cmark & \cmark & & & & & \\
+Public-real data validation & & & & & & & \cmark & \cmark & & & & & \\
+Ethics, partner agreements and pilot import & & & & & & & & \amark & \pmark & & & & \\
+Primary SME data collection/cleaning & & & & & & & & & \pmark & \pmark & \pmark & & \\
+Final temporal models and ablations & & & & & & & & & & \pmark & \pmark & \pmark & \\
+Scalability and strategy simulation & & & & & & & & & & \pmark & \pmark & \pmark & \\
+Owner usability/pilot evaluation & & & & & & & & & & & \pmark & \pmark & \\
+Thesis writing, audit and revision & & & & & & & & \amark & \pmark & \pmark & \pmark & \pmark & \pmark \\
+Defence preparation and submission & & & & & & & & & & & & \pmark & \pmark \\
+\bottomrule
+\end{tabularx}
+\vspace{0.15cm}
+
+\cmark\ completed \qquad \amark\ active at status date \qquad \pmark\ planned
+\end{table}
+\end{landscape}
+
+\section{Expected Final Outputs}
+
+By February 2027 the project aims to deliver:
+
+\begin{enumerate}
+  \item a reproducible thesis and source repository with a 40+ work literature
+  review and verified references;
+  \item a documented de-identified primary SME dataset or, if recruitment is
+  constrained, a transparent account of collected scope and limitations;
+  \item leakage-safe demand and future-repeat benchmarks with calibration,
+  ablation and per-business transfer analysis;
+  \item a tested constraint-aware strategy policy with stock-out/holding-cost
+  simulation or pilot outcomes;
+  \item usability results for owner-facing explanations;
+  \item a hardened local demonstration, final diagrams, experiment artifacts
+  and defence presentation; and
+  \item a publication-ready manuscript focused on the strongest verified
+  contribution, most likely leakage-safe low-data decision support for
+  Bangladeshi retail SMEs.
+\end{enumerate}
+
+The final submission will retain negative results and evidence labels. If primary
+data volume is insufficient for a deep model or a field impact claim, the thesis
+will narrow the claim instead of expanding the conclusion beyond the evidence.

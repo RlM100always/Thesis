@@ -1,0 +1,75 @@
+\chapter{Canonical Fields and API Surface}
+\label{appendix_api}
+
+\section{Minimum Canonical Sales Fields}
+
+The real-data training path accepts a canonical invoice-line representation. The
+full schema contains additional fields, but Table~\ref{tab:canonical_fields}
+shows the minimum concepts needed for the planned study.
+
+\begin{longtable}{p{0.24\textwidth}p{0.20\textwidth}p{0.45\textwidth}}
+\caption{Minimum canonical research fields.}
+\label{tab:canonical_fields}\\
+\toprule
+\textbf{Field concept} & \textbf{Type} & \textbf{Purpose / rule} \\
+\midrule
+\endfirsthead
+\toprule
+\textbf{Field concept} & \textbf{Type} & \textbf{Purpose / rule} \\
+\midrule
+\endhead
+Organization ID & pseudonymous string & Tenant boundary; never use as an unconstrained predictive shortcut \\
+Branch ID & pseudonymous string & Branch-level aggregation and transfer evaluation \\
+Invoice and line ID & string & Uniqueness, cancellation and reconciliation \\
+Timestamp & timezone-aware datetime & Observation cutoff and chronological split \\
+SKU and category & pseudonymous or categorical & Product demand, stock and aggregation hierarchy \\
+Quantity & numeric & Units sold; returns/cancellations retain separate auditable signs/status \\
+Unit price and discount & BDT numeric & Revenue identity and price/promotion features \\
+Customer ID & salted per-organization pseudonym & RFM/future-repeat snapshots; optional if not legitimately available \\
+Payment method & categorical & Cash, bKash, Nagad, Bangla QR, card or due settlement \\
+Stock/stock-out status & numeric/flag & Availability, lost-demand interpretation and reorder evaluation \\
+Promotion or calendar context & category or flag & Campaign and Bangladesh seasonal-event ablations \\
+Supplier lead time & days & Feasibility and reorder timing \\
+Consent flag & Boolean & Eligibility for retention contact; never inferred \\
+Source batch/checksum & string & Provenance and reproducibility \\
+\bottomrule
+\end{longtable}
+
+\section{Representative API Groups}
+
+\footnotesize
+\begin{longtable}{p{0.34\textwidth}p{0.56\textwidth}}
+\caption{Representative implemented API surface.}\\
+\toprule
+\textbf{Route group} & \textbf{Function} \\
+\midrule
+\endfirsthead
+\toprule
+\textbf{Route group} & \textbf{Function} \\
+\midrule
+\endhead
+\path{GET /health} & Service and artifact readiness \\
+\path{/api/overview, /segments, /forecast} & Fixed research dashboard summaries \\
+\path{/api/models/metrics} & Corrected metrics and leakage ablation \\
+\path{/api/research/real-data-validation} & Read-only public-real validation results \\
+\path{/api/customers/.../explain} & Customer profile and local SHAP contributions \\
+\path{/api/predict/...} & Segment, churn and return ad-hoc inference \\
+\path{/api/upload/...} & Temporary parse, map, overview, forecast, segmentation, product analysis and dataset-specific churn training \\
+\path{/api/app/organizations, /branches, /staff} & Tenant and directory management \\
+\path{/api/app/products, /inventory, /sales} & Catalogue, stock and atomic sale operations \\
+\path{/api/app/purchases, /returns, /expenses, /ledger} & Purchase/receive, return/refund and accounts flows \\
+\path{/api/app/imports} & Durable real-data intake and validation \\
+\path{/api/app/datasets/sales.csv} & Tenant-scoped canonical sales export \\
+\path{/api/app/train-demand-model} & Organization-specific chronological training \\
+\path{/api/app/dashboard, /recommendations} & Operational KPIs and constraint-aware action ranking \\
+\bottomrule
+\end{longtable}
+\normalsize
+
+\section{Role of the Two Analytics Surfaces}
+
+The \texttt{/api/...} routes expose fixed thesis-research artifacts and an
+anonymous exploratory upload flow. The \texttt{/api/app/...} routes operate on
+tenant-scoped business records. This separation prevents an exploratory upload
+from silently becoming a production organization model and enables research
+results to remain reproducible while operational data change.

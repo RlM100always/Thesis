@@ -1,0 +1,155 @@
+\chapter{Introduction}
+\label{chapter_introduction}
+
+\section{Motivations}
+
+Business intelligence and analytics convert operational records into
+descriptive, predictive and prescriptive support for decision makers
+\cite{chen2012business}. The opportunity is particularly relevant to small
+businesses because a modest shop already generates invoices, product movements,
+mobile-wallet payments, customer histories and supplier transactions. The data
+often remain separated across paper ledgers, spreadsheets and point solutions,
+so the owner can answer what happened but not reliably why it happened or what
+action should follow.
+
+Consider an inventory-based retailer before Eid. The owner must decide how much
+stock to purchase, which customers are becoming inactive, which product or
+branch is underperforming and whether a promotion is profitable. Under-forecasting
+causes stock-outs and lost sales; over-forecasting locks scarce capital in slow
+stock. A generic monthly chart cannot resolve this decision because it does not
+combine demand history, current stock, supplier lead time, promotion, calendar
+context, uncertainty and cash constraints.
+
+Bangladesh adds important design requirements. Research on rural Bangladeshi
+SMEs found that organizational, technological and environmental factors shape
+ICT adoption \cite{hoque2016ict}, while later work identifies cost, management
+support, relative advantage, competitive pressure and government support as
+significant adoption determinants \cite{shahadat2023digital}. Studies of mobile
+payment and MFS use also show that ease, expected benefit and local usage
+practices matter \cite{rahman2023mobile,hazra2021mfs}. Therefore, a usable
+system should treat local payment channels and business calendars as core data,
+use low-friction workflows, and explain recommendations in language an owner can
+act upon.
+
+The approved thesis title is broad, but the implementation scope is deliberately
+narrowed to Bangladeshi retail and inventory-based SMEs. This makes data
+requirements, workflows, evaluation targets and business actions concrete while
+allowing future sector-specific templates.
+
+\section{Problem Statement}
+
+Existing small-business tools commonly stop at transaction recording and static
+dashboards. Standalone research models, on the other hand, may forecast or
+classify a public dataset without entering the operational loop where a business
+records sales, controls stock and acts on a prediction. Three gaps follow:
+
+\begin{enumerate}[label=\arabic*.]
+  \item \textbf{Fragmented operations and analytics.} Sales, inventory,
+  customer, purchase and payment data are not maintained in one auditable,
+  tenant-isolated system.
+  \item \textbf{Weak scientific validity.} Synthetic or foreign data are
+  sometimes treated as local field evidence; repeated customers cross random
+  train/test splits; post-outcome variables leak into features; and complex
+  models are not compared against simple baselines.
+  \item \textbf{No decision bridge.} A model score is presented without a
+  feasible action, uncertainty, business constraint, local explanation or
+  mechanism for recording outcomes.
+\end{enumerate}
+
+The central problem is consequently to design and evaluate one reproducible
+framework that connects trustworthy data capture, leakage-free analytics and
+actionable strategy for Bangladeshi SMEs. The work must remain useful on small
+datasets, must disclose when a baseline is stronger than an AI model, and must
+not claim production readiness before real local validation.
+
+\section{Objectives}
+
+\subsection{General Objective}
+
+The general objective is to develop and evaluate an AI-powered business
+analytics system that helps Bangladeshi retail SMEs monitor performance,
+extract explainable insights and prioritize feasible business actions.
+
+\subsection{Specific Objectives}
+
+\begin{enumerate}[label=O\arabic*.]
+  \item Design a canonical, auditable and tenant-isolated data model covering
+  sales, stock, purchases, returns, customers, suppliers, payments and expenses.
+  \item Build reproducible preprocessing and temporal feature pipelines for
+  demand, future inactivity, segmentation and performance analysis.
+  \item Compare statistical, machine-learning and simple baseline methods using
+  task-appropriate metrics and leakage-safe splits.
+  \item provide global and instance-level explanations while clearly indicating
+  whether a recommendation comes from a trained model or a baseline rule.
+  \item Convert forecasts, risks and KPIs into constraint-aware reorder,
+  retention and operational action rankings.
+  \item Validate the method first on transparent synthetic/public datasets and
+  finally on consenting Bangladeshi SME records and owner-centered evaluation.
+\end{enumerate}
+
+\section{Contributions}
+
+The contribution is an integrated framework rather than a claim of a new base
+classifier. At the present stage, the project contributes:
+
+\begin{itemize}
+  \item \textbf{An operational-to-analytical architecture.} The same local
+  system records business events, exports a canonical research dataset, trains
+  models and serves recommendations.
+  \item \textbf{Scientific guardrails.} Customer-level or temporal splits,
+  training-only transformations, explicit baseline comparisons, provenance and
+  separation of synthetic, public-real and primary-real evidence are part of the
+  design.
+  \item \textbf{A documented leakage case study.} A legacy 94.69\% segment score
+  used target-defining CLV. A new development-only tuning protocol and untouched
+  1,000-customer test produce 69.90\% selected-model accuracy; a post-purchase
+  satisfaction feature similarly inflated return prediction.
+  \item \textbf{Bangladesh-aware product design.} The schema supports BDT,
+  bKash, Nagad, Bangla QR, local seasonal events and a Bangla-first operational
+  interface.
+  \item \textbf{A constraint-aware recommendation layer.} Demand, stock, lead
+  time, consent and cost are evaluated before an action is ranked.
+  \item \textbf{Reproducible real-data evidence.} The repository contains a
+  common daily-demand benchmark on UCI and Bangladesh observations, a UCI
+  future-repeat study, WFP/DAM price benchmarks, saved models, audit JSON,
+  figures and tests.
+\end{itemize}
+
+The intended final contributions additionally include a consenting multi-SME
+dataset protocol, leave-one-business-out evaluation, calibrated uncertainty,
+owner usability results and a simulated or pilot business-impact comparison.
+
+\section{Challenges}
+
+The principal challenge is data rather than model availability. Public
+Bangladeshi sources currently provide market prices or a single demand series,
+but not the joint customer--SKU--stock--transaction history required for the
+full research questions. Partner recruitment, consent, de-identification and
+schema reconciliation are therefore on the critical path.
+
+Technical challenges include intermittent SKU demand, few observations for new
+businesses, changing festivals and prices, missing identifiers, class imbalance,
+concept drift and the gap between an accurate prediction and a profitable
+decision. Scientific challenges include leakage, fair baseline selection,
+uncertainty calibration and transportability from one business to another.
+Human challenges include digital skill variation, time pressure at the point of
+sale, trust in model output and explaining uncertainty without technical jargon.
+
+\section{Scope and Current Report Boundary}
+
+This document is a progress report current to \reportdate. It covers the project
+period \projectperiod. The implemented system, verified tests and executed
+synthetic/public-data experiments are reported in the past tense. Planned
+primary SME experiments, user studies and pilot impact evaluation are explicitly
+reported as future work. This distinction prevents a functioning prototype from
+being mistaken for a validated commercial product.
+
+\section{Organization}
+
+Chapter~\ref{chapter_backStudy} defines the terminology, reviews more than
+twenty relevant works and identifies limitations of existing systems.
+Chapter~\ref{chapter_methodology} formalizes the research questions, data model,
+algorithms, architecture and evaluation protocol. Chapter~\ref{chapter_implementation}
+documents the implemented platform. Chapter~\ref{chapter_experimentalResults}
+reports current experiments and threats to validity. Chapter~\ref{chapter_conclusion}
+summarizes progress and gives the February 2026--February 2027 work plan.

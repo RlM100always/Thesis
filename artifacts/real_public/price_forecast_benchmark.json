@@ -1,0 +1,153 @@
+{
+  "source": "WFP Price Database via HDX (CC BY-IGO)",
+  "source_url": "https://data.humdata.org/dataset/wfp-food-prices-for-bangladesh",
+  "real_data": true,
+  "note": "Real observed Bangladeshi market prices. Not SME sales data.",
+  "rows_loaded": 24500,
+  "results": [
+    {
+      "commodity": "Rice (coarse)",
+      "unit": "KG",
+      "months_total": 216,
+      "train_from": "2004-01-01",
+      "train_to": "2025-05-01",
+      "test_from": "2025-06-01",
+      "test_to": "2026-07-01",
+      "models": {
+        "seasonal_naive_12": {
+          "mae": 7.3125,
+          "rmse": 11.795294789307585,
+          "wape": 0.1423138364728874,
+          "mase": 1.1880333563211585
+        },
+        "naive_last_value": {
+          "mae": 1.6137500000000002,
+          "rmse": 1.9820859172430791,
+          "wape": 0.03140635263017053,
+          "mase": 0.26217966889070354
+        },
+        "sarima_111_110_12": {
+          "mae": 8.305270343935026,
+          "rmse": 9.157085985027255,
+          "wape": 0.16163485614904485,
+          "mase": 1.3493248823056014
+        },
+        "gradient_boosting": {
+          "mae": 11.773146713379688,
+          "rmse": 11.96967899988228,
+          "wape": 0.22912569930109108,
+          "mase": 1.912737231365181
+        }
+      },
+      "best_by_wape": "naive_last_value"
+    },
+    {
+      "commodity": "Wheat flour",
+      "unit": "KG",
+      "months_total": 212,
+      "train_from": "2005-10-01",
+      "train_to": "2025-07-01",
+      "test_from": "2025-08-01",
+      "test_to": "2026-07-01",
+      "models": {
+        "seasonal_naive_12": {
+          "mae": 4.736666666666666,
+          "rmse": 5.099248719174227,
+          "wape": 0.08663445563870811,
+          "mase": 0.8530283291184508
+        },
+        "naive_last_value": {
+          "mae": 4.674166666666666,
+          "rmse": 5.097082907572396,
+          "wape": 0.08549131978844367,
+          "mase": 0.8417726773443686
+        },
+        "sarima_111_110_12": {
+          "mae": 4.29105782816847,
+          "rmse": 4.8292182269949215,
+          "wape": 0.07848419262299632,
+          "mase": 0.7727784425010272
+        },
+        "gradient_boosting": {
+          "mae": 13.058468139489696,
+          "rmse": 13.228177659734984,
+          "wape": 0.2388416492765876,
+          "mase": 2.3517051212967113
+        }
+      },
+      "best_by_wape": "sarima_111_110_12"
+    },
+    {
+      "commodity": "Lentils (masur)",
+      "unit": "KG",
+      "months_total": 199,
+      "train_from": "2005-10-01",
+      "train_to": "2025-07-01",
+      "test_from": "2025-08-01",
+      "test_to": "2026-07-01",
+      "models": {
+        "seasonal_naive_12": {
+          "mae": 13.644583333333335,
+          "rmse": 14.948696640510168,
+          "wape": 0.14236278665362462,
+          "mase": 1.0593033142941648
+        },
+        "naive_last_value": {
+          "mae": 6.677083333333333,
+          "rmse": 8.16504554488216,
+          "wape": 0.06966634061515052,
+          "mase": 0.5183783434074568
+        },
+        "sarima_111_110_12": {
+          "mae": 21.077199942351424,
+          "rmse": 22.825062459823855,
+          "wape": 0.2199120959097638,
+          "mase": 1.636337820622858
+        },
+        "gradient_boosting": {
+          "mae": 9.264625518439749,
+          "rmse": 10.59552355741414,
+          "wape": 0.09666384629607824,
+          "mase": 0.7192633353194504
+        }
+      },
+      "best_by_wape": "naive_last_value"
+    },
+    {
+      "commodity": "Oil (palm)",
+      "unit": "L",
+      "months_total": 197,
+      "train_from": "2005-10-01",
+      "train_to": "2025-07-01",
+      "test_from": "2025-08-01",
+      "test_to": "2026-07-01",
+      "models": {
+        "seasonal_naive_12": {
+          "mae": 10.349583333333328,
+          "rmse": 11.77228852361907,
+          "wape": 0.06406840428687496,
+          "mase": 0.5894965649315727
+        },
+        "naive_last_value": {
+          "mae": 9.009583333333332,
+          "rmse": 10.809177524215242,
+          "wape": 0.05577322379705696,
+          "mase": 0.5131721978950602
+        },
+        "sarima_111_110_12": {
+          "mae": 37.65452460654311,
+          "rmse": 38.20541380418564,
+          "wape": 0.23309781930564868,
+          "mase": 2.1447445945188024
+        },
+        "gradient_boosting": {
+          "mae": 47.2259467723917,
+          "rmse": 48.29590073355222,
+          "wape": 0.29234906886531964,
+          "mase": 2.6899182799274897
+        }
+      },
+      "best_by_wape": "naive_last_value"
+    }
+  ]
+}

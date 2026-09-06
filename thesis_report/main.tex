@@ -1,0 +1,83 @@
+\documentclass[a4paper,11pt,oneside]{Thesis}
+
+\graphicspath{{Figures/}}
+
+\usepackage[square,numbers,comma,sort&compress]{natbib}
+\usepackage{longtable}
+\usepackage{multirow}
+\usepackage{tabularx}
+\usepackage{makecell}
+\usepackage{array}
+\usepackage{enumitem}
+\usepackage{float}
+\usepackage{pdflscape}
+\usepackage[table]{xcolor}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,shapes.geometric,fit,calc}
+\usepackage[ruled,vlined,linesnumbered]{algorithm2e}
+\usepackage{microtype}
+
+\definecolor{dugreen}{RGB}{0,92,72}
+\definecolor{dugold}{RGB}{193,145,44}
+\definecolor{softgreen}{RGB}{226,241,235}
+\definecolor{softblue}{RGB}{229,239,249}
+\definecolor{softorange}{RGB}{252,237,216}
+\definecolor{softgray}{RGB}{240,240,240}
+
+\hypersetup{
+  colorlinks=true,
+  linkcolor=dugreen,
+  citecolor=dugreen,
+  urlcolor=blue,
+  pdftitle={AI-Powered Business Analytics System for Performance Evaluation, Insight Extraction, and Strategy Optimization},
+  pdfauthor={Md. Rakib Hossain and Shah Jamal Islam},
+  pdfsubject={Thesis Progress Report, February 2026 - February 2027},
+  pdfkeywords={Bangladesh SMEs, business analytics, demand forecasting, customer segmentation, churn, explainable AI, B-SMART}
+}
+
+\newcommand{\system}{B-SMART}
+\newcommand{\reportdate}{6 September 2026}
+\newcommand{\projectperiod}{February 2026 - February 2027}
+\newcommand{\cmark}{\cellcolor{softgreen}\textbf{C}}
+\newcommand{\amark}{\cellcolor{softorange}\textbf{A}}
+\newcommand{\pmark}{\cellcolor{softblue}\textbf{P}}
+\newcommand{\na}{--}
+\newcolumntype{Y}{>{\raggedright\arraybackslash}X}
+\newcolumntype{C}[1]{>{\centering\arraybackslash}p{#1}}
+\setlength{\emergencystretch}{2em}
+
+\begin{document}
+
+\include{title}
+\setstretch{1.15}
+\include{preamble}
+
+\mainmatter
+\pagestyle{fancy}
+\fancyhead{}
+\rhead{\thepage}
+\lhead{\fancyplain{}{\rightmark}}
+\setstretch{1.18}
+\renewcommand{\sectionmark}[1]{\markright{\thesection\ #1}}
+
+\include{Chapters/introduction}
+\cleardoublepage
+\include{Chapters/artoftheworks}
+\cleardoublepage
+\include{Chapters/proposedMethod}
+\cleardoublepage
+\include{Chapters/implementations}
+\cleardoublepage
+\include{Chapters/experimentalResults}
+\cleardoublepage
+\include{Chapters/conclusions}
+\cleardoublepage
+
+\addtocontents{toc}{\vspace{1em}}
+\backmatter
+\label{Bibliography}
+\lhead{\emph{Bibliography}}
+\bibliographystyle{acm}
+\bibliography{Bibliography}
+
+\end{document}

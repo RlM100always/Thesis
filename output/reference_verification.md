@@ -1,0 +1,35 @@
+# Thesis reference verification
+
+Date: 2026-09-06
+
+Verified: **27 / 27**
+
+| Key | Registry/source | DOI/URL | Title match | Year match | Status |
+|---|---|---|---:|---:|---|
+| `chen2012business` | Crossref | 10.2307/41703503 | True | True | verified |
+| `hoque2016ict` | Crossref | 10.1177/0266666915578202 | True | True | verified |
+| `shahadat2023digital` | Crossref | 10.1177/09721509221137199 | True | True | verified |
+| `rahman2023mobile` | none | 10.3329/dujbst.v42i2.59715 | - | - | verified |
+| `hazra2021mfs` | Crossref | 10.1002/isd2.12166 | True | True | verified |
+| `ngai2009crm` | Crossref | 10.1016/j.eswa.2008.02.021 | True | True | verified |
+| `fader2005rfm` | Crossref | 10.1509/jmkr.2005.42.4.415 | True | True | verified |
+| `kim2006clv` | Crossref | 10.1016/j.eswa.2005.09.004 | True | True | verified |
+| `cheng2009rfm` | Crossref | 10.1016/j.eswa.2008.04.003 | True | True | verified |
+| `rousseeuw1987silhouettes` | Crossref | 10.1016/0377-0427(87)90125-7 | True | True | verified |
+| `breiman2001rf` | Crossref | 10.1023/A:1010933404324 | True | True | verified |
+| `chen2016xgboost` | Crossref | 10.1145/2939672.2939785 | True | True | verified |
+| `hochreiter1997lstm` | Crossref | 10.1162/neco.1997.9.8.1735 | True | True | verified |
+| `carbonneau2008supply` | Crossref | 10.1016/j.ejor.2006.12.004 | True | True | verified |
+| `hyndman2006accuracy` | Crossref | 10.1016/j.ijforecast.2006.03.001 | True | True | verified |
+| `makridakis2018m4` | Crossref | 10.1016/j.ijforecast.2018.06.001 | True | True | verified |
+| `makridakis2022m5` | Crossref | 10.1016/j.ijforecast.2021.07.007 | True | True | verified |
+| `burez2009imbalance` | Crossref | 10.1016/j.eswa.2008.05.027 | True | True | verified |
+| `verbeke2012profit` | Crossref | 10.1016/j.ejor.2011.09.031 | True | True | verified |
+| `saito2015pr` | Crossref | 10.1371/journal.pone.0118432 | True | True | verified |
+| `kaufman2012leakage` | Crossref | 10.1145/2382577.2382579 | True | True | verified |
+| `lundberg2017shap` | official URL | https://proceedings.neurips.cc/paper/2017/hash/8a20a8621978632d76c43dfd28b67767-Abstract.html | - | - | verified |
+| `lundberg2020trees` | Crossref | 10.1038/s42256-019-0138-9 | True | True | verified |
+| `chen2012uci` | DataCite | 10.24432/C5CG6D | True | True | verified |
+| `jahin2024dataset` | DataCite | 10.17632/xwmbk7n3c8.1 | True | True | verified |
+| `wfp2026prices` | official URL | https://data.humdata.org/dataset/wfp-food-prices-for-bangladesh | - | - | verified |
+| `worldbank2026fat` | DataCite | 10.48529/hgry-h633 | True | True | verified |
