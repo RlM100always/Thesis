@@ -205,7 +205,7 @@ customer-cutoff views with the source keys and data cutoff retained.
 \draw[arrow] (sale) -- (stock);
 \draw[arrow] (return) -- (stock);
 \draw[arrow] (sale) -- (return);
-\draw[arrow] (finance) -- (audit);
+\draw[arrow] (finance) -- (stock);
 \draw[arrow] (stock) -- (audit);
 \end{tikzpicture}}
 \caption{Proposed canonical operational data model.}
@@ -310,7 +310,7 @@ volume and task structure.
   and business interpretability.
   \item \textbf{Explanation:} coefficient/rule explanations are preferred for
   simple models; SHAP supplies model-behavior attributions for tree models
-  \cite{lundberg2017shap,lundberg2020trees}. Displayed reasons will remain
+  \cite{lundberg2017shap}. Displayed reasons will remain
   selective and contextual \cite{miller2019explanation}.
 \end{itemize}
 
@@ -353,26 +353,25 @@ the request path.
 
 \begin{figure}[H]
 \centering
-\resizebox{0.98\textwidth}{!}{%
 \begin{tikzpicture}[
-  block/.style={draw,rounded corners,minimum width=3.0cm,minimum height=1.05cm,align=center,font=\small},
-  arrow/.style={-{Latex[length=2.2mm]},thick},node distance=0.75cm
+  block/.style={draw,rounded corners,minimum width=10.2cm,minimum height=1.0cm,align=center,font=\normalsize},
+  arrow/.style={-{Latex[length=2.4mm]},very thick,draw=gray!75},node distance=0.56cm
 ]
-\node[block,fill=softgreen] (ops) {Business Operations\\sales, stock, purchases, returns};
-\node[block,fill=softblue,right=of ops] (canon) {Canonical Evidence\\validation, provenance, snapshots};
-\node[block,fill=softorange,right=of canon] (ai) {AI Analytics\\forecast, risk, segments, explanation};
-\node[block,fill=softgreen,right=of ai] (strategy) {Strategy Layer\\constraints, utility, ranking};
-\node[block,fill=softblue,below=1.0cm of strategy] (ui) {Owner Interface\\reason, uncertainty, action};
-\node[block,fill=softgray,left=of ui] (outcome) {Outcome Record\\response and observed result};
-\node[block,fill=softgray,left=of outcome] (monitor) {Monitoring\\quality, drift, calibration};
+\node[block,fill=softgreen] (ops) {\textbf{Business Operations}\\sales, stock, purchases, returns and payments};
+\node[block,fill=softblue,below=of ops] (canon) {\textbf{Canonical Evidence}\\validation, provenance and historical snapshots};
+\node[block,fill=softorange,below=of canon] (ai) {\textbf{AI Analytics}\\performance indicators, forecasts, customer risk and segments};
+\node[block,fill=softgreen,below=of ai] (strategy) {\textbf{Strategy Layer}\\constraints, expected utility and action ranking};
+\node[block,fill=softblue,below=of strategy] (ui) {\textbf{Owner Interface}\\recommendation, supporting reason and uncertainty};
+\node[block,fill=softgray,below=of ui] (outcome) {\textbf{Outcome Record}\\owner response and later observable result};
+\node[block,fill=softgray,below=of outcome] (monitor) {\textbf{Monitoring and Revalidation}\\data quality, calibration and outcome performance};
 \draw[arrow] (ops) -- (canon);
 \draw[arrow] (canon) -- (ai);
 \draw[arrow] (ai) -- (strategy);
 \draw[arrow] (strategy) -- (ui);
 \draw[arrow] (ui) -- (outcome);
 \draw[arrow] (outcome) -- (monitor);
-\draw[arrow] (monitor.west) -| ($(ops.south)+(0,-0.15)$) -- (ops.south);
-\end{tikzpicture}}
+\draw[arrow] (monitor.west) -- ++(-1.0,0) |- (ops.west);
+\end{tikzpicture}
 \caption{Proposed \system{} architecture and accountable feedback loop.}
 \label{fig:bsmart_architecture}
 \end{figure}
@@ -398,8 +397,8 @@ final untouched period. For actual values $y_i$ and forecasts $\hat y_i$,
 \end{align}
 
 MASE will support comparison across scales and avoid some defects of percentage
-errors \cite{hyndman2006accuracy}. Prediction-interval coverage and width or a
-proper scoring rule will evaluate uncertainty \cite{gneiting2007scoring}.
+errors \cite{hyndman2006accuracy}. Prediction-interval coverage and mean
+interval width will evaluate uncertainty.
 Results will be stratified by demand volume and intermittency rather than hiding
 failure on low-volume items in one aggregate.
 
@@ -437,7 +436,7 @@ Replenishment policies will face identical observed or replayed demand paths.
 The comparison records stock-out units, average inventory, holding cost,
 shortage cost and total cost. Retention ranking will use expected value only
 when response benefit, contact cost and consent are available; otherwise it will
-remain a prioritization study, not a profit claim \cite{verbeke2012profit}.
+remain a prioritization study, not a profit claim.
 
 Owner evaluation will use realistic tasks in a counterbalanced within-subject
 design when the sample permits. Measures include task correctness, completion
@@ -458,8 +457,8 @@ Monitoring will distinguish schema or data-quality failure, input shift,
 calibration change and outcome-performance change. Alerts will not automatically
 authorize retraining. A new model must repeat the validation protocol and retain
 its training window, features, parameters and comparison result. This follows
-the concept-drift literature's emphasis on both adaptation and appropriate
-evaluation \cite{gama2014drift}.
+the methodology's requirement that adaptation must itself be evaluated before
+deployment.
 
 \section{Threats to Validity and Planned Controls}
 

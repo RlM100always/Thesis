@@ -2,7 +2,8 @@
 
 The report uses the supplied University of Dhaka `Thesis.cls` template. This
 initial submission completes Introduction, Background Study and Related Work,
-and Proposed Methodology; later chapters remain heading-only placeholders.
+Proposed Methodology, and a current-stage Conclusion. Implementation and
+Experimental Results remain heading-only placeholders.
 
 ## Tectonic (portable, recommended)
 

@@ -110,13 +110,12 @@ forecasts \cite{hyndman2011hierarchical}.
 
 Model complexity should follow the evidence. ARIMA-family models represent
 serial dependence after transformation; tree ensembles can learn nonlinear
-effects from lagged, calendar and price variables; LSTM networks use gated
-memory for sequential dependence \cite{hochreiter1997lstm}. Random Forest and
-XGBoost provide strong tabular comparators \cite{breiman2001rf,chen2016xgboost}.
-However, forecast competitions show that statistical, combined and hybrid
-approaches remain highly competitive across large collections
-\cite{makridakis2018m4,makridakis2022m5}. A seasonal-naive forecast is therefore
-a required benchmark, not a ceremonial baseline.
+effects from lagged, calendar and price variables; and sequence models use
+ordered histories. Random Forest and XGBoost provide strong tabular comparators
+\cite{breiman2001rf,chen2016xgboost}. The M5 retail competition demonstrates the
+importance of large-scale, hierarchical and uncertainty-aware comparison
+\cite{makridakis2022m5}. A seasonal-naive forecast is therefore a required
+benchmark, not a ceremonial baseline.
 
 Forecast accuracy and inventory usefulness are related but not identical.
 Hyndman and Koehler demonstrate defects in common percentage errors and propose
@@ -134,13 +133,11 @@ during a fixed interval $(t,t+H]$. Every feature must be known by $t$, and the
 future label window must not contaminate training or validation. This definition
 turns an ambiguous business word into a reproducible prediction task.
 
-The positive class may be rare or change across businesses. Burez and Van den
-Poel show that sampling and cost-sensitive treatments affect churn modelling
-under class imbalance \cite{burez2009imbalance}. Saito and Rehmsmeier explain
-why precision--recall analysis is more revealing than ROC analysis for
-imbalanced binary tasks \cite{saito2015pr}. Verbeke and colleagues further show
-that the best discriminating churn model need not be the most profitable when
-contact cost and benefit are considered \cite{verbeke2012profit}.
+The positive class may be rare or change across businesses. Saito and
+Rehmsmeier explain why precision--recall analysis is more revealing than ROC
+analysis for imbalanced binary tasks \cite{saito2015pr}. Model comparison must
+therefore report prevalence and ranking quality before action cost and benefit
+are considered in the prescriptive layer.
 
 Ranking is not enough when the output is used in a decision calculation. A
 probability of $0.7$ should correspond, approximately, to the event frequency
@@ -159,20 +156,18 @@ therefore a property of the entire data pipeline, not a model option. A clear
 prediction time, feature availability table and split policy precede training.
 
 SHAP represents a prediction as additive feature contributions relative to a
-reference value \cite{lundberg2017shap}; efficient tree-specific methods support
-local and global inspection \cite{lundberg2020trees}. Such an attribution
+reference value and supports local and global inspection
+\cite{lundberg2017shap}. Such an attribution
 describes how a fitted model used encoded features. Miller's synthesis of social
 science research emphasizes that useful explanations are selective, contextual
 and often contrastive \cite{miller2019explanation}. Thus a recommendation card
 should answer ``why this action now?'' in a small number of decision-relevant
 factors, while preserving access to fuller evidence and avoiding causal wording.
 
-Business conditions also change. Concept drift occurs when the relationship
-between predictors and outcomes changes over time; Gama and colleagues organize
-adaptation methods and evaluation strategies for this setting
-\cite{gama2014drift}. Retail monitoring must distinguish data-quality failure,
-input-distribution shift and performance decay. A retraining schedule alone is
-not evidence that a model remains valid.
+Business conditions also change. Retail monitoring must distinguish data-quality
+failure, input-distribution shift and outcome-performance decay. A retraining
+schedule alone is not evidence that a model remains valid; every replacement
+model must repeat the declared validation protocol.
 
 \subsection{From Prediction to Constrained Action}
 
@@ -211,8 +206,9 @@ or provided Bangladesh-specific evidence. Metadata for every DOI-bearing entry
 was checked against Crossref, and dataset records were checked against DataCite
 or the official repository. Specific numerical claims were included only when
 supported by the paper metadata, abstract or full record available to the
-authors. The core set contains 33 scholarly works; candidate datasets are listed
-separately in Chapter~\ref{chapter_methodology}.
+authors. The core set contains 22 scholarly works; three candidate datasets are
+listed separately in Chapter~\ref{chapter_methodology}, giving exactly 25 cited
+references in this initial report.
 
 \section{Thematic Synthesis of Prior Work}
 
@@ -229,24 +225,17 @@ evidence for demand, inactivity or inventory decisions.
 
 \subsection{Customer Evidence}
 
-Ngai, Xiu and Chau classify 87 CRM data-mining studies selected from a much
-larger screened body and show the breadth of classification, association and
-retention applications \cite{ngai2009crm}. Fader et al. provide a probabilistic
-link between transaction history and future value \cite{fader2005rfm}; Kim et
-al. connect customer value with segment-specific strategy
-\cite{kim2006clv}; and Cheng and Chen combine RFM, clustering and rough-set
-classification for customer-value segmentation \cite{cheng2009rfm}. Together
-they motivate behavior-based profiles, but they do not by themselves establish
-a leakage-safe, non-contractual inactivity model for Bangladeshi retail.
+Fader et al. provide a probabilistic link between transaction history and
+future value \cite{fader2005rfm}, while the silhouette method provides a
+separate check on whether candidate behavioral clusters are internally coherent
+\cite{rousseeuw1987silhouettes}. Together they motivate behavior-based profiles,
+but they do not by themselves establish a leakage-safe, non-contractual
+inactivity model for Bangladeshi retail.
 
 \subsection{Forecasting and Inventory Evidence}
 
-Carbonneau, Laframboise and Vahidov compare machine-learning and traditional
-approaches using simulated supply-chain data and real foundry orders; their
-results reinforce the need to compare advanced methods with regression and
-other simple alternatives \cite{carbonneau2008supply}. M4 and M5 broaden the
-evidence across large and retail-specific collections
-\cite{makridakis2018m4,makridakis2022m5}. Retail review evidence
+M5 supplies large, retail-specific comparative evidence
+\cite{makridakis2022m5}. Retail review evidence
 \cite{fildes2022retail}, intermittent-demand methods
 \cite{croston1972intermittent,syntetos2005intermittent}, hierarchical
 reconciliation \cite{hyndman2011hierarchical} and stock-control evaluation
@@ -255,14 +244,13 @@ and one error column.
 
 \subsection{Risk, Integrity and Action Evidence}
 
-Churn studies establish imbalance-aware and profit-aware evaluation
-\cite{burez2009imbalance,verbeke2012profit}; precision--recall analysis and
-probability calibration address two different properties of a risk output
+Precision--recall analysis and probability calibration address two different
+properties of a risk output
 \cite{saito2015pr,niculescu2005calibration}. Leakage research explains why
 apparently excellent results can be unusable \cite{kaufman2012leakage}.
-SHAP, human-centred explanation and drift research then address inspection,
-communication and change \cite{lundberg2017shap,lundberg2020trees,
-miller2019explanation,gama2014drift}. Finally, prescriptive analytics motivates
+SHAP and human-centred explanation research then address inspection and
+communication \cite{lundberg2017shap,miller2019explanation}. Finally,
+prescriptive analytics motivates
 placing predictions inside a cost-and-constraint model
 \cite{bertsimas2020prescriptive}. The unresolved question is whether these
 principles can be joined into a low-resource SME workflow and evaluated on the
@@ -277,7 +265,7 @@ of that work.
 \begin{landscape}
 \scriptsize
 \begin{longtable}{p{0.052\linewidth}p{0.16\linewidth}p{0.18\linewidth}p{0.23\linewidth}p{0.24\linewidth}}
-\caption{Literature matrix for the 33-work core scholarly set.}
+\caption{Literature matrix for the 22-work core scholarly set.}
 \label{tab:literature_matrix}\\
 \toprule
 \textbf{Ref.} & \textbf{Context or data} & \textbf{Method} & \textbf{Main contribution used here} & \textbf{Relevant boundary for this thesis} \\
@@ -292,33 +280,22 @@ of that work.
 \cite{hoque2016ict} & Rural Bangladesh SMEs & Case study and questionnaire analysis & Local ICT-adoption determinants & No transaction-level prediction task \\
 \cite{shahadat2023digital} & 535 Bangladesh SME managers & TOE/DOI model with PLS-SEM & Organizational and technology determinants & Adoption intent, not business impact \\
 \cite{hazra2021mfs} & Bangladesh MFS users & Interviews and thematic analysis & Everyday MFS affordances & User context rather than retail forecasting \\
-\cite{ngai2009crm} & 87 selected CRM studies & Literature taxonomy & Customer-lifecycle/data-mining map & Predates current temporal and XAI practice \\
 \cite{fader2005rfm} & CDNOW customer cohort & Pareto/NBD and gamma--gamma & Formal RFM--CLV relationship & No stock or action constraints \\
-\cite{kim2006clv} & Wireless-service customers & CLV-based segmentation & Segment-specific strategy design & Contractual sector and different context \\
-\cite{cheng2009rfm} & Customer-value data & RFM, K-Means and rough sets & Interpretable value classes & No out-of-time action evaluation \\
 \cite{rousseeuw1987silhouettes} & General clustering problems & Silhouette coefficient & Internal cluster validation & Does not establish business usefulness \\
 \cite{breiman2001rf} & General prediction benchmarks & Random Forest & Robust tree ensemble & Probabilities/actions require further checks \\
 \cite{chen2016xgboost} & Large sparse benchmark tasks & Regularized tree boosting & Scalable nonlinear tabular learning & Does not prevent leakage by itself \\
-\cite{hochreiter1997lstm} & Long-lag sequence tasks & Gated recurrent network & Learning long dependencies & Artificial tasks do not guarantee SME accuracy \\
-\cite{carbonneau2008supply} & Simulated supply chain and foundry orders & ML versus traditional forecasting & Direct baseline comparison & Different sector and decision conditions \\
 \cite{hyndman2006accuracy} & Forecast evaluation examples & Accuracy-measure analysis & MASE and metric cautions & No inventory or owner outcome \\
-\cite{makridakis2018m4} & 100,000 series & Forecast competition & Large-scale comparative evidence & Heterogeneous, not SME-specific \\
 \cite{makridakis2022m5} & Hierarchical Walmart retail series & Retail forecast competition design & Hierarchy, scale and uncertainty setting & Resource level unlike small shops \\
 \cite{fildes2022retail} & Retail research and practice & Critical review & Retail-specific data/process agenda & Does not implement the proposed local system \\
 \cite{croston1972intermittent} & Intermittent stock demand & Separate size/interval smoothing & Foundational intermittent-demand method & Requires modern comparative evaluation \\
 \cite{syntetos2005intermittent} & Intermittent-demand estimates & Bias and accuracy analysis & Corrected evaluation of estimators & No Bangladesh retail test \\
 \cite{hyndman2011hierarchical} & Hierarchical time series & Forecast reconciliation & Coherent forecasts across aggregation levels & Does not select business actions \\
 \cite{syntetos2010stock} & Wholesaling demand and inventory & Forecasting/stock-control study & Links forecast choice to stock performance & Different organization and cost structure \\
-\cite{gneiting2007scoring} & Probabilistic prediction & Proper scoring-rule theory & Principled distributional evaluation & Requires a domain decision layer \\
-\cite{burez2009imbalance} & Service churn & Sampling and cost-sensitive models & Imbalance-aware churn comparison & Contractual churn differs from retail inactivity \\
-\cite{verbeke2012profit} & Telecom churn datasets & Profit-driven model selection & Discrimination need not maximize profit & SME benefit/cost must be estimated \\
 \cite{saito2015pr} & Imbalanced binary problems & ROC/PR analysis & Value of precision--recall evaluation & Not a retail modelling study \\
 \cite{niculescu2005calibration} & Supervised benchmark datasets & Probability calibration comparison & Reliable probabilities as separate objective & Temporal drift remains outside evaluation \\
 \cite{kaufman2012leakage} & Competition and industry cases & Leakage formulation and taxonomy & Detection and prevention principles & Domain-specific availability must be mapped \\
 \cite{lundberg2017shap} & Predictive models & Shapley additive explanations & Unified local feature attribution & Attribution is not causal evidence \\
-\cite{lundberg2020trees} & Tree-model applications & Efficient tree explanations & Local-to-global inspection & Inherits model and data defects \\
 \cite{miller2019explanation} & Social science and AI literature & Interdisciplinary review & Selective, contrastive explanation principles & Requires owner-centred validation \\
-\cite{gama2014drift} & Streaming supervised learning & Concept-drift survey & Adaptation and evaluation taxonomy & Monitoring must be tailored to SME volume \\
 \cite{bertsimas2020prescriptive} & Data-driven decision problems & Conditional stochastic optimization & Predictive-to-prescriptive bridge & Proposed thesis uses a simpler constrained layer \\
 \bottomrule
 \end{longtable}
@@ -354,7 +331,7 @@ Unmonitored deployment & Performance decay and changed inputs remain hidden & Da
 
 The gap is derived by comparing what each literature stream establishes with
 what the stated SME decision problem requires. It is deliberately bounded to
-the 33-work core set; the thesis does not claim that no related system exists
+the 22-work scholarly core set; the thesis does not claim that no related system exists
 anywhere. Six connected gaps emerge.
 
 \paragraph{G1---Contextual and empirical gap.}
@@ -369,7 +346,7 @@ evidence therefore remain disconnected.
 
 \paragraph{G2---Operational-to-analytical integration gap.}
 BI and CRM research show how operational data can support multiple analytical
-functions \cite{chen2012business,ngai2009crm}. The forecasting, segmentation and
+functions \cite{chen2012business}. The forecasting, segmentation and
 churn studies in the matrix generally begin from an already prepared analytical
 dataset. They do not jointly evaluate the path from an auditable business event,
 through a reproducible historical snapshot, to the prediction and later action
@@ -391,7 +368,7 @@ coherent aggregation, calibration and an untouched final test.
 \paragraph{G4---Prediction-to-decision gap.}
 Accurate forecasts or customer rankings are intermediate outputs. Stock-control
 and profit-aware churn studies demonstrate that operational consequences can
-change model choice \cite{syntetos2010stock,verbeke2012profit}; prescriptive
+change model choice \cite{syntetos2010stock}; prescriptive
 analytics formalizes the use of predictions inside a decision problem
 \cite{bertsimas2020prescriptive}. The unresolved need is a transparent,
 low-resource mechanism that converts the outputs of several SME analytical
@@ -400,7 +377,7 @@ consent, uncertainty and action cost.
 
 \paragraph{G5---Owner-centred explanation gap.}
 SHAP provides principled feature attributions for complex predictions
-\cite{lundberg2017shap,lundberg2020trees}, while human-explanation research shows
+\cite{lundberg2017shap}, while human-explanation research shows
 that useful explanations are selective and contextual
 \cite{miller2019explanation}. Neither technical attribution alone nor a generic
 dashboard establishes that a Bangladeshi SME owner understands the evidence,
@@ -409,9 +386,9 @@ correctly. Explanation quality must therefore be evaluated as owner task
 performance, not inferred from the presence of an explanation chart.
 
 \paragraph{G6---Lifecycle-accountability gap.}
-Concept-drift literature explains how relationships between inputs and outcomes
-may change \cite{gama2014drift}, and design science requires evaluation of the
-artifact in relation to its problem \cite{hevner2004design}. The reviewed task
+Business relationships between inputs and outcomes may change, and design
+science requires evaluation of the artifact in relation to its problem
+\cite{hevner2004design}. The reviewed task
 studies do not collectively close the local loop by recording model/baseline
 version, data cutoff, recommendation, owner response, later outcome and
 revalidation decision. Without that record, a system cannot show whether a
