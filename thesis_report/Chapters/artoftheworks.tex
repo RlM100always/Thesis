@@ -61,6 +61,48 @@ the license, original context and permissible inference must be recorded. A
 foreign transaction dataset can test whether code handles real invoices but
 cannot establish Bangladesh-specific customer behavior.
 
+\subsection{Data Quality, Provenance and Temporal Semantics}
+
+Data quality is not a single percentage. For this study it has at least five
+dimensions. \emph{Syntactic validity} asks whether a value has the expected
+type, range and format. \emph{Entity integrity} asks whether invoices, products,
+customers and branches have stable keys and valid relationships. \emph{Temporal
+integrity} asks whether the event, correction, receipt and availability times
+are plausible and ordered. \emph{Reconciliation} asks whether line amounts,
+payments, returns and stock movements agree under declared business rules.
+\emph{Decision adequacy} asks whether the fields needed for a particular
+analysis are sufficiently complete at its decision cutoff. A file may score
+well on simple completeness while still be unusable for a margin analysis
+because unit cost is absent or for a customer study because identities are not
+stable.
+
+This distinction matters because operational data are revised. A cancelled
+invoice may remain in an export, a return may arrive days after the sale, and a
+late stock adjustment may change the apparent availability history. Replacing
+the original value destroys the evidence needed to reconstruct what the system
+knew. The stronger design is append-aware: retain the source event, record the
+correction or status transition and build a versioned analytical view for a
+declared cutoff. This implements the BI principle that analytical value depends
+on an intelligible relationship between data, infrastructure and organizational
+use \cite{chen2012business}.
+
+Missingness must also be interpreted rather than automatically filled. Missing
+customer identity may mean an anonymous cash sale, not a failed import. A
+missing unit cost may make gross-margin analysis ineligible while leaving unit
+demand forecasting usable. A zero sale may represent zero demand, a closed
+shop, a missing file or an unobserved stock-out. These states have different
+meanings and should be separated whenever the source supports the distinction.
+Consequently, the proposed framework assigns eligibility at the level of a
+research task, business and period instead of declaring an entire dataset
+universally ``clean'' or ``dirty.''
+
+Provenance completes this quality model. Each derived field should identify its
+source columns, transformation version and cutoff; each reported result should
+identify the dataset manifest, split and model or rule version that produced
+it. This lineage does not guarantee correctness, but it makes errors auditable
+and results reproducible. It also prevents a public or generated dataset from
+quietly inheriting the claim status of primary Bangladesh SME evidence.
+
 \subsection{Customer Analytics: RFM, CLV and Segmentation}
 
 RFM summarizes \emph{recency}, \emph{frequency} and \emph{monetary value} from
@@ -125,6 +167,52 @@ wholesaling study \cite{syntetos2010stock}. The methodology accordingly reports
 point error, uncertainty and simulated stock-out/holding cost rather than
 selecting a method from one convenient metric.
 
+\subsection{Forecastability, Demand Regimes and Decision Loss}
+
+The forecasting task changes with the information content of a series. A
+high-volume staple with repeated weekly behavior offers many observations of
+level and seasonality. A slow-moving spare item may contain mostly zero periods,
+while a newly introduced product has little or no direct history. Pooling these
+cases under one algorithm and one average score can hide systematic failure.
+The literature on intermittent demand therefore supports a regime-aware
+comparison in which zero frequency, nonzero-demand variability and available
+history influence method eligibility \cite{croston1972intermittent,
+syntetos2005intermittent}.
+
+Temporal aggregation creates a further trade-off. Daily data preserve the
+timing needed for short-horizon ordering but may be too sparse for stable model
+estimation. Weekly aggregation reduces sparsity but may conceal festival peaks,
+stock-out intervals and short lead-time decisions. Product aggregation provides
+more signal, yet a category forecast cannot directly determine which SKU to
+reorder. Hierarchical reconciliation addresses coherence across aggregation
+levels \cite{hyndman2011hierarchical}; it does not remove the need to select a
+granularity that matches the operational decision.
+
+Observed sales are also an imperfect target when availability is constrained.
+If an item is out of stock, a zero or low recorded sale does not establish that
+customers wanted zero units. Training on such periods without a stock indicator
+can teach a model that constrained supply is low demand. The appropriate
+response depends on evidence: flag and stratify censored periods when stock
+history exists, conduct sensitivity analysis when it is incomplete, and avoid
+claiming unconstrained demand when availability cannot be reconstructed.
+
+Forecast errors have asymmetric decision consequences. Under-forecasting can
+produce shortage or lost-sales cost; over-forecasting can create holding,
+expiry or cash-opportunity cost. The best model by MAE need not minimize these
+consequences, particularly when errors occur on different products or at
+different times. This is why scale-aware error measures, prediction intervals
+and identical-demand-path inventory simulation serve complementary purposes
+\cite{hyndman2006accuracy,syntetos2010stock}. Model comparison remains
+prediction-focused until cost assumptions are declared; only then can a
+decision-oriented comparison be defended.
+
+The review consequently rejects three shortcuts: choosing a deep model before
+measuring series structure, selecting from a single percentage error, and
+treating a forecast competition result as proof of value in a small local
+retailer. M5 provides strong evidence about comparative retail forecasting at
+scale \cite{makridakis2022m5}; the present task is to test which parts transfer
+under substantially different data volume, infrastructure and decision cost.
+
 \subsection{Customer Inactivity, Class Imbalance and Calibration}
 
 In a subscription service, churn may be an observed cancellation. In
@@ -145,6 +233,34 @@ among comparable cases. Niculescu-Mizil and Caruana compare probability
 estimates and post-hoc calibration methods for supervised learners
 \cite{niculescu2005calibration}. The proposed framework therefore reports Brier
 score and calibration in addition to PR-AUC, ROC-AUC and top-fraction lift.
+
+\subsection{From Customer Score to Responsible Retention Decision}
+
+A customer-risk model creates a ranking or probability, not permission to act.
+For a fixed contact capacity, ranking quality determines whether the selected
+fraction contains more future inactive customers than an untargeted policy.
+For an expected-value calculation, calibration becomes essential because the
+probability is multiplied by uncertain benefit and cost. The operational
+threshold should therefore be selected from validation data using the declared
+contact capacity or utility assumptions, never by inspecting the final test.
+
+The customer record creates additional ambiguity. Frequency and monetary value
+can reflect opportunity to visit, household purchasing, shared identifiers,
+returns or discount-seeking behavior; none alone proves loyalty or future value.
+Fader, Hardie and Lee show why the joint transaction history carries more
+information than a single RFM label \cite{fader2005rfm}. Segmentation can help
+describe patterns, but assigning a persuasive segment name is an interpretive
+step that requires stability checks and owner review, not merely a clustering
+output \cite{rousseeuw1987silhouettes}.
+
+Responsible use adds an independent feasibility gate. A high inactivity score
+does not justify contact when consent, contact policy or an appropriate offer is
+absent. Nor should an attribution such as ``long recency increased risk'' be
+restated as a causal claim that a specific message will retain the customer.
+The thesis therefore evaluates inactivity prediction, probability reliability,
+contact eligibility and later response as separate links. This structure makes
+it possible for the model to be scientifically informative even when the
+available evidence is insufficient for a profit or retention-effect claim.
 
 \subsection{Leakage, Explainability and Change Over Time}
 
@@ -187,6 +303,62 @@ This supports an evaluation plan that includes predictive validity, software
 behavior, owner usability and decision consequences instead of reporting model
 accuracy as the sole measure of success.
 
+\subsection{Cross-Stream Evidence Synthesis}
+
+No single literature stream supplies the complete argument for the proposed
+artifact. Bangladesh adoption studies establish contextual requirements but do
+not test transaction-level models. Forecasting and customer analytics provide
+task methods but usually begin after an analytical dataset has already been
+constructed. Leakage, calibration and explanation research provide safeguards
+but not an SME operating workflow. Prescriptive analytics connects estimates
+to decisions, while design science requires that the resulting artifact be
+evaluated against its intended problem. Figure~\ref{fig:evidence_synthesis}
+shows how these bodies of evidence contribute different, non-substitutable
+requirements.
+
+\begin{figure}[H]
+\centering
+\resizebox{\textwidth}{!}{%
+\begin{tikzpicture}[
+  stream/.style={draw=dugreen,rounded corners,fill=softgreen,minimum width=2.62cm,minimum height=1.35cm,align=center,font=\footnotesize},
+  guard/.style={draw=dugold,rounded corners,fill=softorange,minimum width=13.8cm,minimum height=1.05cm,align=center,font=\small},
+  flow/.style={-{Latex[length=2.1mm]},thick,draw=gray!75},
+  node distance=0.23cm
+]
+\node[stream] (context) {Bangladesh\\context\\workflow fit};
+\node[stream,right=of context] (data) {BI and data\\foundations\\traceability};
+\node[stream,right=of data] (models) {Forecast and\\customer models\\valid estimates};
+\node[stream,right=of models] (action) {Prescriptive\\analytics\\feasible actions};
+\node[stream,right=of action] (human) {Explanation and\\design science\\evaluated use};
+\node[guard,below=0.75cm of models] (integrity) {Cross-cutting integrity: temporal validity, baselines, calibration, uncertainty, provenance and claim boundaries};
+\draw[flow] (context) -- (data);
+\draw[flow] (data) -- (models);
+\draw[flow] (models) -- (action);
+\draw[flow] (action) -- (human);
+\draw[flow] (integrity) -- (context.south);
+\draw[flow] (integrity) -- (data.south);
+\draw[flow] (integrity) -- (models.south);
+\draw[flow] (integrity) -- (action.south);
+\draw[flow] (integrity) -- (human.south);
+\end{tikzpicture}}
+\caption{Complementary roles of the literature streams in the proposed design.}
+\label{fig:evidence_synthesis}
+\end{figure}
+
+The arrows do not imply that the process is purely linear. Local workflow can
+change which data fields are available; data adequacy constrains model choice;
+uncertainty can remove an otherwise attractive action; and owner evaluation can
+reveal that an explanation or recommendation is unusable. The figure instead
+expresses logical dependence: later claims require the earlier evidence to be
+credible, while the cross-cutting integrity conditions apply to every stage.
+
+This synthesis leads to a stricter definition of integration. Integration is
+not the co-location of a dashboard, a forecast and a classifier in one user
+interface. It requires a shared operational vocabulary, compatible decision
+cutoffs, explicit task eligibility, separate uncertainty statements and a
+common audit trail from input to outcome. These properties become evaluation
+targets in Chapter~\ref{chapter_methodology}.
+
 \section{Literature-Review Procedure}
 \label{sec:literature_review}
 
@@ -209,6 +381,170 @@ supported by the paper metadata, abstract or full record available to the
 authors. The core set contains 22 scholarly works; three candidate datasets are
 listed separately in Chapter~\ref{chapter_methodology}, giving exactly 25 cited
 references in this initial report.
+
+\section{Critical Comparative Analysis}
+
+\subsection{Unit of Evidence and Temporal Boundary}
+
+The reviewed studies operate at different units of evidence, and their findings
+cannot be combined without respecting those units. An adoption survey may
+explain variation in managers' reported intention or organizational readiness;
+it does not supply repeated SKU outcomes. A retail forecasting benchmark treats
+each series and origin as a prediction case; it does not observe whether a small
+business could act on the result. A customer model treats a historical customer
+snapshot as a case; it cannot use a later purchase to describe that snapshot.
+Design-science evaluation, in turn, treats the artifact in context as the object
+of study \cite{hevner2004design}. These are complementary forms of evidence,
+not interchangeable sample sizes.
+
+Time is the principal boundary connecting them. For a decision at cutoff $t$,
+an operational event is admissible only if it was recorded and available by
+$t$; a feature summarizes only admissible events; an outcome occurs after $t$;
+and any later correction must be versioned rather than inserted silently into
+the original snapshot. This rule is stronger than sorting a completed dataset
+by date. It requires the researcher to distinguish event time, recording time
+and analytical availability. The leakage taxonomy described by Kaufman et al.
+shows why apparently innocuous variables or preprocessing choices can violate
+this separation \cite{kaufman2012leakage}.
+
+Table~\ref{tab:claim_units} states the principal units and the strongest claim
+each can support. It is intentionally conservative. For example, accurate
+historical forecasts do not establish inventory benefit until a policy is
+tested on the same demand path, and a simulated policy benefit does not
+establish that an owner will use the recommendation correctly.
+
+\begin{table}[H]
+\centering
+\small
+\setlength{\tabcolsep}{4pt}
+\caption{Analytical units, temporal boundaries and defensible claims.}
+\label{tab:claim_units}
+\begin{tabularx}{\textwidth}{p{0.15\textwidth}p{0.18\textwidth}p{0.22\textwidth}Y}
+\toprule
+\textbf{Analytical object} & \textbf{Unit and boundary} & \textbf{Defensible evidence} & \textbf{Invalid inferential leap} \\
+\midrule
+KPI & Business, branch or product within a closed reporting window & Reconciled numerator, denominator and data-quality status & Treating an unreconciled dashboard value as accounting truth \\
+Demand forecast & Branch--SKU origin with future horizon hidden & Out-of-time error and uncertainty by demand regime & Inferring stock benefit from lower average error alone \\
+Inactivity score & Customer snapshot at cutoff with a future label window & Ranking, calibration and lift on untouched snapshots & Treating inactivity as permanent churn or response to contact \\
+Segment & Customer feature vector at a declared cutoff & Cohesion, separation, stability and domain interpretation & Assuming algorithmic clusters are natural or causal customer types \\
+Reorder policy & Product decision on an identical replayed demand path & Stock-out, inventory and cost differences under stated assumptions & Claiming realized profit without field outcomes \\
+Explanation & Owner decision task paired with model evidence & Correctness, time, confidence and qualitative interpretation & Inferring understanding from the presence of a SHAP chart \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{Comparator Adequacy and Model Eligibility}
+
+The comparative literature does not support a universal model hierarchy.
+Random Forest and XGBoost are strong general-purpose tabular learners
+\cite{breiman2001rf,chen2016xgboost}, but their suitability depends on feature
+availability, sample size, drift and the loss attached to error. Intermittent
+demand requires comparators designed for sparse occurrence patterns
+\cite{croston1972intermittent,syntetos2005intermittent}. Large retail
+competitions demonstrate the continuing importance of statistical structure,
+ensembles and well-constructed baselines \cite{makridakis2022m5}. A credible
+experiment must therefore ask whether a candidate is eligible before asking
+whether it wins.
+
+Eligibility includes at least four tests. First, the training history must
+contain enough independent temporal variation for the candidate's complexity.
+Second, all required features must be available at the intended prediction
+time. Third, the candidate must produce the output needed by the decision, such
+as a calibrated probability or interval rather than only a point ranking.
+Fourth, its operational cost and failure behavior must be proportionate to any
+measured improvement. A marginal accuracy gain accompanied by unstable
+probabilities, opaque failure or infeasible latency is not automatically the
+best system choice.
+
+Baseline selection is part of the research hypothesis. Seasonal-naive and
+moving-average forecasts test whether learned calendar and context effects add
+value beyond recent repetition. Croston-family methods test whether sparse
+demand benefits from separate size and interval estimation. A recency rule and
+base-rate customer model test whether a classifier adds information beyond the
+strongest obvious behavior. Current-owner or reorder-point policies provide the
+operational comparator for a forecast-driven action. Without these comparators,
+a model can appear successful merely because the task is predictable at all.
+
+\subsection{Metric Alignment and Decision Consequences}
+
+Each metric answers a limited question. MAE summarizes absolute point error;
+MASE supports scale-aware comparison; WAPE emphasizes total absolute deviation
+relative to observed volume; interval coverage and width describe uncertainty.
+None alone measures cash tied in inventory. Similarly, ROC-AUC measures ranking
+across thresholds, whereas precision--recall analysis is often more informative
+about retrieving a minority outcome \cite{saito2015pr}. The Brier score and
+reliability analysis ask whether predicted probabilities are numerically
+trustworthy \cite{niculescu2005calibration}. Silhouette values address geometric
+cluster separation, not commercial usefulness \cite{rousseeuw1987silhouettes}.
+
+The evaluation must preserve these distinctions before joining them. A forecast
+candidate first needs valid out-of-time predictive evidence. A replenishment
+policy then converts the forecast distribution into an order under lead time,
+cash, storage and pack-size constraints. Only the second comparison can estimate
+holding and shortage consequences, and those estimates remain conditional on
+the cost model. The same logic applies to customer analytics: ranking and
+calibration precede contact prioritization; contact outcome and incremental
+value require additional field evidence.
+
+This layered evaluation guards against metric substitution. It prevents high
+ROC-AUC from being reported as a profitable campaign, low WAPE from being
+reported as reduced stock-outs, and an internally coherent cluster from being
+reported as a stable market segment. It also permits a useful qualified result:
+a model may improve one analytical property without improving the subsequent
+decision under the current constraints.
+
+\subsection{Contextual Transfer and Evidence Boundaries}
+
+External evidence is necessary for method development but insufficient for a
+local effectiveness claim. UCI retail invoices can expose realistic returns,
+quantities and transaction irregularities; a public Bangladesh demand series
+can exercise a local quantity-forecast procedure; market-price data can provide
+external context. Their schemas, units, customers and data-generating processes
+are different. Pooling their outcomes into one accuracy number would obscure,
+not strengthen, validity.
+
+Bangladesh-specific studies reduce a different uncertainty. They show that
+cost, management support, relative advantage, workflow and everyday digital
+affordances matter in the local setting
+\cite{hoque2016ict,shahadat2023digital,hazra2021mfs}. They do not establish the
+predictive effect of a festival feature or a reorder policy. The synthesis is
+therefore asymmetric: contextual studies inform requirements and evaluation
+questions; primary transaction records test local analytical claims; external
+datasets test portability or software behavior within an explicit boundary.
+
+Generalization must consequently be decomposed. \emph{Temporal
+generalization} concerns later periods in a participating firm. \emph{Entity
+generalization} concerns unseen customers, products or branches.
+\emph{Organizational generalization} concerns another business, and
+\emph{geographical generalization} concerns a wider Bangladesh population.
+Success at an earlier level does not establish the next. The planned reporting
+will state which level each split and result actually evaluates.
+
+\subsection{Integration Cost and Failure Propagation}
+
+An integrated system creates value by sharing governed operational evidence,
+but integration also propagates failure. An incorrect product mapping can
+distort a KPI, a lag feature, an inactivity history and an order proposal at the
+same time. A late return can affect sales, customer value and inventory. An
+unversioned correction can make a previously reported model score impossible to
+reproduce. These dependencies explain why the central research gap is not
+closed by assembling independently accurate models behind one dashboard.
+
+The appropriate response is controlled coupling. Tasks share canonical events,
+identities and provenance, but each analytical view has its own eligibility
+rules, cutoff, target and evaluation. A failure in unit cost can block a margin
+or profit claim without blocking unit-demand forecasting. Missing customer
+identity can block inactivity analysis without invalidating branch-level sales.
+This task-level isolation is especially important in SMEs, where demanding a
+perfect enterprise dataset before any analysis would make the artifact
+impractical.
+
+The review therefore yields six design principles: preserve source evidence;
+define decision time before features; use task-specific eligibility; compare
+against a meaningful baseline; separate predictive, decision and user claims;
+and retain an accountable outcome loop. These principles are not additional
+algorithms. They are the logic that makes the later algorithms testable and the
+resulting recommendations contestable.
 
 \section{Thematic Synthesis of Prior Work}
 
@@ -263,8 +599,10 @@ identifies what remains outside a source's own objective; it is not a criticism
 of that work.
 
 \begin{landscape}
-\scriptsize
-\begin{longtable}{p{0.052\linewidth}p{0.16\linewidth}p{0.18\linewidth}p{0.23\linewidth}p{0.24\linewidth}}
+\tiny
+\setlength{\tabcolsep}{2pt}
+\renewcommand{\arraystretch}{0.88}
+\begin{longtable}{p{0.05\linewidth}p{0.17\linewidth}p{0.19\linewidth}p{0.26\linewidth}p{0.28\linewidth}}
 \caption{Literature matrix for the 22-work core scholarly set.}
 \label{tab:literature_matrix}\\
 \toprule
@@ -296,7 +634,7 @@ of that work.
 \cite{kaufman2012leakage} & Competition and industry cases & Leakage formulation and taxonomy & Detection and prevention principles & Domain-specific availability must be mapped \\
 \cite{lundberg2017shap} & Predictive models & Shapley additive explanations & Unified local feature attribution & Attribution is not causal evidence \\
 \cite{miller2019explanation} & Social science and AI literature & Interdisciplinary review & Selective, contrastive explanation principles & Requires owner-centred validation \\
-\cite{bertsimas2020prescriptive} & Data-driven decision problems & Conditional stochastic optimization & Predictive-to-prescriptive bridge & Proposed thesis uses a simpler constrained layer \\
+\cite{bertsimas2020prescriptive} & Decision problems & Prescriptive optimization & Prediction-to-action bridge & Simplified here for SME constraints \\
 \bottomrule
 \end{longtable}
 \normalsize

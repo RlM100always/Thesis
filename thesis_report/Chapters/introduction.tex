@@ -57,6 +57,53 @@ branch, stock-keeping unit (SKU), customer or historical customer snapshot,
 depending on the research question. Conclusions will be restricted to the
 participating firms and the evidence actually collected.
 
+\section{Decision Environment and Stakeholder Requirements}
+
+An SME analytics artifact is used inside an operating system of people,
+records, cash commitments and supplier relationships. The owner or manager is
+the principal decision maker, but the evidence may be created by sales staff,
+inventory staff, an accountant and external payment or supply services. A
+recommendation is dependable only when those roles produce compatible records
+and can understand the result at the point of action. The Bangladesh adoption
+evidence therefore has a direct methodological implication: perceived value,
+organizational readiness, cost and workflow compatibility must be evaluated
+alongside model accuracy \cite{hoque2016ict,shahadat2023digital}.
+
+Table~\ref{tab:stakeholder_requirements} translates this setting into concrete
+information requirements. The table is a design analysis for the present
+thesis, not a claim that every participating business has the same staffing
+structure. In a micro-enterprise one person may occupy several roles. The
+important distinction is between who creates an event, who validates it, who
+acts on an output and who bears the consequence of a poor decision.
+
+\begin{table}[H]
+\centering
+\small
+\caption{Stakeholder decisions and evidence requirements in the target setting.}
+\label{tab:stakeholder_requirements}
+\begin{tabularx}{\textwidth}{p{0.19\textwidth}p{0.27\textwidth}Y Y}
+\toprule
+\textbf{Role} & \textbf{Decision or responsibility} & \textbf{Evidence required} & \textbf{Design implication} \\
+\midrule
+Owner or manager & Reorder, allocate cash, approve contact and accept or reject a recommendation & Current stock, expected demand, cost range, uncertainty and reason & Present a short feasible action with drill-down evidence and retain owner authority \\
+Sales or inventory staff & Record sales, returns, receipts and adjustments & Stable product keys, timestamps, quantities and correction history & Minimize duplicate entry; validate at import and preserve corrections \\
+Accounts function & Reconcile payments, expenses, receivables and margin inputs & Invoice-payment links, expense period and cost provenance & Separate cash movement, revenue and estimated profit; expose missing cost data \\
+Supplier or logistics contact & Confirm lead time, pack size, minimum order and incoming quantity & Dated purchase orders and receipt history & Treat lead time and order restrictions as constraints, not fixed universal constants \\
+Research and system team & Build, evaluate and monitor the artifact & Versioned datasets, cutoffs, code, parameters, metrics and audit events & Make every reported output reproducible from an immutable analytical snapshot \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+Four owner-facing qualities follow from this analysis. \emph{Relevance} means
+that the output answers a decision the business can actually take.
+\emph{Traceability} means that the displayed value can be followed back to
+source events, transformations and a declared cutoff. \emph{Proportionality}
+means that model, interface and data requirements are reasonable for the
+decision's value and risk. \emph{Contestability} means that an owner can inspect
+the supporting evidence, reject the suggestion and record a reason. These
+qualities turn local usability from a visual-design preference into a condition
+of credible evaluation.
+
 \section{Problem Statement}
 
 The central problem is the absence of a trustworthy and usable connection among
@@ -96,6 +143,74 @@ customer insights, and then rank actions that respect the operating constraints
 of an SME. The work does not presume that machine learning will defeat every
 baseline. Discovering that a simple rule is more reliable or economical for a
 particular task is a valid outcome.
+
+\section{Analytical Logic and Claim Boundaries}
+
+The thesis separates four logical objects that are often collapsed in an
+analytics prototype: an observed business event, an analytical estimate, an
+eligible action and a later outcome. Figure~\ref{fig:problem_logic} shows the
+dependency. Each transition has its own failure mode. Incomplete or
+inconsistent records weaken the evidence base; leakage or unsuitable validation
+invalidates an estimate; ignored constraints make an action infeasible; and
+missing outcome capture prevents learning whether the recommendation helped.
+Improvement at one stage cannot compensate for failure at another.
+
+\begin{figure}[H]
+\centering
+\resizebox{\textwidth}{!}{%
+\begin{tikzpicture}[
+  main/.style={draw=dugreen,rounded corners,fill=softgreen,minimum width=3.15cm,minimum height=1.25cm,align=center,font=\small},
+  risk/.style={draw=dugold,rounded corners,fill=softorange,minimum width=3.15cm,minimum height=1.05cm,align=center,font=\footnotesize},
+  flow/.style={-{Latex[length=2.2mm]},thick,draw=gray!75},
+  node distance=0.42cm
+]
+\node[main] (event) {Observed event\\sale, receipt, return};
+\node[main,right=of event] (estimate) {Analytical estimate\\KPI, forecast, risk};
+\node[main,right=of estimate] (action) {Eligible action\\order or contact priority};
+\node[main,right=of action] (outcome) {Later outcome\\stock, response, value};
+\node[risk,below=0.65cm of event] (r1) {Risk: missing identity,\\time or correction};
+\node[risk,below=0.65cm of estimate] (r2) {Risk: leakage, weak\\baseline or calibration};
+\node[risk,below=0.65cm of action] (r3) {Risk: ignored cash,\\stock or consent};
+\node[risk,below=0.65cm of outcome] (r4) {Risk: no counterfactual\\or follow-up evidence};
+\draw[flow] (event) -- (estimate);
+\draw[flow] (estimate) -- (action);
+\draw[flow] (action) -- (outcome);
+\draw[flow] (event) -- (r1);
+\draw[flow] (estimate) -- (r2);
+\draw[flow] (action) -- (r3);
+\draw[flow] (outcome) -- (r4);
+\end{tikzpicture}}
+\caption{Logical dependency from an operational event to an evaluated outcome.}
+\label{fig:problem_logic}
+\end{figure}
+
+This separation also controls the claims made in the thesis. A dashboard value
+is \emph{descriptive}: it is supported when the accounting definition and
+source reconciliation are correct. A forecast or inactivity score is
+\emph{predictive}: it is supported only by performance on observations that
+were unavailable during model development. A ranked recommendation is
+\emph{prescriptive}: it additionally requires explicit actions, costs,
+constraints and uncertainty \cite{bertsimas2020prescriptive}. A positive field
+impact claim is stronger still because it requires observed decisions and
+outcomes under a defensible comparison.
+
+Several terms are therefore used narrowly. \emph{Demand} denotes the quantity
+required by customers, whereas recorded sales may be a censored observation of
+demand when stock is unavailable. \emph{Future inactivity} means no observed
+purchase during a predeclared horizon; it is not assumed to be a permanent or
+contractual churn state. \emph{Explanation} means a faithful summary of model
+behavior and decision evidence; it is not proof that changing an attributed
+feature will cause a desired outcome \cite{lundberg2017shap,miller2019explanation}.
+Finally, \emph{local validity} means validity for the participating businesses
+under the sampled period and workflow, not automatic generalization to every
+SME in Bangladesh.
+
+These boundaries make negative and conditional findings informative. A model
+may be accurate but not actionable because cost data are missing. An action
+policy may reduce simulated stock-outs only under a lead-time assumption that
+is too uncertain for deployment. An explanation may be technically faithful
+but misunderstood by owners. The evaluation is designed to reveal these
+conditions instead of merging them into a single optimistic success label.
 
 \section{Research Aim and Objectives}
 
@@ -151,7 +266,7 @@ minimum order quantity, current stock and contact consent. Chapter
 
 The thesis is guided by four questions:
 
-\begin{description}[style=nextline,leftmargin=0pt]
+\begin{description}[style=nextline,leftmargin=2em]
   \item[RQ1.] Do calendar, price, promotion and market-context features improve
   out-of-time branch--SKU demand forecasts over seasonal and statistical
   baselines in the target SME setting?
@@ -219,7 +334,7 @@ specific prevention or evaluation step to each of these risks.
 Chapter~\ref{chapter_backStudy} develops the technical and contextual
 background, reviews the verified literature and identifies the research gap.
 Chapter~\ref{chapter_methodology} presents the research design, data protocol,
-formal tasks, proposed framework, evaluation plan and two-semester timeline.
+formal tasks, proposed framework and evaluation plan.
 The Implementation and Experimental Results chapters remain named placeholders
 in this initial report. The Conclusions chapter synthesizes only what can be
 established from the present background study and proposed methodology; final

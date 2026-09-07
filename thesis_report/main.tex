@@ -16,6 +16,7 @@
 \usetikzlibrary{arrows.meta,positioning,shapes.geometric,fit,calc}
 \usepackage[ruled,vlined,linesnumbered]{algorithm2e}
 \usepackage{microtype}
+\usepackage{etoolbox}
 
 \definecolor{dugreen}{RGB}{0,92,72}
 \definecolor{dugold}{RGB}{193,145,44}
@@ -45,6 +46,11 @@
 \newcolumntype{Y}{>{\raggedright\arraybackslash}X}
 \newcolumntype{C}[1]{>{\centering\arraybackslash}p{#1}}
 \setlength{\emergencystretch}{2em}
+\AtBeginEnvironment{thebibliography}{%
+  \footnotesize
+  \setstretch{1.0}%
+  \renewcommand{\newblock}{\hspace{0.25em}}%
+}
 
 \begin{document}
 
@@ -57,7 +63,7 @@
 \fancyhead{}
 \rhead{\thepage}
 \lhead{\fancyplain{}{\rightmark}}
-\setstretch{1.18}
+\setstretch{1.14}
 \renewcommand{\sectionmark}[1]{\markright{\thesection\ #1}}
 
 \include{Chapters/introduction}

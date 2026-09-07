@@ -35,12 +35,73 @@ feature snapshot at a historical cutoff. The unit of strategy evaluation is an
 eligible action evaluated under the same information and constraints as its
 comparison policy.
 
+\section{Design Requirements and Acceptance Logic}
+
+The literature and problem formulation are converted into eight requirements.
+They are stated before implementation so that the artifact can be evaluated
+against a stable purpose rather than judged from whichever functions are easiest
+to demonstrate.
+
+\begin{description}[style=nextline,leftmargin=2em]
+  \item[DR1: Decision relevance.] Every analytical output must name its user,
+  decision, unit, horizon and feasible response. An output that has no defined
+  decision remains exploratory and cannot be promoted as a recommendation.
+
+  \item[DR2: Operational integrity.] Source events must retain organization
+  scope, stable keys, event time, receipt time, status and correction history.
+  KPI and model views must be reproducible from those events.
+
+  \item[DR3: Temporal validity.] Features, preprocessing parameters and model
+  selection must use only evidence available by the relevant cutoff. Final
+  evaluation must be performed once on a period or entity group not used for
+  selection \cite{kaufman2012leakage}.
+
+  \item[DR4: Proportionate modelling.] Every task begins with a transparent
+  baseline. A more complex candidate is accepted only when the available data
+  support it and its improvement is material, stable and relevant to the
+  decision.
+
+  \item[DR5: Uncertainty and reliability.] Forecast intervals, probability
+  calibration, data-quality status and sensitivity to uncertain costs must be
+  exposed at the point where they can change an action
+  \cite{niculescu2005calibration}.
+
+  \item[DR6: Feasible and responsible action.] Strategy generation must apply
+  cash, stock, lead-time, order-size, contact-consent and policy constraints
+  before ranking. Infeasible actions must be excluded rather than displayed
+  with a low score.
+
+  \item[DR7: Human authority and comprehension.] Recommendations must include a
+  concise reason, source and alternative; the owner must be able to inspect,
+  reject or defer the action. Explanation quality is assessed through decision
+  tasks, not inferred from the presence of an attribution
+  \cite{lundberg2017shap,miller2019explanation}.
+
+  \item[DR8: Accountability and reproducibility.] Every released output must
+  retain the dataset, snapshot, feature, model or rule, constraint and interface
+  versions together with the owner response and any later observable outcome.
+\end{description}
+
+Acceptance is conjunctive rather than compensatory. High predictive accuracy
+cannot compensate for leakage, privacy failure or an infeasible action. A usable
+interface cannot compensate for an unreconciled KPI. Conversely, a candidate
+need not be the most complex model to satisfy the artifact requirements. A
+simple baseline can be the accepted component when it is temporally valid,
+adequate for the decision, more stable and easier to maintain.
+
+The evaluation will classify each requirement as \emph{met}, \emph{partially
+met}, \emph{not met} or \emph{not evaluable with the available evidence}. The
+last category is important: absence of suitable cost, consent or follow-up data
+must narrow the conclusion rather than be converted into an assumed success.
+Requirement-level findings will be reported alongside task metrics so that a
+single aggregate score cannot hide a critical failure.
+
 \section{Research Questions, Hypotheses and Measures}
 
 The research questions introduced in Chapter~\ref{chapter_introduction} are
 operationalized as follows:
 
-\begin{description}[style=nextline,leftmargin=0pt]
+\begin{description}[style=nextline,leftmargin=2em]
   \item[RQ1 / H1.] A demand model containing local calendar, price, promotion
   and available market-context features will reduce out-of-time WAPE or MASE
   relative to the otherwise identical model without those feature groups and
@@ -155,6 +216,71 @@ Uncertain or revised & Unconfirmed promotion, estimated cost, manual lead time &
 \end{tabularx}
 \end{table}
 
+\section{Data-Quality Assessment and Task Eligibility}
+
+Quality assessment will be performed before feature engineering and repeated
+after every structural transformation. A dataset-wide average will not be used
+as the sole quality claim because it can conceal failure in a field essential
+to one task. Instead, a quality profile will be calculated by business, branch,
+field, period and analytical task.
+
+For required field $j$ in eligible row set $G$, completeness is
+
+\begin{equation}
+C_{j,G}=1-\frac{\sum_{i\in G}\mathbb{I}(x_{ij}\text{ is missing})}{|G|}.
+\label{eq:completeness}
+\end{equation}
+
+Completeness does not imply validity. Product codes will be tested for referential
+integrity; invoice-line totals will be recomputed from quantity, price and
+discount; returns and cancellations will be reconciled to their source order
+when the identifier exists; and payment totals will be compared with invoice
+settlement status. Duplicate detection will distinguish exact repeated rows
+from legitimate repeated purchases. Candidate duplicates will be logged and
+resolved by a declared rule rather than deleted solely because their values are
+similar.
+
+Inventory provides a structural reconciliation test. Let
+$I^{\mathrm{open}}_{p,t}$ and $I^{\mathrm{close}}_{p,t}$ denote the recorded
+opening and closing balance for product $p$ over interval $t$, and let
+$\Delta I_{p,t,m}$ be a signed movement such as receipt, sale, return, damage or
+manual correction. The residual
+
+\begin{equation}
+r_{p,t}=I^{\mathrm{close}}_{p,t}-I^{\mathrm{open}}_{p,t}
+-\sum_m \Delta I_{p,t,m}
+\label{eq:stock_reconciliation}
+\end{equation}
+
+should be zero when all movements and balances are recorded consistently. A
+nonzero residual is not silently forced to zero. Its magnitude, period and
+likely source are retained as a quality event, and affected observations are
+flagged for sensitivity analysis or exclusion.
+
+Temporal tests will identify events recorded before their source transaction,
+receipts before purchase orders, negative or implausible lead times, customer
+features after their cutoff and product histories outside the active period.
+Event time and ingestion time will be stored separately where available. When
+only a date is known, the system will not invent false within-day precision.
+
+Task eligibility is then determined from necessary evidence rather than from a
+single arbitrary missing-data threshold. Demand forecasting requires a stable
+product-time series and a defensible availability interpretation. Margin KPIs
+require cost provenance. Customer inactivity requires stable pseudonymous
+identity and sufficient future follow-up. Replenishment evaluation additionally
+requires stock or a declared inventory reconstruction, lead-time assumptions
+and cost ranges. Owner-facing retention requires consent and a permitted contact
+mechanism. A task-business-period combination that fails a necessary condition
+is labelled ineligible; the reason becomes part of the audit report.
+
+This gate prevents statistical imputation from creating evidence that the
+business never recorded. Imputation remains permissible for a model feature
+when its missingness mechanism and decision-time availability are understood,
+the transformer is fitted on training data only, and an ablation or sensitivity
+check shows whether the choice materially affects results. It is not permissible
+to impute identifiers, consent, future outcomes or the ground truth used for the
+primary test.
+
 \section{Ethics, Privacy and Governance}
 
 University ethics approval and a signed data-sharing agreement will precede
@@ -231,6 +357,38 @@ For each KPI $K$, the system returns $K(D_t;w,g)$, where $w$ is the reporting
 window and $g$ is the aggregation level. Each value retains numerator,
 denominator, filters and data-quality status so that the owner can reproduce it.
 
+For valid invoice lines $i$ in reporting window $W$, net sales will be defined
+from the business's documented discount, cancellation and return treatment. A
+general form is
+
+\begin{equation}
+\mathrm{NetSales}_{W}=\sum_{i\in W}q_i p_i
+-\sum_{i\in W}d_i-\sum_{r\in W}v_r,
+\label{eq:net_sales}
+\end{equation}
+
+where $q_i p_i$ is gross line value, $d_i$ is the recognized discount and
+$v_r$ is the value of valid returns or reversals assigned to the window. Gross
+margin is reported only when comparable cost evidence exists:
+
+\begin{equation}
+\mathrm{GrossMarginRate}_{W}=
+\frac{\mathrm{NetSales}_{W}-\mathrm{COGS}_{W}}{\mathrm{NetSales}_{W}}.
+\label{eq:gross_margin}
+\end{equation}
+
+If cost is missing for a material share of sold units, the system reports sales
+and cost coverage rather than silently interpreting revenue as profit. Average
+order value uses eligible completed orders as the denominator; repeat rate
+states the customer-identification coverage; stock turnover states both the
+cost and average-inventory convention. Period comparisons will use comparable
+windows or explicitly label trading-day and closure differences.
+
+Each KPI response consists of a value, definition version, period, aggregation,
+coverage indicators and reconciliation status. This structure makes a change in
+business-rule definition visible. It also permits the evaluation to separate a
+calculation defect from a genuine change in business performance.
+
 \subsection{Demand Prediction}
 
 \begin{equation}
@@ -267,6 +425,56 @@ current/incoming stock and contact consent. This is a transparent operational
 objective inspired by the predictive-to-prescriptive transition
 \cite{bertsimas2020prescriptive}; its terms will be estimated and sensitivity
 tested rather than presented as known constants.
+
+For replenishment, let the inventory position immediately before action be
+
+\begin{equation}
+\mathrm{IP}_{p,t}=\mathrm{OnHand}_{p,t}+\mathrm{OnOrder}_{p,t}
+-\mathrm{Backorder}_{p,t}.
+\label{eq:inventory_position}
+\end{equation}
+
+Let $D_{p,t}^{(L)}$ be demand over the uncertain supplier lead-time horizon and
+$Q$ a candidate order quantity. A transparent conditional cost is
+
+\begin{equation}
+J_p(Q)=c_o\mathbb{I}(Q>0)
+c_hE[(\mathrm{IP}_{p,t}+Q-D_{p,t}^{(L)})^+]
+c_sE[(D_{p,t}^{(L)}-\mathrm{IP}_{p,t}-Q)^+],
+\label{eq:replenishment_cost}
+\end{equation}
+
+where $c_o$, $c_h$ and $c_s$ denote declared ordering, holding and shortage
+costs. The feasible set enforces supplier pack size, minimum order, storage,
+available cash and any category-level purchasing limit. Equation
+\ref{eq:replenishment_cost} is an evaluation model, not a claim that the three
+costs are known exactly. Candidate policies will be compared across
+owner-reviewed ranges, and the system will withhold a precise savings claim
+when the ranking changes materially across plausible values.
+
+Uncertainty enters through the lead-time demand distribution, not through a
+single inflated point forecast. When reliable quantiles are available, the
+system can evaluate candidate quantities against those quantiles; otherwise it
+uses residual or replay-based scenarios from validation periods. If stock-out
+censoring prevents credible demand reconstruction, the result is reported as a
+policy comparison under observed sales rather than as an estimate of fully
+unconstrained demand.
+
+Customer action requires a different logic. The inactivity probability
+$q_{c,t}$ in Equation~\ref{eq:churn} can prioritize review, but it does not
+estimate the causal effect of contacting customer $c$. A contact action is
+eligible only if the customer is contactable under consent and business policy,
+the proposed treatment is defined and capacity remains. Expected profit will be
+calculated only if a defensible incremental response benefit is available;
+otherwise the output is explicitly a risk-ranked contact list. This separation
+prevents a predictive probability from being misrepresented as campaign uplift.
+
+The action layer can also decline to recommend. Abstention occurs when required
+constraints are missing, uncertainty makes the top alternatives practically
+indistinguishable, the predicted benefit does not exceed action cost over the
+declared sensitivity range, or the relevant model has failed a monitoring gate.
+An abstention with a reason is treated as a valid safety behavior rather than a
+system error.
 
 \section{Preprocessing and Historical Snapshots}
 
@@ -353,6 +561,7 @@ the request path.
 
 \begin{figure}[H]
 \centering
+\resizebox{\textwidth}{!}{%
 \begin{tikzpicture}[
   block/.style={draw,rounded corners,minimum width=10.2cm,minimum height=1.0cm,align=center,font=\normalsize},
   arrow/.style={-{Latex[length=2.4mm]},very thick,draw=gray!75},node distance=0.56cm
@@ -371,7 +580,7 @@ the request path.
 \draw[arrow] (ui) -- (outcome);
 \draw[arrow] (outcome) -- (monitor);
 \draw[arrow] (monitor.west) -- ++(-1.0,0) |- (ops.west);
-\end{tikzpicture}
+\end{tikzpicture}}
 \caption{Proposed \system{} architecture and accountable feedback loop.}
 \label{fig:bsmart_architecture}
 \end{figure}
@@ -381,6 +590,120 @@ future outcomes cannot alter the snapshot that produced an earlier result.
 Outcomes enter later through the monitoring path and become eligible training
 evidence only in a new, versioned cycle. This separation makes it possible to
 reproduce what the system knew when an action was proposed.
+
+\section{Snapshot Lineage and Frozen Evaluation Flow}
+
+The analytical snapshot is the unit that prevents future information from
+entering an earlier decision. Figure~\ref{fig:snapshot_flow} distinguishes the
+observation window, decision cutoff and outcome window. Raw events remain in
+the governed ledger. A snapshot builder selects records available by cutoff
+$t$, applies a declared mapping and produces task-specific features. The
+snapshot identifier, cutoff, source-manifest hash and feature-definition version
+are immutable.
+
+\begin{figure}[H]
+\centering
+\resizebox{\textwidth}{!}{%
+\begin{tikzpicture}[
+  block/.style={draw,rounded corners,minimum width=3.25cm,minimum height=1.05cm,align=center,font=\small},
+  note/.style={draw=dugold,rounded corners,fill=softorange,minimum width=3.25cm,minimum height=0.9cm,align=center,font=\footnotesize},
+  flow/.style={-{Latex[length=2.2mm]},thick,draw=gray!75},
+  dashedflow/.style={-{Latex[length=2.2mm]},thick,dashed,draw=gray!75},
+  node distance=0.55cm
+]
+\node[block,fill=softgreen] (ledger) {Versioned event ledger\\event and receipt time};
+\node[block,fill=softblue,right=of ledger] (builder) {Snapshot builder\\rules fitted before cutoff};
+\node[block,fill=softgreen,right=of builder] (snapshot) {Immutable snapshot\\features available at $t$};
+\node[block,fill=softblue,right=of snapshot] (release) {Released output\\model, action and evidence};
+\node[note,below=0.85cm of builder] (cutoff) {Decision cutoff $t$\\future window remains sealed};
+\node[note,below=0.85cm of snapshot] (outcome) {Outcome window $(t,t+H]$\\labels and realized events};
+\node[note,below=0.85cm of release] (audit) {Evaluation record\\comparison and later eligibility};
+\draw[flow] (ledger) -- (builder);
+\draw[flow] (builder) -- (snapshot);
+\draw[flow] (snapshot) -- (release);
+\draw[flow] (builder) -- (cutoff);
+\draw[flow] (cutoff) -- (outcome);
+\draw[flow] (outcome) -- (audit);
+\draw[dashedflow] (release) -- (audit);
+\draw[dashedflow] (audit.south) -- ++(0,-0.45) -| (ledger.south);
+\end{tikzpicture}}
+\caption{Historical snapshot construction and separation of later outcomes.}
+\label{fig:snapshot_flow}
+\end{figure}
+
+For forecasting, multiple cutoffs form rolling origins. Transformations such as
+scalers, encoders, imputers and feature-selection rules are fitted within each
+training window and then applied to its validation origin. For customer
+inactivity, each snapshot contains behavior up to $t$ and receives a label only
+after the full horizon $H$ is observable. A purge interval is inserted when a
+delayed return, fulfillment event or rolling feature could cross the boundary.
+For entity-generalization analysis, the customer or product grouping is applied
+before any learned transformation.
+
+Model development uses training and validation snapshots. The final test
+manifest remains sealed until the task definition, eligibility rules, feature
+set, candidate models, primary metrics, thresholds and random seeds have been
+frozen. If a defect is discovered after opening the test, the correction and
+its impact are documented; the same observations cannot be repeatedly reused
+as if they were still an untouched test. This rule protects the interpretation
+of the final result rather than merely the mechanics of a split.
+
+Outcome records do not flow back into the released model automatically. They
+first enter a monitoring store and become eligible for a later version only
+after reconciliation, label maturation and repetition of the validation
+protocol. This delay prevents an owner response, corrected invoice or partially
+observed horizon from changing the evidence behind a historical output.
+
+\section{Owner-Facing Recommendation Evidence Contract}
+
+Every displayed recommendation will conform to a small evidence contract. The
+contract separates the suggested action from the information needed to judge
+it, as illustrated in Figure~\ref{fig:recommendation_contract}. The interface
+may show fewer details initially, but the full record must remain available for
+audit and evaluation.
+
+\begin{figure}[H]
+\centering
+\resizebox{\textwidth}{!}{%
+\begin{tikzpicture}[
+  center/.style={draw=dugreen,very thick,rounded corners,fill=softgreen,minimum width=4.2cm,minimum height=1.25cm,align=center,font=\small},
+  item/.style={draw,rounded corners,fill=softblue,minimum width=3.55cm,minimum height=1.05cm,align=center,font=\footnotesize},
+  flow/.style={-{Latex[length=2mm]},thick,draw=gray!70}
+]
+\node[center] (rec) {Recommendation record\\action, rank and status};
+\node[item,above left=0.8cm and 1.15cm of rec] (what) {Decision definition\\unit, horizon, alternative};
+\node[item,above right=0.8cm and 1.15cm of rec] (source) {Evidence source\\cutoff, snapshot, coverage};
+\node[item,left=1.15cm of rec] (why) {Supporting reason\\selective, non-causal wording};
+\node[item,right=1.15cm of rec] (uncertainty) {Uncertainty\\interval, calibration, sensitivity};
+\node[item,below left=0.8cm and 1.15cm of rec] (constraints) {Feasibility\\cash, stock, lead time, consent};
+\node[item,below right=0.8cm and 1.15cm of rec] (response) {Accountability\\owner response, later outcome};
+\draw[flow] (rec) -- (what);
+\draw[flow] (rec) -- (source);
+\draw[flow] (rec) -- (why);
+\draw[flow] (rec) -- (uncertainty);
+\draw[flow] (rec) -- (constraints);
+\draw[flow] (rec) -- (response);
+\end{tikzpicture}}
+\caption{Minimum evidence contract for an owner-facing recommendation.}
+\label{fig:recommendation_contract}
+\end{figure}
+
+The action component states exactly what is proposed and what comparator would
+otherwise be used. The evidence component provides the cutoff, source and
+coverage so the owner can detect stale or incomplete data. The reason component
+uses a small number of faithful factors and avoids causal language. Uncertainty
+and sensitivity state whether nearby alternatives are practically different.
+The feasibility component records every binding constraint. Finally, the
+accountability component captures accept, reject, defer or modify together with
+an optional owner reason and the later observable outcome.
+
+An explanation is considered successful only when it supports correct use. The
+owner study will therefore include cases in which the right decision is to
+reject or defer a confident-looking recommendation. This tests calibration of
+human reliance, not only whether participants prefer a more detailed screen.
+The contract also supports failure analysis: a poor decision can be traced to
+the underlying estimate, missing constraint, explanation, stale data or owner
+interpretation instead of being attributed vaguely to ``the AI.''
 
 \section{Evaluation Protocol}
 
@@ -430,6 +753,50 @@ effect size and interval, not only a significance label. Sensitivity analysis
 will vary lead time, shortage cost, holding cost, action cost and risk penalty in
 Equation~\ref{eq:utility}.
 
+\subsection{Frozen Analysis and Statistical Decision Rules}
+
+For each research question, one primary comparison and its primary metric will
+be frozen before the final test is opened. RQ1 uses paired out-of-time forecast
+errors at common origins, with WAPE or MASE selected according to denominator
+and scale suitability. RQ2 uses PR-AUC as the principal discrimination measure
+and treats calibration as a separate acceptance condition. RQ3 compares policy
+cost on identical demand paths under the same opening inventory and constraints.
+RQ4 compares task correctness between explanation conditions, with completion
+time and confidence interpreted jointly rather than as independent proof of
+benefit.
+
+The unit of uncertainty will match the dependence structure. Forecast errors
+from adjacent dates are not treated as independent rows; block bootstrap
+resampling will preserve local temporal dependence. When multiple businesses
+are available, firm-level variation will be shown rather than hidden inside a
+pooled transaction count. Customer comparisons will respect repeated snapshots
+from the same customer, and usability tasks will be paired within participant
+when the design permits. Confidence intervals will accompany effect estimates
+so that imprecision remains visible.
+
+Practical importance will be declared separately from statistical evidence. A
+small average error reduction may be practically relevant for a high-volume
+item but irrelevant after order constraints; a change in task time may be
+acceptable if correctness improves materially. Cost or effect thresholds will
+be defined from the participating business context before final comparison.
+Where no defensible threshold exists, the report will present the magnitude and
+uncertainty without assigning an arbitrary success label.
+
+Secondary metrics, horizons, segments and feature interactions remain useful
+for diagnosis, but they will be labelled secondary or exploratory. If many
+related comparisons are inspected, the report will disclose their number and
+avoid selecting only favorable cases. Any post-test model or threshold change
+creates a new exploratory version; it does not replace the frozen primary
+result. This separation keeps model improvement possible without rewriting the
+original evidence.
+
+Missing outcomes will be counted and explained. An observation with an
+incomplete label horizon cannot be a negative inactivity case. An unknown stock
+balance cannot be treated automatically as zero stock. A recommendation without
+later outcome may still support usability analysis but cannot support realized
+impact. Sensitivity bounds will be used when assumptions can be varied
+plausibly; otherwise the corresponding claim will be marked not evaluable.
+
 \subsection{Decision, Usability and Scalability Evaluation}
 
 Replenishment policies will face identical observed or replayed demand paths.
@@ -460,6 +827,57 @@ its training window, features, parameters and comparison result. This follows
 the methodology's requirement that adaptation must itself be evaluated before
 deployment.
 
+\section{Reproducibility, Audit and Failure Reporting}
+
+Reproducibility will be designed at four levels. \emph{Data reproducibility}
+requires a source manifest, checksum, schema version, mapping and exclusion log.
+\emph{Analytical reproducibility} requires snapshot identifiers, fitted
+transformations, feature definitions, target construction and split manifests.
+\emph{Model reproducibility} requires code version, environment, parameters,
+random seeds, trained artifact and evaluation command. \emph{Decision
+reproducibility} additionally requires constraints, cost assumptions,
+candidate-action set, ranking rule and interface version.
+
+Primary partner data cannot be published merely to make the study reproducible.
+The reproducibility package will therefore separate restricted evidence from
+shareable artifacts. It can publish schemas, data dictionaries, manifest
+templates, transformation code, generated test fixtures, configuration files
+and commands without releasing identifiers or confidential transactions. A
+permitted evaluator with the restricted dataset should be able to regenerate
+the corresponding snapshot and result; an external reader should be able to
+inspect the procedure and run the software on a documented public or generated
+fixture.
+
+Every experiment will create a machine-readable run record containing the
+research question, dataset and snapshot hashes, training and test windows,
+grouping keys, feature version, candidate and baseline versions, parameters,
+metrics, warnings, start and finish times, and output artifact hashes. Manual
+spreadsheet corrections will not occur outside this record. If an owner supplies
+a correction, it enters as a dated source or mapping revision and triggers only
+the affected downstream views.
+
+Failure reporting is part of the scientific output. Data eligibility failure,
+training failure, numerical instability, non-convergence, resource exhaustion,
+constraint infeasibility and evaluation failure will have distinct statuses.
+The report will give the denominator of attempted cases and will not compute an
+average only over successful model runs without disclosure. A method that fails
+on sparse or short series is therefore compared as deployed, not only on the
+subset where it happens to return a prediction.
+
+Auditability also applies to the owner interface. Each recommendation receives
+an identifier linking its evidence contract, displayed text, owner response and
+later outcome. If a recommendation changes after data correction or model
+replacement, the earlier record remains immutable and the successor points to
+it. This supports accountability without implying that the model, researcher or
+owner alone caused the eventual outcome.
+
+The final research package will include a claim-to-evidence index. Each central
+claim will identify the relevant research question, figure or table, run record
+and evidence tier. Claims supported only by public, generated, simulated or
+small-sample evidence will remain labelled accordingly. This index provides a
+final check that polished presentation has not expanded the scope of what was
+actually evaluated.
+
 \section{Threats to Validity and Planned Controls}
 
 \begin{table}[H]
@@ -483,70 +901,6 @@ Concept drift & Festival, price or behavior relations change & Time-based tests 
 \end{tabularx}
 \end{table}
 
-\section{Two-Semester Work Plan}
-
-The project period is February 2026--February 2027. The first semester defines
-the problem, evidence base and proposed artifact; the second emphasizes primary
-data, implementation completion, controlled evaluation and consolidation. The
-schedule in Table~\ref{tab:gantt} is dependency-aware: the final model study
-cannot precede ethics/data readiness, and the final conclusions cannot precede
-the frozen evaluation.
-
-\begin{landscape}
-\begin{table}[H]
-\centering
-\scriptsize
-\setlength{\tabcolsep}{3.2pt}
-\renewcommand{\arraystretch}{1.35}
-\caption{Project timeline from February 2026 to February 2027.}
-\label{tab:gantt}
-\begin{tabular}{p{0.24\linewidth}*{13}{c}}
-\toprule
-\textbf{Work package} & \rotatebox{90}{Feb 26} & \rotatebox{90}{Mar 26} & \rotatebox{90}{Apr 26} & \rotatebox{90}{May 26} & \rotatebox{90}{Jun 26} & \rotatebox{90}{Jul 26} & \rotatebox{90}{Aug 26} & \rotatebox{90}{Sep 26} & \rotatebox{90}{Oct 26} & \rotatebox{90}{Nov 26} & \rotatebox{90}{Dec 26} & \rotatebox{90}{Jan 27} & \rotatebox{90}{Feb 27} \\
-\midrule
-WP1: Background study and problem formulation & \cellcolor{softgreen} & \cellcolor{softgreen} & \cellcolor{softgreen} & & & & & & & & & & \\
-WP2: Requirements, ethics and data protocol & & & \cellcolor{softgreen} & \cellcolor{softgreen} & \cellcolor{softgreen} & \cellcolor{softgreen} & & & & & & & \\
-WP3: Framework, schema and evaluation design & & & & \cellcolor{softgreen} & \cellcolor{softgreen} & \cellcolor{softgreen} & \cellcolor{softgreen} & \cellcolor{softgreen} & & & & & \\
-WP4: Core artifact implementation & & & & & & \cellcolor{softblue} & \cellcolor{softblue} & \cellcolor{softblue} & \cellcolor{softblue} & & & & \\
-WP5: Partner onboarding and primary data & & & & & & & & \cellcolor{softblue} & \cellcolor{softblue} & \cellcolor{softblue} & & & \\
-WP6: Model development and internal validation & & & & & & & & & \cellcolor{softblue} & \cellcolor{softblue} & \cellcolor{softblue} & & \\
-WP7: Frozen tests, ablations and scale study & & & & & & & & & & & \cellcolor{softorange} & \cellcolor{softorange} & \\
-WP8: Usability and decision-impact study & & & & & & & & & & & & \cellcolor{softorange} & \cellcolor{softorange} \\
-WP9: Final writing, audit and defence preparation & & & & & & & & & & & \cellcolor{softorange} & \cellcolor{softorange} & \cellcolor{softorange} \\
-\bottomrule
-\end{tabular}
-
-\vspace{0.3cm}
-\textit{Legend:} \colorbox{softgreen}{Phase-I research foundation}\quad
-\colorbox{softblue}{build and data preparation}\quad
-\colorbox{softorange}{evaluation and consolidation}.
-\end{table}
-\end{landscape}
-
-\begin{table}[H]
-\centering
-\small
-\caption{Milestones, exit criteria and contingency.}
-\label{tab:milestones}
-\begin{tabularx}{\textwidth}{p{0.17\textwidth}p{0.18\textwidth}Y Y}
-\toprule
-\textbf{Milestone} & \textbf{Target} & \textbf{Exit criterion} & \textbf{Contingency} \\
-\midrule
-M1: Initial report & September 2026 & Problem, verified background, proposed method and approved plan & Revise scope/RQs before model lock \\
-M2: Data readiness & November 2026 & Ethics/agreement complete; manifest and quality report for eligible primary data & Narrow the primary task; retain public data only as external procedure checks \\
-M3: Model freeze & December 2026 & Baselines, features, splits, metrics and seeds fixed before final test & Prefer simpler eligible models when volume is inadequate \\
-M4: Evaluation freeze & January 2027 & Untouched tests, ablations, intervals, decision and scale analyses complete & Report inconclusive/negative findings; do not retune on test \\
-M5: Final thesis & February 2027 & Chapters complete; citations, claims, figures and reproducibility artifacts audited & Remove unsupported claims and document remaining limitations \\
-\bottomrule
-\end{tabularx}
-\end{table}
-
-The critical path runs through ethics and primary-data readiness (M2), model
-freeze (M3) and evaluation freeze (M4). Weekly progress review will track a
-deliverable, its evidence and its next dependency. Schedule pressure will not be
-handled by converting a public or generated-data result into a primary local
-claim.
-
 \section{Expected Methodological Outputs}
 
 At completion, the methodology is expected to yield a documented canonical
@@ -554,4 +908,4 @@ schema and data dictionary, partner data protocol, versioned feature snapshots,
 baseline and candidate model specifications, a constraint-aware recommendation
 procedure, a reproducible evaluation package and an owner-study instrument.
 Implementation detail, observed numerical results and conclusions will be added
-to the reserved chapters only after the corresponding milestones are satisfied.
+to the reserved chapters only after the corresponding evidence is available.

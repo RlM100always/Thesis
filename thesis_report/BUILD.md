@@ -17,6 +17,13 @@ If using the repository's portable compiler instead, run
 `..\.tools\tectonic\tectonic.exe main.tex --keep-logs --keep-intermediates`.
 Tectonic resolves the bibliography and repeated references automatically.
 
+## Overleaf or Prism
+
+Upload the supplied source ZIP as a new project. Set `main.tex` as the main
+document and use pdfLaTeX or XeLaTeX. The archive contains the class file,
+bibliography, chapter sources and the required logo; generated auxiliary files
+and unused experimental images are intentionally excluded.
+
 ## TeX Live or MiKTeX
 
 ```powershell
