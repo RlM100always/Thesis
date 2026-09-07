@@ -1,15 +1,14 @@
 # Thesis reference verification
 
-Date: 2026-09-06
+Date: 2026-09-07
 
-Verified: **27 / 27**
+Verified: **36 / 36**
 
 | Key | Registry/source | DOI/URL | Title match | Year match | Status |
 |---|---|---|---:|---:|---|
 | `chen2012business` | Crossref | 10.2307/41703503 | True | True | verified |
 | `hoque2016ict` | Crossref | 10.1177/0266666915578202 | True | True | verified |
 | `shahadat2023digital` | Crossref | 10.1177/09721509221137199 | True | True | verified |
-| `rahman2023mobile` | none | 10.3329/dujbst.v42i2.59715 | - | - | verified |
 | `hazra2021mfs` | Crossref | 10.1002/isd2.12166 | True | True | verified |
 | `ngai2009crm` | Crossref | 10.1016/j.eswa.2008.02.021 | True | True | verified |
 | `fader2005rfm` | Crossref | 10.1509/jmkr.2005.42.4.415 | True | True | verified |
@@ -32,4 +31,14 @@ Verified: **27 / 27**
 | `chen2012uci` | DataCite | 10.24432/C5CG6D | True | True | verified |
 | `jahin2024dataset` | DataCite | 10.17632/xwmbk7n3c8.1 | True | True | verified |
 | `wfp2026prices` | official URL | https://data.humdata.org/dataset/wfp-food-prices-for-bangladesh | - | - | verified |
-| `worldbank2026fat` | DataCite | 10.48529/hgry-h633 | True | True | verified |
+| `hevner2004design` | Crossref | 10.2307/25148625 | True | True | verified |
+| `fildes2022retail` | Crossref | 10.1016/j.ijforecast.2019.06.004 | True | True | verified |
+| `croston1972intermittent` | Crossref | 10.2307/3007885 | True | True | verified |
+| `syntetos2005intermittent` | Crossref | 10.1016/j.ijforecast.2004.10.001 | True | True | verified |
+| `hyndman2011hierarchical` | Crossref | 10.1016/j.csda.2011.03.006 | True | True | verified |
+| `gneiting2007scoring` | Crossref | 10.1198/016214506000001437 | True | True | verified |
+| `niculescu2005calibration` | Crossref | 10.1145/1102351.1102430 | True | True | verified |
+| `gama2014drift` | Crossref | 10.1145/2523813 | True | True | verified |
+| `miller2019explanation` | Crossref | 10.1016/j.artint.2018.07.007 | True | True | verified |
+| `bertsimas2020prescriptive` | Crossref | 10.1287/mnsc.2018.3253 | True | True | verified |
+| `syntetos2010stock` | Crossref | 10.1016/j.ijpe.2010.05.001 | True | True | verified |

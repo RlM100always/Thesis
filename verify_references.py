@@ -131,7 +131,7 @@ def main() -> None:
         time.sleep(.08)
 
     summary = {
-        "generated_at": "2026-09-06",
+        "generated_at": "2026-09-07",
         "bibliography": str(BIB),
         "count": len(records),
         "verified_count": sum(bool(r["verified"]) for r in records),
