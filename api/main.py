@@ -66,6 +66,7 @@ from .receivables_routes import router as receivables_router  # noqa: E402
 from .insights_advanced_routes import router as insights_advanced_router  # noqa: E402
 from .accounting_routes import router as accounting_router  # noqa: E402
 from .approval_routes import router as approval_router  # noqa: E402
+from .stock_count_routes import router as stock_count_router  # noqa: E402
 from .database import create_schema  # noqa: E402
 from .schemas import Health  # noqa: E402
 
@@ -117,6 +118,7 @@ app.include_router(receivables_router)
 app.include_router(insights_advanced_router)
 app.include_router(accounting_router)
 app.include_router(approval_router)
+app.include_router(stock_count_router)
 
 
 @app.on_event("startup")

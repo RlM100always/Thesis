@@ -189,6 +189,11 @@ export const api = {
   productsApp: (org) => appRequest("/api/app/products?limit=500", { organizationId: org }),
   createProduct: (org, body) => appRequest("/api/app/products", { method: "POST", body, organizationId: org }),
   inventoryApp: (org, branch) => appRequest(`/api/app/inventory?branch_id=${encodeURIComponent(branch)}`, { organizationId: org }),
+  stockCounts: (org, branch, status = "") => appRequest(`/api/app/inventory/stock-counts?branch_id=${encodeURIComponent(branch)}${status ? `&status=${status}` : ""}`, { organizationId: org }),
+  stockCount: (org, id) => appRequest(`/api/app/inventory/stock-counts/${id}`, { organizationId: org }),
+  startStockCount: (org, body) => appRequest("/api/app/inventory/stock-counts", { method: "POST", body, organizationId: org }),
+  enterStockCount: (org, countId, lineId, countedQty) => appRequest(`/api/app/inventory/stock-counts/${countId}/lines/${lineId}`, { method: "PATCH", body: { counted_qty: countedQty }, organizationId: org }),
+  completeStockCount: (org, countId) => appRequest(`/api/app/inventory/stock-counts/${countId}/complete`, { method: "POST", body: {}, organizationId: org }),
   brief: (org) => appRequest("/api/app/brief", { organizationId: org }),
   alerts: (org) => appRequest("/api/app/alerts", { organizationId: org }),
   cashDay: (org, branch, day = "") =>

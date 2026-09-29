@@ -30,6 +30,7 @@ from api.receivables_routes import router as receivables_router
 from api.insights_advanced_routes import router as insights_advanced_router
 from api.accounting_routes import router as accounting_router
 from api.approval_routes import router as approval_router
+from api.stock_count_routes import router as stock_count_router
 from api.bsmart_routes import router as bsmart_router
 from api.commerce_routes import router as commerce_router
 from api.data_import_routes import router as data_import_router
@@ -41,7 +42,7 @@ from api.permissions import ROLES
 
 ROUTERS = (
     auth_router, app_router, commerce_router, directory_router, finance_router,
-    data_import_router, analytics_router, bsmart_router, audit_router, batch_router, insights_router, bulk_import_router, planning_router, receivables_router, insights_advanced_router, accounting_router, approval_router,
+    data_import_router, analytics_router, bsmart_router, audit_router, batch_router, insights_router, bulk_import_router, planning_router, receivables_router, insights_advanced_router, accounting_router, approval_router, stock_count_router,
 )
 
 

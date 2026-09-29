@@ -43,6 +43,7 @@ DEFAULT_ACCOUNTS: list[tuple[str, str, str]] = [
     ("4100", "Sales Returns and Allowances", "revenue"),   # contra-revenue: normal balance is a debit
     ("5000", "Cost of Goods Sold", "expense"),
     ("5900", "Operating Expenses", "expense"),
+    ("5910", "Inventory Shrinkage/Adjustment", "expense"),   # contra like 4100: a found-stock count nets this down
     ("5950", "Cash Over/Short", "expense"),
 ]
 # A payment/settlement method string (as stored on Payment.method, LedgerEntry.payment_method,

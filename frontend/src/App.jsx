@@ -39,6 +39,7 @@ import ImportDataPage from "./pages/ImportData";
 import InsightsPage from "./pages/Insights";
 import ApprovalsPage from "./pages/Approvals";
 import AccountingPage from "./pages/Accounting";
+import StockCountPage from "./pages/StockCount";
 import ReorderPlanPage from "./pages/ReorderPlan";
 import NotificationBell from "./components/NotificationBell";
 import AcceptInvite from "./pages/AcceptInvite";
@@ -67,6 +68,7 @@ const BUSINESS_NAV = [
       { to: "/sales-history", label: "বিক্রির ইতিহাস", icon: "fileText", perm: "sales:read" },
       { to: "/inventory", label: "স্টক", icon: "box", badgeKey: "lowStock", perm: "inventory:read" },
       { to: "/expiry", label: "মেয়াদ ও ব্যাচ", icon: "clock", perm: "inventory:read", feature: "expiry" },
+      { to: "/stock-count", label: "স্টক গণনা", icon: "check", perm: "inventory:read" },
       { to: "/products", label: "পণ্য", icon: "tag", perm: "catalog:read" },
       { to: "/reorder", label: "কী কিনবেন", icon: "zap", perm: "purchases:read" },
       { to: "/purchases", label: "ক্রয়", icon: "truck", perm: "purchases:read" },
@@ -221,6 +223,7 @@ function AppFrame() {
           <Route path="/sales" element={<Guard perm="sales:read"><SalesPage /></Guard>} />
           <Route path="/inventory" element={<Guard perm="inventory:read"><InventoryPage /></Guard>} />
           <Route path="/expiry" element={<Guard perm="inventory:read"><ExpiryPage /></Guard>} />
+          <Route path="/stock-count" element={<Guard perm="inventory:read"><StockCountPage /></Guard>} />
           <Route path="/products" element={<Guard perm="catalog:read"><ProductsPage /></Guard>} />
           <Route path="/accounts" element={<Guard perm="ledger:read"><AccountsPage /></Guard>} />
           <Route path="/insights" element={<Guard perm="inventory:read"><InsightsPage /></Guard>} />

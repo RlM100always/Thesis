@@ -511,3 +511,28 @@ def test_a_large_purchase_order_by_a_manager_waits_for_the_owner(shop, new_sessi
     page.goto(f"{WEB}/#/purchases")
     expect(page.get_by_text("৩০,০০০", exact=False).first).to_be_visible()
     no_js_errors(owner_session)
+
+
+def test_a_stock_count_finds_and_fixes_a_shelf_shortage(shop, new_session):
+    branch, product = seed_stock(shop)   # Napa, 50 units
+    s = new_session()
+    sign_in(s, shop["email"])
+    page = s.page
+    page.goto(f"{WEB}/#/stock-count")
+    page.get_by_role("button", name="নতুন গণনা শুরু করুন").click()
+    expect(page.get_by_text("চলমান গণনা")).to_be_visible()
+    row = page.get_by_role("row", name=re.compile("Napa"))
+    expect(row).to_contain_text(bn(50))
+    row.get_by_label("Napa গণনা").fill("47")
+    row.get_by_label("Napa গণনা").blur()
+    expect(row.get_by_text("সংরক্ষিত")).to_be_visible()
+
+    page.get_by_role("button", name=re.compile("গণনা শেষ করুন")).click()
+    dialog = page.locator(".confirm-box")
+    expect(dialog).to_contain_text("সব গরমিল স্টকে প্রয়োগ হবে")   # only one product was seeded, so nothing is left uncounted
+    dialog.get_by_role("button", name="নিশ্চিত করুন").click()
+    expect(page.get_by_text("গণনা শেষ।")).to_be_visible()
+
+    stock = {r["sku"]: float(r["quantity"]) for r in api(shop, "GET", f"/inventory?branch_id={branch}")}
+    assert stock["P-1"] == 47
+    no_js_errors(s)

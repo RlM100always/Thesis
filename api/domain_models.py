@@ -274,6 +274,48 @@ class BatchStock(Base, TimestampMixin):
     quantity: Mapped[Decimal] = mapped_column(Numeric(14, 3), default=0)
 
 
+class StockCount(Base, TimestampMixin):
+    """A physical stock take at one branch: system quantities snapshotted at the
+    start, counted quantities entered against them, variances applied on
+    completion. Expiry-tracked products are out of scope here — a variance on
+    one of those needs a batch to attribute it to, which "মেয়াদ ও ব্যাচ" already
+    handles per-batch; counting everything else together would either guess the
+    batch or ask a question this workflow has no good place to ask."""
+
+    __tablename__ = "stock_counts"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    organization_id: Mapped[str] = mapped_column(ForeignKey("organizations.id", ondelete="CASCADE"), index=True)
+    branch_id: Mapped[str] = mapped_column(ForeignKey("branches.id"), index=True)
+    status: Mapped[str] = mapped_column(String(20), default="open")  # open | completed
+    note: Mapped[str | None] = mapped_column(String(300))
+    started_by_user_id: Mapped[str] = mapped_column(ForeignKey("users.id"))
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    lines: Mapped[list[StockCountLine]] = relationship(back_populates="count", cascade="all, delete-orphan")
+
+
+class StockCountLine(Base, TimestampMixin):
+    """One product's system quantity at the moment counting started, and what
+    was actually counted (null until entered). Never edited after the count
+    completes — a wrong count is corrected with a new stock take, not by
+    silently rewriting history."""
+
+    __tablename__ = "stock_count_lines"
+    __table_args__ = (UniqueConstraint("stock_count_id", "product_id"),)
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    organization_id: Mapped[str] = mapped_column(ForeignKey("organizations.id", ondelete="CASCADE"), index=True)
+    stock_count_id: Mapped[str] = mapped_column(ForeignKey("stock_counts.id", ondelete="CASCADE"), index=True)
+    product_id: Mapped[str] = mapped_column(ForeignKey("products.id"), index=True)
+    system_qty: Mapped[Decimal] = mapped_column(Numeric(14, 3))
+    counted_qty: Mapped[Decimal | None] = mapped_column(Numeric(14, 3))
+    counted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    count: Mapped[StockCount] = relationship(back_populates="lines")
+
+
 class SaleItemBatch(Base, TimestampMixin):
     """Which batches a sale line was filled from.
 
