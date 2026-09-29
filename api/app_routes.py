@@ -11,6 +11,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from .accounting import seed_default_accounts
 from .app_schemas import OrganizationCreate, OrganizationProfile, OrganizationView, UserView
 from .audit import record_audit
 from .auth import CurrentMembership, CurrentUser
@@ -36,6 +37,7 @@ def create_organization(payload: OrganizationCreate, current_user: CurrentUser, 
     db.add(organization)
     try:
         db.flush()
+        seed_default_accounts(db, organization.id)
         db.add_all([
             Membership(organization_id=organization.id, user_id=current_user.id, role="owner"),
             Branch(

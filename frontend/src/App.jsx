@@ -37,6 +37,7 @@ import SalesHistoryPage from "./pages/SalesHistory";
 import ReportsPage from "./pages/Reports";
 import ImportDataPage from "./pages/ImportData";
 import InsightsPage from "./pages/Insights";
+import AccountingPage from "./pages/Accounting";
 import ReorderPlanPage from "./pages/ReorderPlan";
 import NotificationBell from "./components/NotificationBell";
 import AcceptInvite from "./pages/AcceptInvite";
@@ -72,6 +73,7 @@ const BUSINESS_NAV = [
       { to: "/directory", label: "কাস্টমার ও সাপ্লায়ার", icon: "users", perm: "customers:read" },
       { to: "/accounts", label: "হিসাব", icon: "card", perm: "ledger:read" },
       { to: "/insights", label: "ইনসাইটস", icon: "pie", perm: "inventory:read" },
+      { to: "/accounting", label: "আর্থিক প্রতিবেদন", icon: "fileText", perm: "ledger:read" },
       { to: "/cash", label: "ক্যাশ মেলান", icon: "wallet", perm: "cash:read" },
       { to: "/reports", label: "রিপোর্ট", icon: "download", perm: "ledger:read" },
     ],
@@ -212,6 +214,7 @@ function AppFrame() {
           <Route path="/products" element={<Guard perm="catalog:read"><ProductsPage /></Guard>} />
           <Route path="/accounts" element={<Guard perm="ledger:read"><AccountsPage /></Guard>} />
           <Route path="/insights" element={<Guard perm="inventory:read"><InsightsPage /></Guard>} />
+          <Route path="/accounting" element={<Guard perm="ledger:read"><AccountingPage /></Guard>} />
           <Route path="/purchases" element={<Guard perm="purchases:read"><PurchasesPage /></Guard>} />
           <Route path="/returns" element={<Guard perm="returns:read"><ReturnsPage /></Guard>} />
           <Route path="/directory" element={<Guard perm="customers:read"><DirectoryPage /></Guard>} />

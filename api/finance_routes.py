@@ -9,6 +9,7 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from .accounting import Line, account_for_method, post_journal
 from .app_schemas import (
     ExpenseCreate, ExpenseView, LedgerBalanceView, PurchaseCreate, PurchaseDetailView,
     PurchaseLineView, PurchaseReceive, PurchaseView, ReturnCreate, ReturnHistoryView,
@@ -28,6 +29,7 @@ from .domain_models import (
 router = APIRouter(prefix="/api/app")
 Db = Annotated[Session, Depends(get_db)]
 MONEY = Decimal("0.01")
+ZERO = Decimal("0")
 
 
 @router.post("/purchases", response_model=PurchaseView, tags=["purchases"])
@@ -185,6 +187,10 @@ def receive_purchase(
             reference_type="purchase_receipt", reference_id=order.id,
             occurred_at=payload.received_at,
         ))
+        post_journal(db, org_id, order.branch_id, payload.received_at, "purchase_receipt", order.id, [
+            Line("1200", received_value, ZERO),
+            Line("2000", ZERO, received_value, "supplier", order.supplier_id),
+        ], memo=f"Goods received: {order.order_number}")
     db.add(AuditLog(
         organization_id=org_id, actor_user_id=actor.id, action="purchase.received",
         entity_type="purchase_order", entity_id=order.id,
@@ -214,6 +220,10 @@ def pay_supplier(
         reference_id=supplier_id, note=payload.note, occurred_at=payload.occurred_at,
     )
     db.add(entry)
+    post_journal(db, org_id, None, payload.occurred_at, "supplier_payment", supplier_id, [
+        Line("2000", payload.amount, ZERO, "supplier", supplier_id),
+        Line(account_for_method(payload.payment_method), ZERO, payload.amount),
+    ], memo=payload.note)
     record_audit(db, membership, "supplier.paid", "supplier", supplier_id,
                  amount=payload.amount, method=payload.payment_method)
     db.commit()
@@ -242,6 +252,10 @@ def receive_customer_payment(
         payment_method=payload.payment_method, reference_type="customer_payment",
         reference_id=customer_id, note=payload.note, occurred_at=payload.occurred_at,
     ))
+    post_journal(db, org_id, None, payload.occurred_at, "customer_payment", customer_id, [
+        Line(account_for_method(payload.payment_method), payload.amount, ZERO),
+        Line("1100", ZERO, payload.amount, "customer", customer_id),
+    ], memo=payload.note)
     record_audit(db, membership, "customer.paid", "customer", customer_id,
                  amount=payload.amount, method=payload.payment_method)
     db.commit()
@@ -296,7 +310,10 @@ def apply_return(db: Session, membership, actor, sale_id: str, payload: ReturnCr
     db.add(return_doc)
     try:
         db.flush()
+        restocked_cost = ZERO
         for returned, line, amount in calculated:
+            if returned.restock:
+                restocked_cost += returned.quantity * line.unit_cost_at_sale
             line.returned_quantity += returned.quantity
             db.add(SalesReturnItem(
                 organization_id=org_id, sales_return_id=return_doc.id,
@@ -370,6 +387,18 @@ def apply_return(db: Session, membership, actor, sale_id: str, payload: ReturnCr
             organization_id=org_id, actor_user_id=actor.id, action="sale.returned",
             entity_type="sales_return", entity_id=return_doc.id,
         ))
+        journal_lines = []
+        if total > 0:
+            journal_lines.append(Line("4100", total, ZERO))
+            if due_reduction:
+                journal_lines.append(Line("1100", ZERO, due_reduction, "customer", sale.customer_id))
+            if refund_amount:
+                journal_lines.append(Line(account_for_method(payload.refund_method), ZERO, refund_amount))
+        if restocked_cost > 0:
+            journal_lines += [Line("1200", restocked_cost, ZERO), Line("5000", ZERO, restocked_cost)]
+        if journal_lines:
+            post_journal(db, org_id, sale.branch_id, payload.returned_at, "sales_return", return_doc.id,
+                         journal_lines, memo=f"Return {return_doc.return_number}")
         db.flush()
     except IntegrityError as exc:
         db.rollback()
@@ -459,6 +488,10 @@ def create_expense(payload: ExpenseCreate, membership: CurrentMembership, db: Db
         payment_method=payload.payment_method, reference_type="expense",
         reference_id=expense.id, note=payload.note, occurred_at=payload.incurred_at,
     ))
+    post_journal(db, org_id, payload.branch_id, payload.incurred_at, "expense", expense.id, [
+        Line("5900", payload.amount, ZERO),
+        Line(account_for_method(payload.payment_method), ZERO, payload.amount),
+    ], memo=payload.category)
     record_audit(db, membership, "expense.created", "expense", expense.id,
                  category=payload.category, amount=payload.amount)
     db.commit()

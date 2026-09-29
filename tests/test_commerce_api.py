@@ -6,6 +6,7 @@ from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session
 from sqlalchemy.pool import StaticPool
 
+from api.accounting import seed_default_accounts
 from api.auth import get_current_user
 from api.commerce_routes import router
 from api.database import Base, get_db
@@ -24,6 +25,7 @@ def test_sale_is_atomic_and_decrements_tenant_stock():
         org = Organization(name="Test Shop", slug="test-shop")
         db.add_all([user, org])
         db.flush()
+        seed_default_accounts(db, org.id)
         branch = Branch(organization_id=org.id, code="MAIN", name="Main")
         product = Product(
             organization_id=org.id, sku="RICE-1", name="Rice",

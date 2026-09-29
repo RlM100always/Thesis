@@ -9,6 +9,7 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from .accounting import Line, account_for_method, post_journal
 from .app_schemas import (
     InventoryView, ProductCreate, ProductUpdate, ProductView, SaleCreate, SaleDetailView,
     SaleLineView, SaleView, StockAdjustment,
@@ -30,6 +31,7 @@ from .timeutil import day_bounds
 router = APIRouter(prefix="/api/app")
 Db = Annotated[Session, Depends(get_db)]
 MONEY = Decimal("0.01")
+ZERO = Decimal("0")
 
 
 def _adjust_tracked(db, org_id: str, branch, product, payload) -> Batch:
@@ -273,6 +275,7 @@ def create_sale(payload: SaleCreate, membership: CurrentMembership, user: Curren
     try:
         db.flush()
         sale_day = payload.sold_at.date()
+        cogs_total = ZERO
         for item, product, unit_price, line_total in line_values:
             balances[product.id].quantity -= item.quantity
             unit_cost = product.cost_price
@@ -287,6 +290,7 @@ def create_sale(payload: SaleCreate, membership: CurrentMembership, user: Curren
                         detail += f" ({exc.unsellable} units are expired or blocked)"
                     raise HTTPException(status_code=409, detail=detail) from exc
                 unit_cost = blended_cost(plan, product.cost_price)
+            cogs_total += unit_cost * item.quantity
             line = SalesOrderItem(
                 organization_id=org_id, order_id=order.id, product_id=product.id,
                 quantity=item.quantity, unit_price=unit_price,
@@ -334,6 +338,20 @@ def create_sale(payload: SaleCreate, membership: CurrentMembership, user: Curren
             organization_id=org_id, actor_user_id=user.id, action="sale.created",
             entity_type="sales_order", entity_id=order.id,
         ))
+        journal_lines = [
+            Line(account_for_method(p.method), p.amount, ZERO) for p in payload.payments
+        ]
+        if total > paid:
+            journal_lines.append(Line("1100", total - paid, ZERO, "customer", payload.customer_id))
+        if subtotal - discount_total > 0:
+            journal_lines.append(Line("4000", ZERO, subtotal - discount_total))
+        if payload.tax_amount > 0:
+            journal_lines.append(Line("2100", ZERO, payload.tax_amount))
+        if cogs_total > 0:
+            journal_lines += [Line("5000", cogs_total, ZERO), Line("1200", ZERO, cogs_total)]
+        if journal_lines:
+            post_journal(db, org_id, branch.id, payload.sold_at, "sales_order", order.id, journal_lines,
+                         memo=f"Sale {order.invoice_number}")
         db.commit()
     except IntegrityError as exc:
         db.rollback()

@@ -44,7 +44,7 @@ buttons") applies doubly here.
 | Bulk CSV/XLSX onboarding import | `api/bulk_import_routes.py` | IMPLEMENTED for products/customers/opening stock |
 | Batch/expiry/FEFO (pharmacy pack) | `api/batches.py` | IMPLEMENTED |
 | SQLite dev / Postgres prod | `api/database.py`, `DATABASE_URL` | PARTIAL — code is DB-portable; **no Postgres deployment exists, dev is SQLite only** |
-| Double-entry accounting engine | `LedgerEntry` (payable/receivable/expense only) | NOT BUILT — today's ledger is three single-purpose balances, not a chart-of-accounts / journal / trial balance / P&L / balance sheet |
+| Double-entry accounting engine | `api/accounting.py`, `api/accounting_routes.py`, `Account`/`JournalEntry`/`JournalLine` (2026-09-29) | IMPLEMENTED (first slice): chart of accounts, balanced journal posting from sale/return/void/purchase-receipt/expense/settlement, trial balance, P&L, balance sheet. Still missing: an accounts editor, bank reconciliation, VAT export, cash-close-variance posting |
 | Approval inbox / configurable approval rules | none | NOT BUILT |
 | Workforce (attendance, commission, payroll, targets) | none | NOT BUILT |
 | SMS/WhatsApp/payment-gateway/printer/barcode-hardware integration | none live (messages are copy/open links only) | NOT BUILT |
@@ -60,8 +60,8 @@ for what's already done:
 1. ~~Login, organization, branch, staff role, security~~ — **done** (`api/auth*.py`, `api/permissions.py`).
 2. ~~POS, invoice, payment, due, return~~ — **done**, plus void, wholesale tier, credit limit.
 3. ~~Stock, purchase, supplier, warehouse, transfer~~ — **done** for single-warehouse-per-branch; no multi-warehouse-per-branch yet.
-4. **Accounting engine** (journal, ledger, trial balance, P&L, balance sheet) — **not built**, highest-value next step: everything downstream (reports, VAT export, Shop Passport) wants a real chart of accounts instead of three ad-hoc balances.
-5. **Approval Inbox + configurable approval rules** — **not built**, second-highest value: turns "owner does everything" into "owner delegates safely," and is the shared mechanism every vertical pack's workflow (discount, expense, purchase, refund, adjustment) reuses.
+4. ~~Accounting engine (journal, ledger, trial balance, P&L, balance sheet)~~ — **done** (2026-09-29, `api/accounting.py`): first slice, see the table above for what's still missing.
+5. **Approval Inbox + configurable approval rules** — **not built, next real step**: turns "owner does everything" into "owner delegates safely," and is the shared mechanism every vertical pack's workflow (discount, expense, purchase, refund, adjustment) reuses.
 6. **Offline multi-device conflict detection** (two devices oversell the same unit) — partially covered by the DB's row-level stock lock, but no explicit conflict UI/alert when it happens offline-to-offline.
 7. **Real integrations**: SMS provider (adapter interface, non-masking default), payment-gateway webhook (bKash/Nagad confirmation), printer/barcode-hardware — currently zero live integrations.
 8. **Business-setup wizard v2** (the 8-12 step flow with opening balances, staff invite, receipt design, in one guided pass) — today's `Onboarding.jsx` is a single form.
@@ -75,9 +75,10 @@ exact trap the user is trying to get out of.
 
 ## Next concrete step
 
-**Item 4, the accounting engine's first slice**: replace the three ad-hoc
-`LedgerEntry` balances with a real chart-of-accounts + double-entry journal that
-the existing payable/receivable/expense/cash-close code posts into (kept
-backward-compatible so `/api/app/ledger/*` and the Dashboard KPIs don't break),
-then a trial balance and P&L report. This is scoped as its own PR, with its own
-migration and test suite, not mixed into a features-of-the-week commit.
+**Item 5, the Approval Inbox**: a generic `ApprovalRequest` model (kind, requested
+by, target entity, amount/detail, status) with configurable per-org rules
+("discount above X% → manager", "expense above ৳Y → owner"), a
+`/api/app/approvals` inbox route, and the first two flows wired through it
+(discount above a configurable cap, and expense above a configurable amount).
+Reuses the same audit trail and permission matrix already in place. Scoped as
+its own PR with its own migration and test suite.

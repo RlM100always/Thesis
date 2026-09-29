@@ -5,7 +5,7 @@ from datetime import datetime, timedelta, timezone
 
 from playwright.sync_api import expect
 
-from .conftest import WEB, bn, call, sign_in
+from .conftest import WEB, bn, call, in_days, sign_in
 from .test_panels import no_js_errors, seed_stock
 
 
@@ -368,4 +368,25 @@ def test_the_cash_locked_meter_and_insights_page_show_real_arithmetic(shop, new_
     price_row = page.get_by_role("row", name=re.compile("Big seller"))
     expect(price_row).to_contain_text("Square")
     expect(price_row).to_contain_text(f"+{bn(20)}%")
+    no_js_errors(s)
+
+
+def test_the_accounting_page_shows_a_balanced_trial_balance_and_correct_pnl(shop, new_session):
+    branch, product = seed_stock(shop)
+    sell(shop, branch, product, 4, "INV-ACC1")                                   # ৳60 revenue, cost ৳40
+    api(shop, "POST", "/expenses", {"category": "ভাড়া", "amount": "20", "payment_method": "cash", "incurred_at": now()})
+
+    s = new_session()
+    sign_in(s, shop["email"])
+    page = s.page
+    page.goto(f"{WEB}/#/accounting")
+    expect(page.get_by_text("হিসাব মিলেছে।")).to_be_visible()
+    row = page.get_by_role("row", name=re.compile("^Cash "))
+    expect(row).to_be_visible()
+
+    page.get_by_role("tab", name="লাভ-ক্ষতি (P&L)").click()
+    page.get_by_label("থেকে").fill(in_days(-1))
+    stats = page.locator(".ui-stats")
+    expect(stats).to_contain_text(bn(60))       # revenue
+    expect(stats).to_contain_text(bn(20))       # operating expenses
     no_js_errors(s)

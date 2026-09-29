@@ -401,6 +401,68 @@ class LedgerEntry(Base, TimestampMixin):
     occurred_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
 
 
+class Account(Base, TimestampMixin):
+    """One line of the shop's chart of accounts. Seeded automatically for every
+    organization (``api/accounting.py::DEFAULT_ACCOUNTS``); an owner may add more
+    but the seeded ones (``is_system``) may not be deleted — the posting code
+    depends on their codes existing."""
+
+    __tablename__ = "accounts"
+    __table_args__ = (UniqueConstraint("organization_id", "code"),)
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    organization_id: Mapped[str] = mapped_column(ForeignKey("organizations.id", ondelete="CASCADE"), index=True)
+    code: Mapped[str] = mapped_column(String(20))
+    name: Mapped[str] = mapped_column(String(120))
+    # asset / liability / equity / revenue / expense — decides the trial balance's
+    # normal side and which line of the P&L a revenue/expense account feeds.
+    type: Mapped[str] = mapped_column(String(20))
+    is_system: Mapped[bool] = mapped_column(Boolean, default=False)
+    active: Mapped[bool] = mapped_column(Boolean, default=True)
+
+
+class JournalEntry(Base, TimestampMixin):
+    """One business event, in double-entry form. Never edited after posting —
+    a mistake is corrected with a reversing entry, so the trail stays honest."""
+
+    __tablename__ = "journal_entries"
+    __table_args__ = (Index("ix_journal_org_time", "organization_id", "occurred_at"),)
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    organization_id: Mapped[str] = mapped_column(ForeignKey("organizations.id", ondelete="CASCADE"), index=True)
+    branch_id: Mapped[str | None] = mapped_column(ForeignKey("branches.id"), index=True)
+    occurred_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    memo: Mapped[str | None] = mapped_column(String(200))
+    reference_type: Mapped[str] = mapped_column(String(30))
+    reference_id: Mapped[str] = mapped_column(String(36), index=True)
+
+    lines: Mapped[list[JournalLine]] = relationship(back_populates="entry", cascade="all, delete-orphan")
+
+
+class JournalLine(Base, TimestampMixin):
+    """A debit or a credit (never both) against one account. A line never stands
+    alone — ``post_journal`` in ``api/accounting.py`` is the only way to create
+    one, and it refuses an entry whose debits and credits do not match."""
+
+    __tablename__ = "journal_lines"
+    __table_args__ = (
+        CheckConstraint("debit >= 0 AND credit >= 0"),
+        CheckConstraint("(debit > 0 AND credit = 0) OR (credit > 0 AND debit = 0)"),
+        Index("ix_journal_line_account", "organization_id", "account_id"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    organization_id: Mapped[str] = mapped_column(ForeignKey("organizations.id", ondelete="CASCADE"), index=True)
+    journal_entry_id: Mapped[str] = mapped_column(ForeignKey("journal_entries.id", ondelete="CASCADE"), index=True)
+    account_id: Mapped[str] = mapped_column(ForeignKey("accounts.id"), index=True)
+    debit: Mapped[Decimal] = mapped_column(Numeric(14, 2), default=0)
+    credit: Mapped[Decimal] = mapped_column(Numeric(14, 2), default=0)
+    party_type: Mapped[str | None] = mapped_column(String(20))
+    party_id: Mapped[str | None] = mapped_column(String(36), index=True)
+
+    entry: Mapped[JournalEntry] = relationship(back_populates="lines")
+
+
 class SalesReturn(Base, TimestampMixin):
     __tablename__ = "sales_returns"
     __table_args__ = (UniqueConstraint("organization_id", "return_number"),)

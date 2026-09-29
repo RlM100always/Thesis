@@ -15,6 +15,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 from sqlalchemy.pool import StaticPool
 
+from api.accounting import seed_default_accounts
 from api.analytics_routes import router as analytics_router
 from api.app_routes import router as app_router
 from api.auth import get_current_user
@@ -26,6 +27,7 @@ from api.bulk_import_routes import router as bulk_import_router
 from api.planning_routes import router as planning_router
 from api.receivables_routes import router as receivables_router
 from api.insights_advanced_routes import router as insights_advanced_router
+from api.accounting_routes import router as accounting_router
 from api.bsmart_routes import router as bsmart_router
 from api.commerce_routes import router as commerce_router
 from api.data_import_routes import router as data_import_router
@@ -37,7 +39,7 @@ from api.permissions import ROLES
 
 ROUTERS = (
     auth_router, app_router, commerce_router, directory_router, finance_router,
-    data_import_router, analytics_router, bsmart_router, audit_router, batch_router, insights_router, bulk_import_router, planning_router, receivables_router, insights_advanced_router,
+    data_import_router, analytics_router, bsmart_router, audit_router, batch_router, insights_router, bulk_import_router, planning_router, receivables_router, insights_advanced_router, accounting_router,
 )
 
 
@@ -85,6 +87,8 @@ def world(engine):
         org_b = Organization(name="Shop B", slug="shop-b")
         db.add_all([org_a, org_b])
         db.flush()
+        seed_default_accounts(db, org_a.id)
+        seed_default_accounts(db, org_b.id)
         users = {}
         for role in ROLES:
             user = User(email=f"{role}@a.example", display_name=f"{role} A")
