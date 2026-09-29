@@ -37,6 +37,7 @@ import SalesHistoryPage from "./pages/SalesHistory";
 import ReportsPage from "./pages/Reports";
 import ImportDataPage from "./pages/ImportData";
 import InsightsPage from "./pages/Insights";
+import ApprovalsPage from "./pages/Approvals";
 import AccountingPage from "./pages/Accounting";
 import ReorderPlanPage from "./pages/ReorderPlan";
 import NotificationBell from "./components/NotificationBell";
@@ -93,6 +94,7 @@ const BUSINESS_NAV = [
     items: [
       { to: "/setup", label: "ব্যবসা ও শাখা", icon: "sliders" },
       { to: "/import", label: "তথ্য আমদানি", icon: "upload", perm: "imports:write" },
+      { to: "/approvals", label: "অনুমোদন", icon: "check", badgeKey: "approvals", perm: "approvals:read" },
       { to: "/staff", label: "কর্মী ও ভূমিকা", icon: "userCheck", perm: "staff:read" },
       { to: "/audit", label: "কার্যকলাপের ইতিহাস", icon: "clock", perm: "audit:read" },
     ],
@@ -155,6 +157,7 @@ function AppFrame() {
   const [mode, setMode] = useState("business");
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [lowStock, setLowStock] = useState(0);
+  const [pendingApprovals, setPendingApprovals] = useState(0);
   const activeId = business.active?.id;
   const canSeeDashboard = ready && can("dashboard:read");
 
@@ -165,7 +168,12 @@ function AppFrame() {
     api.dashboardApp(activeId).then((d) => setLowStock(d.low_stock_products || 0)).catch(() => {});
   }, [activeId, canSeeDashboard]);
 
-  const body = { mode, setMode, badges: { lowStock: lowStock > 0 } };
+  useEffect(() => {
+    if (!activeId || !can("approvals:read")) return;
+    api.approvals(activeId).then((rows) => setPendingApprovals(rows.length)).catch(() => {});
+  }, [activeId, can]);
+
+  const body = { mode, setMode, badges: { lowStock: lowStock > 0, approvals: pendingApprovals > 0 } };
 
   return (
     <div className="app">
@@ -215,6 +223,7 @@ function AppFrame() {
           <Route path="/accounts" element={<Guard perm="ledger:read"><AccountsPage /></Guard>} />
           <Route path="/insights" element={<Guard perm="inventory:read"><InsightsPage /></Guard>} />
           <Route path="/accounting" element={<Guard perm="ledger:read"><AccountingPage /></Guard>} />
+          <Route path="/approvals" element={<Guard perm="approvals:read"><ApprovalsPage /></Guard>} />
           <Route path="/purchases" element={<Guard perm="purchases:read"><PurchasesPage /></Guard>} />
           <Route path="/returns" element={<Guard perm="returns:read"><ReturnsPage /></Guard>} />
           <Route path="/directory" element={<Guard perm="customers:read"><DirectoryPage /></Guard>} />

@@ -390,3 +390,33 @@ def test_the_accounting_page_shows_a_balanced_trial_balance_and_correct_pnl(shop
     expect(stats).to_contain_text(bn(60))       # revenue
     expect(stats).to_contain_text(bn(20))       # operating expenses
     no_js_errors(s)
+
+
+def test_a_large_expense_waits_for_the_owner_and_shows_up_in_the_inbox(shop, new_session):
+    from .test_panels import invite
+    manager_email = invite(shop, "manager")
+
+    mgr_session = new_session()
+    sign_in(mgr_session, manager_email)
+    page = mgr_session.page
+    page.goto(f"{WEB}/#/accounts")
+    page.get_by_role("button", name="নতুন খরচ").click()
+    dialog = page.locator("dialog[open]")
+    dialog.get_by_label("খরচের ধরন").select_option(label="দোকান ভাড়া")
+    dialog.get_by_label("টাকা").fill("6000")
+    dialog.get_by_role("button", name="খরচ লিখুন").click()
+    expect(page.get_by_text("অনুমোদনের অপেক্ষায়")).to_be_visible()
+    no_js_errors(mgr_session)
+
+    owner_session = new_session()
+    sign_in(owner_session, shop["email"])
+    page = owner_session.page
+    page.goto(f"{WEB}/#/approvals")
+    row = page.get_by_role("row", name=re.compile("৬,০০০|6,000|6000"))
+    expect(row).to_be_visible()
+    expect(row).to_contain_text("manager user")
+    row.get_by_role("button", name="অনুমোদন").click()
+    page.locator("dialog[open]").get_by_role("button", name="হ্যাঁ, অনুমোদন করুন").click()
+    expect(page.get_by_text("অনুমোদন করা হয়েছে")).to_be_visible()
+    expect(page.get_by_role("row", name=re.compile("৬,০০০|6,000|6000"))).to_be_hidden()   # no longer pending
+    no_js_errors(owner_session)

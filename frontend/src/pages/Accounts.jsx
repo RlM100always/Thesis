@@ -72,11 +72,13 @@ export default function AccountsPage() {
     setBusy(true);
     setFormError("");
     try {
-      await api.createExpense(orgId, {
+      const result = await api.createExpense(orgId, {
         category, amount: Number(form.amount).toFixed(2), payment_method: form.payment_method,
         incurred_at: new Date(form.incurred_at).toISOString(), note: form.note || null,
       });
-      toast.success("খরচ লেখা হয়েছে।");
+      toast.success(result?.status === "pending_approval"
+        ? `৳${form.amount}-এর বেশি খরচ — ${result.needs_role === "owner" ? "মালিকের" : "ম্যানেজারের"} অনুমোদনের অপেক্ষায় রাখা হয়েছে।`
+        : "খরচ লেখা হয়েছে।");
       setAdding(false);
       setForm({ ...form, amount: "", note: "", custom: "", incurred_at: localNow() });
       load();

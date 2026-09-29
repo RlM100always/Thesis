@@ -45,11 +45,12 @@ ALL_PERMISSIONS: frozenset[str] = frozenset({
     "cash:read", "cash:close",
     "inventory:transfer",
     "settings:write",
+    "approvals:read", "approvals:decide",
 })
 
 ROLE_PERMISSIONS: dict[str, frozenset[str]] = {
     "owner": ALL_PERMISSIONS,
-    "manager": ALL_PERMISSIONS - {"staff:manage", "payments:supplier", "settings:write"},
+    "manager": ALL_PERMISSIONS - {"staff:manage", "payments:supplier", "settings:write"},  # keeps approvals:decide
     "accountant": frozenset({
         "catalog:read", "inventory:read", "sales:read", "returns:read",
         "customers:read", "customers:write", "suppliers:read", "suppliers:write",
@@ -59,6 +60,7 @@ ROLE_PERMISSIONS: dict[str, frozenset[str]] = {
         "cash:read", "cash:close",
         "dashboard:read", "recommendations:read", "bsmart:read", "monitoring:read",
         "imports:write", "dataset:export", "model:train",
+        "approvals:read",
     }),
     "cashier": frozenset({
         "catalog:read", "inventory:read", "sales:read", "sales:create",
@@ -75,6 +77,7 @@ ROLE_PERMISSIONS: dict[str, frozenset[str]] = {
         "customers:read", "suppliers:read", "purchases:read",
         "expenses:read", "ledger:read", "cash:read",
         "dashboard:read", "recommendations:read", "bsmart:read", "monitoring:read",
+        "approvals:read",
     }),
     "evaluator": frozenset({
         "dashboard:read", "recommendations:read", "bsmart:read", "monitoring:read",

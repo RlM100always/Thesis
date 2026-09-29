@@ -342,6 +342,47 @@ class Expense(Base, TimestampMixin):
     incurred_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
 
 
+class ApprovalRule(Base, TimestampMixin):
+    """A threshold an owner set: an action of this ``kind`` at or above ``threshold``
+    needs someone holding ``approver_role`` (or higher) to sign off before it takes
+    effect. One row per kind per organization; a missing row means no gate."""
+
+    __tablename__ = "approval_rules"
+    __table_args__ = (UniqueConstraint("organization_id", "kind"),)
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    organization_id: Mapped[str] = mapped_column(ForeignKey("organizations.id", ondelete="CASCADE"), index=True)
+    kind: Mapped[str] = mapped_column(String(40))
+    threshold: Mapped[Decimal] = mapped_column(Numeric(14, 2))
+    approver_role: Mapped[str] = mapped_column(String(20))
+    active: Mapped[bool] = mapped_column(Boolean, default=True)
+
+
+class ApprovalRequest(Base, TimestampMixin):
+    """An action held back by an `ApprovalRule` until a qualified role decides it.
+
+    ``payload`` is the original request as JSON (validated the same way the direct
+    endpoint would validate it); approving replays it through the same code path
+    that would have run immediately if no rule had applied, so an approved expense
+    is indistinguishable from one nobody needed to approve."""
+
+    __tablename__ = "approval_requests"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    organization_id: Mapped[str] = mapped_column(ForeignKey("organizations.id", ondelete="CASCADE"), index=True)
+    kind: Mapped[str] = mapped_column(String(40), index=True)
+    amount: Mapped[Decimal] = mapped_column(Numeric(14, 2))
+    payload: Mapped[str] = mapped_column(Text)
+    requested_by_user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), index=True)
+    status: Mapped[str] = mapped_column(String(20), default="pending", index=True)  # pending/approved/rejected
+    decided_by_user_id: Mapped[str | None] = mapped_column(ForeignKey("users.id"))
+    decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    decision_reason: Mapped[str | None] = mapped_column(String(300))
+    # Set once the approved action has actually been created (e.g. the Expense id),
+    # so an approval can never be replayed twice.
+    result_reference_id: Mapped[str | None] = mapped_column(String(36))
+
+
 class PurchaseOrder(Base, TimestampMixin):
     __tablename__ = "purchase_orders"
     __table_args__ = (

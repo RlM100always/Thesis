@@ -360,6 +360,7 @@ class ExpenseCreate(BaseModel):
 
 
 class ExpenseView(ExpenseCreate):
+    model_config = ConfigDict(from_attributes=True)
     id: str
 
 

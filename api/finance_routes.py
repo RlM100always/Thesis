@@ -4,12 +4,14 @@ from decimal import Decimal, ROUND_HALF_UP
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from .accounting import Line, account_for_method, post_journal
+from .approvals import needs_approval
 from .app_schemas import (
     ExpenseCreate, ExpenseView, LedgerBalanceView, PurchaseCreate, PurchaseDetailView,
     PurchaseLineView, PurchaseReceive, PurchaseView, ReturnCreate, ReturnHistoryView,
@@ -21,7 +23,7 @@ from .audit import record_audit
 from .batches import add_to_batch, get_or_create_batch, restock_return
 from .permissions import require_permission
 from .domain_models import (
-    AuditLog, Branch, Customer, Expense, InventoryBalance, LedgerEntry, Payment, Product, PurchaseOrder,
+    ApprovalRequest, AuditLog, Branch, Customer, Expense, InventoryBalance, LedgerEntry, Payment, Product, PurchaseOrder,
     PurchaseOrderItem, Refund, SalesOrder, SalesOrderItem, SalesReturn,
     SalesReturnItem, StockMovement, Supplier, utcnow,
 )
@@ -471,14 +473,14 @@ def list_returns(
     ) for item, invoice in rows]
 
 
-@router.post("/expenses", response_model=ExpenseView, tags=["ledger"])
-def create_expense(payload: ExpenseCreate, membership: CurrentMembership, db: Db):
-    require_permission(membership, "expenses:write")
+def post_expense(db: Session, membership, payload: ExpenseCreate) -> Expense:
+    """The actual work of recording an expense: subledger + journal + audit.
+
+    Shared between the direct route and an approved `ApprovalRequest` being
+    replayed, so an approved expense is posted exactly the way an unheld one
+    would have been — no separate, less-tested path for the approved case.
+    """
     org_id = membership.organization_id
-    if payload.branch_id and db.scalar(select(Branch.id).where(
-        Branch.id == payload.branch_id, Branch.organization_id == org_id
-    )) is None:
-        raise HTTPException(status_code=404, detail="Branch not found")
     expense = Expense(organization_id=org_id, **payload.model_dump())
     db.add(expense)
     db.flush()
@@ -494,9 +496,38 @@ def create_expense(payload: ExpenseCreate, membership: CurrentMembership, db: Db
     ], memo=payload.category)
     record_audit(db, membership, "expense.created", "expense", expense.id,
                  category=payload.category, amount=payload.amount)
+    return expense
+
+
+@router.post("/expenses", tags=["ledger"])
+def create_expense(payload: ExpenseCreate, membership: CurrentMembership, db: Db):
+    require_permission(membership, "expenses:write")
+    org_id = membership.organization_id
+    if payload.branch_id and db.scalar(select(Branch.id).where(
+        Branch.id == payload.branch_id, Branch.organization_id == org_id
+    )) is None:
+        raise HTTPException(status_code=404, detail="Branch not found")
+
+    rule = needs_approval(db, org_id, "expense_amount", payload.amount, membership.role)
+    if rule is not None:
+        request = ApprovalRequest(
+            organization_id=org_id, kind="expense_amount", amount=payload.amount,
+            payload=payload.model_dump_json(), requested_by_user_id=membership.user_id,
+        )
+        db.add(request)
+        db.flush()
+        record_audit(db, membership, "approval.requested", "approval_request", request.id,
+                     kind="expense_amount", amount=payload.amount, needs=rule.approver_role)
+        db.commit()
+        return JSONResponse(status_code=202, content={
+            "status": "pending_approval", "approval_request_id": request.id,
+            "amount": str(payload.amount), "needs_role": rule.approver_role,
+        })
+
+    expense = post_expense(db, membership, payload)
     db.commit()
     db.refresh(expense)
-    return expense
+    return ExpenseView.model_validate(expense)
 
 
 @router.get("/expenses", response_model=list[ExpenseView], tags=["ledger"])

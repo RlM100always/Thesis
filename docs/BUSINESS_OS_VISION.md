@@ -45,7 +45,7 @@ buttons") applies doubly here.
 | Batch/expiry/FEFO (pharmacy pack) | `api/batches.py` | IMPLEMENTED |
 | SQLite dev / Postgres prod | `api/database.py`, `DATABASE_URL` | PARTIAL — code is DB-portable; **no Postgres deployment exists, dev is SQLite only** |
 | Double-entry accounting engine | `api/accounting.py`, `api/accounting_routes.py`, `Account`/`JournalEntry`/`JournalLine` (2026-09-29) | IMPLEMENTED (first slice): chart of accounts, balanced journal posting from sale/return/void/purchase-receipt/expense/settlement, trial balance, P&L, balance sheet. Still missing: an accounts editor, bank reconciliation, VAT export, cash-close-variance posting |
-| Approval inbox / configurable approval rules | none | NOT BUILT |
+| Approval inbox / configurable approval rules | `api/approvals.py`, `api/approval_routes.py`, `ApprovalRule`/`ApprovalRequest` (2026-09-29) | IMPLEMENTED (first slice): `expense_amount` only. Discount/refund/void/purchase/credit-limit-increase gates from the blueprint are not yet wired — add one kind at a time, per `api/approvals.py`'s module docstring |
 | Workforce (attendance, commission, payroll, targets) | none | NOT BUILT |
 | SMS/WhatsApp/payment-gateway/printer/barcode-hardware integration | none live (messages are copy/open links only) | NOT BUILT |
 | Vertical packs beyond pharmacy (fashion variants, restaurant recipe/KDS, wholesale price tiers+route, electronics serial/IMEI, manufacturing BOM, service job-card, salon booking, clinic admin, coaching, agro, transport, rental) | none | NOT BUILT — `verticals.js` only distinguishes "has expiry" today |
@@ -61,7 +61,7 @@ for what's already done:
 2. ~~POS, invoice, payment, due, return~~ — **done**, plus void, wholesale tier, credit limit.
 3. ~~Stock, purchase, supplier, warehouse, transfer~~ — **done** for single-warehouse-per-branch; no multi-warehouse-per-branch yet.
 4. ~~Accounting engine (journal, ledger, trial balance, P&L, balance sheet)~~ — **done** (2026-09-29, `api/accounting.py`): first slice, see the table above for what's still missing.
-5. **Approval Inbox + configurable approval rules** — **not built, next real step**: turns "owner does everything" into "owner delegates safely," and is the shared mechanism every vertical pack's workflow (discount, expense, purchase, refund, adjustment) reuses.
+5. ~~Approval Inbox + configurable approval rules~~ — **done** (2026-09-29, `expense_amount` only): the mechanism is real and reusable; the next real step is adding a second kind (discount-percent on a POS line is the best next candidate — it is the blueprint's own first example and touches the sale flow, which is the highest-traffic path, so proving the pattern holds there matters most).
 6. **Offline multi-device conflict detection** (two devices oversell the same unit) — partially covered by the DB's row-level stock lock, but no explicit conflict UI/alert when it happens offline-to-offline.
 7. **Real integrations**: SMS provider (adapter interface, non-masking default), payment-gateway webhook (bKash/Nagad confirmation), printer/barcode-hardware — currently zero live integrations.
 8. **Business-setup wizard v2** (the 8-12 step flow with opening balances, staff invite, receipt design, in one guided pass) — today's `Onboarding.jsx` is a single form.
@@ -75,10 +75,11 @@ exact trap the user is trying to get out of.
 
 ## Next concrete step
 
-**Item 5, the Approval Inbox**: a generic `ApprovalRequest` model (kind, requested
-by, target entity, amount/detail, status) with configurable per-org rules
-("discount above X% → manager", "expense above ৳Y → owner"), a
-`/api/app/approvals` inbox route, and the first two flows wired through it
-(discount above a configurable cap, and expense above a configurable amount).
-Reuses the same audit trail and permission matrix already in place. Scoped as
-its own PR with its own migration and test suite.
+**A second approval kind: `discount_percent`.** Wire `commerce_routes.create_sale`
+so a line discount at or above an owner-set percentage held back by
+`needs_approval(db, org_id, "discount_percent", ...)` does not complete the sale
+immediately — but unlike an expense, a POS sale cannot simply sit "pending" while
+a queue waits, so this needs a synchronous manager-override design (a manager PIN
+or a second login confirms in the same request) rather than the async inbox
+pattern `expense_amount` uses. Work out that UX before writing the route: it is
+the harder half of this step, not the approval-rule plumbing itself.
