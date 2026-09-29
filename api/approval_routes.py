@@ -16,7 +16,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from .app_schemas import ExpenseCreate, ExpenseView
+from .app_schemas import ExpenseCreate, ExpenseView, PurchaseCreate
 from .audit import record_audit
 from .auth import CurrentMembership
 from .database import get_db
@@ -29,13 +29,16 @@ Db = Annotated[Session, Depends(get_db)]
 # kind -> the Pydantic schema its stored payload was validated against, and the
 # function that actually posts it once approved. Add an entry here when a new
 # kind of request is wired up (see api/approvals.py's module docstring).
-KIND_SCHEMA = {"expense_amount": ExpenseCreate}
+KIND_SCHEMA = {"expense_amount": ExpenseCreate, "purchase_amount": PurchaseCreate}
 
 
 def _post(kind: str, db: Session, membership, payload) -> str:
     if kind == "expense_amount":
         from .finance_routes import post_expense
         return post_expense(db, membership, payload).id
+    if kind == "purchase_amount":
+        from .finance_routes import post_purchase
+        return post_purchase(db, membership, payload).id
     raise HTTPException(status_code=500, detail=f"No poster wired for approval kind {kind!r}")
 
 

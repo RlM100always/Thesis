@@ -8,7 +8,7 @@ import DataTable from "../ui/DataTable";
 import { Badge, Button, Card, EmptyState, Field, Modal, Notice, PageHeader, Segmented } from "../ui/kit";
 import { useToast } from "../ui/Toast";
 
-const KIND_LABEL = { expense_amount: "খরচ" };
+const KIND_LABEL = { expense_amount: "খরচ", purchase_amount: "ক্রয় অর্ডার" };
 const ROLE_LABEL = { manager: "ম্যানেজার", owner: "মালিক" };
 const STATUS_LABEL = { pending: "অপেক্ষমাণ", approved: "অনুমোদিত", rejected: "বাতিল" };
 
@@ -99,7 +99,7 @@ export default function ApprovalsPage() {
                    columns={[
                      { key: "kind", label: "ধরন", primary: true, render: (r) => (
                        <div><strong>{KIND_LABEL[r.kind] || r.kind}</strong>
-                         {r.payload?.category && <div className="muted" style={{ fontSize: 12.5 }}>{r.payload.category}</div>}
+                         {(r.payload?.category || r.payload?.order_number) && <div className="muted" style={{ fontSize: 12.5 }}>{r.payload.category || r.payload.order_number}</div>}
                        </div>) },
                      { key: "amount", label: "টাকা", align: "right", render: (r) => money(r.amount) },
                      { key: "requested_by", label: "অনুরোধ করেছেন", render: (r) => <div>{r.requested_by || "—"}<div className="muted" style={{ fontSize: 12 }}>{dateTimeBn(r.requested_at)}</div></div> },

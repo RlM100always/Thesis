@@ -279,6 +279,7 @@ class PurchaseCreate(BaseModel):
 
 
 class PurchaseView(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
     id: str
     order_number: str
     status: str

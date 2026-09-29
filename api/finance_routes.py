@@ -34,7 +34,28 @@ MONEY = Decimal("0.01")
 ZERO = Decimal("0")
 
 
-@router.post("/purchases", response_model=PurchaseView, tags=["purchases"])
+def post_purchase(db: Session, membership, payload: PurchaseCreate) -> PurchaseOrder:
+    """The actual work of creating a purchase order. Shared between the direct
+    route and an approved `ApprovalRequest` being replayed."""
+    org_id = membership.organization_id
+    total = sum((i.quantity * i.unit_cost for i in payload.items), Decimal("0")).quantize(MONEY)
+    order = PurchaseOrder(
+        organization_id=org_id, branch_id=payload.branch_id, supplier_id=payload.supplier_id,
+        order_number=payload.order_number, ordered_at=payload.ordered_at,
+        expected_at=payload.expected_at, total=total,
+    )
+    db.add(order)
+    db.flush()
+    for item in payload.items:
+        db.add(PurchaseOrderItem(
+            organization_id=org_id, purchase_order_id=order.id, **item.model_dump()
+        ))
+    record_audit(db, membership, "purchase.created", "purchase_order", order.id,
+                 order_number=order.order_number, total=order.total)
+    return order
+
+
+@router.post("/purchases", tags=["purchases"])
 def create_purchase(payload: PurchaseCreate, membership: CurrentMembership, db: Db):
     require_permission(membership, "purchases:create")
     org_id = membership.organization_id
@@ -46,26 +67,32 @@ def create_purchase(payload: PurchaseCreate, membership: CurrentMembership, db: 
     products = set(db.scalars(select(Product.id).where(Product.organization_id == org_id, Product.id.in_(ids))))
     if len(products) != len(set(ids)):
         raise HTTPException(status_code=404, detail="One or more products were not found")
+
     total = sum((i.quantity * i.unit_cost for i in payload.items), Decimal("0")).quantize(MONEY)
-    order = PurchaseOrder(
-        organization_id=org_id, branch_id=payload.branch_id, supplier_id=payload.supplier_id,
-        order_number=payload.order_number, ordered_at=payload.ordered_at,
-        expected_at=payload.expected_at, total=total,
-    )
-    db.add(order)
-    try:
+    rule = needs_approval(db, org_id, "purchase_amount", total, membership.role)
+    if rule is not None:
+        request = ApprovalRequest(
+            organization_id=org_id, kind="purchase_amount", amount=total,
+            payload=payload.model_dump_json(), requested_by_user_id=membership.user_id,
+        )
+        db.add(request)
         db.flush()
-        for item in payload.items:
-            db.add(PurchaseOrderItem(
-                organization_id=org_id, purchase_order_id=order.id, **item.model_dump()
-            ))
-        record_audit(db, membership, "purchase.created", "purchase_order", order.id,
-                     order_number=order.order_number, total=order.total)
+        record_audit(db, membership, "approval.requested", "approval_request", request.id,
+                     kind="purchase_amount", amount=total, needs=rule.approver_role)
+        db.commit()
+        return JSONResponse(status_code=202, content={
+            "status": "pending_approval", "approval_request_id": request.id,
+            "amount": str(total), "needs_role": rule.approver_role,
+        })
+
+    try:
+        order = post_purchase(db, membership, payload)
         db.commit()
     except IntegrityError as exc:
         db.rollback()
         raise HTTPException(status_code=409, detail="Purchase order number already exists") from exc
-    return order
+    db.refresh(order)
+    return PurchaseView.model_validate(order)
 
 
 @router.get("/purchases", response_model=list[PurchaseDetailView], tags=["purchases"])

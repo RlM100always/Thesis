@@ -476,3 +476,38 @@ def test_a_large_cash_refund_needs_a_managers_password(shop, new_session):
     dialog2.get_by_role("button", name="অনুমোদন করে ফেরত সম্পন্ন করুন").click()
     expect(page.get_by_text("রিটার্ন সম্পন্ন হয়েছে")).to_be_visible()
     no_js_errors(s)
+
+
+def test_a_large_purchase_order_by_a_manager_waits_for_the_owner(shop, new_session):
+    from .test_panels import invite
+    branch, product = seed_stock(shop)
+    api(shop, "POST", "/suppliers", {"code": "S-PO", "name": "Square Distributor"})
+    manager_email = invite(shop, "manager")
+
+    mgr_session = new_session()
+    sign_in(mgr_session, manager_email)
+    page = mgr_session.page
+    page.goto(f"{WEB}/#/purchases")
+    page.get_by_role("button", name="নতুন ক্রয় অর্ডার").click()
+    dialog = page.locator("dialog[open]")
+    dialog.get_by_label("সাপ্লায়ার").select_option(label="Square Distributor")
+    dialog.get_by_label("পণ্য").select_option(label="Napa")
+    dialog.get_by_label("পরিমাণ").fill("3000")
+    dialog.get_by_label("ক্রয়মূল্য (৳)").fill("10")               # ৳30,000, over the ৳20,000/owner default
+    dialog.get_by_role("button", name="অর্ডার দিন").click()
+    expect(page.get_by_text("অনুমোদনের অপেক্ষায়")).to_be_visible()
+    no_js_errors(mgr_session)
+
+    owner_session = new_session()
+    sign_in(owner_session, shop["email"])
+    page = owner_session.page
+    page.goto(f"{WEB}/#/approvals")
+    row = page.get_by_role("row", name=re.compile("৩০,০০০|30,000"))
+    expect(row).to_be_visible()
+    row.get_by_role("button", name="অনুমোদন").click()
+    page.locator("dialog[open]").get_by_role("button", name="হ্যাঁ, অনুমোদন করুন").click()
+    expect(page.get_by_text("অনুমোদন করা হয়েছে")).to_be_visible()
+
+    page.goto(f"{WEB}/#/purchases")
+    expect(page.get_by_text("৩০,০০০", exact=False).first).to_be_visible()
+    no_js_errors(owner_session)

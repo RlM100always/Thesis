@@ -84,13 +84,15 @@ export default function PurchasesPage() {
     setBusy(true);
     setPoError("");
     try {
-      await api.createPurchase(orgId, {
+      const result = await api.createPurchase(orgId, {
         branch_id: branch, supplier_id: po.supplier_id, order_number: po.order_number,
         ordered_at: new Date().toISOString(),
         expected_at: po.expected_at ? new Date(po.expected_at).toISOString() : null,
         items: valid.map((l) => ({ product_id: l.product_id, quantity: String(l.quantity), unit_cost: String(l.unit_cost || 0) })),
       });
-      toast.success(`অর্ডার ${po.order_number} তৈরি হয়েছে।`);
+      toast.success(result?.status === "pending_approval"
+        ? `৳${lineTotal.toFixed(0)}-এর অর্ডার — ${result.needs_role === "owner" ? "মালিকের" : "ম্যানেজারের"} অনুমোদনের অপেক্ষায় রাখা হয়েছে।`
+        : `অর্ডার ${po.order_number} তৈরি হয়েছে।`);
       setCreating(false);
       load();
     } catch (err) {
