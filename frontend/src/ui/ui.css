@@ -217,6 +217,13 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--g
 .auth-switch button { background: none; border: 0; color: var(--green); font-weight: 700; cursor: pointer; padding: 6px; font: inherit; font-weight: 700; }
 .auth-mobile-brand { display: none; text-align: center; }
 .auth-mobile-brand strong { font-family: var(--font-display); font-size: 26px; color: var(--green); }
+
+.wizard-steps { display: flex; gap: 4px; list-style: none; margin: 0 0 var(--sp-4); padding: 0; }
+.wizard-steps li { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 12.5px; color: var(--text-muted); text-align: center; }
+.wizard-steps__dot { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; background: var(--surface-2); border: 1px solid var(--border); font-weight: 700; font-size: 13px; }
+.wizard-steps li.on .wizard-steps__dot { background: var(--green); border-color: var(--green); color: #fff; }
+.wizard-steps li.done .wizard-steps__dot { background: var(--green-soft); border-color: var(--green); color: var(--green); }
+.wizard-steps li.on, .wizard-steps li.done { color: var(--text); font-weight: 600; }
 @media (max-width: 899px) {
   .auth-shell { grid-template-columns: 1fr; }
   .auth-brand { display: none; }

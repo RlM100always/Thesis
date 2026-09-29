@@ -80,6 +80,13 @@ def test_a_new_owner_signs_up_creates_a_business_and_is_guided(stack, new_sessio
     page.get_by_label("ব্যবসার নাম").fill("করিম ফার্মেসি")
     page.get_by_role("button", name="ব্যবসা তৈরি করুন").click()
 
+    # The wizard continues past creation: receipt details, then staff, both skippable.
+    expect(page.get_by_role("heading", name="করিম ফার্মেসি")).to_be_visible()
+    page.get_by_role("button", name="এড়িয়ে যান").click()
+    page.get_by_role("button", name="এড়িয়ে যান").click()
+    expect(page.get_by_text("প্রস্তুত!", exact=True)).to_be_visible()
+    page.get_by_role("button", name="ব্যবসা ব্যবহার শুরু করুন").click()
+
     expect(page.get_by_role("heading", name="ব্যবসার ড্যাশবোর্ড")).to_be_visible()
     expect(page.get_by_text("শুরু করুন — ৪টি ধাপে প্রস্তুত")).to_be_visible()
     expect(page.get_by_text("করিম ফার্মেসি").first).to_be_visible()
@@ -264,6 +271,9 @@ def test_a_clothing_shop_uses_the_same_software_without_expiry_screens(stack, ne
     page.get_by_label("কী ধরনের ব্যবসা?").select_option("apparel")
     expect(page.get_by_text("নিজে চালু করতে পারবেন")).to_be_visible()
     page.get_by_role("button", name="ব্যবসা তৈরি করুন").click()
+    page.get_by_role("button", name="এড়িয়ে যান").click()
+    page.get_by_role("button", name="এড়িয়ে যান").click()
+    page.get_by_role("button", name="ব্যবসা ব্যবহার শুরু করুন").click()
 
     expect(page.get_by_role("heading", name="ব্যবসার ড্যাশবোর্ড")).to_be_visible()
     nav = page.locator("aside.sidebar nav").first
@@ -323,4 +333,41 @@ def test_a_clothing_shop_uses_the_same_software_without_expiry_screens(stack, ne
     page.get_by_role("button", name="নিশ্চিত করুন").click()
     expect(page.get_by_text("মেয়াদ ট্র্যাকিং চালু হয়েছে")).to_be_visible()
     expect(nav.get_by_role("link", name="মেয়াদ ও ব্যাচ", exact=True)).to_be_visible()
+    no_js_errors(s)
+
+
+def test_the_setup_wizard_saves_a_shop_profile_and_invites_staff(stack, new_session):
+    """A shop that fills in the later wizard steps gets a working receipt profile
+    and an invited staff member who can sign in — not just a skipped shell."""
+    s = new_session()
+    page = s.page
+    email = f"wiz-{uuid.uuid4().hex[:8]}@example.com"
+    page.goto(f"{WEB}/#/login")
+    page.get_by_role("button", name="অ্যাকাউন্ট খুলুন").first.click()
+    page.get_by_label("আপনার নাম").fill("সেলিম রেজা")
+    page.get_by_label("ইমেইল").fill(email)
+    page.get_by_label("পাসওয়ার্ড").fill(PASSWORD)
+    page.get_by_role("button", name="অ্যাকাউন্ট খুলুন").last.click()
+    page.get_by_label("ব্যবসার নাম").fill("রেজা জেনারেল স্টোর")
+    page.get_by_role("button", name="ব্যবসা তৈরি করুন").click()
+
+    expect(page.get_by_role("heading", name="রেজা জেনারেল স্টোর")).to_be_visible()
+    page.get_by_label("দোকানের ঠিকানা").fill("বগুড়া সদর")
+    page.get_by_label("রসিদের শেষের লেখা").fill("আবার আসবেন")
+    page.get_by_role("button", name="সংরক্ষণ করে এগিয়ে যান").click()
+
+    staff_email = f"cashier-{uuid.uuid4().hex[:6]}@example.com"
+    page.get_by_label("নাম", exact=True).fill("ক্যাশিয়ার আলম")
+    page.get_by_label("ইমেইল", exact=True).fill(staff_email)
+    page.get_by_role("button", name="কর্মী যোগ করুন").click()
+    expect(page.get_by_text("ক্যাশিয়ার আলম")).to_be_visible()
+    page.get_by_role("button", name="শেষ ধাপে যান").click()
+    expect(page.get_by_text(bn(1) + " জন কর্মী যোগ হয়েছে", exact=False)).to_be_visible()
+    page.get_by_role("button", name="ব্যবসা ব্যবহার শুরু করুন").click()
+
+    expect(page.get_by_role("heading", name="ব্যবসার ড্যাশবোর্ড")).to_be_visible()
+    page.goto(f"{WEB}/#/setup")
+    expect(page.get_by_label("দোকানের ঠিকানা")).to_have_value("বগুড়া সদর")
+    page.goto(f"{WEB}/#/staff")
+    expect(page.get_by_role("row", name=re.compile("ক্যাশিয়ার আলম"))).to_be_visible()
     no_js_errors(s)

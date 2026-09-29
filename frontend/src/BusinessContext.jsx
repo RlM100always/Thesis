@@ -20,6 +20,10 @@ export function BusinessProvider({ children }) {
   const [activeId, setActiveId] = useState(readActive);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  // The setup wizard creates the organization on its first step, then still has
+  // profile/staff steps to run — without this, App.jsx's Shell would switch to
+  // the normal app the instant `organizations.length` goes from 0 to 1.
+  const [wizardActive, setWizardActive] = useState(false);
 
   const refresh = useCallback(async () => {
     try {
@@ -50,8 +54,9 @@ export function BusinessProvider({ children }) {
   const vertical = verticalOf(active?.sector);
   // Expiry screens appear for businesses whose goods expire, or as soon as any product tracks it.
   const features = useMemo(() => ({ expiry: vertical.expiry || Boolean(active?.uses_expiry) }), [vertical.expiry, active?.uses_expiry]);
-  const value = useMemo(() => ({ organizations, active, vertical, features, loading, error, refresh, select, create }),
-    [organizations, active, vertical, features, loading, error, refresh, select, create]);
+  const value = useMemo(() => ({
+    organizations, active, vertical, features, loading, error, refresh, select, create, wizardActive, setWizardActive,
+  }), [organizations, active, vertical, features, loading, error, refresh, select, create, wizardActive]);
   return <BusinessContext.Provider value={value}>{children}</BusinessContext.Provider>;
 }
 

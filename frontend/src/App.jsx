@@ -142,11 +142,13 @@ export default function App() {
 function Shell() {
   const { requiresLogin } = useAuth();
   const { pathname } = useLocation();
-  const { loading, organizations, error } = useBusiness();
+  const { loading, organizations, error, wizardActive } = useBusiness();
   if (pathname === "/accept-invite") return <AcceptInvite />;
   if (requiresLogin || pathname === "/login") return <Login />;
   // Signed in but no business yet (right after signing up): create one first.
-  if (!loading && !error && organizations.length === 0) return <Onboarding />;
+  // wizardActive keeps the setup wizard open through its later steps even after
+  // the organization itself already exists (see BusinessContext.jsx).
+  if (!loading && !error && (organizations.length === 0 || wizardActive)) return <Onboarding />;
   return <AppFrame />;
 }
 

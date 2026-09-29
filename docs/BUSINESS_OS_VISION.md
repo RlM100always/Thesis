@@ -49,7 +49,7 @@ buttons") applies doubly here.
 | Workforce (attendance, commission, payroll, targets) | none | NOT BUILT |
 | SMS/WhatsApp/payment-gateway/printer/barcode-hardware integration | none live (messages are copy/open links only) | NOT BUILT |
 | Vertical packs beyond pharmacy (fashion variants, restaurant recipe/KDS, wholesale price tiers+route, electronics serial/IMEI, manufacturing BOM, service job-card, salon booking, clinic admin, coaching, agro, transport, rental) | none | NOT BUILT — `verticals.js` only distinguishes "has expiry" today |
-| Signup → 8-12 step wizard with opening balances/staff invite | `Onboarding.jsx` creates one org + one branch; no multi-step wizard | PARTIAL |
+| Signup → 8-12 step wizard with opening balances/staff invite | `Onboarding.jsx` (2026-09-29): 4-step wizard (business → receipt profile → staff invite → finish), all steps past the first skippable | IMPLEMENTED (partial scope) — opening cash/stock and supplier dues are not wizard steps yet, reuse the separate bulk-import flow instead |
 | AI Copilot (Bangla Q&A grounded in the shop's own data) | none | NOT BUILT (this is `docs/THESIS_PRODUCT_MASTER_PLAN.md` section 7, L1/L2) |
 
 ## Build order (reconciling the user's "10 most important things" with what exists)
