@@ -236,6 +236,9 @@ export const api = {
   paySupplier: (org, supplier, body) => appRequest(`/api/app/suppliers/${supplier}/payments`, { method: "POST", body, organizationId: org }),
   receiveCustomerPayment: (org, customer, body) => appRequest(`/api/app/customers/${customer}/payments`, { method: "POST", body, organizationId: org }),
   dashboardApp: (org, branch = "") => appRequest(`/api/app/dashboard${branch ? `?branch_id=${encodeURIComponent(branch)}` : ""}`, { organizationId: org }),
+  cashLocked: (org) => appRequest("/api/app/insights/cash-locked", { organizationId: org }),
+  abcXyz: (org, days = 90) => appRequest(`/api/app/insights/abc-xyz?days=${days}`, { organizationId: org }),
+  priceWatch: (org, threshold = 0.05) => appRequest(`/api/app/insights/price-watch?threshold=${threshold}`, { organizationId: org }),
   recommendationsApp: (org, branch = "") => appRequest(`/api/app/recommendations${branch ? `?branch_id=${encodeURIComponent(branch)}` : ""}`, { organizationId: org }),
 
   // Durable real-data intake (api/data_import_routes.py) — feeds the org's own

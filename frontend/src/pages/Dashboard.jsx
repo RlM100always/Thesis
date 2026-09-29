@@ -31,6 +31,7 @@ export default function Dashboard() {
   const [data, setData] = useState(null);
   const [expiry, setExpiry] = useState(null);
   const [uncosted, setUncosted] = useState(0);
+  const [locked, setLocked] = useState(null);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -52,6 +53,7 @@ export default function Dashboard() {
         .then((rows) => setUncosted(rows.filter((p) => Number(p.cost_price) <= 0).length))
         .catch(() => setUncosted(0));
     }
+    if (can("inventory:read") && can("ledger:read")) api.cashLocked(orgId).then(setLocked).catch(() => setLocked(null));
   }, [orgId, branch, scope, can, features.expiry]);
 
   const chart = useMemo(() => (data?.daily_sales || []).map((d) => ({ ...d, label: shortDate.format(new Date(d.date)) })), [data]);
@@ -80,6 +82,26 @@ export default function Dashboard() {
       ) : (
         <>
           {!isNew && <MorningBrief />}
+
+          {!isNew && locked && Number(locked.total) > 0 && (
+            <Card className="cash-locked" title="আটকে থাকা টাকা" subtitle="যা এখন কাজে লাগছে না — অবিক্রীত পুরোনো স্টক, মেয়াদ শেষের পথে থাকা মাল, আর অনেক দিনের বাকি।">
+              <div className="cash-locked__total">{money(locked.total)}</div>
+              <div className="cash-locked__parts">
+                <a className="cash-locked__part" href="#/products">
+                  <span>অবিক্রীত পুরোনো স্টক</span><strong>{money(locked.dead_stock.value)}</strong>
+                  <small>{num(locked.dead_stock.products)}টি পণ্য · ৬০ দিন বিক্রি নেই</small>
+                </a>
+                <a className="cash-locked__part" href="#/expiry">
+                  <span>মেয়াদের ঝুঁকিতে</span><strong>{money(locked.near_expiry.value)}</strong>
+                  <small>{locked.near_expiry.expired_value > 0 ? `এর মধ্যে ${money(locked.near_expiry.expired_value)} মেয়াদোত্তীর্ণ` : "৯০ দিনের মধ্যে মেয়াদ শেষ"}</small>
+                </a>
+                <a className="cash-locked__part" href="#/accounts">
+                  <span>পুরোনো বাকি</span><strong>{money(locked.overdue_baki.value)}</strong>
+                  <small>{num(locked.overdue_baki.customers)} জন কাস্টমার · ৬০+ দিন</small>
+                </a>
+              </div>
+            </Card>
+          )}
 
           {isNew && (
             <Card className="setup-card" title="শুরু করুন — ৪টি ধাপে প্রস্তুত" subtitle="প্রথম বিক্রি পর্যন্ত পৌঁছাতে এই ধাপগুলো সারুন।">

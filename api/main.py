@@ -63,6 +63,7 @@ from .insights_routes import router as insights_router  # noqa: E402
 from .bulk_import_routes import router as bulk_import_router  # noqa: E402
 from .planning_routes import router as planning_router  # noqa: E402
 from .receivables_routes import router as receivables_router  # noqa: E402
+from .insights_advanced_routes import router as insights_advanced_router  # noqa: E402
 from .database import create_schema  # noqa: E402
 from .schemas import Health  # noqa: E402
 
@@ -111,6 +112,7 @@ app.include_router(insights_router)
 app.include_router(bulk_import_router)
 app.include_router(planning_router)
 app.include_router(receivables_router)
+app.include_router(insights_advanced_router)
 
 
 @app.on_event("startup")

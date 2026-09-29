@@ -1,7 +1,7 @@
 """The everyday features, one journey each, through a real browser."""
 
 import re
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from playwright.sync_api import expect
 
@@ -17,11 +17,12 @@ def api(shop, method, path, body=None):
     return call(method, f"/api/app{path}", body, shop["token"], shop["org"])
 
 
-def sell(shop, branch, product, qty, invoice, customer=None, paid=None, method="cash", price=15):
+def sell(shop, branch, product, qty, invoice, customer=None, paid=None, method="cash", price=15, days_ago=0):
     total = price * qty
     paid = total if paid is None else paid
+    sold_at = (datetime.now(timezone.utc) - timedelta(days=days_ago)).isoformat() if days_ago else now()
     return api(shop, "POST", "/sales", {
-        "branch_id": branch, "invoice_number": invoice, "sold_at": now(), "customer_id": customer,
+        "branch_id": branch, "invoice_number": invoice, "sold_at": sold_at, "customer_id": customer,
         "items": [{"product_id": product, "quantity": str(qty)}],
         "payments": [{"method": method, "amount": str(paid)}] if paid else []})
 
@@ -328,4 +329,43 @@ def test_the_baki_ageing_shows_who_has_owed_longest(shop, new_session):
     expect(card.locator(".ui-stat", has_text="৯০+ দিন")).to_contain_text(bn(30))       # 2 x 15 owed for 95 days
     expect(card.locator(".ui-stat", has_text="০–৩০ দিন")).to_contain_text(bn(15))
     expect(card.get_by_role("row", name=re.compile("পুরোনো বাকিদার"))).to_contain_text("৯৫")
+    no_js_errors(s)
+
+
+def test_the_cash_locked_meter_and_insights_page_show_real_arithmetic(shop, new_session):
+    branch, product = seed_stock(shop)
+    # Make P-1 look dead: sell it, but 90 days ago, with nothing since.
+    sell(shop, branch, product, 2, "INV-OLD", days_ago=90)
+    big = api(shop, "POST", "/products", {"sku": "BIG-1", "name": "Big seller", "selling_price": "100", "cost_price": "40"})
+    api(shop, "POST", "/inventory/adjust", {"branch_id": branch, "product_id": big["id"], "quantity_delta": "50", "reason": "open"})
+    sell(shop, branch, big["id"], 20, "INV-BIG", price=100)
+    customer = api(shop, "POST", "/customers", {"code": "C-OLD", "display_name": "পুরোনো বাকিদার"})
+    sell(shop, branch, product, 1, "INV-DUE", customer=customer["id"], paid=0, days_ago=95)
+    supplier = api(shop, "POST", "/suppliers", {"code": "S1", "name": "Square"})
+    for cost, days_ago in [("10", 60), ("12", 3)]:
+        api(shop, "POST", "/purchases", {"branch_id": branch, "supplier_id": supplier["id"], "order_number": f"PO-{days_ago}",
+                                         "ordered_at": (datetime.now(timezone.utc) - timedelta(days=days_ago)).isoformat(),
+                                         "items": [{"product_id": big["id"], "quantity": "5", "unit_cost": cost}]})
+
+    s = new_session()
+    sign_in(s, shop["email"])
+    page = s.page
+    page.goto(f"{WEB}/#/")
+    meter = page.locator(".cash-locked")
+    expect(meter).to_be_visible()
+    expect(meter).to_contain_text("অবিক্রীত পুরোনো স্টক")
+    expect(meter).to_contain_text("পুরোনো বাকি")
+
+    page.goto(f"{WEB}/#/insights")
+    row = page.get_by_role("row", name=re.compile("Big seller"))
+    expect(row).to_be_visible()
+    expect(row.locator(".abc-badge")).to_have_text("A")
+    page.get_by_role("tab", name=re.compile("^অবিক্রীত পুরোনো স্টক")).click()
+    expect(page.get_by_role("row", name=re.compile("Napa"))).to_be_visible()
+    expect(page.get_by_role("row", name=re.compile("Big seller"))).to_be_hidden()
+
+    page.get_by_role("tab", name=re.compile("দামের পরিবর্তন")).click()
+    price_row = page.get_by_role("row", name=re.compile("Big seller"))
+    expect(price_row).to_contain_text("Square")
+    expect(price_row).to_contain_text(f"+{bn(20)}%")
     no_js_errors(s)

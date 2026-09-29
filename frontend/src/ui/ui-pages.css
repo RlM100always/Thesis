@@ -197,3 +197,19 @@
 
 .brief__col a { color: var(--green); font-weight: 600; text-decoration: none; }
 .brief__col a:hover { text-decoration: underline; }
+
+.cash-locked__total { font-size: 34px; font-weight: 800; color: var(--danger); margin: 0 0 var(--sp-4); }
+.cash-locked__parts { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--sp-4); }
+.cash-locked__part {
+  display: flex; flex-direction: column; gap: 4px; padding: 14px 16px; border-radius: 12px;
+  background: var(--surface-2); border: 1px solid var(--border); text-decoration: none; color: inherit;
+}
+.cash-locked__part:hover { border-color: var(--danger); }
+.cash-locked__part span { font-size: 13px; color: var(--text-muted); }
+.cash-locked__part strong { font-size: 20px; font-weight: 800; }
+.cash-locked__part small { color: var(--text-muted); font-size: 12px; }
+
+.abc-badge { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 6px; font-weight: 800; font-size: 12px; }
+.abc-badge--A { background: var(--green-soft); color: var(--green); }
+.abc-badge--B { background: var(--warn-soft); color: var(--warn); }
+.abc-badge--C { background: var(--surface-2); color: var(--text-muted); }
