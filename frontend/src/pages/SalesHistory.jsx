@@ -2,13 +2,14 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "../api";
 import { useBusiness } from "../BusinessContext";
 import { ReceiptFooter, ReceiptHeader } from "../components/ReceiptHeader";
-import { explain } from "../errors";
+import { explain, structuredError } from "../errors";
 import { dateTimeBn, money, num, todayInputValue } from "../format";
 import { usePermissions } from "../PermissionContext";
 import DataTable from "../ui/DataTable";
 import { Badge, Button, Card, EmptyState, Field, Modal, Notice, PageHeader } from "../ui/kit";
 import { useToast } from "../ui/Toast";
 import useBranch from "../useBranch";
+import { ROLE_LABEL_BN } from "./Pos";
 
 // Every invoice, searchable, with the receipt one tap away (and printable again).
 export default function SalesHistoryPage() {
@@ -30,15 +31,24 @@ export default function SalesHistoryPage() {
   const [reason, setReason] = useState("");
   const [voidBusy, setVoidBusy] = useState(false);
   const [voidError, setVoidError] = useState("");
+  const [voidOverride, setVoidOverride] = useState(null); // { info, email, password }
 
   async function voidIt() {
     setVoidBusy(true); setVoidError("");
     try {
-      await api.voidSale(orgId, open.id, { reason: reason.trim() });
+      await api.voidSale(orgId, open.id, {
+        reason: reason.trim(),
+        ...(voidOverride ? { override_email: voidOverride.email, override_password: voidOverride.password } : {}),
+      });
       toast.success(`চালান ${open.invoice_number} বাতিল হয়েছে। মাল স্টকে ফিরেছে, টাকা ফেরত/বাকি কাটা হয়েছে।`);
-      setVoiding(false); setReason(""); setOpen(null); load();
+      setVoiding(false); setReason(""); setOpen(null); setVoidOverride(null); load();
     } catch (e) {
-      setVoidError(explain(e, { 403: "চালান বাতিলের অনুমতি শুধু মালিক ও ম্যানেজারের।", 409: "এই চালানে আগে রিটার্ন হয়েছে বা আগেই বাতিল হয়েছে। বাকি অংশ রিটার্ন পাতা থেকে ফেরত নিন।", 422: "বাতিলের কারণ লিখুন (কমপক্ষে ২ অক্ষর)।" }));
+      const overrideNeeded = structuredError(e, "refund_override_required");
+      if (overrideNeeded) {
+        setVoidOverride({ info: overrideNeeded, email: voidOverride?.email || "", password: "" });
+      } else {
+        setVoidError(explain(e, { 403: "চালান বাতিলের অনুমতি শুধু মালিক ও ম্যানেজারের।", 409: "এই চালানে আগে রিটার্ন হয়েছে বা আগেই বাতিল হয়েছে। বাকি অংশ রিটার্ন পাতা থেকে ফেরত নিন।", 422: "বাতিলের কারণ লিখুন (কমপক্ষে ২ অক্ষর)।" }));
+      }
     } finally { setVoidBusy(false); }
   }
 
@@ -127,11 +137,24 @@ export default function SalesHistoryPage() {
         )}
       </Modal>
 
-      <Modal open={voiding} title={open ? `চালান ${open.invoice_number} বাতিল করবেন?` : ""} onClose={() => setVoiding(false)}
-             footer={<><Button variant="secondary" onClick={() => setVoiding(false)}>ফিরে যান</Button><Button variant="danger" loading={voidBusy} disabled={reason.trim().length < 2} onClick={voidIt}>হ্যাঁ, বাতিল করুন</Button></>}>
+      <Modal open={voiding} title={open ? `চালান ${open.invoice_number} বাতিল করবেন?` : ""} onClose={() => { setVoiding(false); setVoidOverride(null); }}
+             footer={<><Button variant="secondary" onClick={() => { setVoiding(false); setVoidOverride(null); }}>ফিরে যান</Button>
+               <Button variant="danger" loading={voidBusy} disabled={reason.trim().length < 2 || (voidOverride && (!voidOverride.email || !voidOverride.password))} onClick={voidIt}>
+                 {voidOverride ? "অনুমোদন করে বাতিল করুন" : "হ্যাঁ, বাতিল করুন"}
+               </Button></>}>
         <div className="ui-form">
           <Notice tone="warn">সব পণ্য স্টকে ফিরে যাবে, দেওয়া টাকা ফেরত দেখানো হবে এবং বাকি থাকলে তা কাটা যাবে। এটি ফেরানো যায় না।</Notice>
           <Field label="বাতিলের কারণ" required><input value={reason} onChange={(e) => setReason(e.target.value)} maxLength={140} placeholder="যেমন: ভুল পণ্য স্ক্যান হয়েছিল" autoComplete="off" /></Field>
+          {voidOverride && (
+            <>
+              <Notice tone="warn">
+                এই বাতিলে {money(voidOverride.info.refund_amount)} টাকা ফেরত দেওয়া হচ্ছে, যা {money(voidOverride.info.threshold)}-এর সীমা ছাড়িয়ে যায়।
+                {" "}{ROLE_LABEL_BN[voidOverride.info.needs_role] || voidOverride.info.needs_role}-এর ইমেইল ও পাসওয়ার্ড দিন।
+              </Notice>
+              <Field label="অনুমোদনকারীর ইমেইল"><input type="email" value={voidOverride.email} onChange={(e) => setVoidOverride({ ...voidOverride, email: e.target.value })} autoComplete="off" /></Field>
+              <Field label="পাসওয়ার্ড"><input type="password" value={voidOverride.password} onChange={(e) => setVoidOverride({ ...voidOverride, password: e.target.value })} autoComplete="off" /></Field>
+            </>
+          )}
           {voidError && <Notice tone="danger">{voidError}</Notice>}
         </div>
       </Modal>

@@ -82,11 +82,18 @@ verification against their actual hash and membership role — not a PIN
 pattern, since a PIN would need its own storage/reset flow this thesis has no
 time to build correctly). Recorded to the audit trail.
 
-**Next real step: refund approval.** The blueprint's third named gate
-("Refund approval") reuses the exact same synchronous-override pattern just
-built for discounts — wire it into `finance_routes.create_return`'s refund
-path the same way, gated on a new `refund_amount` rule kind. This is now a
-much smaller lift than the discount override was, because the hard design
-question (async inbox vs. synchronous override, and how to verify an inline
-credential) is already answered and the code to reuse (`needs_approval`,
-`verify_override`) already exists.
+~~Refund approval~~ — **done** (2026-09-29): `refund_amount` (default ৳1,000,
+manager), wired into both `create_return` and `void_sale` (void is a return
+under the hood, so it inherited the gate for free once `SaleVoid` grew the
+same `override_email`/`override_password` fields). Confirmed this reuse
+worked exactly as predicted — the whole feature, backend + frontend + tests,
+took a fraction of the discount override's effort.
+
+**Next real step: purchase-order approval.** A PO above a configurable
+amount (`purchase_amount` kind) should hold before it commits budget —
+unlike discount/refund, a purchase order is *not* time-critical at a
+counter, so this is a return to the async inbox pattern (`expense_amount`),
+not the synchronous override. Wire `finance_routes.create_purchase` to check
+`needs_approval` and, when held, create an `ApprovalRequest` the same way
+`create_expense` does; register `"purchase_amount": PurchaseCreate` in
+`approval_routes.KIND_SCHEMA` and a poster function beside `post_expense`.

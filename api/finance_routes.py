@@ -11,7 +11,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from .accounting import Line, account_for_method, post_journal
-from .approvals import needs_approval
+from .approvals import needs_approval, verify_override
 from .app_schemas import (
     ExpenseCreate, ExpenseView, LedgerBalanceView, PurchaseCreate, PurchaseDetailView,
     PurchaseLineView, PurchaseReceive, PurchaseView, ReturnCreate, ReturnHistoryView,
@@ -379,7 +379,16 @@ def apply_return(db: Session, membership, actor, sale_id: str, payload: ReturnCr
                 occurred_at=payload.returned_at,
             ))
         refund_amount = (total - due_reduction) if payload.refund_method else Decimal("0")
+        refund_override_used = False
         if refund_amount:
+            rule = needs_approval(db, org_id, "refund_amount", refund_amount, membership.role)
+            if rule is not None:
+                if not verify_override(db, org_id, rule, payload.override_email, payload.override_password):
+                    raise HTTPException(status_code=403, detail={
+                        "code": "refund_override_required", "refund_amount": float(refund_amount),
+                        "threshold": float(rule.threshold), "needs_role": rule.approver_role,
+                    })
+                refund_override_used = True
             db.add(Refund(
                 organization_id=org_id, sales_return_id=return_doc.id,
                 method=payload.refund_method, amount=refund_amount,
@@ -389,6 +398,9 @@ def apply_return(db: Session, membership, actor, sale_id: str, payload: ReturnCr
             organization_id=org_id, actor_user_id=actor.id, action="sale.returned",
             entity_type="sales_return", entity_id=return_doc.id,
         ))
+        if refund_override_used:
+            record_audit(db, membership, "refund.override", "sales_return", return_doc.id,
+                         refund_amount=refund_amount, approver_email=payload.override_email)
         journal_lines = []
         if total > 0:
             journal_lines.append(Line("4100", total, ZERO))
@@ -414,6 +426,8 @@ def apply_return(db: Session, membership, actor, sale_id: str, payload: ReturnCr
 class SaleVoid(BaseModel):
     reason: str = Field(min_length=2, max_length=140)
     refund_method: str | None = Field(default=None, max_length=30)
+    override_email: str | None = Field(default=None, max_length=255)
+    override_password: str | None = Field(default=None, max_length=200)
 
 
 @router.post("/sales/{sale_id}/void", response_model=ReturnView, tags=["sales"])
@@ -445,7 +459,7 @@ def void_sale(sale_id: str, payload: SaleVoid, membership: CurrentMembership, ac
     now = utcnow()
     view = apply_return(db, membership, actor, sale.id, ReturnCreate(
         return_number=f"VOID-{sale.invoice_number}"[:80], reason=f"Void: {payload.reason}"[:160], returned_at=now,
-        refund_method=method,
+        refund_method=method, override_email=payload.override_email, override_password=payload.override_password,
         items=[ReturnItemCreate(sales_order_item_id=line.id, quantity=line.quantity, restock=True) for line in lines],
     ))
     sale.status = "voided"

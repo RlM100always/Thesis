@@ -23,3 +23,16 @@ export function explain(error, overrides = {}) {
   if (status >= 500) return SERVER;
   return DEFAULTS[status] || SERVER;
 }
+
+// A 403 whose `detail` is a JSON object (not a plain string) is a structured
+// signal a screen can act on — e.g. "this discount/refund needs a manager's
+// own password" — rather than English text to display. api.js's detailOf()
+// stringifies such an object into the thrown Error's message; this reverses
+// that. Returns the parsed object only when its `code` matches, else null.
+export function structuredError(error, code) {
+  if (error?.status !== 403) return null;
+  try {
+    const body = JSON.parse(error.message);
+    return body?.code === code ? body : null;
+  } catch { return null; }
+}

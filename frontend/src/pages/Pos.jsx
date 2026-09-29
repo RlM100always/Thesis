@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api } from "../api";
 import { useBusiness } from "../BusinessContext";
 import { ReceiptFooter, ReceiptHeader } from "../components/ReceiptHeader";
-import { explain } from "../errors";
+import { explain, structuredError } from "../errors";
 import { dateTimeBn, money, num } from "../format";
 import DataTable from "../ui/DataTable";
 import Icon from "../ui/Icon";
@@ -38,16 +38,8 @@ const read = (key, fallback) => { try { return JSON.parse(localStorage.getItem(k
 const write = (key, value) => { try { localStorage.setItem(key, JSON.stringify(value)); } catch { /* storage full or blocked */ } };
 const isOffline = (e) => e?.status === undefined;                 // no HTTP response at all
 const isAlreadySent = (e) => e?.status === 409 && /Invoice number already exists/i.test(e.message || "");
-// A structured discount-override error arrives as a JSON string in e.message
-// (see api.js's detailOf, which stringifies a non-string `detail`).
-const ROLE_LABEL_BN = { manager: "ম্যানেজার", owner: "মালিক" };
-function parseOverrideError(e) {
-  if (e?.status !== 403) return null;
-  try {
-    const body = JSON.parse(e.message);
-    return body?.code === "discount_override_required" ? body : null;
-  } catch { return null; }
-}
+export const ROLE_LABEL_BN = { manager: "ম্যানেজার", owner: "মালিক" };
+const parseOverrideError = (e) => structuredError(e, "discount_override_required");
 
 const invoiceNumber = () => {
   const d = new Date();

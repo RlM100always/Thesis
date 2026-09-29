@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "../api";
 import { useBusiness } from "../BusinessContext";
-import { explain } from "../errors";
+import { explain, structuredError } from "../errors";
 import { dateTimeBn, money, num } from "../format";
+import { ROLE_LABEL_BN } from "./Pos";
 import { usePermissions } from "../PermissionContext";
 import DataTable from "../ui/DataTable";
 import { Badge, Button, Card, EmptyState, Field, Modal, Notice, PageHeader } from "../ui/kit";
@@ -29,6 +30,7 @@ export default function ReturnsPage() {
   const [refund, setRefund] = useState("cash");
   const [busy, setBusy] = useState(false);
   const [formError, setFormError] = useState("");
+  const [override, setOverride] = useState(null); // { info, email, password, error, busy }
 
   const load = useCallback(async () => {
     if (!orgId) return;
@@ -59,28 +61,53 @@ export default function ReturnsPage() {
   }
   const setLine = (id, patch) => setLines((all) => ({ ...all, [id]: { qty: "", restock: true, ...all[id], ...patch } }));
 
-  async function submit(e) {
-    e.preventDefault();
+  function buildBody(overrideCreds) {
     const items = Object.entries(lines)
       .filter(([, v]) => Number(v.qty) > 0)
       .map(([id, v]) => ({ sales_order_item_id: id, quantity: String(v.qty), restock: v.restock !== false }));
-    if (!items.length) { setFormError("কোন পণ্য কত ফেরত এসেছে তা লিখুন।"); return; }
+    return {
+      return_number: returnNumber(), reason, returned_at: new Date().toISOString(), items, refund_method: refund || null,
+      ...(overrideCreds ? { override_email: overrideCreds.email, override_password: overrideCreds.password } : {}),
+    };
+  }
+
+  async function submit(e) {
+    e.preventDefault();
+    const body = buildBody();
+    if (!body.items.length) { setFormError("কোন পণ্য কত ফেরত এসেছে তা লিখুন।"); return; }
     setBusy(true);
     setFormError("");
     try {
-      await api.createReturn(orgId, saleId, {
-        return_number: returnNumber(), reason, returned_at: new Date().toISOString(), items, refund_method: refund || null,
-      });
+      await api.createReturn(orgId, saleId, body);
       toast.success("রিটার্ন সম্পন্ন হয়েছে।");
       setOpen(false);
       load();
     } catch (err) {
-      setFormError(explain(err, {
-        409: "ফেরতের পরিমাণ বিক্রির পরিমাণের চেয়ে বেশি।",
-        422: "চালানের সব টাকা আগেই পরিশোধ করা থাকলে টাকা ফেরতের মাধ্যম (ক্যাশ/বিকাশ/নগদ) বেছে নিতে হবে।",
-      }));
+      const overrideNeeded = structuredError(err, "refund_override_required");
+      if (overrideNeeded) {
+        setOverride({ info: overrideNeeded, email: "", password: "", error: "" });
+      } else {
+        setFormError(explain(err, {
+          409: "ফেরতের পরিমাণ বিক্রির পরিমাণের চেয়ে বেশি।",
+          422: "চালানের সব টাকা আগেই পরিশোধ করা থাকলে টাকা ফেরতের মাধ্যম (ক্যাশ/বিকাশ/নগদ) বেছে নিতে হবে।",
+        }));
+      }
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function confirmOverride() {
+    setOverride((o) => ({ ...o, busy: true, error: "" }));
+    try {
+      await api.createReturn(orgId, saleId, buildBody(override));
+      toast.success("রিটার্ন সম্পন্ন হয়েছে।");
+      setOverride(null);
+      setOpen(false);
+      load();
+    } catch (err) {
+      const stillNeeded = structuredError(err, "refund_override_required");
+      setOverride((o) => ({ ...o, busy: false, error: stillNeeded ? "মানানসই কর্মী পাওয়া যায়নি — ইমেইল ও পাসওয়ার্ড আবার দেখুন।" : explain(err) }));
     }
   }
 
@@ -140,6 +167,24 @@ export default function ReturnsPage() {
           <datalist id="return-reasons">{REASONS.map((r) => <option key={r} value={r} />)}</datalist>
           {formError && <Notice tone="danger">{formError}</Notice>}
         </form>
+      </Modal>
+
+      <Modal open={Boolean(override)} title="বড় টাকা ফেরতের জন্য অনুমোদন লাগবে" onClose={() => setOverride(null)}
+             footer={<>
+               <Button variant="secondary" onClick={() => setOverride(null)}>বাতিল</Button>
+               <Button loading={override?.busy} disabled={!override?.email || !override?.password} onClick={confirmOverride}>অনুমোদন করে ফেরত সম্পন্ন করুন</Button>
+             </>}>
+        {override && (
+          <div className="ui-form">
+            <Notice tone="warn">
+              এই ফেরতে {money(override.info.refund_amount)} টাকা ফেরত দেওয়া হচ্ছে, যা {money(override.info.threshold)}-এর সীমা ছাড়িয়ে যায়।
+              {" "}{ROLE_LABEL_BN[override.info.needs_role] || override.info.needs_role}-এর ইমেইল ও পাসওয়ার্ড দিন।
+            </Notice>
+            <Field label="অনুমোদনকারীর ইমেইল"><input type="email" value={override.email} onChange={(e) => setOverride({ ...override, email: e.target.value })} autoComplete="off" autoFocus /></Field>
+            <Field label="পাসওয়ার্ড"><input type="password" value={override.password} onChange={(e) => setOverride({ ...override, password: e.target.value })} autoComplete="off" /></Field>
+            {override.error && <Notice tone="danger">{override.error}</Notice>}
+          </div>
+        )}
       </Modal>
     </div>
   );

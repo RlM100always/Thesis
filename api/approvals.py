@@ -25,6 +25,7 @@ from .security import verify_password
 DEFAULT_RULES: list[tuple[str, Decimal, str]] = [
     ("expense_amount", Decimal("5000"), "owner"),
     ("discount_percent", Decimal("10"), "manager"),
+    ("refund_amount", Decimal("1000"), "manager"),
 ]
 
 # A role's standing to approve, highest first. Someone at or above the rule's

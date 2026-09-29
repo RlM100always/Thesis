@@ -337,6 +337,10 @@ class ReturnCreate(BaseModel):
     returned_at: datetime
     items: list[ReturnItemCreate] = Field(min_length=1, max_length=200)
     refund_method: str | None = Field(default=None, max_length=30)
+    # A refund at or above the shop's threshold needs a qualifying manager's own
+    # credentials, typed inline — see api/finance_routes.py::apply_return.
+    override_email: str | None = Field(default=None, max_length=255)
+    override_password: str | None = Field(default=None, max_length=200)
 
 
 class ReturnView(BaseModel):

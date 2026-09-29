@@ -448,3 +448,31 @@ def test_a_cashier_needs_a_managers_password_for_a_big_discount(shop, new_sessio
     dialog.get_by_role("button", name="অনুমোদন করে বিক্রি সম্পন্ন করুন").click()
     expect(page.get_by_text("বিক্রি সম্পন্ন হয়েছে")).to_be_visible()
     no_js_errors(s)
+
+
+def test_a_large_cash_refund_needs_a_managers_password(shop, new_session):
+    from .test_panels import invite
+    branch, product = seed_stock(shop)
+    manager_email = invite(shop, "manager")
+    cashier_email = invite(shop, "cashier")
+    api(shop, "POST", "/inventory/adjust", {"branch_id": branch, "product_id": product, "quantity_delta": "50", "reason": "more stock"})
+    # A fully-paid ৳1500 sale so the whole thing is refundable in cash.
+    sell(shop, branch, product, 100, "INV-REF1")
+    line = api(shop, "GET", "/sales")[0]["items"][0]
+
+    s = new_session()
+    sign_in(s, cashier_email)   # a cashier ranks below the manager the rule requires
+    page = s.page
+    page.goto(f"{WEB}/#/returns")
+    page.get_by_role("button", name="নতুন রিটার্ন").click()
+    dialog = page.locator("dialog[open]")
+    dialog.get_by_label("কত ফেরত এসেছে?").fill("100")
+    dialog.get_by_role("button", name="রিটার্ন নিশ্চিত করুন").click()
+    expect(page.get_by_text("বড় টাকা ফেরতের জন্য অনুমোদন লাগবে")).to_be_visible()
+
+    dialog2 = page.locator("dialog[open]")
+    dialog2.get_by_label("অনুমোদনকারীর ইমেইল").fill(manager_email)
+    dialog2.get_by_label("পাসওয়ার্ড").fill(PASSWORD)
+    dialog2.get_by_role("button", name="অনুমোদন করে ফেরত সম্পন্ন করুন").click()
+    expect(page.get_by_text("রিটার্ন সম্পন্ন হয়েছে")).to_be_visible()
+    no_js_errors(s)
