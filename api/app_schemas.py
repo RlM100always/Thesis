@@ -1,6 +1,6 @@
 """Schemas for the operational application API."""
 
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -31,6 +31,22 @@ class OrganizationView(BaseModel):
     timezone: str
     locale: str
     role: str
+    # True once any product tracks batches/expiry, so the screens for it appear even
+    # in a business type that does not use them by default.
+    uses_expiry: bool = False
+    address: str | None = None
+    phone: str | None = None
+    vat_reg_no: str | None = None
+    receipt_footer: str | None = None
+
+
+class OrganizationProfile(BaseModel):
+    name: str | None = Field(default=None, min_length=2, max_length=160)
+    sector: str | None = Field(default=None, max_length=40)
+    address: str | None = Field(default=None, max_length=300)
+    phone: str | None = Field(default=None, max_length=30)
+    vat_reg_no: str | None = Field(default=None, max_length=40)
+    receipt_footer: str | None = Field(default=None, max_length=200)
 
 
 class ProductCreate(BaseModel):
@@ -42,6 +58,21 @@ class ProductCreate(BaseModel):
     selling_price: Decimal = Field(ge=0, max_digits=14, decimal_places=2)
     cost_price: Decimal = Field(default=Decimal("0"), ge=0, max_digits=14, decimal_places=2)
     reorder_level: Decimal = Field(default=Decimal("0"), ge=0, max_digits=14, decimal_places=3)
+    wholesale_price: Decimal | None = Field(default=None, ge=0, max_digits=14, decimal_places=2)
+    track_expiry: bool = False
+
+
+class ProductUpdate(BaseModel):
+    """Fields the owner may change later. The SKU and expiry tracking are fixed once stock exists."""
+    name: str | None = Field(default=None, min_length=1, max_length=200)
+    barcode: str | None = Field(default=None, max_length=80)
+    category: str | None = Field(default=None, max_length=100)
+    unit: str | None = Field(default=None, min_length=1, max_length=20)
+    selling_price: Decimal | None = Field(default=None, ge=0, max_digits=14, decimal_places=2)
+    cost_price: Decimal | None = Field(default=None, ge=0, max_digits=14, decimal_places=2)
+    wholesale_price: Decimal | None = Field(default=None, ge=0, max_digits=14, decimal_places=2)
+    reorder_level: Decimal | None = Field(default=None, ge=0, max_digits=14, decimal_places=3)
+    active: bool | None = None
 
 
 class ProductView(ProductCreate):
@@ -55,6 +86,11 @@ class StockAdjustment(BaseModel):
     product_id: str
     quantity_delta: Decimal = Field(max_digits=14, decimal_places=3)
     reason: str = Field(min_length=2, max_length=120)
+    # Only for products that track expiry: which batch is being adjusted, or the
+    # details of a new batch when adding stock.
+    batch_id: str | None = None
+    batch_no: str | None = Field(default=None, min_length=1, max_length=80)
+    expiry_date: date | None = None
 
     @model_validator(mode="after")
     def non_zero(self):
@@ -152,7 +188,9 @@ class BranchView(BranchCreate):
 class StaffInvite(BaseModel):
     email: str = Field(pattern=r"^[^@\s]+@[^@\s]+\.[^@\s]+$", max_length=254)
     display_name: str = Field(min_length=2, max_length=120)
-    role: str = Field(pattern=r"^(owner|manager|cashier|accountant|viewer)$")
+    role: str = Field(
+        pattern=r"^(owner|manager|cashier|accountant|stock_keeper|viewer|evaluator)$"
+    )
 
 
 class StaffView(BaseModel):
@@ -162,6 +200,22 @@ class StaffView(BaseModel):
     display_name: str
     role: str
     active: bool
+    # True until the person has set a password from their invite link.
+    pending_setup: bool = False
+
+
+class StaffInvited(StaffView):
+    """Returned once, to the owner, when a setup link is issued."""
+    setup_token: str | None = None
+    setup_expires_at: datetime | None = None
+
+
+class StaffUpdate(BaseModel):
+    role: str | None = Field(
+        default=None,
+        pattern=r"^(owner|manager|cashier|accountant|stock_keeper|viewer|evaluator)$",
+    )
+    active: bool | None = None
 
 
 class CustomerCreate(BaseModel):
@@ -169,13 +223,28 @@ class CustomerCreate(BaseModel):
     display_name: str | None = Field(default=None, max_length=160)
     phone: str | None = Field(default=None, pattern=r"^\+?\d{10,15}$")
     marketing_consent: bool = False
+    credit_limit: Decimal | None = Field(default=None, ge=0, max_digits=14, decimal_places=2)
+    price_tier: str = Field(default="retail", pattern=r"^(retail|wholesale)$")
+
+
+class CustomerUpdate(BaseModel):
+    display_name: str | None = Field(default=None, max_length=160)
+    phone: str | None = Field(default=None, pattern=r"^\+?\d{10,15}$")
+    marketing_consent: bool | None = None
+    credit_limit: Decimal | None = Field(default=None, ge=0, max_digits=14, decimal_places=2)
+    price_tier: str | None = Field(default=None, pattern=r"^(retail|wholesale)$")
 
 
 class CustomerView(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
     id: str
     code: str
     display_name: str | None
     marketing_consent: bool
+    credit_limit: Decimal | None = None
+    price_tier: str = "retail"
+    # What the customer owes now (receivable ledger); filled by the list endpoint.
+    balance: Decimal = Decimal("0")
 
 
 class SupplierCreate(BaseModel):
@@ -219,6 +288,7 @@ class PurchaseLineView(BaseModel):
     quantity: Decimal
     received_quantity: Decimal
     unit_cost: Decimal
+    track_expiry: bool = False
 
 
 class PurchaseDetailView(PurchaseView):
@@ -233,6 +303,9 @@ class PurchaseDetailView(PurchaseView):
 class ReceiveItem(BaseModel):
     purchase_order_item_id: str
     quantity: Decimal = Field(gt=0, max_digits=14, decimal_places=3)
+    # Required for products that track expiry; one entry per batch that arrived.
+    batch_no: str | None = Field(default=None, min_length=1, max_length=80)
+    expiry_date: date | None = None
 
 
 class PurchaseReceive(BaseModel):

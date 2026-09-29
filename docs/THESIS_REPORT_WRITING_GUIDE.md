@@ -8,6 +8,13 @@ already lives in [THESIS_PRODUCT_MASTER_PLAN.md](THESIS_PRODUCT_MASTER_PLAN.md).
 Read that file for what goes in each chapter; read this file for how it maps
 onto the LaTeX template and what format rules the supervisor imposed.
 
+**Scope update:** all new prose and slides must describe the initial empirical
+domain as Bangladeshi retail pharmacies. Use
+[PHARMACY_VERTICAL_SCOPE_AND_SUPERVISOR_GUIDELINE.md](PHARMACY_VERTICAL_SCOPE_AND_SUPERVISOR_GUIDELINE.md)
+for the supervisor's base-data → multi-shop model → shop-constraint → specific
+recommendation → feedback/evaluation flow. Other SME types are future extension,
+not part of the initial effectiveness claim.
+
 **The LaTeX template itself (main.tex, preamble.tex, Chapters/*.tex, etc.)
 is not stored in this software repository** — it lives in a separate
 LaTeX/Overleaf project. This guide only records the requirements so the
@@ -96,7 +103,9 @@ From the supervisor's handwritten planning notes, the slide sequence is:
 1. Title page
 2. Table of contents
 3. **Result / system overview diagram** (comes right after ToC, before any
-   motivation slide — earlier than where a typical proposal would put it)
+   motivation slide — use the pharmacy-specific constraint-aware architecture
+   in the revised scope guideline; clearly distinguish implemented and proposed
+   blocks)
 4. Introduction: motivation → contribution → challenge
 5. Background study
 6. Literature review and its drawbacks

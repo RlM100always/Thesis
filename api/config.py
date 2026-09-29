@@ -25,6 +25,11 @@ class Settings(BaseSettings):
     jwt_secret: str = Field(default="development-only-change-me-32-bytes", min_length=32)
     jwt_algorithm: str = "HS256"
     access_token_minutes: int = 30
+    refresh_token_days: int = 14
+    allow_registration: bool = True
+    login_max_failures: int = 5
+    login_lockout_minutes: int = 15
+
     @property
     def is_production(self) -> bool:
         return self.app_env.lower() == "production"

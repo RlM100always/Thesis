@@ -44,6 +44,35 @@ and settlement status as ordinary business fields. The research does not infer
 that a particular provider causes better performance; it asks whether locally
 recognizable records and explanations make the analytical workflow more usable.
 
+\subsection{Retail Pharmacy as the Initial SME Vertical}
+
+The empirical scope is deliberately limited to retail pharmacies rather than a
+mixture of unrelated SME categories. Pharmacies share the ordinary retail need
+to reconcile sales, purchases, suppliers, payments and stock, but their
+inventory decisions additionally depend on batch identity, expiry, remaining
+shelf life, box--strip--piece conversion and, for temperature-sensitive items,
+storage conditions. These fields affect action feasibility even when they do not
+improve a demand model. A recommendation that ignores them may be statistically
+plausible yet unusable for the shop.
+
+The cross-shop learning problem also requires a clear distinction between a
+category-level pattern and a shop-level decision. Approved, de-identified data
+from multiple pharmacies may support a pooled pharmacy model or a held-out-shop
+transfer test. Raw operational records, customer identifiers and constraint
+profiles remain isolated by pharmacy. A deployed recommendation combines the
+selected forecast or risk estimate with the active shop's budget, stock,
+supplier, pack, expiry, storage and consent constraints. Evidence from generic
+retail or another country can test a method, but it cannot establish pharmacy
+effectiveness in Bangladesh.
+
+This is a business decision-support boundary, not a clinical one. The artifact
+may prioritize replenishment, stock-out, overstock, near-expiry or operational
+investigation actions; it does not diagnose a patient, select a prescription or
+recommend a dosage. A dedicated pharmacy-domain literature extension remains
+necessary before the final thesis so that batch-, expiry- and storage-aware
+design choices are evaluated against verified sector evidence rather than
+asserted from the software design alone.
+
 \subsection{Performance Evaluation and Data Foundations}
 
 Performance evaluation begins with well-defined measures. Revenue, gross
@@ -55,7 +84,7 @@ The canonical layer therefore preserves invoice lines and stock movements while
 deriving analytical measures in documented views.
 
 Data provenance answers where a record came from, when it was received and how
-it was transformed. For primary SME data, provenance must be joined with
+it was transformed. For primary pharmacy data, provenance must be joined with
 organization isolation and pseudonymous customer identifiers. For public data,
 the license, original context and permissible inference must be recorded. A
 foreign transaction dataset can test whether code handles real invoices but
@@ -101,7 +130,7 @@ source columns, transformation version and cutoff; each reported result should
 identify the dataset manifest, split and model or rule version that produced
 it. This lineage does not guarantee correctness, but it makes errors auditable
 and results reproducible. It also prevents a public or generated dataset from
-quietly inheriting the claim status of primary Bangladesh SME evidence.
+quietly inheriting the claim status of primary Bangladesh pharmacy evidence.
 
 \subsection{Customer Analytics: RFM, CLV and Segmentation}
 
@@ -419,17 +448,17 @@ establish that an owner will use the recommendation correctly.
 \setlength{\tabcolsep}{4pt}
 \caption{Analytical units, temporal boundaries and defensible claims.}
 \label{tab:claim_units}
-\begin{tabularx}{\textwidth}{p{0.15\textwidth}p{0.18\textwidth}p{0.22\textwidth}Y}
-\toprule
+\begin{tabularx}{\textwidth}{|p{0.15\textwidth}|p{0.18\textwidth}|p{0.22\textwidth}|Y|}
+\hline
 \textbf{Analytical object} & \textbf{Unit and boundary} & \textbf{Defensible evidence} & \textbf{Invalid inferential leap} \\
-\midrule
+\hline
 KPI & Business, branch or product within a closed reporting window & Reconciled numerator, denominator and data-quality status & Treating an unreconciled dashboard value as accounting truth \\
 Demand forecast & Branch--SKU origin with future horizon hidden & Out-of-time error and uncertainty by demand regime & Inferring stock benefit from lower average error alone \\
 Inactivity score & Customer snapshot at cutoff with a future label window & Ranking, calibration and lift on untouched snapshots & Treating inactivity as permanent churn or response to contact \\
 Segment & Customer feature vector at a declared cutoff & Cohesion, separation, stability and domain interpretation & Assuming algorithmic clusters are natural or causal customer types \\
 Reorder policy & Product decision on an identical replayed demand path & Stock-out, inventory and cost differences under stated assumptions & Claiming realized profit without field outcomes \\
 Explanation & Owner decision task paired with model evidence & Correctness, time, confidence and qualitative interpretation & Inferring understanding from the presence of a SHAP chart \\
-\bottomrule
+\hline
 \end{tabularx}
 \end{table}
 
@@ -602,16 +631,16 @@ of that work.
 \tiny
 \setlength{\tabcolsep}{2pt}
 \renewcommand{\arraystretch}{0.88}
-\begin{longtable}{p{0.05\linewidth}p{0.17\linewidth}p{0.19\linewidth}p{0.26\linewidth}p{0.28\linewidth}}
+\begin{longtable}{|p{0.05\linewidth}|p{0.17\linewidth}|p{0.19\linewidth}|p{0.26\linewidth}|p{0.28\linewidth}|}
 \caption{Literature matrix for the 22-work core scholarly set.}
 \label{tab:literature_matrix}\\
-\toprule
+\hline
 \textbf{Ref.} & \textbf{Context or data} & \textbf{Method} & \textbf{Main contribution used here} & \textbf{Relevant boundary for this thesis} \\
-\midrule
+\hline
 \endfirsthead
-\toprule
+\hline
 \textbf{Ref.} & \textbf{Context or data} & \textbf{Method} & \textbf{Main contribution used here} & \textbf{Relevant boundary for this thesis} \\
-\midrule
+\hline
 \endhead
 \cite{chen2012business} & Cross-domain BI research & Framework and bibliometric review & Descriptive-to-predictive BI evolution & No local SME artifact evaluation \\
 \cite{hevner2004design} & Information-systems research & Design-science framework & Build-and-evaluate research logic & Does not define the retail analytics solution \\
@@ -635,7 +664,7 @@ of that work.
 \cite{lundberg2017shap} & Predictive models & Shapley additive explanations & Unified local feature attribution & Attribution is not causal evidence \\
 \cite{miller2019explanation} & Social science and AI literature & Interdisciplinary review & Selective, contrastive explanation principles & Requires owner-centred validation \\
 \cite{bertsimas2020prescriptive} & Decision problems & Prescriptive optimization & Prediction-to-action bridge & Simplified here for SME constraints \\
-\bottomrule
+\hline
 \end{longtable}
 \normalsize
 \end{landscape}
@@ -647,10 +676,10 @@ of that work.
 \small
 \caption{Recurring limitations and the proposed methodological response.}
 \label{tab:system_gaps}
-\begin{tabularx}{\textwidth}{p{0.24\textwidth}Y Y}
-\toprule
+\begin{tabularx}{\textwidth}{|p{0.24\textwidth}|Y|Y|}
+\hline
 \textbf{Recurring limitation} & \textbf{Consequence} & \textbf{Response proposed in \system{}} \\
-\midrule
+\hline
 Static transaction reporting & Describes a problem after it occurs & Time-indexed forecasts and risk estimates tied to operational records \\
 Model-only study & Score is disconnected from stock, cash and workflow & Constrained action generation and outcome tracking \\
 Random temporal split & Future or repeated-entity information inflates results & Historical cutoffs, grouped splits and purged outcome windows \\
@@ -660,7 +689,7 @@ Incoherent aggregation & SKU forecasts disagree with category or branch totals &
 Black-box output & Owner cannot judge why action is suggested & Selective supporting factors, source and confidence statement \\
 Foreign or generated evidence & Local validity is overstated & Explicit evidence tiers and claim restrictions \\
 Unmonitored deployment & Performance decay and changed inputs remain hidden & Data-quality, drift, calibration and outcome monitoring \\
-\bottomrule
+\hline
 \end{tabularx}
 \end{table}
 
@@ -688,7 +717,7 @@ functions \cite{chen2012business}. The forecasting, segmentation and
 churn studies in the matrix generally begin from an already prepared analytical
 dataset. They do not jointly evaluate the path from an auditable business event,
 through a reproducible historical snapshot, to the prediction and later action
-outcome. For the target SME, this missing path matters because a model cannot be
+outcome. For the target pharmacy, this missing path matters because a model cannot be
 reproduced if invoice corrections, stock movements, organization scope and
 feature cutoffs are not traceable.
 
@@ -734,11 +763,44 @@ recommendation remained appropriate after business conditions changed.
 
 \begin{quote}
 \textbf{Central research gap.} Within the reviewed evidence, there is no jointly
-evaluated, Bangladesh-oriented retail SME framework that connects traceable
-operational records to leakage-controlled and calibrated multi-task analytics,
-then converts those outputs into constraint-aware, owner-understandable actions
-whose use and outcomes can be monitored over time.
+evaluated, Bangladesh-oriented retail-pharmacy framework that connects
+traceable multi-shop operational records to leakage-controlled and calibrated
+analytics, compares a baseline, pooled pharmacy model and eligible shop-adapted
+model, and then converts those outputs into shop-constrained,
+owner-understandable actions whose use and outcomes can be monitored over time.
 \end{quote}
+
+Figure~\ref{fig:gap_bridge} groups the six gaps into three connected bridges.
+This grouping clarifies why a model-only contribution would be insufficient:
+local evidence, methodological validity and accountable use must all be
+evaluated before the artifact can support a bounded effectiveness claim.
+
+\begin{figure}[H]
+\centering
+\resizebox{0.96\textwidth}{!}{%
+\begin{tikzpicture}[
+  gap/.style={draw=dugold,rounded corners,fill=softorange,text width=3.55cm,minimum height=1.05cm,align=center,font=\footnotesize},
+  bridge/.style={draw,rounded corners,fill=softblue,text width=3.55cm,minimum height=1.05cm,align=center,font=\footnotesize},
+  result/.style={draw=dugreen,very thick,rounded corners,fill=softgreen,text width=12.5cm,minimum height=0.95cm,align=center,font=\footnotesize},
+  flow/.style={-{Latex[length=2.2mm]},thick,draw=gray!75}
+]
+\node[gap] (g12) at (-4.4,2.2) {\textbf{G1--G2}\\context and operational-to-analytical integration};
+\node[gap] (g34) at (0,2.2) {\textbf{G3--G4}\\methodological validity and prediction-to-decision};
+\node[gap] (g56) at (4.4,2.2) {\textbf{G5--G6}\\owner explanation and lifecycle accountability};
+\node[bridge] (b1) at (-4.4,0.35) {Local multi-pharmacy evidence with auditable events and snapshots};
+\node[bridge] (b2) at (0,0.35) {Baseline-controlled estimates linked to feasible constrained actions};
+\node[bridge] (b3) at (4.4,0.35) {Understandable evidence, owner response, outcomes and revalidation};
+\node[result] (artifact) at (0,-1.5) {\textbf{Jointly evaluated \system{} artifact}\\claims remain limited to the evidence tier and target pharmacy setting};
+\draw[flow] (g12) -- (b1);
+\draw[flow] (g34) -- (b2);
+\draw[flow] (g56) -- (b3);
+\draw[flow] (b1) -- (artifact.north west);
+\draw[flow] (b2) -- (artifact.north);
+\draw[flow] (b3) -- (artifact.north east);
+\end{tikzpicture}}
+\caption{Research-gap bridge from six literature limitations to the integrated thesis response.}
+\label{fig:gap_bridge}
+\end{figure}
 
 The central gap is integrative and evaluative. It does not require inventing a
 new classifier; it requires showing that established methods can be combined
@@ -751,23 +813,23 @@ linking it to a proposed response and evaluation.
 \small
 \caption{Traceability from identified gap to proposed response and test.}
 \label{tab:gap_traceability}
-\begin{tabularx}{\textwidth}{p{0.11\textwidth}p{0.29\textwidth}Y p{0.14\textwidth}}
-\toprule
+\begin{tabularx}{\textwidth}{|p{0.11\textwidth}|p{0.29\textwidth}|Y|p{0.14\textwidth}|}
+\hline
 \textbf{Gap} & \textbf{Proposed response} & \textbf{Evidence required to close the gap} & \textbf{Study link} \\
-\midrule
-G1: Context & Tier-1 Bangladesh SME study with explicit external-data boundaries & Primary local records and firm descriptions; no transfer of foreign/generated claims & RQ1--RQ4 \\
+\hline
+G1: Context & Tier-1 multi-pharmacy study with explicit external-data boundaries & Primary pharmacy records, constraints and shop descriptions; no transfer of foreign/generated or cross-sector claims & RQ1--RQ4 \\
 G2: Integration & Canonical events, manifests and versioned historical snapshots & Reproducible trace from source row to feature, output, action and later outcome & O1, O2 \\
 G3: Validity & Temporal/entity-safe splits, baseline ladder, calibration and frozen test & Out-of-time metrics, ablations, intervals and leakage audit & RQ1, RQ2 \\
 G4: Decision & Constraint and expected-utility layer for reorder/retention actions & Same-path policy comparison and sensitivity to cost assumptions & RQ3 \\
 G5: Explanation & Selective Bangla evidence with source and uncertainty & Counterbalanced owner tasks measuring correctness, time and confidence & RQ4 \\
 G6: Lifecycle & Version, drift, response and outcome monitoring protocol & Revalidation log and post-decision observations & O6 \\
-\bottomrule
+\hline
 \end{tabularx}
 \end{table}
 
 \system{} is positioned as the proposed response to this combined gap. Public or
 generated evidence can test parts of the procedure; closing the contextual,
-decision and owner-centred gaps requires consenting SME data and participant
+decision and owner-centred gaps requires consenting pharmacy data and participant
 evaluation. If those data are unavailable, the final thesis must report the
 corresponding gaps as still open rather than treating a prototype or external
 benchmark as proof of local effectiveness.

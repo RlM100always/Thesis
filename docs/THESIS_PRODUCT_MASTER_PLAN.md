@@ -5,15 +5,20 @@ proposal, the codebase built so far, and the supervisor's structural
 directions (chapter layout, literature-review scale, plagiarism/AI-use
 limits, scalability protocol) into one plan.
 
+The revised vertical scope and supervisor-guided architecture in
+[PHARMACY_VERTICAL_SCOPE_AND_SUPERVISOR_GUIDELINE.md](PHARMACY_VERTICAL_SCOPE_AND_SUPERVISOR_GUIDELINE.md)
+take precedence wherever older text below says generic retail or all SMEs.
+
 ## Approved title (unchanged)
 
 **AI-Powered Business Analytics System for Performance Evaluation, Insight
 Extraction, and Strategy Optimization**
 
-The implementation focus stays Bangladeshi retail/inventory-based SMEs while
-the architecture supports future sector templates. Narrowing the *scope*
-this way keeps the title defendable without renaming anything already
-approved.
+The initial implementation and empirical validation focus on **Bangladeshi
+retail pharmacies**. The architecture supports future sector templates, but no
+claim transfers to another SME category without category-specific data,
+constraints and validation. This narrowing keeps the approved title defendable
+without pretending that one dataset can represent every SME type.
 
 ## 1. Final positioning
 
@@ -31,6 +36,14 @@ layers:
 3. **Strategy Optimization Layer** — forecast and risk scores turned into
    reorder quantity, customer-retention priority, and product/branch action
    ranking.
+
+Across these layers, multiple consenting pharmacies contribute de-identified
+research data to a pooled pharmacy-domain model. At deployment, each shop's raw
+data remains tenant-isolated and its owner enters budget, storage, supplier,
+MOQ, expiry, cold-chain, consent and risk constraints. The model produces
+predictions; the strategy layer applies those constraints and produces the
+shop-specific recommendation. A shop-adapted model is promoted only when it
+beats the pooled model and transparent baseline on chronological validation.
 
 Real business data is the primary evidence. Synthetic/artificial data is
 used **only** for: system testing, rare-scenario simulation, scalability
@@ -74,7 +87,7 @@ final name only after the literature search confirms no naming conflict.)
 Sequential flow:
 
 ```
-Real SME Data
+Multiple Consenting Pharmacy Datasets
     → Validation, Cleaning and Tenant Isolation
     → Canonical Transactional Database
     → Historical Feature Snapshots
@@ -85,6 +98,10 @@ Real SME Data
     → Bangla Action Dashboard
     → Owner Feedback and Outcome Tracking
 ```
+
+This is a continuous monitored lifecycle: operational state and recommendations
+may refresh frequently, while retraining is scheduled or triggered by validated
+data-volume/drift rules. It is not uncontrolled retraining after every sale.
 
 Pseudocode:
 
@@ -119,15 +136,18 @@ with steps 3–4 output once real-data models exist (see Current Priority).
 
 | Product | Last 7-day sales | Current stock | Lead time | Predicted 7-day demand |
 |---|---|---|---|---|
-| Soybean Oil | 30 | 12 | 4 days | 34 |
-| Rice 5kg | 18 | 40 | 3 days | 20 |
-| Sugar 1kg | 25 | 8 | 5 days | 29 |
+| Paracetamol 500 mg, 10-tablet strip | 30 | 12 | 4 days | 34 |
+| ORS 10 g sachet | 18 | 40 | 3 days | 20 |
+| Surgical mask | 25 | 8 | 5 days | 29 |
 
-Soybean Oil, safety stock 6: $\text{Reorder} = 34 + 6 - 12 = 28$.
+Paracetamol strip, safety stock 6: $\text{Reorder} = 34 + 6 - 12 = 28$,
+subject to pack multiple, purchasing budget, remaining shelf life and storage
+constraints.
 
-System output (Bangla): *"আগামী সাত দিনে Soybean Oil-এর সম্ভাব্য demand
-৩০–৩৮ unit। বর্তমান stock ১২ এবং supplier lead time চার দিন। Stockout এড়াতে
-আজ প্রায় ২৮ unit order করার পরামর্শ।"* The full worked example in the thesis
+System output (Bangla): *"আগামী সাত দিনে Paracetamol 500 mg strip-এর সম্ভাব্য
+demand ৩০–৩৮ unit। বর্তমান stock ১২, supplier lead time চার দিন এবং আপনার
+budget/pack constraint অনুযায়ী stockout এড়াতে আজ ২৮ unit order বিবেচনা
+করুন।"* The full worked example in the thesis
 must show input, intermediate calculation, model output, and the final
 recommendation — not just the final number.
 
@@ -145,7 +165,7 @@ recommendation — not just the final number.
 
 ## 6. Chapter structure
 
-**Chapter 1 — Introduction.** Motivation opens on a concrete Bangladeshi SME
+**Chapter 1 — Introduction.** Motivation opens on a concrete Bangladeshi pharmacy SME
 scenario: ledger/Excel bookkeeping, failing to anticipate Eid/Ramadan demand,
 stockouts and dead stock, losing a customer without noticing, and financing
 difficulty from lacking formal financial statements. Objectives,
@@ -202,7 +222,7 @@ outcomes belong in Chapter 5.
 **Chapter 5 — Experimental Results** (template file: `experimentalResults.tex`,
 sections 5.1 Results Analysis, 5.2 Summary of the Experimental Results).
 This is where every experiment design below is actually run and reported:
-- *Datasets*: real SME dataset (not yet collected), Bangladeshi public
+- *Datasets*: real multi-pharmacy dataset (not yet collected), Bangladeshi public
   contextual datasets (WFP/DAM market prices), external real transaction
   benchmark (UCI Online Retail II, explicitly labelled non-Bangladeshi),
   a real Bangladeshi demand-only series (Mendeley 10.17632/xwmbk7n3c8.1,

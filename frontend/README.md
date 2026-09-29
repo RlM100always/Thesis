@@ -1,4 +1,13 @@
-# React + Vite
+# B-SMART pharmacy-owner frontend
+
+This React/Vite application is the interface for the B-SMART thesis prototype.
+The revised initial domain is Bangladeshi retail pharmacies; generic retail
+screens are the current foundation, while pharmacy batch/expiry and full
+shop-constraint inputs are planned. See
+[`../docs/PHARMACY_VERTICAL_SCOPE_AND_SUPERVISOR_GUIDELINE.md`](../docs/PHARMACY_VERTICAL_SCOPE_AND_SUPERVISOR_GUIDELINE.md)
+before changing domain wording or recommendation flows.
+
+## Development runtime
 
 This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
 

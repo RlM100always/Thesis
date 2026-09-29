@@ -227,14 +227,8 @@ label.checkbox input { width: auto; }
 .kpi .value.green { color: var(--green); }
 .kpi .value.red { color: var(--red); }
 
+/* The phone shell (top bar, bottom tabs, drawer) lives in ui/ui.css. */
 @media (max-width: 720px) {
-  .app { display: block; }
-  .sidebar { width: 100%; padding: 12px; position: static; }
-  .sidebar nav { flex-direction: row; overflow-x: auto; }
-  .sidebar .nav-heading, .sidebar .footer, .sidebar .toggles, .sidebar .brand, .sidebar .mode-switch { display: none; }
-  .sidebar a { white-space: nowrap; border-left: 0; border-bottom: 3px solid transparent; padding: 9px 11px; }
-  .sidebar a.active { border-left: 0; border-bottom-color: var(--green); }
-  .main { padding: 18px 14px; }
   .form-grid { grid-template-columns: 1fr; }
 }
 
@@ -532,11 +526,153 @@ a.btn-primary, a.btn-secondary { text-decoration: none; display: inline-block; }
 }
 
 @media (max-width: 760px) {
-  .app { flex-direction: column; }
-  .sidebar { width: 100%; }
-  .sidebar nav { flex-direction: row; overflow-x: auto; }
-  .main { padding: 18px; }
   .toggles { flex-direction: row; }
   .toggles .toggle { flex: 1; }
   .risk-pct { font-size: 42px; }
+}
+
+/* ── B-SMART Algorithm 1 (layers 5-8) ─────────────────────────────────────
+   The recommendation cards are built to be interrogated: the utility
+   arithmetic, the evidence and the per-constraint verdict are all on the card
+   rather than hidden behind a tooltip, because the thesis's claim is that the
+   recommendation is explainable, not merely produced. */
+
+.stat-row { display: flex; flex-wrap: wrap; gap: 12px; margin: 16px 0; }
+.stat-row .stat {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 12px 16px; min-width: 140px;
+  box-shadow: var(--shadow-1);
+}
+.stat-row .stat b { display: block; font-size: 22px; color: var(--navy); }
+.stat-row .stat span { font-size: 12px; color: var(--text-muted); }
+
+.bsmart-grid {
+  display: grid; gap: 14px; margin: 18px 0;
+  grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
+}
+
+.bsmart-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 14px 16px; box-shadow: var(--shadow-1);
+}
+.bsmart-card-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.bsmart-card-head h4 { margin: 0; font-size: 15px; flex: 1 1 auto; }
+.bsmart-rank { color: var(--text-faint); font-size: 12px; }
+
+.bsmart-type {
+  font-size: 11px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .04em; padding: 2px 8px; border-radius: 999px; color: #fff;
+}
+.bsmart-type.reorder { background: var(--green); }
+.bsmart-type.expiry { background: var(--amber); color: #3b2a00; }
+.bsmart-type.retention { background: #7a3fa0; }
+
+.bsmart-utility {
+  display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0;
+  font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12px;
+  color: var(--text-muted);
+}
+.bsmart-utility strong { color: var(--navy); }
+
+.bsmart-reason { font-size: 13px; margin: 8px 0; }
+
+.bsmart-why h5, .bsmart-constraints h5 {
+  margin: 12px 0 6px; font-size: 12px; text-transform: uppercase;
+  letter-spacing: .04em; color: var(--text-muted);
+}
+.bsmart-why dl { margin: 0; display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; }
+.bsmart-why dl > div { display: contents; }
+.bsmart-why dt { font-size: 12px; color: var(--text-muted); }
+.bsmart-why dd {
+  margin: 0; font-size: 12px; text-align: right;
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+}
+
+.bsmart-constraints ul { list-style: none; margin: 0; padding: 0; }
+.bsmart-constraints li {
+  display: flex; justify-content: space-between; gap: 10px;
+  font-size: 12px; padding: 3px 0; border-bottom: 1px dashed var(--border);
+}
+.bsmart-constraints li:last-child { border-bottom: none; }
+.bsmart-constraints .cname { color: var(--text-muted); }
+/* Never let a capped or blocked constraint read as a clean pass. */
+.bsmart-constraints li.ok .cverdict { color: var(--green); }
+.bsmart-constraints li.warn .cverdict { color: #8a6100; }
+.bsmart-constraints li.bad .cverdict { color: var(--red); font-weight: 600; }
+
+.bsmart-card-foot {
+  display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px;
+  padding-top: 8px; border-top: 1px solid var(--border); font-size: 11px;
+}
+.bsmart-card-foot .confidence.model { color: var(--green); font-weight: 600; }
+.bsmart-card-foot .confidence.baseline { color: #8a6100; font-weight: 600; }
+.bsmart-card-foot .confidence.rule { color: var(--grey); font-weight: 600; }
+.bsmart-card-foot .cold { color: #0b6ea8; font-weight: 600; }
+.bsmart-card-foot .cutoff { color: var(--text-faint); margin-left: auto; }
+
+.assumption-grid {
+  display: grid; gap: 6px 16px; margin-top: 10px;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+}
+.assumption-grid > div {
+  display: flex; justify-content: space-between; gap: 10px;
+  font-size: 12px; padding: 4px 0; border-bottom: 1px dashed var(--border);
+}
+.assumption-grid .akey { color: var(--text-muted); }
+.assumption-grid .aval { font-family: ui-monospace, Menlo, Consolas, monospace; }
+
+@media (max-width: 520px) {
+  .bsmart-grid { grid-template-columns: 1fr; }
+  .stat-row .stat { flex: 1 1 100%; }
+}
+
+/* ── B-SMART owner decision rows (layer 9, ব্যবসা মোড) ───────────────────── */
+.toolbar-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 12px 0; }
+.section-title { margin: 22px 0 10px; font-size: 15px; color: var(--navy); }
+
+.reco-row {
+  display: flex; gap: 16px; flex-wrap: wrap; align-items: flex-start;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 14px 16px; margin-bottom: 10px;
+  box-shadow: var(--shadow-1);
+}
+/* A decided row must stop competing for attention with the pending ones. */
+.reco-row.decided { opacity: .72; background: var(--surface-2); }
+.reco-main { flex: 1 1 320px; min-width: 0; }
+.reco-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.reco-head h4 { margin: 0; font-size: 15px; }
+.reco-reason { font-size: 13px; margin: 8px 0; }
+
+.reco-why summary { cursor: pointer; font-size: 12px; color: var(--text-muted); }
+.reco-why dl { margin: 8px 0 0; display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; }
+.reco-why dl > div { display: contents; }
+.reco-why dt { font-size: 12px; color: var(--text-muted); }
+.reco-why dd { margin: 0; font-size: 12px; text-align: right; font-variant-numeric: tabular-nums; }
+.reco-constraints { list-style: none; margin: 8px 0 0; padding: 0; }
+.reco-constraints li {
+  display: flex; justify-content: space-between; gap: 10px;
+  font-size: 12px; padding: 2px 0; color: var(--text-muted);
+}
+
+.reco-utility {
+  margin-top: 10px; font-size: 12px; color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+.reco-utility strong { color: var(--navy); }
+
+.reco-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.reco-qty { display: flex; flex-direction: column; font-size: 11px; color: var(--text-muted); }
+.reco-qty input {
+  width: 88px; padding: 5px 7px; border: 1px solid var(--border);
+  border-radius: var(--radius-sm); font-size: 13px;
+}
+.reco-decided { font-size: 13px; font-weight: 600; }
+.reco-decided.accept { color: var(--green); }
+.reco-decided.reject { color: var(--red); }
+.reco-decided.modify { color: #8a6100; }
+.reco-decided.defer { color: var(--grey); }
+
+@media (max-width: 620px) {
+  .reco-actions { width: 100%; }
+  .reco-actions button { flex: 1 1 auto; }
 }

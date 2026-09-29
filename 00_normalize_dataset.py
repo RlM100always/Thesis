@@ -6,7 +6,7 @@ AI-Powered Business Analytics System — CSE 4th Year Thesis
 Run this BEFORE 01_preprocessing.py.
 
 WHY THIS STEP EXISTS:
-  The raw dataset (BD_Business_Analytics_Dataset.csv) is a single
+  The raw dataset (BD_Pharmacy_Dataset.csv) is a single
   flat "spreadsheet" file with 44 columns. This is fine for quick
   analysis, but it violates basic database design rules — lots of
   columns repeat the same values on every row (e.g. every row for
@@ -47,7 +47,7 @@ OUTPUT:
     normalized_data/dim_marketing.csv
     normalized_data/dim_logistics.csv
     normalized_data/fact_transactions.csv
-    output/BD_Business_Analytics_Dataset_Merged.csv   <- rebuilt via SQL-style
+    output/BD_Pharmacy_Dataset_Merged.csv   <- rebuilt via SQL-style
                                                           joins across all 7
                                                           tables. This is what
                                                           01_preprocessing.py
@@ -71,7 +71,7 @@ print("=" * 65)
 # 1. LOAD THE RAW FLAT FILE
 # ─────────────────────────────────────────────
 print("\n[1] Loading raw flat dataset...")
-raw = pd.read_csv("BD_Business_Analytics_Dataset.csv")
+raw = pd.read_csv("BD_Pharmacy_Dataset.csv")
 print(f"    Loaded: {raw.shape[0]:,} rows x {raw.shape[1]} columns")
 
 n_rows_before = len(raw)
@@ -87,6 +87,7 @@ customer_cols = [
     "Customer_ID", "Customer_Name", "Customer_Age", "Customer_Gender",
     "Customer_Segment", "Customer_Type", "Division", "District",
     "Purchase_Frequency_Monthly", "Customer_Lifetime_Value_BDT",
+    "Marketing_Consent",
 ]
 dim_customer = raw[customer_cols].drop_duplicates(subset="Customer_ID").reset_index(drop=True)
 print(f"    dim_customer  : {dim_customer.shape[0]:,} unique customers, {dim_customer.shape[1]} columns")
@@ -115,6 +116,14 @@ dim_product = pd.DataFrame({
     "Product_ID": list(product_map.values()),
     "Product_Name": list(product_map.keys()),
 })
+# Product-level Layer-6 constraint attributes travel with the product, not the
+# transaction: cold-chain and prescription status are properties of the
+# medicine itself, and MOQ is set by the supplier per SKU.
+product_attrs = [c for c in ["Cold_Chain_Required", "Prescription_Only", "MOQ_Units"]
+                 if c in raw.columns]
+if product_attrs:
+    attrs = raw[["Product_Name"] + product_attrs].drop_duplicates(subset="Product_Name")
+    dim_product = dim_product.merge(attrs, on="Product_Name", how="left")
 raw["_Product_ID"] = raw["Product_Name"].map(product_map)
 print(f"    dim_product   : {dim_product.shape[0]:,} unique products, {dim_product.shape[1]} columns")
 
@@ -183,7 +192,10 @@ fact_transactions = raw[[
     "Profit_Margin_Percent", "Profit_Amount_BDT",
     "Delivery_Days", "Is_Returned", "Return_Reason",
     "Stock_Level", "Days_Since_Last_Purchase",
-    "Customer_Satisfaction_Score",
+    "Customer_Satisfaction_Score", "Batch_No", "Expiry_Date",
+    # Layer-6 inventory position and branch capacity at the time of the sale
+    "Incoming_Stock_Units", "Backorder_Units",
+    "Storage_Capacity_Units", "Cold_Chain_Capacity_Units",
 ]].rename(columns={
     "_Product_ID": "Product_ID",
     "_Business_ID": "Business_ID",
@@ -235,7 +247,7 @@ print(f"    Merged shape: {merged.shape[0]:,} rows x {merged.shape[1]} columns")
 assert merged.shape[0] == n_rows_before, "Row count mismatch after join — normalization broke data!"
 print(f"    ✓ Row count matches original ({n_rows_before:,}) — no data lost in normalization")
 
-merged_out_path = os.path.join("output", "BD_Business_Analytics_Dataset_Merged.csv")
+merged_out_path = os.path.join("output", "BD_Pharmacy_Dataset_Merged.csv")
 merged.to_csv(merged_out_path, index=False, encoding="utf-8-sig")
 print(f"    ✓ Saved merged/model-ready dataset -> {merged_out_path}")
 

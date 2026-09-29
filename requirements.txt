@@ -44,5 +44,6 @@ PyJWT[crypto]>=2.10.0
 
 # Verification
 pytest>=8.3.0
+playwright>=1.48.0      # end-to-end browser tests (e2e/); uses the installed Microsoft Edge
 httpx2>=0.1.0            # Starlette 1.x TestClient transport
 joblib>=1.4.0

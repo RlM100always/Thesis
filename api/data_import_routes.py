@@ -18,7 +18,8 @@ from sqlalchemy.orm import Session
 
 from .auth import CurrentMembership, CurrentUser
 from .canonical_sales import canonical_sales_frame
-from .commerce_routes import require_role
+from .audit import record_audit
+from .permissions import require_permission
 from .database import get_db
 from .domain_models import (
     ImportBatch, Product, SalesOrder, SalesOrderItem,
@@ -45,7 +46,7 @@ async def upload_real_data(
     membership: CurrentMembership, user: CurrentUser, db: Db,
     file: UploadFile = File(...), source_system: str = Form("unknown"),
 ):
-    require_role(membership, "owner", "manager", "accountant")
+    require_permission(membership, "imports:write")
     filename = Path(file.filename or "upload.csv").name
     suffix = Path(filename).suffix.lower()
     if suffix not in {".csv", ".xlsx"}:
@@ -69,6 +70,9 @@ async def upload_real_data(
     )
     db.add(batch)
     try:
+        db.flush()
+        record_audit(db, membership, "import.uploaded", "import_batch", batch.id,
+                     filename=filename, rows=len(frame), source=source_system)
         db.commit()
     except IntegrityError:
         db.rollback()
@@ -89,6 +93,7 @@ async def upload_real_data(
 def validate_sales_import(
     batch_id: str, mapping: dict[str, str], membership: CurrentMembership, db: Db,
 ):
+    require_permission(membership, "imports:write")
     batch = db.scalar(select(ImportBatch).where(
         ImportBatch.id == batch_id, ImportBatch.organization_id == membership.organization_id
     ))
@@ -135,6 +140,7 @@ def validate_sales_import(
 
 @router.get("/datasets/sales.csv", tags=["real-data"])
 def export_anonymized_sales(membership: CurrentMembership, db: Db):
+    require_permission(membership, "dataset:export")
     rows = db.execute(
         select(SalesOrder, SalesOrderItem, Product)
         .join(SalesOrderItem, SalesOrderItem.order_id == SalesOrder.id)
@@ -158,6 +164,9 @@ def export_anonymized_sales(membership: CurrentMembership, db: Db):
             order.channel, order.status,
         ])
     data = output.getvalue().encode("utf-8-sig")
+    # Bulk data leaving the system is worth a trail: who took it, and how much.
+    record_audit(db, membership, "dataset.exported", "dataset", None, rows=len(rows))
+    db.commit()
     return StreamingResponse(
         iter([data]), media_type="text/csv; charset=utf-8",
         headers={"Content-Disposition": 'attachment; filename="bsmart_sales_anonymized.csv"'},
@@ -174,7 +183,7 @@ def train_demand_model(membership: CurrentMembership, db: Db):
     dynamic end-to-end. This closes that gap without changing what the CLI
     path does: same validation, same training code, same output path.
     """
-    require_role(membership, "owner", "manager", "accountant")
+    require_permission(membership, "model:train")
     from ml.real_pipeline import train_forecast, validate_sales
 
     frame = canonical_sales_frame(db, membership.organization_id)
@@ -191,4 +200,6 @@ def train_demand_model(membership: CurrentMembership, db: Db):
         result = train_forecast(sales, output_dir)
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
+    record_audit(db, membership, "model.trained", "demand_model", None)
+    db.commit()
     return {"status": "trained", "forecast": result}

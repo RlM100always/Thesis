@@ -7,16 +7,16 @@ The real-data training path accepts a canonical invoice-line representation. The
 full schema contains additional fields, but Table~\ref{tab:canonical_fields}
 shows the minimum concepts needed for the planned study.
 
-\begin{longtable}{p{0.24\textwidth}p{0.20\textwidth}p{0.45\textwidth}}
+\begin{longtable}{|p{0.24\textwidth}|p{0.20\textwidth}|p{0.45\textwidth}|}
 \caption{Minimum canonical research fields.}
 \label{tab:canonical_fields}\\
-\toprule
+\hline
 \textbf{Field concept} & \textbf{Type} & \textbf{Purpose / rule} \\
-\midrule
+\hline
 \endfirsthead
-\toprule
+\hline
 \textbf{Field concept} & \textbf{Type} & \textbf{Purpose / rule} \\
-\midrule
+\hline
 \endhead
 Organization ID & pseudonymous string & Tenant boundary; never use as an unconstrained predictive shortcut \\
 Branch ID & pseudonymous string & Branch-level aggregation and transfer evaluation \\
@@ -32,21 +32,21 @@ Promotion or calendar context & category or flag & Campaign and Bangladesh seaso
 Supplier lead time & days & Feasibility and reorder timing \\
 Consent flag & Boolean & Eligibility for retention contact; never inferred \\
 Source batch/checksum & string & Provenance and reproducibility \\
-\bottomrule
+\hline
 \end{longtable}
 
 \section{Representative API Groups}
 
 \footnotesize
-\begin{longtable}{p{0.34\textwidth}p{0.56\textwidth}}
+\begin{longtable}{|p{0.34\textwidth}|p{0.56\textwidth}|}
 \caption{Representative implemented API surface.}\\
-\toprule
+\hline
 \textbf{Route group} & \textbf{Function} \\
-\midrule
+\hline
 \endfirsthead
-\toprule
+\hline
 \textbf{Route group} & \textbf{Function} \\
-\midrule
+\hline
 \endhead
 \path{GET /health} & Service and artifact readiness \\
 \path{/api/overview, /segments, /forecast} & Fixed research dashboard summaries \\
@@ -62,7 +62,7 @@ Source batch/checksum & string & Provenance and reproducibility \\
 \path{/api/app/datasets/sales.csv} & Tenant-scoped canonical sales export \\
 \path{/api/app/train-demand-model} & Organization-specific chronological training \\
 \path{/api/app/dashboard, /recommendations} & Operational KPIs and constraint-aware action ranking \\
-\bottomrule
+\hline
 \end{longtable}
 \normalsize
 

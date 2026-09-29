@@ -4,7 +4,10 @@
 \section{Current-Stage Conclusion}
 
 This initial report establishes a focused foundation for an AI-powered business
-analytics system for Bangladeshi retail SMEs. The central problem is not merely
+analytics system whose first implementation and empirical validation target
+Bangladeshi retail pharmacies. The framework may later be extended to other SME
+verticals, but each extension requires its own data, constraints and validation.
+The central problem is not merely
 the absence of prediction models. It is the missing, trustworthy connection
 between operational records, temporally valid analytics and a feasible owner
 decision. A forecast has limited practical value if its source cannot be traced,
@@ -25,14 +28,25 @@ The resulting research gap is integrative: these principles have not yet been
 evaluated together in a bounded Bangladesh-oriented SME workflow.
 
 The proposed \system{} framework responds through a traceable sequence of
-operational events, canonical evidence, historical snapshots, baseline/model
-comparison, uncertainty and explanation, constraint-aware action ranking,
-owner response and later outcome monitoring. Its proposed contribution is this
+multi-pharmacy operational evidence, historical snapshots, comparison of a
+transparent baseline, pooled pharmacy model and eligible shop-adapted model,
+uncertainty and explanation, shop-specific constraint-aware action ranking,
+owner response and later outcome monitoring. Constraints include purchasing
+budget, stock, pack or minimum-order rules, supplier lead time, expiry, storage
+conditions and consent. Its proposed contribution is this
 governed sequence and its evaluation, not the invention of a new classifier or
 an unsupported claim that a complex model will always perform best.
 
+Continuous operation means that current data and recommendations can refresh as
+the pharmacy uses the software, while drift and outcomes are monitored. It does
+not mean uncontrolled retraining after every transaction. A replacement model
+must be versioned and must pass chronological comparison with the deployed model
+and baseline before promotion. The system remains business decision support: it
+does not diagnose, prescribe or recommend medicine dosage.
+
 The report therefore supplies a testable path into the next phase: ethics and
-partner-data readiness, model freeze, untouched evaluation, usability tasks and
+multi-pharmacy partner-data readiness, pharmacy schema and constraint inputs,
+model freeze, held-out-pharmacy and untouched-period evaluation, usability tasks and
 decision-impact analysis. It does not yet establish system effectiveness. Final
 claims must follow the observed evidence, including any result in which a simple
 baseline wins, explanations show no measurable advantage, or the available data

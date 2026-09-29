@@ -195,7 +195,7 @@ def run_dataset(name: str, sales: pd.DataFrame) -> dict:
 def main() -> None:
     started = time.perf_counter()
     synthetic_raw = pd.read_csv(
-        "BD_Business_Analytics_Dataset.csv", usecols=["Transaction_Date", "Quantity"],
+        "BD_Pharmacy_Dataset.csv", usecols=["Transaction_Date", "Quantity"],
     )
     synthetic = pd.DataFrame({
         "sold_at": pd.to_datetime(synthetic_raw.Transaction_Date, utc=True),

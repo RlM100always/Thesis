@@ -65,15 +65,15 @@ The local dashboard is normally available at
 \section{Artifact Map}
 
 \footnotesize
-\begin{longtable}{p{0.38\textwidth}p{0.52\textwidth}}
+\begin{longtable}{|p{0.38\textwidth}|p{0.52\textwidth}|}
 \caption{Important reproducible outputs.}\\
-\toprule
+\hline
 \textbf{Path} & \textbf{Content} \\
-\midrule
+\hline
 \endfirsthead
-\toprule
+\hline
 \textbf{Path} & \textbf{Content} \\
-\midrule
+\hline
 \endhead
 \path{normalized_data/} & Six dimension tables and transaction fact generated from the synthetic flat file \\
 \path{output/customer_features.csv} & Customer-level features used by leakage-safe classification \\
@@ -90,7 +90,7 @@ The local dashboard is normally available at
 \path{artifacts/scalability-smoke.csv} & Small synthetic scalability timing/memory observations \\
 \path{docs/REAL_DATA_PROTOCOL.md} & Primary data acquisition, privacy and acceptance protocol \\
 \path{docs/REAL_DATA_SOURCES.md} & Evidence-tier register and public-data limitations \\
-\bottomrule
+\hline
 \end{longtable}
 \normalsize
 

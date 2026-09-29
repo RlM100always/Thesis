@@ -1,0 +1,23 @@
+{
+  "cutoff": "2024-12-31",
+  "reorder_candidates_generated": 126,
+  "expiry_candidates_generated": 361,
+  "retention_candidates_generated": 1961,
+  "total_candidates": 2448,
+  "reorder_feasible": 53,
+  "expiry_feasible": 361,
+  "retention_feasible": 150,
+  "top_k_size": 15,
+  "r_t_type_mix": {
+    "reorder": 5,
+    "expiry": 5,
+    "retention": 5
+  },
+  "reorder_shelf_life_capped": 0,
+  "reorder_budget_committed_bdt": 2994.15,
+  "reorder_budget_fraction": 0.4,
+  "reorder_total_identified_need_bdt": 65451.43,
+  "churn_threshold": 0.4177,
+  "churn_customers_scored": 4510,
+  "churn_customers_above_threshold": 1961
+}

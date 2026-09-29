@@ -2,13 +2,18 @@
 
 ## Purpose and scope
 
-The primary thesis evidence will come from consenting Bangladeshi retail SMEs.
+The primary thesis evidence will come from consenting Bangladeshi retail
+pharmacies. Pharmacies are the single initial vertical; other SME categories are
+future extensions and must not be mixed into the primary model/effectiveness
+claim. See
+[PHARMACY_VERTICAL_SCOPE_AND_SUPERVISOR_GUIDELINE.md](PHARMACY_VERTICAL_SCOPE_AND_SUPERVISOR_GUIDELINE.md).
 Synthetic records are permitted only for tests, demonstrations, rare scenarios,
 and explicitly separated scalability experiments.
 
 ## Minimum target
 
-- 3–5 businesses from one comparable retail vertical.
+- 3–5 independent pharmacy businesses for the initial pilot; recruit more when
+  feasible for stronger held-out-shop validation.
 - 12–24 months per business.
 - Invoice line items, not monthly summaries.
 - Target 50,000+ lines, 500+ SKUs, and 2,000+ pseudonymous customers.
@@ -23,6 +28,13 @@ and explicitly separated scalability experiments.
 5. Purchases and supplier lead times.
 6. Expenses and payment channel totals.
 7. Optional anonymized customer identifiers and marketing consent.
+8. Pharmacy product master: generic/brand, strength, dosage form, manufacturer,
+   pack/unit conversion and any controlled/prescription classification needed
+   for business rules.
+9. Batch/lot, expiry, remaining shelf life, damaged/returned/recall status and
+   cold-chain/storage requirements where recorded.
+10. Owner-entered constraints: purchasing budget, storage capacity, MOQ/pack
+    multiple, category limit, service-level/risk preference and effective date.
 
 ## Privacy rules
 
@@ -50,6 +62,9 @@ version, cleaning steps, exclusions, and known limitations.
 - Fit encoders, imputers, and scalers on training folds only.
 - Keep the final time period untouched until model selection is complete.
 - Report per-business results and leave-one-business-out generalization.
+- Never allow one pharmacy's raw identifier or constraint profile to become
+  visible to another pharmacy. A pooled model may use only approved,
+  de-identified training fields.
 
 ## Acceptance checks
 
@@ -59,3 +74,7 @@ version, cleaning steps, exclusions, and known limitations.
 - No cross-tenant identifier collision or query result.
 - Missingness and outliers are profiled, not silently replaced.
 - Deleted/cancelled records remain auditable without entering revenue.
+- Batch quantities, pack conversions and expiry dates reconcile where those
+  fields are available.
+- Recommendation evaluation records which constraint was binding and whether
+  the owner accepted, rejected or deferred the action.

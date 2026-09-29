@@ -1,25 +1,30 @@
-# SME ডেটা সংগ্রহ কিট — দোকানে নিয়ে যাওয়ার জন্য প্রস্তুত
+# Pharmacy SME ডেটা সংগ্রহ কিট — ফার্মেসিতে নিয়ে যাওয়ার জন্য প্রস্তুত
 
 `docs/REAL_DATA_PROTOCOL.md`-এর Tier 1 ডেটা সংগ্রহের ব্যবহারিক সরঞ্জাম।
 ইন্টারনেট থেকে এই ডেটা পাওয়া যায় না — দোকানে গিয়ে সংগ্রহ করতে হয়।
-**একটা সহযোগী দোকান, ৬ মাসের রেকর্ড — এটুকু দিয়েই শুরু করা যায়।**
+**একটি সহযোগী ফার্মেসির ডেটা দিয়ে pipeline পরীক্ষা শুরু করা যায়; thesis-এর
+pooled pharmacy model ও held-out-shop evaluation-এর জন্য লক্ষ্য ৩–৫টি বা
+সম্ভব হলে আরও বেশি independent pharmacy।** Revised scope ও supervisor flow:
+[PHARMACY_VERTICAL_SCOPE_AND_SUPERVISOR_GUIDELINE.md](PHARMACY_VERTICAL_SCOPE_AND_SUPERVISOR_GUIDELINE.md)।
 
 ---
 
 ## ১. কোন দোকান খুঁজবেন
 
-অগ্রাধিকার ক্রমে:
+শুধু **retail pharmacy** recruit করবেন। অগ্রাধিকার ক্রমে:
 
-1. **যাদের ইতিমধ্যে ডিজিটাল রেকর্ড আছে** — POS সফটওয়্যার, bKash merchant
+1. **যেসব pharmacy-র ইতিমধ্যে ডিজিটাল রেকর্ড আছে** — POS সফটওয়্যার, bKash merchant
    statement, বা Excel-এ হিসাব। এদের কাছ থেকে export নেওয়া সবচেয়ে সহজ,
    ডেটা এন্ট্রির পরিশ্রম নেই।
-2. **মুদি/ডিপার্টমেন্টাল স্টোর** — বারবার আসা কাস্টমার থাকে, তাই
-   churn/repeat-purchase মডেল অর্থবহ হয়।
-3. **ফার্মেসি** — সাধারণত ভালো রেকর্ড রাখে, inventory গুরুত্বপূর্ণ।
-4. **স্টেশনারি/হার্ডওয়্যার** — মৌসুমি চাহিদা স্পষ্ট।
+2. **Batch/expiry ও purchase record আছে এমন pharmacy** — pharmacy-specific
+   inventory recommendation evaluate করা যাবে।
+3. **Repeat customer-এর pseudonymous code রাখা যায় এমন pharmacy** — consent
+   থাকলে inactivity/retention task evaluate করা যাবে।
+4. **একাধিক supplier/branch আছে এমন pharmacy** — lead-time ও branch-level
+   constraint পরীক্ষা করা যাবে।
 
-⚠️ **এড়িয়ে চলুন**: রেস্টুরেন্ট/চায়ের দোকান (SKU অস্পষ্ট), আর যাদের কোনো
-লিখিত রেকর্ডই নেই (৬ মাসের ইতিহাস তৈরি করা যাবে না)।
+⚠️ **এড়িয়ে চলুন**: অন্য SME category, hospital clinical record, prescription
+text বা patient diagnosis data; এবং যাদের কোনো লিখিত transaction record নেই।
 
 **ন্যূনতম শর্ত**: অন্তত ৬ মাসের রেকর্ড, তারিখ + পণ্য + পরিমাণ + দাম সহ।
 
@@ -28,16 +33,18 @@
 ## ২. দোকানদারকে যা বলবেন (স্ক্রিপ্ট)
 
 > "আসসালামু আলাইকুম। আমি ঢাকা বিশ্ববিদ্যালয়ের CSE বিভাগের ৪র্থ বর্ষের ছাত্র।
-> আমার থিসিসের জন্য একটা সফটওয়্যার বানাচ্ছি যেটা দোকানের বিক্রির হিসাব দেখে
-> বলে দিতে পারে — **আগামী সপ্তাহে কোন মাল কতটুকু আনতে হবে**, কোন কাস্টমার
-> অনেকদিন আসছে না, আর কোন পণ্যে লাভ বেশি।
+> আমার থিসিসের জন্য pharmacy business-management software বানাচ্ছি যেটা
+> বিক্রি, stock, purchase, supplier lead time এবং expiry record দেখে বলতে পারে
+> — **আগামী সপ্তাহে কোন medicine/product কতটুকু আনতে হবে**, কোন stock শেষ বা
+> expire হওয়ার ঝুঁকিতে আছে, এবং কোন business action আগে নেওয়া দরকার। এটি
+> কোনো রোগ নির্ণয়, prescription বা dosage advice দেবে না।
 >
 > আপনার গত ৬ মাসের বিক্রির হিসাবটা যদি দেন, আমি সেটা দিয়ে পরীক্ষা করে দেখব
 > সিস্টেমটা আসলেই কাজ করে কিনা।
 >
 > **আপনার নাম, দোকানের নাম, কাস্টমারের নাম বা ফোন নম্বর — কিছুই আমার লাগবে না,
 > আমি নেবও না।** শুধু কোন দিন কী বিক্রি হয়েছে সেই হিসাব। থিসিসে আপনার দোকানের
-> নাম কোথাও থাকবে না, শুধু লেখা থাকবে 'ঢাকার একটি মুদি দোকান'।
+> নাম কোথাও থাকবে না, শুধু লেখা থাকবে 'ঢাকার একটি retail pharmacy'।
 >
 > বিনিময়ে আপনাকে সফটওয়্যারটা ব্যবহার করতে দেব — আপনার নিজের হিসাব থেকে
 > কী কী বোঝা যায় সেটার একটা রিপোর্ট বানিয়ে দেব, বিনামূল্যে।"
@@ -93,7 +100,7 @@
 >
 > নাম (ব্লক অক্ষরে): ____________________________
 >
-> ব্যবসার ধরন (নাম নয়): ☐ মুদি  ☐ ফার্মেসি  ☐ স্টেশনারি  ☐ অন্যান্য: ______
+> ব্যবসার ধরন (নাম নয়): ☑ Retail pharmacy
 >
 > এলাকা (শুধু জেলা): ____________  আনুমানিক দৈনিক ক্রেতা সংখ্যা: ______
 >
@@ -132,6 +139,27 @@
 | `unit_cost_at_sale` | কেনা দাম | লাভ হিসাব করতে |
 | `category` | পণ্যের ধরন | চাল / তেল / সাবান |
 
+### Pharmacy-specific inventory ও constraint data
+
+| কলাম | মানে | উদাহরণ |
+|---|---|---|
+| `generic_name` | generic medicine/product name | Paracetamol |
+| `brand_name` | brand | Napa |
+| `strength` | strength | 500 mg |
+| `dosage_form` | commercial form | Tablet |
+| `manufacturer` | manufacturer | Beximco Pharma |
+| `batch_no` | batch/lot | B240901 |
+| `expiry_date` | expiry | 2027-08-31 |
+| `purchase_pack_size` | box/strip/piece conversion | 10 strips × 10 tablets |
+| `supplier_lead_days` | delivery time | 3 |
+| `minimum_order_qty` | minimum order/pack multiple | 5 boxes |
+| `cold_chain_required` | temperature-sensitive stock | true/false |
+| `storage_limit` | branch capacity where known | 200 boxes |
+| `purchasing_budget` | owner-declared period budget | 100000 BDT/month |
+
+Clinical/patient diagnosis, prescription text এবং dosage data সংগ্রহ করবেন না;
+এই thesis pharmacy business analytics নিয়ে, clinical decision support নিয়ে নয়।
+
 ⚠️ **`customer_pseudo_id` নিয়ে সতর্কতা:** ফোন নম্বর সরাসরি লিখবেন না, এমনকি
 হ্যাশ করেও না — দোকানে বসেই একটা আলাদা কাগজে "ফোন → C-001" ম্যাপিং রেখে
 দোকানদারের কাছে রেখে আসুন, আপনি শুধু C-001 নিয়ে ফিরবেন। ক্রেতা চেনা না
@@ -141,9 +169,9 @@
 
 ```csv
 branch_id,invoice_id,line_id,sold_at,customer_pseudo_id,sku,category,quantity,unit_price,unit_cost_at_sale,discount_amount,line_total
-MAIN,INV-1042,L-1,2026-03-15,C-001,তীর-সয়াবিন-১লি,তেল,3,185,170,0,555
-MAIN,INV-1042,L-2,2026-03-15,C-001,চিনি-১কেজি,মুদি,2,105,98,0,210
-MAIN,INV-1043,L-3,2026-03-15,ANONYMOUS,মিনিকেট-চাল-৫কেজি,চাল,1,380,355,10,370
+MAIN,INV-1042,L-1,2026-03-15,C-001,NAPA-500-10,Tablet,3,12,9,0,36
+MAIN,INV-1042,L-2,2026-03-15,C-001,ORS-10G,Oral-rehydration,2,6,4,0,12
+MAIN,INV-1043,L-3,2026-03-15,ANONYMOUS,MASK-SURGICAL,Medical-supply,5,10,7,0,50
 ```
 
 ---
@@ -190,10 +218,12 @@ type artifacts\real\shop01\evaluation.json
 ## ৭. চেকলিস্ট
 
 - [ ] সম্মতিপত্র ২ কপি ছাপানো হয়েছে
-- [ ] দোকান খুঁজে সম্মতি নেওয়া হয়েছে (স্বাক্ষরিত ফর্মের ছবি সংরক্ষিত)
+- [ ] শুধু pharmacy vertical থেকে দোকান খুঁজে সম্মতি নেওয়া হয়েছে
+- [ ] shop/branch আলাদা tenant ID পেয়েছে; raw data cross-shop mix হয়নি
 - [ ] ৬+ মাসের বিক্রয় রেকর্ড সংগ্রহ
 - [ ] কোনো আসল নাম/ফোন নম্বর ফাইলে নেই — যাচাই করা হয়েছে
 - [ ] CSV canonical schema-তে রূপান্তরিত
+- [ ] সম্ভব হলে batch, expiry, pack size, supplier lead time ও owner constraint সংগ্রহ
 - [ ] `ml/real_pipeline.py` চলেছে এবং ফলাফল দিয়েছে
 - [ ] `data/real_sme/` gitignored — GitHub-এ পুশ হয়নি (যাচাই করুন!)
 - [ ] সুপারভাইজরকে জানানো হয়েছে যে real data এসেছে

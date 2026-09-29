@@ -1,4 +1,9 @@
-# Bangladesh SME feature research — what B-SMART's Operations Layer should cover
+# Bangladesh pharmacy SME feature research — what B-SMART should cover
+
+The initial validated vertical is retail pharmacy. Generic inventory-retail
+features below remain useful infrastructure, but the required domain additions
+and model/constraint design are governed by
+[PHARMACY_VERTICAL_SCOPE_AND_SUPERVISOR_GUIDELINE.md](PHARMACY_VERTICAL_SCOPE_AND_SUPERVISOR_GUIDELINE.md).
 
 Answers the "কী কী ফিচার লাগে একটা SME ম্যানেজ করার জন্য, এবং UI/UX বাংলাদেশ
 কনটেক্সটে কেমন হওয়া উচিত" question with what's already built, what's
@@ -20,6 +25,15 @@ Nagad, Bangla QR, card, due), `StockMovement`/`InventoryBalance`
 Do not propose rebuilding any of this; propose additions or UX fixes.
 
 ## Confirmed real gaps
+
+0. **Pharmacy domain schema and constraints are not implemented.** The current
+   `Product`/inventory model has no generic/brand/strength/dosage form, pack
+   conversion, batch/lot, expiry, cold-chain flag, recall state, MOQ, storage
+   limit or purchasing-budget profile. The current per-organization demand model
+   is not yet a pooled multi-pharmacy model and there is no held-out-pharmacy
+   evaluation or persistent owner-feedback loop. These are required for the
+   revised thesis scope; clinical diagnosis, prescription and dosage advice are
+   explicitly outside scope.
 
 1. **No Google/external sign-in.** `api/auth.py` only has a dev-mode bypass
    and raw JWT — no OAuth flow, no `/auth/login` endpoint at all. The

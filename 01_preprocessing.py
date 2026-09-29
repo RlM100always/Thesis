@@ -39,13 +39,13 @@ print("=" * 60)
 # 1. LOAD DATASET
 # ─────────────────────────────────────────────
 print("\n[1] Loading dataset...")
-merged_path = os.path.join("output", "BD_Business_Analytics_Dataset_Merged.csv")
+merged_path = os.path.join("output", "BD_Pharmacy_Dataset_Merged.csv")
 if os.path.exists(merged_path):
     df = pd.read_csv(merged_path)
     print(f"    Loaded NORMALIZED + REJOINED dataset from: {merged_path}")
     print("    (produced by 00_normalize_dataset.py from the 7 relational tables)")
 else:
-    df = pd.read_csv("BD_Business_Analytics_Dataset.csv")
+    df = pd.read_csv("BD_Pharmacy_Dataset.csv")
     print("    ⚠ Normalized dataset not found — loaded raw flat CSV instead.")
     print("    ⚠ Run 00_normalize_dataset.py first for the relational pipeline.")
 print(f"    Loaded: {df.shape[0]:,} rows × {df.shape[1]} columns")

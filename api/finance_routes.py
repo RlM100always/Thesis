@@ -4,6 +4,7 @@ from decimal import Decimal, ROUND_HALF_UP
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -11,15 +12,17 @@ from sqlalchemy.orm import Session
 from .app_schemas import (
     ExpenseCreate, ExpenseView, LedgerBalanceView, PurchaseCreate, PurchaseDetailView,
     PurchaseLineView, PurchaseReceive, PurchaseView, ReturnCreate, ReturnHistoryView,
-    ReturnView, SettlementCreate,
+    ReturnItemCreate, ReturnView, SettlementCreate,
 )
 from .auth import CurrentMembership, CurrentUser
-from .commerce_routes import require_role
 from .database import get_db
+from .audit import record_audit
+from .batches import add_to_batch, get_or_create_batch, restock_return
+from .permissions import require_permission
 from .domain_models import (
     AuditLog, Branch, Customer, Expense, InventoryBalance, LedgerEntry, Payment, Product, PurchaseOrder,
     PurchaseOrderItem, Refund, SalesOrder, SalesOrderItem, SalesReturn,
-    SalesReturnItem, StockMovement, Supplier,
+    SalesReturnItem, StockMovement, Supplier, utcnow,
 )
 
 router = APIRouter(prefix="/api/app")
@@ -29,7 +32,7 @@ MONEY = Decimal("0.01")
 
 @router.post("/purchases", response_model=PurchaseView, tags=["purchases"])
 def create_purchase(payload: PurchaseCreate, membership: CurrentMembership, db: Db):
-    require_role(membership, "owner", "manager", "accountant")
+    require_permission(membership, "purchases:create")
     org_id = membership.organization_id
     if db.scalar(select(Branch.id).where(Branch.id == payload.branch_id, Branch.organization_id == org_id)) is None:
         raise HTTPException(status_code=404, detail="Branch not found")
@@ -52,6 +55,8 @@ def create_purchase(payload: PurchaseCreate, membership: CurrentMembership, db: 
             db.add(PurchaseOrderItem(
                 organization_id=org_id, purchase_order_id=order.id, **item.model_dump()
             ))
+        record_audit(db, membership, "purchase.created", "purchase_order", order.id,
+                     order_number=order.order_number, total=order.total)
         db.commit()
     except IntegrityError as exc:
         db.rollback()
@@ -64,6 +69,7 @@ def list_purchases(
     membership: CurrentMembership, db: Db,
     status: str | None = None, limit: int = Query(default=100, ge=1, le=500),
 ):
+    require_permission(membership, "purchases:read")
     org_id = membership.organization_id
     statement = select(PurchaseOrder, Supplier).join(
         Supplier, Supplier.id == PurchaseOrder.supplier_id
@@ -88,6 +94,7 @@ def list_purchases(
                 id=line.id, product_id=product.id, sku=product.sku,
                 product_name=product.name, quantity=line.quantity,
                 received_quantity=line.received_quantity, unit_cost=line.unit_cost,
+                track_expiry=product.track_expiry,
             ) for line, product in lines],
         ))
     return result
@@ -98,7 +105,7 @@ def receive_purchase(
     purchase_id: str, payload: PurchaseReceive, membership: CurrentMembership,
     actor: CurrentUser, db: Db,
 ):
-    require_role(membership, "owner", "manager")
+    require_permission(membership, "purchases:receive")
     org_id = membership.organization_id
     order = db.scalar(select(PurchaseOrder).where(
         PurchaseOrder.id == purchase_id, PurchaseOrder.organization_id == org_id
@@ -113,48 +120,75 @@ def receive_purchase(
     ).with_for_update())}
     if len(items) != len(set(item_ids)):
         raise HTTPException(status_code=404, detail="One or more purchase lines were not found")
+    products = {p.id: p for p in db.scalars(select(Product).where(
+        Product.organization_id == org_id,
+        Product.id.in_({i.product_id for i in items.values()}),
+    ))}
     received_value = Decimal("0")
     for received in payload.items:
         item = items[received.purchase_order_item_id]
+        product = products[item.product_id]
         if item.received_quantity + received.quantity > item.quantity:
             raise HTTPException(status_code=409, detail="Received quantity exceeds ordered quantity")
-        balance = db.scalar(select(InventoryBalance).where(
-            InventoryBalance.organization_id == org_id,
-            InventoryBalance.branch_id == order.branch_id,
-            InventoryBalance.product_id == item.product_id,
-        ).with_for_update())
-        if balance is None:
-            balance = InventoryBalance(
-                organization_id=org_id, branch_id=order.branch_id,
-                product_id=item.product_id, quantity=0,
+        batch_id = None
+        if product.track_expiry:
+            # Medicines arrive in batches with an expiry printed on the pack; without
+            # both, expiry-first selling and near-expiry warnings cannot work.
+            if not received.batch_no or received.expiry_date is None:
+                raise HTTPException(
+                    status_code=422,
+                    detail=f"Batch number and expiry date are required for {product.sku}",
+                )
+            if received.expiry_date < payload.received_at.date():
+                raise HTTPException(
+                    status_code=422,
+                    detail=f"{product.sku} batch {received.batch_no} is already expired; do not receive it",
+                )
+            batch = get_or_create_batch(
+                db, org_id, product, received.batch_no, received.expiry_date,
+                item.unit_cost, order.supplier_id, payload.received_at, "purchase",
             )
-            db.add(balance)
-        balance.quantity += received.quantity
+            add_to_batch(db, org_id, order.branch_id, batch, received.quantity)
+            batch_id = batch.id
+        else:
+            balance = db.scalar(select(InventoryBalance).where(
+                InventoryBalance.organization_id == org_id,
+                InventoryBalance.branch_id == order.branch_id,
+                InventoryBalance.product_id == item.product_id,
+            ).with_for_update())
+            if balance is None:
+                balance = InventoryBalance(
+                    organization_id=org_id, branch_id=order.branch_id,
+                    product_id=item.product_id, quantity=0,
+                )
+                db.add(balance)
+            balance.quantity += received.quantity
         item.received_quantity += received.quantity
         received_value += received.quantity * item.unit_cost
         db.add(StockMovement(
             organization_id=org_id, branch_id=order.branch_id, product_id=item.product_id,
             movement_type="purchase_receipt", quantity_delta=received.quantity,
             unit_cost=item.unit_cost, reference_type="purchase_order",
-            reference_id=order.id, occurred_at=payload.received_at,
+            reference_id=order.id, occurred_at=payload.received_at, batch_id=batch_id,
         ))
     all_items = list(db.scalars(select(PurchaseOrderItem).where(
         PurchaseOrderItem.purchase_order_id == order.id
     )))
     order.status = "received" if all(i.received_quantity == i.quantity for i in all_items) else "partial"
     received_value = received_value.quantize(MONEY, rounding=ROUND_HALF_UP)
-    db.add_all([
-        LedgerEntry(
+    # Free goods (samples, bonus stock) arrive at zero cost and owe the supplier
+    # nothing; the ledger refuses a zero entry, so only record what is actually owed.
+    if received_value > 0:
+        db.add(LedgerEntry(
             organization_id=org_id, branch_id=order.branch_id, ledger_type="payable",
             party_type="supplier", party_id=order.supplier_id, amount_delta=received_value,
             reference_type="purchase_receipt", reference_id=order.id,
             occurred_at=payload.received_at,
-        ),
-        AuditLog(
-            organization_id=org_id, actor_user_id=actor.id, action="purchase.received",
-            entity_type="purchase_order", entity_id=order.id,
-        ),
-    ])
+        ))
+    db.add(AuditLog(
+        organization_id=org_id, actor_user_id=actor.id, action="purchase.received",
+        entity_type="purchase_order", entity_id=order.id,
+    ))
     db.commit()
     return order
 
@@ -163,7 +197,7 @@ def receive_purchase(
 def pay_supplier(
     supplier_id: str, payload: SettlementCreate, membership: CurrentMembership, db: Db,
 ):
-    require_role(membership, "owner", "accountant")
+    require_permission(membership, "payments:supplier")
     org_id = membership.organization_id
     if db.scalar(select(Supplier.id).where(Supplier.id == supplier_id, Supplier.organization_id == org_id)) is None:
         raise HTTPException(status_code=404, detail="Supplier not found")
@@ -180,6 +214,8 @@ def pay_supplier(
         reference_id=supplier_id, note=payload.note, occurred_at=payload.occurred_at,
     )
     db.add(entry)
+    record_audit(db, membership, "supplier.paid", "supplier", supplier_id,
+                 amount=payload.amount, method=payload.payment_method)
     db.commit()
     return {"balance": current - payload.amount}
 
@@ -188,7 +224,7 @@ def pay_supplier(
 def receive_customer_payment(
     customer_id: str, payload: SettlementCreate, membership: CurrentMembership, db: Db,
 ):
-    require_role(membership, "owner", "manager", "accountant", "cashier")
+    require_permission(membership, "payments:customer")
     org_id = membership.organization_id
     if db.scalar(select(Customer.id).where(
         Customer.id == customer_id, Customer.organization_id == org_id
@@ -206,6 +242,8 @@ def receive_customer_payment(
         payment_method=payload.payment_method, reference_type="customer_payment",
         reference_id=customer_id, note=payload.note, occurred_at=payload.occurred_at,
     ))
+    record_audit(db, membership, "customer.paid", "customer", customer_id,
+                 amount=payload.amount, method=payload.payment_method)
     db.commit()
     return {"balance": current - payload.amount}
 
@@ -215,7 +253,18 @@ def create_return(
     sale_id: str, payload: ReturnCreate, membership: CurrentMembership,
     actor: CurrentUser, db: Db,
 ):
-    require_role(membership, "owner", "manager", "cashier")
+    require_permission(membership, "returns:create")
+    view = apply_return(db, membership, actor, sale_id, payload)
+    db.commit()
+    return view
+
+
+def apply_return(db: Session, membership, actor, sale_id: str, payload: ReturnCreate) -> ReturnView:
+    """Everything a return does, in the caller's transaction; the caller commits.
+
+    Shared with voiding a sale, which is a whole-invoice return, so that stock, batches,
+    refunds and receivables are reversed by one piece of code rather than two.
+    """
     org_id = membership.organization_id
     sale = db.scalar(select(SalesOrder).where(
         SalesOrder.id == sale_id, SalesOrder.organization_id == org_id
@@ -255,6 +304,21 @@ def create_return(
                 quantity=returned.quantity, amount=amount, restock=returned.restock,
             ))
             if returned.restock:
+                product = db.get(Product, line.product_id)
+                if product.track_expiry:
+                    # Back into the batch(es) it was sold from, not a fresh pile.
+                    for batch_id, quantity in restock_return(
+                        db, org_id, sale.branch_id, product, line.id,
+                        returned.quantity, payload.returned_at,
+                    ):
+                        db.add(StockMovement(
+                            organization_id=org_id, branch_id=sale.branch_id,
+                            product_id=line.product_id, movement_type="sale_return",
+                            quantity_delta=quantity, reference_type="sales_return",
+                            reference_id=return_doc.id, occurred_at=payload.returned_at,
+                            batch_id=batch_id,
+                        ))
+                    continue
                 balance = db.scalar(select(InventoryBalance).where(
                     InventoryBalance.organization_id == org_id,
                     InventoryBalance.branch_id == sale.branch_id,
@@ -306,7 +370,7 @@ def create_return(
             organization_id=org_id, actor_user_id=actor.id, action="sale.returned",
             entity_type="sales_return", entity_id=return_doc.id,
         ))
-        db.commit()
+        db.flush()
     except IntegrityError as exc:
         db.rollback()
         raise HTTPException(status_code=409, detail="Return number already exists exists") from exc
@@ -316,11 +380,56 @@ def create_return(
     )
 
 
+class SaleVoid(BaseModel):
+    reason: str = Field(min_length=2, max_length=140)
+    refund_method: str | None = Field(default=None, max_length=30)
+
+
+@router.post("/sales/{sale_id}/void", response_model=ReturnView, tags=["sales"])
+def void_sale(sale_id: str, payload: SaleVoid, membership: CurrentMembership, actor: CurrentUser, db: Db):
+    """Cancel a whole invoice: stock (and batches) go back, paid money is refunded, a due is cleared.
+
+    It is a full return under the hood, so the books stay consistent with one code path.
+    Only owner and manager may do it; the reason is mandatory and the action is audited.
+    """
+    require_permission(membership, "sales:void")
+    org_id = membership.organization_id
+    sale = db.scalar(select(SalesOrder).where(
+        SalesOrder.id == sale_id, SalesOrder.organization_id == org_id).with_for_update())
+    if sale is None:
+        raise HTTPException(status_code=404, detail="Sale not found")
+    if sale.status == "voided":
+        raise HTTPException(status_code=409, detail="This invoice is already voided")
+    if sale.tax_amount > 0:
+        raise HTTPException(status_code=409, detail="This invoice carries tax; use a return so the tax is handled")
+    lines = list(db.scalars(select(SalesOrderItem).where(
+        SalesOrderItem.organization_id == org_id, SalesOrderItem.order_id == sale.id)))
+    if any(line.returned_quantity > 0 for line in lines):
+        raise HTTPException(status_code=409, detail="This invoice already has returns; return the rest instead")
+    payments = list(db.scalars(select(Payment).where(
+        Payment.organization_id == org_id, Payment.order_id == sale.id, Payment.status == "completed")))
+    method = payload.refund_method
+    if method is None and payments:
+        method = max(payments, key=lambda p: p.amount).method
+    now = utcnow()
+    view = apply_return(db, membership, actor, sale.id, ReturnCreate(
+        return_number=f"VOID-{sale.invoice_number}"[:80], reason=f"Void: {payload.reason}"[:160], returned_at=now,
+        refund_method=method,
+        items=[ReturnItemCreate(sales_order_item_id=line.id, quantity=line.quantity, restock=True) for line in lines],
+    ))
+    sale.status = "voided"
+    record_audit(db, membership, "sale.voided", "sales_order", sale.id,
+                 invoice=sale.invoice_number, reason=payload.reason, total=sale.total, refunded=view.refund_amount)
+    db.commit()
+    return view
+
+
 @router.get("/returns", response_model=list[ReturnHistoryView], tags=["returns"])
 def list_returns(
     membership: CurrentMembership, db: Db,
     limit: int = Query(default=100, ge=1, le=500),
 ):
+    require_permission(membership, "returns:read")
     rows = db.execute(
         select(SalesReturn, SalesOrder.invoice_number)
         .join(SalesOrder, SalesOrder.id == SalesReturn.sales_order_id)
@@ -335,7 +444,7 @@ def list_returns(
 
 @router.post("/expenses", response_model=ExpenseView, tags=["ledger"])
 def create_expense(payload: ExpenseCreate, membership: CurrentMembership, db: Db):
-    require_role(membership, "owner", "manager", "accountant")
+    require_permission(membership, "expenses:write")
     org_id = membership.organization_id
     if payload.branch_id and db.scalar(select(Branch.id).where(
         Branch.id == payload.branch_id, Branch.organization_id == org_id
@@ -350,6 +459,8 @@ def create_expense(payload: ExpenseCreate, membership: CurrentMembership, db: Db
         payment_method=payload.payment_method, reference_type="expense",
         reference_id=expense.id, note=payload.note, occurred_at=payload.incurred_at,
     ))
+    record_audit(db, membership, "expense.created", "expense", expense.id,
+                 category=payload.category, amount=payload.amount)
     db.commit()
     db.refresh(expense)
     return expense
@@ -360,6 +471,7 @@ def list_expenses(
     membership: CurrentMembership, db: Db,
     limit: int = Query(default=100, ge=1, le=500),
 ):
+    require_permission(membership, "expenses:read")
     return list(db.scalars(select(Expense).where(
         Expense.organization_id == membership.organization_id
     ).order_by(Expense.incurred_at.desc()).limit(limit)))
@@ -367,6 +479,7 @@ def list_expenses(
 
 @router.get("/ledger/{ledger_type}", response_model=list[LedgerBalanceView], tags=["ledger"])
 def ledger_balances(ledger_type: str, membership: CurrentMembership, db: Db):
+    require_permission(membership, "ledger:read")
     if ledger_type not in {"payable", "receivable", "expense"}:
         raise HTTPException(status_code=404, detail="Unknown ledger type")
     rows = db.execute(select(

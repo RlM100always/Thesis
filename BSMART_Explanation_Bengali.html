@@ -1,0 +1,363 @@
+<title>B-SMART Algorithm—কেন এবং কী</title>
+<style>
+  :root {
+    --bg: #f9fafb;
+    --fg: #1f2937;
+    --accent: #0A8754;
+    --warn: #E63946;
+    --info: #0D1B2A;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0D1B2A;
+      --fg: #f3f4f6;
+      --accent: #10b981;
+      --warn: #ff6b6b;
+      --info: #93c5fd;
+    }
+  }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    line-height: 1.7;
+    color: var(--fg);
+    background: var(--bg);
+    padding: 24px;
+    max-width: 900px;
+    margin: 0 auto;
+  }
+  h1 { color: var(--accent); font-size: 2.5rem; margin-bottom: 0.5rem; }
+  h2 { color: var(--info); font-size: 1.8rem; margin-top: 2rem; margin-bottom: 0.8rem; border-bottom: 3px solid var(--accent); padding-bottom: 0.5rem; }
+  h3 { color: var(--accent); font-size: 1.3rem; margin-top: 1.5rem; }
+  .box {
+    background: rgba(10, 135, 84, 0.08);
+    border-left: 4px solid var(--accent);
+    padding: 1rem;
+    margin: 1.5rem 0;
+    border-radius: 4px;
+  }
+  .warning {
+    background: rgba(230, 57, 70, 0.08);
+    border-left: 4px solid var(--warn);
+    padding: 1rem;
+    margin: 1.5rem 0;
+  }
+  .code-block {
+    background: var(--info);
+    color: #e0f2fe;
+    padding: 1rem;
+    border-radius: 4px;
+    font-family: "Courier New", monospace;
+    font-size: 0.9rem;
+    overflow-x: auto;
+    margin: 1rem 0;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1.5rem 0;
+  }
+  th, td {
+    text-align: left;
+    padding: 0.8rem;
+    border-bottom: 1px solid rgba(0,0,0,0.1);
+  }
+  th { background: var(--info); color: white; font-weight: 600; }
+  tr:hover { background: rgba(10, 135, 84, 0.04); }
+  .highlight { background: rgba(230, 201, 31, 0.2); font-weight: 500; }
+  ul { margin: 1rem 0; padding-left: 2rem; }
+  li { margin: 0.5rem 0; }
+</style>
+
+<h1>🏥 B-SMART Algorithm — Explanation (Bengali)</h1>
+
+<div class="box">
+<strong>প্রশ্ন:</strong> আমরা pharmacy-wise recommendation চাই, কিন্তু কেন Sylhet, Dhaka (Division) দিয়ে group করছি?
+<br/><strong>সবকিছু সঠিক আছে কিনা?</strong>
+</div>
+
+---
+
+## সবার আগে: ডেটা structure কী?
+
+আমাদের ডেটায় কোনো "pharmacy ID" বা "shop ID" নেই। যা আছে:
+
+<table>
+  <tr>
+    <th>Column</th>
+    <th>Example</th>
+    <th>মানে</th>
+  </tr>
+  <tr>
+    <td><code>Division</code></td>
+    <td>Sylhet, Dhaka, Barishal</td>
+    <td>Bangladesh এর 8টি বড় অঞ্চল। প্রতিটি division এ শত শত pharmacy থাকতে পারে।</td>
+  </tr>
+  <tr>
+    <td><code>Customer_ID</code></td>
+    <td>CUST-BD-00001</td>
+    <td>একজন customer (যে ব্যক্তি ওষুধ কেনে)</td>
+  </tr>
+  <tr>
+    <td><code>SKU / Product_Name</code></td>
+    <td>Diasulin N, Actrapid</td>
+    <td>ওষুধের নাম (brand + dosage)</td>
+  </tr>
+  <tr>
+    <td><code>Transaction_Date</code></td>
+    <td>2024-12-31</td>
+    <td>কেনাকাটার তারিখ</td>
+  </tr>
+</table>
+
+**কোনো pharmacy/branch/store column নেই।** আমাদের synthetic dataset division-level aggregated — তার মানে:
+
+<div class="box">
+<code>Sylhet division এ সমস্ত pharmacies একসাথে মিলিয়ে</code> একটা দৃশ্যমান inventory + sales history আছে, কিন্তু কোনো individual pharmacy এর নাম নেই।
+</div>
+
+---
+
+## তাহলে B-SMART এর recommendation division-wise কেন?
+
+Algorithm এর 13টি constraint থেকে তৃতীয়টি হলো:
+
+### **Constraint 3: Shelf/Fridge Space**
+
+```
+"আমরা বেশি inventory order করতে পারি না,
+কারণ pharmacy এর storage সীমিত।"
+```
+
+<table>
+  <tr>
+    <th>Scenario</th>
+    <th>কী হয়</th>
+  </tr>
+  <tr>
+    <td>Division (Sylhet) জুড়ে ডেটা aggregate করলে</td>
+    <td>✅ সব pharmacy এর storage গড়ে নেওয়া যায়</td>
+  </tr>
+  <tr>
+    <td>Individual pharmacy-wise করতে চাইলে</td>
+    <td>❌ প্রতিটি pharmacy আলাদা আলাদা inventory থাকবে ⟹ ডেটা এ সেটা নেই</td>
+  </tr>
+</table>
+
+আমাদের dataset এ **প্রতিটি transaction** এ:
+- `Stock_Level` = একটি সংখ্যা (সমস্ত Sylhet এ কত unit stock আছে)
+- `Storage_Capacity_Units` = একটি সংখ্যা (সমস্ত Sylhet এর pharmacy গড়ে কত রাখতে পারে)
+
+**অর্থাৎ:** একটি specific pharmacy এর জন্য constraint check করতে হলে আমাদের সেই pharmacy এর নিজস্ব stock + capacity থাকা দরকার—যা আমাদের data structure এ নেই।
+
+<div class="warning">
+<strong>⚠️ নোট:</strong> এটি data design-এর একটি limitation, algorithm error নয়। আমাদের synthetic dataset "division-level aggregated" design করা হয়েছিল। Real pharmacy partner data থাকলে (Tier 1, `docs/REAL_DATA_PROTOCOL.md`), প্রতিটি pharmacy আলাদা হবে।
+</div>
+
+---
+
+## তাহলে slide এর recommendation গুলো মানে কী?
+
+Slide: **"We Ran the Algorithm — Here is R_t"** (09. Progress & Results)
+
+<h3>চার্টে 9টি recommendation দেখা যাচ্ছে:</h3>
+
+<table>
+  <tr>
+    <th>Rank</th>
+    <th>Product (SKU)</th>
+    <th>Division</th>
+    <th>Type</th>
+    <th>Action</th>
+    <th>Utility (BDT)</th>
+  </tr>
+  <tr>
+    <td>1</td>
+    <td>Diabetes Medicine - Sylhet</td>
+    <td>Sylhet</td>
+    <td><span class="highlight">Reorder</span></td>
+    <td>স্টক শেষ হওয়ার আগেই অর্ডার করো</td>
+    <td>𝙱𝙳𝚃 13,336</td>
+  </tr>
+  <tr>
+    <td>2</td>
+    <td>Antibiotics - Khulna</td>
+    <td>Khulna</td>
+    <td><span class="highlight">Reorder</span></td>
+    <td>জরুরি অর্ডার</td>
+    <td>𝙱𝙳𝚃 9,461</td>
+  </tr>
+  <tr>
+    <td>3</td>
+    <td>BP Medicine - Sylhet</td>
+    <td>Sylhet</td>
+    <td><span class="highlight">Reorder</span></td>
+    <td>স্বাভাবিক reorder</td>
+    <td>𝙱𝙳𝚃 6,216</td>
+  </tr>
+  <tr>
+    <td>4</td>
+    <td>Vitamins - Rajshahi</td>
+    <td>Rajshahi</td>
+    <td><span class="highlight">Clearance</span></td>
+    <td>শীঘ্রই expiry হবে → discount দিয়ে বেচো</td>
+    <td>𝙱𝙳𝚃 3,144</td>
+  </tr>
+  <tr>
+    <td>…</td>
+    <td>…</td>
+    <td>…</td>
+    <td>…</td>
+    <td>…</td>
+    <td>…</td>
+  </tr>
+</table>
+
+<h3>প্রতিটি recommendation এর component গুলো:</h3>
+
+<div class="code-block">
+{
+  "type": "reorder",               // বা "expiry" বা "retention"
+  "sku": "Diasulin N",
+  "division": "Sylhet",
+
+  "utility_bdt": 13336,            // এই action থেকে কত টাকা লাভ হবে
+
+  "reason": "Forecasted demand exceeds current stock…",
+
+  "benefit_bdt": 15000,            // কত টাকার পণ্য বিক্রি হবে
+  "action_cost_bdt": 650,          // order/handling cost
+  "risk_bdt": 14,                  // demand forecast uncertainty
+
+  "confidence": "model",           // ML model থেকে আসা (না rule-based)
+  "feasible": true,                // সব constraint মেনে চলছে
+  "evidence_source": "ml/serving.py demand forecast"
+}
+</code-block>
+
+---
+
+## Output files কী কী তৈরি হয়?
+
+<h3>1. <code>bsmart_recommendations.json</code></h3>
+
+<div class="box">
+<strong>কী:</strong> সব 15টি top recommendations এর বিস্তারিত দাবি (utility, cost, risk, reason, evidence)
+<br/>
+<strong>ব্যবহার:</strong> Slide এ visualize করা; API দিয়ে frontend এ serve করা
+<br/>
+<strong>কত পড়া যায়:</strong> প্রথম ~100 line = 3-4টি recommendation
+</div>
+
+<h3>2. <code>bsmart_candidate_actions_audit.csv</code></h3>
+
+<div class="box">
+<strong>কী:</strong> 2,448 candidate actions → 564 feasible → 15 top দেখানোর প্রসেস
+<br/>
+<strong>Columns:</strong> <code>sku | division | type | feasible | infeasible_reason | utility_bdt | rank</code>
+<br/>
+<strong>ব্যবহার:</strong> debugging ("কেন এই candidate reject হলো?"), compliance audit
+</div>
+
+<h3>3. <code>bsmart_run_summary.json</code></h3>
+
+<div class="box">
+<strong>কী:</strong> আলোচনা এর সারসংক্ষেপ
+<br/>
+<strong>Example:</strong>
+<div class="code-block">
+{
+  "cutoff": "2024-12-31",
+  "initial_candidates": 2448,
+  "feasible_after_constraints": 564,
+  "final_top_k": 15,
+  "breakup": {
+    "reorder": 5,
+    "expiry": 5,
+    "retention": 5
+  }
+}
+</div>
+</div>
+
+<h3>4. Figures</h3>
+
+<ul>
+  <li><code>bsmart_top15_utility.png</code> — স্লাইড এর মতো বার চার্ট</li>
+  <li><code>bsmart_breakdown.png</code> — 3 type এর pie chart</li>
+</ul>
+
+---
+
+## Slide এর চার্ট সঠিক মানে কী?
+
+### Left side (লেবেল):
+
+```
+Diabetes Medicine: Sylhet
+Antibiotics: Khulna
+…
+```
+
+এটা বলছে: **"এই SKU, এই division এ, এই recommendation type আছে"**
+
+**না** এটা বলছে না: "Sylhet এর ভালো ডেভেলপমেন্ট রাইডার pharmacy #42" ⟵ আমাদের data তে pharmacy-level detail নেই
+
+### Right side (utility):
+
+```
+12,336 ৳
+  9,461 ৳
+  6,216 ৳
+```
+
+এটা: **"এই action এর net benefit (benefit − cost − risk·λ)"**
+
+---
+
+## আসলে সবকিছু ঠিক আছে কিনা? ✅
+
+<table>
+  <tr>
+    <th>Question</th>
+    <th>Answer</th>
+  </tr>
+  <tr>
+    <td>Algorithm implementation সঠিক?</td>
+    <td>✅ হ্যাঁ। `13_bsmart_recommendation_engine.py` code চেক করো।</td>
+  </tr>
+  <tr>
+    <td>Division grouping wrong?</td>
+    <td>✅ না। এটা data structure এর সঙ্গে consistent। Pharmacy-wise করতে হলে আমাদের per-pharmacy columns লাগবে।</td>
+  </tr>
+  <tr>
+    <td>Top 15 rank দেখানো objective?</td>
+    <td>✅ হ্যাঁ। প্রতিটি utility calculate করা, feasibility check করা। Slide rules নেই।</td>
+  </tr>
+  <tr>
+    <td>Output files honest (synthetic না)?</td>
+    <td>✅ হ্যাঁ। Synthetic dataset use করছি কিন্তু <code>evidence_source</code> লেখা আছে।</td>
+  </tr>
+</table>
+
+---
+
+## পরবর্তী পদক্ষেপ
+
+Slide এ **সব রেকমেন্ডেশনের** explanation লেখা যায়:
+
+> "Algorithm 15টি top actions recommend করেছে, প্রতিটা pharmacy division জুড়ে (Sylhet, Dhaka, Khulna…):
+> - **Reorder (5 actions):** Forecast demand exceed current stock
+> - **Expiry clearance (5):** Batch এ 120 days এর কম shelf life বাকি
+> - **Retention (5):** High-churn customers এ targeted marketing"
+
+---
+
+<div class="box">
+<strong>✅ সারকথা:</strong>
+<ol>
+  <li>Division-wise grouping data design এর choice, implementation error না</li>
+  <li>প্রতিটি recommendation objective + evidence-backed</li>
+  <li>Slide সঠিক সংখ্যা দেখাচ্ছে</li>
+  <li>Synthetic dataset use করছি কিন্তু honest (না fake forecast)</li>
+</ol>
+</div>

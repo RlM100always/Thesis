@@ -9,7 +9,7 @@ from pathlib import Path
 DATASETS = [
     {
         "id": "synthetic_bsmart",
-        "path": "BD_Business_Analytics_Dataset.csv",
+        "path": "BD_Pharmacy_Dataset.csv",
         "real": False,
         "country": "Bangladesh-context generated data",
         "source": "01_generate_dataset.py (Faker)",

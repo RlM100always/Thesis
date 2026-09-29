@@ -3,13 +3,18 @@
 Several kinds of data live in this repository and they must never be blended
 or reported together. This file is the register of what is actually real.
 
+**Revised primary scope:** Tier 1 now means consenting Bangladeshi retail
+pharmacies only. Public generic-retail datasets remain method-development or
+benchmark evidence; they do not prove pharmacy effectiveness. See
+[the pharmacy scope guideline](PHARMACY_VERTICAL_SCOPE_AND_SUPERVISOR_GUIDELINE.md).
+
 | Tier | Data | Real? | Bangladeshi? | Status |
 |---|---|---|---|---|
-| 1. Primary | Consenting SME sales records | — | — | **NOT YET COLLECTED** |
+| 1. Primary | Consenting pharmacy sales, stock, purchase, expiry and constraint records | — | — | **NOT YET COLLECTED** |
 | 2. Public secondary (prices) | WFP/DAM market prices (`data/real_public/`) | ✅ Yes | ✅ Yes | ✅ Downloaded, benchmarked |
 | 2b. Public secondary (transactions) | UCI Online Retail II | ✅ Yes | ❌ UK | ✅ Trained, real WAPE/ROC-AUC |
 | 2c. Public secondary (demand only) | Mendeley BD retailer series | ✅ Yes | ✅ Yes | ✅ Trained, real WAPE |
-| 3. Synthetic | `BD_Business_Analytics_Dataset.csv` | ❌ No (Faker) | Modelled on BD | ✅ In use |
+| 3. Synthetic | `BD_Pharmacy_Dataset.csv` | ❌ No (Faker) | Modelled on BD | ✅ In use |
 
 ## Tier 2 — WFP Bangladesh food prices (real, downloaded)
 
@@ -129,17 +134,18 @@ request. Shown on গবেষণা মোড's "Real-data validation" page
 (`frontend/src/pages/RealDataValidation.jsx`), clearly separated from and
 never blended with Model Report's synthetic-pipeline numbers.
 
-## Tier 1 — Consenting SME data (still required)
+## Tier 1 — Consenting pharmacy data (still required)
 
 This is the gap. `docs/REAL_DATA_PROTOCOL.md` specifies 3–5 consenting
-Bangladeshi SMEs with invoice-line-level records. **No amount of public data
+Bangladeshi retail pharmacies with invoice-line-level and inventory records.
+**No amount of public data
 substitutes for it**, because the thesis's core claims — demand forecasting,
-future-churn prediction, and constraint-aware reorder strategy — all need
-quantities, customers, and stock, none of which exist in any public
-Bangladeshi dataset we could find.
+future-inactivity prediction, expiry-aware inventory control and
+constraint-aware reorder strategy — need quantities, customers, stock, batch,
+expiry and shop constraints that no current public Bangladeshi dataset combines.
 
 Searched and rejected outright — no customer+date+quantity+price schema at
-all (see also `candidate_datasets_not_used/README.md`):
+all (the rejected files themselves were deleted on 2026-09-12):
 
 | Candidate | Why rejected |
 |---|---|
@@ -153,9 +159,9 @@ honestly support — see Tier 2b/2c above: Online Retail II (real
 transactions, but UK) and the Mendeley Bangladeshi retailer series (real
 Bangladeshi data, but demand-only, no customers).
 
-Use `docs/SME_DATA_COLLECTION_KIT.md` to collect Tier 1 — this is still the
-only path to genuine Bangladeshi customer-level evidence. One cooperating
-shop with 6+ months of records is enough to start.
+Use `docs/SME_DATA_COLLECTION_KIT.md` to collect Tier 1. One cooperating
+pharmacy with 6+ months of records is enough to test ingestion; the pooled
+domain model and held-out-shop study require multiple independent pharmacies.
 
 ## Reproducing the download
 

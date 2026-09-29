@@ -15,7 +15,7 @@ predictive validity, usability or business value.
 The study is organized into four connected phases:
 
 \begin{enumerate}[label=P\arabic*.]
-  \item \textbf{Problem and evidence definition:} establish the target SME
+  \item \textbf{Problem and evidence definition:} establish the target pharmacy SME
   setting, research questions, literature-derived requirements, permitted
   claims and success measures.
   \item \textbf{Artifact design:} specify the operational schema, historical
@@ -29,11 +29,49 @@ The study is organized into four connected phases:
   use the recommendations.
 \end{enumerate}
 
-The unit of forecasting is a branch--SKU--day or branch--SKU--week, selected
-according to data density. The unit of customer-risk modelling is a customer's
+The phase sequence and its evidence gates are summarized in
+Figure~\ref{fig:research_lifecycle}. Later phases may reveal a design defect and
+therefore feed back to artifact design, but no feedback cycle is allowed to
+alter the already frozen final evaluation result.
+
+\begin{figure}[H]
+\centering
+\resizebox{\textwidth}{!}{%
+\begin{tikzpicture}[
+  phase/.style={draw=dugreen,rounded corners,fill=softgreen,text width=2.7cm,minimum height=1.25cm,align=center,font=\footnotesize},
+  gate/.style={draw=dugold,rounded corners,fill=softorange,text width=2.7cm,minimum height=0.85cm,align=center,font=\scriptsize},
+  flow/.style={-{Latex[length=2.2mm]},thick,draw=gray!75},
+  feedback/.style={-{Latex[length=2.2mm]},thick,dashed,draw=gray!70},
+  node distance=0.46cm
+]
+\node[phase] (p1) {\textbf{P1 Define}\\problem, evidence, RQs and claim limits};
+\node[phase,right=of p1] (p2) {\textbf{P2 Design}\\schema, snapshots, models and interface};
+\node[phase,right=of p2] (p3) {\textbf{P3 Technical test}\\integrity, prediction, robustness, scale};
+\node[phase,right=of p3] (p4) {\textbf{P4 Decision test}\\policy consequences and owner tasks};
+\node[gate,below=0.62cm of p1] (g1) {Gate: relevant and ethically obtainable evidence};
+\node[gate,below=0.62cm of p2] (g2) {Gate: traceable and leakage-safe artifact};
+\node[gate,below=0.62cm of p3] (g3) {Gate: baseline-controlled frozen results};
+\node[gate,below=0.62cm of p4] (g4) {Gate: feasible use and proportionate claim};
+\draw[flow] (p1) -- (p2);
+\draw[flow] (p2) -- (p3);
+\draw[flow] (p3) -- (p4);
+\draw[flow] (p1) -- (g1);
+\draw[flow] (p2) -- (g2);
+\draw[flow] (p3) -- (g3);
+\draw[flow] (p4) -- (g4);
+\draw[feedback] (p4.north) -- ++(0,0.55) -| node[pos=0.25,above,font=\scriptsize]{design refinement} (p2.north);
+\end{tikzpicture}}
+\caption{Design-science research lifecycle and the evidence gate attached to each phase.}
+\label{fig:research_lifecycle}
+\end{figure}
+
+The unit of forecasting is a pharmacy--branch--SKU--day or
+pharmacy--branch--SKU--week, selected according to data density. Batch and
+expiry records remain attached to inventory decisions even when demand is
+forecast at SKU level. The unit of customer-risk modelling is a customer's
 feature snapshot at a historical cutoff. The unit of strategy evaluation is an
-eligible action evaluated under the same information and constraints as its
-comparison policy.
+eligible action evaluated under the same information and pharmacy-specific
+constraints as its comparison policy.
 
 \section{Design Requirements and Acceptance Logic}
 
@@ -47,9 +85,10 @@ to demonstrate.
   decision, unit, horizon and feasible response. An output that has no defined
   decision remains exploratory and cannot be promoted as a recommendation.
 
-  \item[DR2: Operational integrity.] Source events must retain organization
-  scope, stable keys, event time, receipt time, status and correction history.
-  KPI and model views must be reproducible from those events.
+  \item[DR2: Operational integrity.] Source events must retain pharmacy and
+  branch scope, stable product, batch and invoice keys, event time, receipt
+  time, expiry where available, status and correction history. KPI and model
+  views must be reproducible from those events.
 
   \item[DR3: Temporal validity.] Features, preprocessing parameters and model
   selection must use only evidence available by the relevant cutoff. Final
@@ -67,9 +106,10 @@ to demonstrate.
   \cite{niculescu2005calibration}.
 
   \item[DR6: Feasible and responsible action.] Strategy generation must apply
-  cash, stock, lead-time, order-size, contact-consent and policy constraints
-  before ranking. Infeasible actions must be excluded rather than displayed
-  with a low score.
+  purchasing budget, stock, incoming stock, lead-time, pack or minimum-order
+  size, storage, remaining shelf life, expiry, cold-chain, contact-consent and
+  policy constraints before ranking. Infeasible actions must be excluded rather
+  than displayed with a low score.
 
   \item[DR7: Human authority and comprehension.] Recommendations must include a
   concise reason, source and alternative; the owner must be able to inspect,
@@ -102,7 +142,7 @@ The research questions introduced in Chapter~\ref{chapter_introduction} are
 operationalized as follows:
 
 \begin{description}[style=nextline,leftmargin=2em]
-  \item[RQ1 / H1.] A demand model containing local calendar, price, promotion
+  \item[RQ1 / H1.] A pharmacy demand model containing local calendar, price, promotion
   and available market-context features will reduce out-of-time WAPE or MASE
   relative to the otherwise identical model without those feature groups and
   relative to a seasonal-naive baseline.
@@ -123,15 +163,15 @@ operationalized as follows:
 \small
 \caption{Alignment of research questions, evidence and primary measures.}
 \label{tab:rq_alignment}
-\begin{tabularx}{\textwidth}{p{0.09\textwidth}p{0.27\textwidth}Y Y}
-\toprule
+\begin{tabularx}{\textwidth}{|p{0.09\textwidth}|p{0.27\textwidth}|Y|Y|}
+\hline
 \textbf{RQ} & \textbf{Unit and comparison} & \textbf{Primary measures} & \textbf{Required evidence} \\
-\midrule
+\hline
 RQ1 & Unseen branch--SKU periods; context model versus ablations/baselines & WAPE, MASE, interval coverage & Time-stamped sales, stock, price, promotion and calendar data \\
 RQ2 & Future customer windows; model versus base-rate/rule baseline & PR-AUC, Lift@10\%, Brier score, calibration & Pseudonymous customer transactions with historical cutoffs \\
 RQ3 & Same demand path; proposed versus current replenishment policy & Stock-out units, holding units, total cost & Stock, lead time, order constraints and validated cost assumptions \\
 RQ4 & Same decision scenarios; explanation versus output only & Correctness, time, confidence, perceived usability & Consenting target users and counterbalanced tasks \\
-\bottomrule
+\hline
 \end{tabularx}
 \end{table}
 
@@ -142,20 +182,22 @@ or cost implication is material.
 
 \section{Target Population and Sampling Plan}
 
-The target population comprises inventory-based retail SMEs operating in
-Bangladesh. To reduce uncontrolled variation, initial recruitment will focus on
-three to five businesses from one broadly comparable retail vertical. The
-planned analytical target is 12--24 months of records across the partners,
-subject to ethics approval and data availability. A first partner with a shorter
-history may be used only to test collection, mapping and data-quality rules.
+The target population comprises inventory-holding retail pharmacies operating
+in Bangladesh. Initial recruitment will focus on three to five independent
+pharmacies, or more when feasible, from this single vertical. The planned
+analytical target is 12--24 months of records across the partners, subject to
+ethics approval and data availability. A first pharmacy with a shorter history
+may be used only to test collection, mapping and data-quality rules; it cannot
+alone establish cross-pharmacy generalization.
 
-Businesses will be recruited purposively because access to longitudinal invoice
-and stock data requires owner agreement. Inclusion requires identifiable dates,
-products and quantities and a person able to explain the current replenishment
-process. Customer-level analysis additionally requires stable pseudonymous
-customer identifiers and sufficient follow-up after each cutoff. A business or
-task will be excluded from a particular analysis when these minimum conditions
-are absent; it will not be repaired by inventing identifiers or outcomes.
+Pharmacies will be recruited purposively because access to longitudinal invoice,
+stock, purchase, batch and expiry data requires owner agreement. Inclusion
+requires identifiable dates, products and quantities and a person able to
+explain the current replenishment process. Customer-level analysis additionally
+requires stable pseudonymous customer identifiers and sufficient follow-up
+after each cutoff. A pharmacy or task will be excluded from a particular
+analysis when these minimum conditions are absent; it will not be repaired by
+inventing identifiers, constraints or outcomes.
 
 \section{Data Sources and Evidence Tiers}
 
@@ -167,16 +209,16 @@ change the claim being tested.
 \small
 \caption{Planned evidence tiers and claim boundaries.}
 \label{tab:evidence_tiers}
-\begin{tabularx}{\textwidth}{p{0.10\textwidth}p{0.29\textwidth}Y Y}
-\toprule
+\begin{tabularx}{\textwidth}{|p{0.10\textwidth}|p{0.29\textwidth}|Y|Y|}
+\hline
 \textbf{Tier} & \textbf{Source} & \textbf{Permitted use} & \textbf{Prohibited inference} \\
-\midrule
-1 & Consenting Bangladesh SME invoice, stock and operating records & Primary local forecasting, customer, strategy and usability evaluation & Generalization beyond sampled firms without further evidence \\
+\hline
+1 & Consenting Bangladesh pharmacy invoice, stock, purchase, batch, expiry and constraint records & Primary pharmacy forecasting, customer, strategy and usability evaluation & Generalization beyond sampled pharmacies or transfer to another SME vertical \\
 2a & Bangladesh WFP/DAM market-price data \cite{wfp2026prices} & Local external context and separate price-series study & SKU sales, customer behavior or firm revenue \\
 2b & UCI Online Retail II, United Kingdom \cite{chen2012uci} & Real-invoice pipeline and method portability checks & Bangladesh purchasing behavior \\
 2c & Public Bangladesh retailer demand series \cite{jahin2024dataset} & Local quantity-forecast procedure check & Multi-SKU, customer, price or profit claims if fields are absent \\
 3 & Clearly labelled generated records & Software tests, rare cases, scale tests and privacy-safe examples & Field effectiveness or real customer behavior \\
-\bottomrule
+\hline
 \end{tabularx}
 \end{table}
 
@@ -189,13 +231,19 @@ evaluated on the same untouched real test period.
 
 \section{Data Acquisition and Variable Plan}
 
-Primary collection will prefer exports from the business's existing point of
+Primary collection will prefer exports from the pharmacy's existing point of
 sale or spreadsheet workflow. A controlled template will be offered when no
 consistent export exists. The minimum sales fields are timestamp, business,
 branch, invoice, SKU, quantity, unit price, discount and cancellation/return
 status. Recommended fields include unit cost, promotion, payment mode,
 pseudonymous customer, stock-on-hand, stock movement, purchase receipt,
-supplier lead time and incoming quantity.
+supplier lead time and incoming quantity. The pharmacy extension additionally
+requests generic and brand name, strength, dosage form, manufacturer,
+box--strip--piece conversion, batch or lot, expiry date, minimum acceptable
+remaining shelf life, cold-chain requirement and recall or damaged-stock status
+when these records exist. Owner-maintained constraint inputs include purchasing
+budget, storage capacity, minimum order or pack multiple, category limit and
+risk preference with an effective date.
 
 Variables are organized by the decision time at which they become available:
 
@@ -204,15 +252,15 @@ Variables are organized by the decision time at which they become available:
 \small
 \caption{Feature availability and leakage rule.}
 \label{tab:feature_availability}
-\begin{tabularx}{\textwidth}{p{0.22\textwidth}p{0.30\textwidth}Y}
-\toprule
+\begin{tabularx}{\textwidth}{|p{0.22\textwidth}|p{0.30\textwidth}|Y|}
+\hline
 \textbf{Availability class} & \textbf{Examples} & \textbf{Rule} \\
-\midrule
+\hline
 Known before cutoff & Historical sales, current stock, recorded price, lead time, calendar & Eligible if timestamp and provenance are valid \\
 Known for forecast horizon & Confirmed promotion, planned closure, calendar event & Eligible only when the same information would exist in real use \\
 Observed after outcome & Later purchase, delivered satisfaction, realized return, future stock adjustment & Label or evaluation outcome only; never a predictor \\
 Uncertain or revised & Unconfirmed promotion, estimated cost, manual lead time & Retain source and uncertainty; include a sensitivity analysis \\
-\bottomrule
+\hline
 \end{tabularx}
 \end{table}
 
@@ -281,27 +329,60 @@ check shows whether the choice materially affects results. It is not permissible
 to impute identifiers, consent, future outcomes or the ground truth used for the
 primary test.
 
+Figure~\ref{fig:quality_gate} turns these rules into an explicit routing
+decision. Records that fail a repairable structural check return to controlled
+mapping; records that lack indispensable evidence remain quarantined or make
+only the affected task ineligible.
+
+\begin{figure}[H]
+\centering
+\resizebox{\textwidth}{!}{%
+\begin{tikzpicture}[
+  sourceblock/.style={draw,rounded corners,fill=softblue,text width=2.55cm,minimum height=1.0cm,align=center,font=\footnotesize},
+  decision/.style={draw=dugold,diamond,aspect=2.2,fill=softorange,align=center,font=\footnotesize,inner sep=1.2pt},
+  pass/.style={draw=dugreen,very thick,rounded corners,fill=softgreen,text width=2.55cm,minimum height=1.0cm,align=center,font=\footnotesize},
+  reject/.style={draw=red!65!black,rounded corners,fill=red!8,text width=3.0cm,minimum height=0.9cm,align=center,font=\footnotesize},
+  flow/.style={-{Latex[length=2.1mm]},thick,draw=gray!75}
+]
+\node[sourceblock] (ingest) at (-5.5,1.2) {Source manifest and shop scope};
+\node[sourceblock] (validate) at (-2.45,1.2) {Schema, identity, time and inventory checks};
+\node[decision] (eligible) at (1.0,1.2) {Required evidence\\for this task?};
+\node[pass] (snapshot) at (4.9,1.2) {Eligible immutable snapshot and quality profile};
+\node[reject] (repair) at (-2.45,-1.2) {Repairable mapping issue: correct, version and re-run};
+\node[reject] (hold) at (1.8,-1.2) {Not repairable without new evidence: quarantine or task ineligible};
+\draw[flow] (ingest) -- (validate);
+\draw[flow] (validate) -- (eligible);
+\draw[flow] (eligible) -- node[above,font=\scriptsize]{yes} (snapshot);
+\draw[flow] (validate) -- node[left,font=\scriptsize]{structural failure} (repair);
+\draw[flow] (repair.west) -| (ingest.south);
+\draw[flow] (eligible) -- node[right,font=\scriptsize]{no} (hold);
+\end{tikzpicture}}
+\caption{Data-quality and task-eligibility gate before analytical snapshot release.}
+\label{fig:quality_gate}
+\end{figure}
+
 \section{Ethics, Privacy and Governance}
 
 University ethics approval and a signed data-sharing agreement will precede
 primary collection. Direct identifiers such as names, phone numbers, e-mail
 addresses, national identifiers, account numbers and wallet numbers are not
-required for the research tables. Each business will use a separate salted
+required for the research tables. Each pharmacy will use a separate salted
 pseudonymous customer key; any re-identification mapping will remain with the
-business and outside the research repository.
+pharmacy and outside the research repository.
 
 The agreement will state research purpose, authorized researchers, storage,
 retention deadline, publication form, withdrawal and deletion procedure. Access
 will follow least privilege, and published material will use aggregates or
 separately reviewed de-identified examples. A retention suggestion will not
-authorize contact: customer consent and the participating business's policy are
+authorize contact: customer consent and the participating pharmacy's policy are
 independent feasibility constraints. Model outputs will support, not replace,
 owner decisions.
 
 \section{Canonical Operational and Analytical Model}
 
 The proposed operational schema contains Organization, Branch, Product,
-Customer, Supplier, SalesOrder, SalesOrderItem, Payment, InventoryBalance,
+PharmacyProductProfile, InventoryLot, ConstraintProfile, Customer, Supplier,
+SalesOrder, SalesOrderItem, Payment, InventoryBalance,
 StockMovement, PurchaseOrder, Expense, LedgerEntry, SalesReturn, Refund,
 ImportBatch and AuditLog entities. The analytical layer does not train directly
 on mutable operational tables. It creates versioned invoice-line, SKU-time and
@@ -316,12 +397,12 @@ customer-cutoff views with the source keys and data cutoff retained.
   arrow/.style={-{Latex[length=2mm]},thick,draw=gray!75}
 ]
 \node[entity] (org) {Organization\\Branch};
-\node[entity,right=1.2cm of org] (product) {Product\\Supplier};
+\node[entity,right=1.2cm of org] (product) {Product + Pharmacy Profile\\Supplier + Constraint};
 \node[entity,right=1.2cm of product] (customer) {Customer\\Consent};
 \node[event,below=1.3cm of product] (sale) {Sale + Line Items\\Payment};
 \node[event,left=1.2cm of sale] (purchase) {Purchase Order\\Receiving};
 \node[event,right=1.2cm of sale] (return) {Return + Refund\\Receivable};
-\node[event,below=1.3cm of sale] (stock) {Stock Movements\\Inventory Balance};
+\node[event,below=1.3cm of sale] (stock) {Stock Movements + Lots\\Balance, Batch and Expiry};
 \node[entity,left=1.2cm of stock] (finance) {Expense\\Ledger};
 \node[entity,right=1.2cm of stock] (audit) {Import Batch\\Audit Log};
 \draw[arrow] (org) -- (sale);
@@ -338,17 +419,24 @@ customer-cutoff views with the source keys and data cutoff retained.
 \label{fig:data_model}
 \end{figure}
 
-Validation will test uniqueness of business-scoped identifiers, chronological
+Validation will test uniqueness of pharmacy-scoped identifiers, chronological
 consistency, nonnegative physical quantities where appropriate, payment/order
-reconciliation, cancellation handling and stock-movement balance. Corrections
+reconciliation, cancellation handling, pack conversion, batch/expiry
+consistency and stock-movement balance. Corrections
 will be recorded as transformations rather than silently overwriting the source.
 
 \section{Formal Problem Formulation}
 
-For business $b$, branch $l$, product $p$, customer $c$ and time $t$, let
+For pharmacy $b$, branch $l$, product $p$, inventory batch $r$, customer $c$
+and time $t$, let
 
 \begin{equation}
-  D_t=\{\text{Sales, Stock, Purchases, Expenses, Customers, Payments, Context}\}_{\leq t}.
+  D_t=\left\{
+  \begin{array}{c}
+  \text{Sales, Stock, Batches, Expiry, Purchases, Expenses,}\\
+  \text{Customers, Constraints and Context}
+  \end{array}
+  \right\}_{\leq t}.
 \end{equation}
 
 \subsection{Performance Evaluation}
@@ -421,6 +509,7 @@ U(a\mid D_t)=E[\Delta\mathrm{Profit}(a)]-\mathrm{ActionCost}(a)
 \label{eq:utility}
 \end{equation}
 subject to budget, storage, minimum order quantity, supplier lead time,
+pack multiple, remaining shelf life, expiry and cold-chain capacity,
 current/incoming stock and contact consent. This is a transparent operational
 objective inspired by the predictive-to-prescriptive transition
 \cite{bertsimas2020prescriptive}; its terms will be estimated and sensitivity
@@ -439,8 +528,8 @@ $Q$ a candidate order quantity. A transparent conditional cost is
 
 \begin{equation}
 J_p(Q)=c_o\mathbb{I}(Q>0)
-c_hE[(\mathrm{IP}_{p,t}+Q-D_{p,t}^{(L)})^+]
-c_sE[(D_{p,t}^{(L)}-\mathrm{IP}_{p,t}-Q)^+],
++c_hE[(\mathrm{IP}_{p,t}+Q-D_{p,t}^{(L)})^+]
++c_sE[(D_{p,t}^{(L)}-\mathrm{IP}_{p,t}-Q)^+],
 \label{eq:replenishment_cost}
 \end{equation}
 
@@ -453,7 +542,10 @@ owner-reviewed ranges, and the system will withhold a precise savings claim
 when the ranking changes materially across plausible values.
 
 Uncertainty enters through the lead-time demand distribution, not through a
-single inflated point forecast. When reliable quantiles are available, the
+single inflated point forecast. In pharmacies, candidate quantities are also
+screened against pack conversion, batch availability, remaining shelf life and
+storage conditions; a high predicted demand cannot authorize a clinically or
+operationally prohibited action. When reliable quantiles are available, the
 system can evaluate candidate quantities against those quantiles; otherwise it
 uses residual or replay-based scenarios from validation periods. If stock-out
 censoring prevents credible demand reconstruction, the result is reported as a
@@ -485,8 +577,10 @@ evaluate once on the untouched test. The order prevents statistics from future
 periods entering training \cite{kaufman2012leakage}.
 
 Demand features may include lags, rolling location and variability, day of week,
-month, festival distance, price, discount, known promotion, stock-out indicator
-and external market context. Zero demand caused by no sale is distinguished,
+month, festival distance, price, discount, known promotion, stock-out indicator,
+pack unit, remaining shelf life and external market context. Batch expiry and
+cold-chain fields primarily constrain action feasibility and enter prediction
+only when their decision-time availability and causal role are defensible. Zero demand caused by no sale is distinguished,
 when possible, from zero observed sales caused by no stock. Intermittency will
 be measured before choosing temporal granularity and candidate methods.
 
@@ -528,6 +622,49 @@ probabilities, or adds operational cost without material value. This rule keeps
 the proposed system useful when the scientifically honest answer is a simple
 forecast or business rule.
 
+Model eligibility follows a pharmacy-domain hierarchy. A new or sparse shop
+uses a transparent baseline and may use a pooled model trained on approved,
+de-identified data from the participating pharmacy vertical. With moderate
+history, shop and branch context can calibrate the pooled model. A fully
+shop-adapted candidate is considered only when sufficient local history exists.
+Baseline, pooled and shop-adapted candidates are compared at common
+chronological origins; complexity is promoted only after a material and stable
+improvement. Held-out-pharmacy evaluation tests transfer to a pharmacy excluded
+from training and prevents pooled transaction volume from hiding poor
+cross-shop generalization.
+
+Figure~\ref{fig:model_ladder} visualizes this conservative promotion rule. The
+ladder is not an assumption that a shop-adapted model is best; the deployed
+choice is the highest eligible level that passes every gate, and it may remain
+the transparent baseline.
+
+\begin{figure}[H]
+\centering
+\resizebox{0.95\textwidth}{!}{%
+\begin{tikzpicture}[
+  level/.style={draw=dugreen,rounded corners,fill=softgreen,text width=3.25cm,minimum height=1.15cm,align=center,font=\footnotesize},
+  test/.style={draw=dugold,rounded corners,fill=softorange,text width=2.8cm,minimum height=0.82cm,align=center,font=\scriptsize},
+  stop/.style={draw,rounded corners,fill=softgray,text width=3.15cm,minimum height=0.82cm,align=center,font=\scriptsize},
+  flow/.style={-{Latex[length=2.2mm]},thick,draw=gray!75}
+]
+\node[level] (base) at (-4.8,1.3) {\textbf{Level 1: transparent baseline}\\always required and reproducible};
+\node[test] (t1) at (-1.55,1.3) {Enough approved cross-shop evidence and stable gain?};
+\node[level] (pooled) at (1.65,1.3) {\textbf{Level 2: pooled pharmacy model}\\held-out-shop transfer tested};
+\node[test] (t2) at (4.9,1.3) {Enough local history and material shop-specific gain?};
+\node[level] (adapted) at (4.9,-1.05) {\textbf{Level 3: shop-adapted model}\\same-origin comparison required};
+\node[stop] (retain1) at (-1.55,-1.05) {No: retain baseline and report the reason};
+\node[stop] (retain2) at (1.65,-1.05) {No: retain pooled model and report the reason};
+\draw[flow] (base) -- (t1);
+\draw[flow] (t1) -- node[above,font=\scriptsize]{yes} (pooled);
+\draw[flow] (t1) -- node[right,font=\scriptsize]{no} (retain1);
+\draw[flow] (pooled) -- (t2);
+\draw[flow] (t2) -- node[right,font=\scriptsize]{yes} (adapted);
+\draw[flow] (t2.south west) -- node[above left,font=\scriptsize]{no} (retain2.north east);
+\end{tikzpicture}}
+\caption{Evidence-dependent model promotion ladder for each pharmacy analytical task.}
+\label{fig:model_ladder}
+\end{figure}
+
 \section{The \system{} Sequential Procedure}
 
 \begin{algorithm}[H]
@@ -538,11 +675,12 @@ forecast or business rule.
 Verify source, schema, timestamps and organization ownership\;
 Create the historical feature snapshot $X_t$\;
 Apply transformations fitted on the appropriate training evidence\;
+Compare eligible baseline, pooled-pharmacy and shop-adapted candidates\;
 Estimate demand with uncertainty and customer inactivity probabilities\;
 Calculate reproducible KPIs and data-quality warnings\;
 Generate candidate actions with source and decision-time metadata\;
 \ForEach{$a\in A$}{
-  Check feasibility under $C_t$\;
+  Check budget, stock, pack, expiry, storage, lead-time and consent feasibility under $C_t$\;
   Estimate benefit, cost and uncertainty using declared assumptions\;
   $U(a)\leftarrow E[\Delta\mathrm{Profit}(a)]-\mathrm{Cost}(a)-\lambda\mathrm{Risk}(a)$\;
 }
@@ -561,35 +699,64 @@ the request path.
 
 \begin{figure}[H]
 \centering
-\resizebox{\textwidth}{!}{%
+\includegraphics[width=0.88\textwidth]{Figures/bsmart_architecture_square.png}
+% The original TikZ source is retained below as an editable fallback.
+\iffalse
 \begin{tikzpicture}[
-  block/.style={draw,rounded corners,minimum width=10.2cm,minimum height=1.0cm,align=center,font=\normalsize},
-  arrow/.style={-{Latex[length=2.4mm]},very thick,draw=gray!75},node distance=0.56cm
+  block/.style={draw,rounded corners,text width=3.55cm,minimum height=0.86cm,align=center,font=\footnotesize},
+  input/.style={draw,rounded corners,fill=softblue,text width=3.55cm,minimum height=0.86cm,align=center,font=\footnotesize},
+  output/.style={draw=dugreen,very thick,rounded corners,fill=softgreen,text width=3.55cm,minimum height=0.86cm,align=center,font=\footnotesize},
+  arrow/.style={-{Latex[length=2.2mm]},thick,draw=gray!75},
+  feedback/.style={-{Latex[length=2.2mm]},thick,dashed,draw=gray!75}
 ]
-\node[block,fill=softgreen] (ops) {\textbf{Business Operations}\\sales, stock, purchases, returns and payments};
-\node[block,fill=softblue,below=of ops] (canon) {\textbf{Canonical Evidence}\\validation, provenance and historical snapshots};
-\node[block,fill=softorange,below=of canon] (ai) {\textbf{AI Analytics}\\performance indicators, forecasts, customer risk and segments};
-\node[block,fill=softgreen,below=of ai] (strategy) {\textbf{Strategy Layer}\\constraints, expected utility and action ranking};
-\node[block,fill=softblue,below=of strategy] (ui) {\textbf{Owner Interface}\\recommendation, supporting reason and uncertainty};
-\node[block,fill=softgray,below=of ui] (outcome) {\textbf{Outcome Record}\\owner response and later observable result};
-\node[block,fill=softgray,below=of outcome] (monitor) {\textbf{Monitoring and Revalidation}\\data quality, calibration and outcome performance};
-\draw[arrow] (ops) -- (canon);
-\draw[arrow] (canon) -- (ai);
-\draw[arrow] (ai) -- (strategy);
-\draw[arrow] (strategy) -- (ui);
-\draw[arrow] (ui) -- (outcome);
-\draw[arrow] (outcome) -- (monitor);
-\draw[arrow] (monitor.west) -- ++(-1.0,0) |- (ops.west);
-\end{tikzpicture}}
-\caption{Proposed \system{} architecture and accountable feedback loop.}
+\node[input] (reference) at (-4.7,3.75) {\textbf{Public and Reference Evidence}\\benchmarks, context and baselines};
+\node[input] (shops) at (-4.7,1.25) {\textbf{Multiple Consenting Pharmacies}\\sales, stock, purchases, batches and returns};
+\node[input] (constraints) at (-4.7,-1.25) {\textbf{Active Shop Constraint Profile}\\budget, pack/MOQ, lead time, expiry, storage and consent};
+
+\node[block,fill=softorange] (base) at (0,3.75) {\textbf{Base Candidates}\\transparent baselines and pooled pharmacy model};
+\node[block,fill=softblue] (canon) at (0,1.25) {\textbf{Governed Pharmacy Evidence}\\validation, tenant isolation, provenance and snapshots};
+\node[block,fill=softorange] (selection) at (0,-1.25) {\textbf{Validated Model Selection}\\baseline vs pooled vs shop-adapted};
+
+\node[block,fill=softblue] (analytics) at (4.7,1.25) {\textbf{Analytics Outputs}\\KPIs, demand, inactivity risk, segments and anomaly};
+\node[block,fill=softgreen] (strategy) at (4.7,-1.25) {\textbf{Constraint-Aware Strategy}\\feasibility, benefit, cost, risk and ranking};
+\node[output] (actions) at (4.7,-3.75) {\textbf{Shop-Specific Recommendations}\\reorder, stock-out, overstock, expiry and retention};
+\node[block,fill=softgray] (owner) at (0,-3.75) {\textbf{Owner Decision}\\accept, reject, defer or modify};
+\node[block,fill=softgray] (monitor) at (-4.7,-3.75) {\textbf{Outcome and Monitoring}\\observed result, drift, revalidation and rollback};
+
+\draw[arrow] (reference) -- (base);
+\draw[arrow] (shops) -- (canon);
+\draw[arrow] (base) -- (selection);
+\draw[arrow] (canon) -- (selection);
+\draw[arrow] (selection) -- (analytics);
+\draw[arrow] (analytics) -- (strategy);
+\draw[arrow] (constraints) -- (strategy);
+\draw[arrow] (strategy) -- (actions);
+\draw[arrow] (actions) -- (owner);
+\draw[arrow] (owner) -- (monitor);
+\draw[feedback] (monitor.north) |- (selection.west);
+\end{tikzpicture}
+\fi
+\caption{Pharmacy-specific constraint-aware \system{} architecture derived from the supervisor-guided flow.}
 \label{fig:bsmart_architecture}
 \end{figure}
 
+The architecture distinguishes a category-level model from shop-level
+personalization. Approved, de-identified records from multiple pharmacies may
+support a pooled pharmacy model, while each deployed pharmacy retains isolated
+raw data and an active constraint profile. The selected analytical model
+produces estimates rather than direct commands. The strategy layer combines
+those estimates with the shop's budget, inventory, pack, expiry, storage,
+lead-time and consent constraints to generate feasible recommendations.
+
 The information flow is intentionally one-directional at prediction time:
 future outcomes cannot alter the snapshot that produced an earlier result.
-Outcomes enter later through the monitoring path and become eligible training
-evidence only in a new, versioned cycle. This separation makes it possible to
-reproduce what the system knew when an action was proposed.
+Operational state and recommendations may refresh after relevant events or on a
+schedule, but the deployed model is not retrained blindly after each
+transaction. Outcomes enter through monitoring and become eligible training
+evidence only in a later version after reconciliation, label maturation, drift
+review and comparison with the current model and baseline. This monitored
+feedback lifecycle is the intended meaning of continuous learning and makes it
+possible to reproduce what the system knew when an action was proposed.
 
 \section{Snapshot Lineage and Frozen Evaluation Flow}
 
@@ -675,7 +842,7 @@ audit and evaluation.
 \node[item,above right=0.8cm and 1.15cm of rec] (source) {Evidence source\\cutoff, snapshot, coverage};
 \node[item,left=1.15cm of rec] (why) {Supporting reason\\selective, non-causal wording};
 \node[item,right=1.15cm of rec] (uncertainty) {Uncertainty\\interval, calibration, sensitivity};
-\node[item,below left=0.8cm and 1.15cm of rec] (constraints) {Feasibility\\cash, stock, lead time, consent};
+\node[item,below left=0.8cm and 1.15cm of rec] (constraints) {Feasibility\\budget, stock, pack, expiry, storage, lead time, consent};
 \node[item,below right=0.8cm and 1.15cm of rec] (response) {Accountability\\owner response, later outcome};
 \draw[flow] (rec) -- (what);
 \draw[flow] (rec) -- (source);
@@ -706,6 +873,41 @@ the underlying estimate, missing constraint, explanation, stale data or owner
 interpretation instead of being attributed vaguely to ``the AI.''
 
 \section{Evaluation Protocol}
+
+Figure~\ref{fig:evaluation_design} summarizes the evaluation sequence shared by
+the forecasting, customer and decision studies. The locked final test is opened
+only after preprocessing, candidates, thresholds, primary metrics and decision
+rules have been frozen; any later revision is reported as exploratory.
+
+\begin{figure}[H]
+\centering
+\resizebox{\textwidth}{!}{%
+\begin{tikzpicture}[
+  stage/.style={draw,rounded corners,fill=softblue,text width=2.65cm,minimum height=1.2cm,align=center,font=\footnotesize},
+  lock/.style={draw=dugold,very thick,rounded corners,fill=softorange,text width=2.65cm,minimum height=1.2cm,align=center,font=\footnotesize},
+  claim/.style={draw=dugreen,very thick,rounded corners,fill=softgreen,text width=2.65cm,minimum height=1.2cm,align=center,font=\footnotesize},
+  note/.style={draw,rounded corners,fill=softgray,text width=12.7cm,minimum height=0.8cm,align=center,font=\scriptsize},
+  flow/.style={-{Latex[length=2.2mm]},thick,draw=gray!75},
+  node distance=0.42cm
+]
+\node[stage] (dev) {\textbf{Development}\\rolling origins, ablations and calibration};
+\node[lock,right=of dev] (freeze) {\textbf{Freeze protocol}\\features, model, threshold, metric};
+\node[stage,right=of freeze] (test) {\textbf{Untouched test}\\same instances and evidence cutoff};
+\node[stage,right=of test] (decision) {\textbf{Decision evaluation}\\same demand path or paired owner tasks};
+\node[claim,right=of decision] (report) {\textbf{Bounded claim}\\effect, interval, failures and tier};
+\node[note,below=0.78cm of test] (rules) {No test-set tuning; dependent observations remain grouped; missing outcomes are counted; statistical and practical importance are reported separately};
+\draw[flow] (dev) -- (freeze);
+\draw[flow] (freeze) -- (test);
+\draw[flow] (test) -- (decision);
+\draw[flow] (decision) -- (report);
+\draw[flow] (rules) -- (freeze.south);
+\draw[flow] (rules) -- (test.south);
+\draw[flow] (rules) -- (decision.south);
+\draw[flow] (rules) -- (report.south);
+\end{tikzpicture}}
+\caption{Frozen evaluation sequence from model development to a proportionate claim.}
+\label{fig:evaluation_design}
+\end{figure}
 
 \subsection{Forecasting Evaluation}
 
@@ -742,9 +944,11 @@ existence of clusters will not be treated as proof of natural customer types.
 \subsection{Ablation, Robustness and Statistical Analysis}
 
 Planned ablations remove one feature family at a time: local calendar,
-price/promotion, market context and customer-history extensions. Additional
-comparisons examine global versus business-specific models and real-only versus
-clearly controlled augmentation. All paired comparisons use the same test
+price/promotion, market context, pack/expiry context and customer-history
+extensions. Additional comparisons examine the transparent baseline, pooled
+pharmacy-domain model and eligible shop-adapted model, as well as real-only
+versus clearly controlled augmentation. Results are reported per pharmacy and
+with a held-out-pharmacy transfer test; all paired comparisons use the same test
 instances or forecast origins.
 
 Uncertainty will be summarized with paired block bootstrap intervals across
@@ -767,9 +971,10 @@ benefit.
 
 The unit of uncertainty will match the dependence structure. Forecast errors
 from adjacent dates are not treated as independent rows; block bootstrap
-resampling will preserve local temporal dependence. When multiple businesses
-are available, firm-level variation will be shown rather than hidden inside a
-pooled transaction count. Customer comparisons will respect repeated snapshots
+resampling will preserve local temporal dependence. When multiple pharmacies
+are available, shop-level variation will be shown rather than hidden inside a
+pooled transaction count. A leave-one-pharmacy-out or held-out-pharmacy analysis
+will evaluate whether the category model transfers to an unseen shop. Customer comparisons will respect repeated snapshots
 from the same customer, and usability tasks will be paired within participant
 when the design permits. Confidence intervals will accompany effect estimates
 so that imprecision remains visible.
@@ -885,10 +1090,10 @@ actually evaluated.
 \small
 \caption{Principal validity threats and planned controls.}
 \label{tab:validity_controls}
-\begin{tabularx}{\textwidth}{p{0.22\textwidth}p{0.30\textwidth}Y}
-\toprule
+\begin{tabularx}{\textwidth}{|p{0.22\textwidth}|p{0.30\textwidth}|Y|}
+\hline
 \textbf{Threat} & \textbf{How it may distort evidence} & \textbf{Planned control} \\
-\midrule
+\hline
 Selection bias & Cooperative firms may be more digitally mature & Describe recruitment and firms; restrict generalization \\
 Leakage & Future or target-derived data inflate performance & Availability table, cutoff snapshots, grouped/temporal split \\
 Stock-out censoring & Observed sales understate unconstrained demand & Retain stock state; stratify or flag censored periods \\
@@ -897,15 +1102,20 @@ Dataset mismatch & Foreign/public tasks are mistaken for local evidence & Eviden
 Uncertain costs & Utility ranking depends on weak assumptions & Owner-validated ranges and sensitivity analysis \\
 Novelty/learning effect & Interface condition benefits from presentation order & Counterbalance tasks and collect task-level timing \\
 Concept drift & Festival, price or behavior relations change & Time-based tests and post-deployment monitoring plan \\
-\bottomrule
+\hline
 \end{tabularx}
 \end{table}
 
 \section{Expected Methodological Outputs}
 
 At completion, the methodology is expected to yield a documented canonical
-schema and data dictionary, partner data protocol, versioned feature snapshots,
-baseline and candidate model specifications, a constraint-aware recommendation
-procedure, a reproducible evaluation package and an owner-study instrument.
+pharmacy schema and data dictionary, partner data protocol, versioned feature
+snapshots, baseline, pooled-pharmacy and shop-adapted model specifications, a
+constraint-aware recommendation procedure, a reproducible evaluation package
+and an owner-study instrument. The initial effectiveness claim is restricted to
+the participating pharmacy vertical. Extension to another SME category requires
+a new domain schema, constraints, data collection and validation cycle. The
+artifact provides business decision support and does not diagnose, prescribe or
+recommend medicine dosage.
 Implementation detail, observed numerical results and conclusions will be added
 to the reserved chapters only after the corresponding evidence is available.

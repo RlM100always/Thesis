@@ -1,0 +1,112 @@
+﻿Product_Name,Generic_Name,Dosage_Form,Manufacturer,Drug_Class,Unit_Price_BDT,Cold_Chain_Required,Prescription_Only,MOQ_Units
+Qcet,Paracetamol,Tablet,Opso Saline Ltd.,Analgesic/Antipyretic,6.53,False,False,100
+Parajor,Paracetamol,Oral Suspension,Sharif Pharmaceuticals Ltd.,Analgesic/Antipyretic,4.35,False,False,100
+Pyrenol,Paracetamol + Caffeine,Tablet,Delta Pharma Ltd.,Analgesic/Antipyretic,7.08,False,False,100
+Nordol,Paracetamol + Tramadol Hydrochloride,Tablet,Novelta Bestway Pharma Ltd.,Analgesic/Antipyretic,6.03,False,False,100
+Iburex,Ibuprofen,Tablet,Medimet Pharmaceuticals Ltd.,Analgesic/Antipyretic,2.11,False,False,100
+Erofen,Ibuprofen,Tablet,Edruc Limited,Analgesic/Antipyretic,7.84,False,False,100
+Inflam-D,Dexibuprofen,Tablet,Synovia pharma plc,Analgesic/Antipyretic,6.45,False,False,100
+Dexibu,Dexibuprofen,Tablet,General Pharmaceuticals Ltd.,Analgesic/Antipyretic,6.61,False,False,100
+Panfre SR,Diclofenac Sodium,Capsule (Sustained Release),Pacific Pharmaceuticals Ltd.,Analgesic/Antipyretic,2.33,False,False,100
+Sifen TR,Diclofenac Sodium,Capsule (Timed Release),Silva Pharmaceuticals Ltd.,Analgesic/Antipyretic,4.43,False,False,100
+Novarin SR,Diclofenac Sodium,Capsule (Sustained Release),Amico Laboratories Ltd.,Analgesic/Antipyretic,3.91,False,False,100
+Voltarol,Diclofenac Sodium,IM Injection,Techno Drugs Ltd.,Analgesic/Antipyretic,7.52,False,False,100
+Servex,Aceclofenac,Tablet,Novo Healthcare and Pharma Ltd.,Analgesic/Antipyretic,5.69,False,False,100
+Xyfen,Aceclofenac,Tablet,Supreme Pharmaceutical Ltd.,Analgesic/Antipyretic,6.85,False,False,100
+Movex,Aceclofenac,Tablet,Opsonin Pharma Ltd.,Analgesic/Antipyretic,4.38,False,False,100
+ACF,Aceclofenac,Tablet,Decent Pharma Laboratories Ltd.,Analgesic/Antipyretic,2.98,False,False,100
+Unimox,Amoxicillin Trihydrate,Capsule,Gaco Pharmaceuticals Ltd.,Antibiotic,22.97,False,True,50
+Tyclav,Amoxicillin + Clavulanic Acid,IV Injection,Beximco Pharmaceuticals Ltd.,Antibiotic,9.72,False,True,100
+Dopen,Amoxicillin Trihydrate,Powder for Suspension,Hallmark Pharmaceuticals Ltd.,Antibiotic,30.35,False,True,50
+Amoxicon,Amoxicillin Trihydrate,Capsule,Medicon Pharmaceuticals Ltd.,Antibiotic,25.05,False,True,50
+Cpzith,Azithromycin Dihydrate,Tablet,Cosmo Pharma Ltd.,Antibiotic,28.47,False,True,50
+Zithrolex,Azithromycin Dihydrate,Tablet,Mystic Pharmaceuticals Ltd.,Antibiotic,17.57,False,True,50
+Accuzith,Azithromycin Dihydrate,Tablet,DBL Pharmaceuticals Ltd.,Antibiotic,34.21,False,True,50
+Curazith,Azithromycin Dihydrate,Tablet,Synovia pharma plc,Antibiotic,32.11,False,True,50
+Hiflox,Ciprofloxacin,Tablet,Ambee Pharmaceuticals Ltd.,Antibiotic,29.02,False,True,50
+Floxabid,Ciprofloxacin,IV Infusion,ACI Limited,Antibiotic,13.26,False,True,50
+Cipronil,Ciprofloxacin,Tablet,Silva Pharmaceuticals Ltd.,Antibiotic,20.6,False,True,50
+Ciprocin,Ciprofloxacin (Ophthalmic),Ophthalmic Solution,Square Pharmaceuticals Ltd.,Antibiotic,9.18,False,True,100
+Doxicline,Doxycycline Hydrochloride,Capsule,Ziska Pharmaceuticals Ltd.,Antibiotic,12.17,False,True,50
+Doxipan,Doxycycline Hydrochloride,Capsule,Salton Pharmaceuticals Ltd.,Antibiotic,26.44,False,True,50
+Unidox,Doxycycline Hydrochloride,Capsule,Globe Pharmaceuticals Ltd.,Antibiotic,28.11,False,True,50
+Doxicap,Doxycycline Hydrochloride,Capsule,Renata Limited,Antibiotic,34.12,False,True,50
+Winner,Ceftriaxone Sodium,IV Injection,Biopharma Laboratories Ltd.,Antibiotic,16.8,False,True,50
+Cefixon,Ceftriaxone Sodium,IV Injection,Techno Drugs Ltd.,Antibiotic,18.0,False,True,50
+Aciphin,Ceftriaxone Sodium,IV Injection,ACI Limited,Antibiotic,20.68,False,True,50
+Exephin,Ceftriaxone Sodium,IM Injection,Incepta Pharmaceuticals Ltd.,Antibiotic,13.12,False,True,50
+Esoprol,Esomeprazole,IV Injection,Ziska Pharmaceuticals Ltd.,Antacid/PPI,7.6,False,False,100
+Omaprin,Omeprazole,Capsule (Delayed Release),Doctor’s Chemical Works Ltd.,Antacid/PPI,14.51,False,False,50
+Ema,Esomeprazole,Capsule (Delayed Release),Globe Pharmaceuticals Ltd.,Antacid/PPI,9.54,False,False,100
+Esonix,Esomeprazole,IV Injection,Incepta Pharmaceuticals Ltd.,Antacid/PPI,18.4,False,False,50
+Nameso,Naproxen Sodium + Esomeprazole Magnesium,Tablet (Delayed Release),Opsonin Pharma Ltd.,Antacid/PPI,13.74,False,False,50
+Esotor,Esomeprazole,Tablet (Enteric Coated),NIPRO JMI Pharma Ltd.,Antacid/PPI,21.65,False,False,50
+Esotac,Esomeprazole,Tablet (Enteric Coated),Navana Pharmaceuticals Ltd.,Antacid/PPI,19.01,False,False,50
+Emep,Esomeprazole,IV Injection,Aristopharma Ltd.,Antacid/PPI,11.25,False,False,50
+Proton-P,Pantoprazole Sodium Sesquihydrate,Tablet (Enteric Coated),Aristopharma Ltd.,Antacid/PPI,21.65,False,False,50
+Panoz,Pantoprazole Sodium Sesquihydrate,Tablet (Enteric Coated),Astra Biopharmaceuticals Ltd.,Antacid/PPI,21.1,False,False,50
+Protozin,Pantoprazole Sodium Sesquihydrate,Tablet (Enteric Coated),Euro Pharma Ltd.,Antacid/PPI,12.75,False,False,50
+Ranison,Ranitidine Hydrochloride,IM/IV Injection,Jayson Pharmaceuticals Ltd.,Antacid/PPI,10.77,False,False,50
+Ranit,Ranitidine Hydrochloride,Tablet,Pharmadesh Laboratories Ltd.,Antacid/PPI,18.65,False,False,50
+Ranitor,Ranitidine Hydrochloride,Tablet,Popular Pharmaceuticals Ltd.,Antacid/PPI,7.8,False,False,100
+Resectin,Ranitidine Hydrochloride,Tablet,Jenphar Bangladesh Ltd.,Antacid/PPI,9.0,False,False,100
+Vave,Domperidone Maleate,Pediatric Drops,ACI Limited,Antacid/PPI,5.15,False,False,100
+Deflux,Domperidone Maleate,Oral Suspension,Beximco Pharmaceuticals Ltd.,Antacid/PPI,20.74,False,False,50
+Dedom,Domperidone Maleate,Tablet,Decent Pharma Laboratories Ltd.,Antacid/PPI,18.3,False,False,50
+Normogut,Domperidone Maleate,Oral Suspension,Rangs Pharmaceuticals Ltd.,Antacid/PPI,19.1,False,False,50
+Empazin M,Empagliflozin + Metformin Hydrochloride,Tablet,Delta Pharma Ltd.,Antidiabetic,16.27,False,True,50
+Verimet,Metformin Hydrochloride,Tablet,Veritas Pharmaceuticals Ltd.,Antidiabetic,10.8,False,True,50
+Sigtil M,Sitagliptin + Metformin Hydrochloride,Tablet,The White Horse Pharma,Antidiabetic,12.67,False,True,50
+Linatab M,Linagliptin + Metformin Hydrochloride,Tablet,Incepta Pharmaceuticals Ltd.,Antidiabetic,5.38,False,True,100
+Losucon,Glimepiride,Tablet,Incepta Pharmaceuticals Ltd.,Antidiabetic,4.95,False,True,100
+Limpet,Glimepiride,Tablet,Drug International Ltd.,Antidiabetic,14.36,False,True,50
+Losucon M,Glimepiride + Metformin,Tablet (Extended Release),Incepta Pharmaceuticals Ltd.,Antidiabetic,11.01,False,True,50
+Glutim,Glimepiride,Tablet,Techno Drugs Ltd.,Antidiabetic,12.61,False,True,50
+Diasulin R,Insulin Human [Fast-Acting],SC Injection,ACI Limited,Antidiabetic,16.0,True,True,50
+Actrapid,Insulin Human [Fast-Acting],SC Injection,Eskayef Pharmaceuticals Ltd.,Antidiabetic,13.79,True,True,50
+Diasulin N,Insulin Human [Long-Acting],SC Injection,ACI Limited,Antidiabetic,12.41,True,True,50
+Maxsulin N,Insulin Human [Long-Acting],SC Injection,Incepta Pharmaceuticals Ltd.,Antidiabetic,12.51,True,True,50
+Lopoten,Losartan Potassium,Tablet,Euro Pharma Ltd.,Antihypertensive,8.26,False,True,100
+Angilock Plus,Losartan Potassium + Hydrochlorothiazide,Tablet,Square Pharmaceuticals Ltd.,Antihypertensive,4.43,False,True,100
+Repace H,Losartan Potassium + Hydrochlorothiazide,Tablet,Sun Pharmaceutical Ltd.,Antihypertensive,10.11,False,True,50
+Losacard HZ,Losartan Potassium + Hydrochlorothiazide,Tablet,Novo Healthcare and Pharma Ltd.,Antihypertensive,7.0,False,True,100
+Telpro Max,Amlodipine Besilate + Telmisartan,Tablet,Renata Limited,Antihypertensive,9.72,False,True,100
+Lovask,Amlodipine Besilate,Tablet,Beacon Pharmaceuticals Ltd.,Antihypertensive,15.95,False,True,50
+Cardotel,Amlodipine Besilate + Telmisartan,Tablet,Pharmasia Limited,Antihypertensive,7.28,False,True,100
+SB-Amlod,Amlodipine Besilate,Tablet,Sunman-Birdem Pharma Ltd.,Antihypertensive,4.82,False,True,100
+Atova,Atorvastatin Calcium,Tablet,Beximco Pharmaceuticals Ltd.,Antihypertensive,7.94,False,True,100
+Atomax,Atorvastatin Calcium,Tablet,Al-Madina Pharmaceuticals Ltd.,Antihypertensive,8.11,False,True,100
+Avas,Atorvastatin Calcium,Tablet,Opsonin Pharma Ltd.,Antihypertensive,13.27,False,True,50
+Atova EZ,Atorvastatin + Ezetimibe,Tablet,Beximco Pharmaceuticals Ltd.,Antihypertensive,11.8,False,True,50
+Alermet,Cetirizine Hydrochloride,Tablet,Orbit Pharmaceuticals Ltd.,Antihistamine/Cold,9.84,False,False,100
+Cetriz,Cetirizine Hydrochloride,Tablet,Astra Biopharmaceuticals Ltd.,Antihistamine/Cold,8.64,False,False,100
+Acitrin-L,Levocetirizine Dihydrochloride,Oral Solution,ACI Limited,Antihistamine/Cold,6.06,False,False,100
+Sytrol,Cetirizine Hydrochloride,Tablet,MST Pharma,Antihistamine/Cold,10.14,False,False,50
+M-Kast,Montelukast Sodium,Chewable Tablet,Drug International Ltd.,Antihistamine/Cold,3.67,False,False,100
+Antaluk,Montelukast Sodium,Tablet,United Pharmaceuticals Ltd.,Antihistamine/Cold,2.23,False,False,100
+Croma,Montelukast Sodium,Tablet,Sharif Pharmaceuticals Ltd.,Antihistamine/Cold,2.9,False,False,100
+M-lucas,Montelukast Sodium,Chewable Tablet,Popular Pharmaceuticals Ltd.,Antihistamine/Cold,9.22,False,False,100
+Respolin,Salbutamol,Syrup,Jayson Pharmaceuticals Ltd.,Antihistamine/Cold,6.62,False,False,100
+Purilin,Levosalbutamol (Oral),Tablet,Opsonin Pharma Ltd.,Antihistamine/Cold,3.61,False,False,100
+Salbutex,Salbutamol,Tablet,Premier Pharmaceuticals Ltd.,Antihistamine/Cold,7.01,False,False,100
+Azmasol,Salbutamol (Inhaler),Inhaler,Beximco Pharmaceuticals Ltd.,Antihistamine/Cold,3.52,False,False,100
+Agedefy,Betacarotene + Vitamin C + Vitamin E,Tablet,Medimet Pharmaceuticals Ltd.,Vitamins/Supplements,11.05,False,False,50
+Restovit Plus,Vitamin B complex + Vitamin C,Capsule,Zenith Pharmaceuticals Ltd.,Vitamins/Supplements,7.8,False,False,100
+Carocet,Betacarotene + Vitamin C + Vitamin E,Tablet,Beximco Pharmaceuticals Ltd.,Vitamins/Supplements,6.95,False,False,100
+Prenat-XL,Carbonyl Iron + Folic Acid + Zinc Sulfate + Vitamin B Complex + Vitamin C,Capsule,Healthcare Pharmaceuticals Ltd.,Vitamins/Supplements,5.92,False,False,100
+Orabex,Vitamin B complex,Tablet,Jayson Pharmaceuticals Ltd.,Vitamins/Supplements,10.19,False,False,50
+Bionic,"Vitamin B1, B6 & B12",IM Injection,Pharmasia Limited,Vitamins/Supplements,6.7,False,False,100
+Lysovita,Vitamin B complex,Capsule,Desh Pharmaceuticals Ltd.,Vitamins/Supplements,3.14,False,False,100
+Comvit-B,Vitamin B complex,Syrup,Mystic Pharmaceuticals Ltd.,Vitamins/Supplements,3.53,False,False,100
+Cadmin,Calcium Carbonate [Elemental source] + Vitamin D3,Tablet,General Pharmaceuticals Ltd.,Vitamins/Supplements,14.5,False,False,50
+Ostogen D,Calcium Carbonate [Elemental source] + Vitamin D3,Tablet,Opsonin Pharma Ltd.,Vitamins/Supplements,13.81,False,False,50
+Peocal D,Calcium Carbonate [Elemental source] + Vitamin D3,Tablet,Peoples Pharma Ltd.,Vitamins/Supplements,11.1,False,False,50
+Carmo D,Calcium Carbonate [Elemental source] + Vitamin D3,Tablet,S.N. Pharmaceutical Ltd.,Vitamins/Supplements,5.46,False,False,100
+Natal-16,Multivitamin & Multimineral [For nursing mother],Tablet,Opsonin Pharma Ltd.,Vitamins/Supplements,14.6,False,False,50
+Codlivit,Multivitamin & Cod Liver Oil,Syrup,Silva Pharmaceuticals Ltd.,Vitamins/Supplements,12.12,False,False,50
+Tynisol,Multivitamin [Pediatric preparation],Pediatric Drops,Beximco Pharmaceuticals Ltd.,Vitamins/Supplements,11.32,False,False,50
+Vita-Silver,Multivitamin & Multimineral [A-Z silver preparation],Tablet,Edruc Limited,Vitamins/Supplements,7.84,False,False,100
+Amodis,Metronidazole,Tablet,Square Pharmaceuticals Ltd.,Antiparasitic,4.91,False,False,100
+Metryl,Metronidazole,Tablet,Opsonin Pharma Ltd.,Antiparasitic,3.67,False,False,100
+Metsina,Metronidazole,IV Infusion,Ibn Sina Pharmaceuticals Ltd.,Antiparasitic,9.32,False,False,100
+Melagyl,Metronidazole,Oral Suspension,Reliance Pharmaceuticals Ltd.,Antiparasitic,6.19,False,False,100

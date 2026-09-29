@@ -50,24 +50,35 @@ import predict as service  # noqa: E402
 
 from .routes import router  # noqa: E402
 from .app_routes import router as app_router  # noqa: E402
+from .auth_routes import router as auth_router  # noqa: E402
 from .commerce_routes import router as commerce_router  # noqa: E402
 from .directory_routes import router as directory_router  # noqa: E402
 from .finance_routes import router as finance_router  # noqa: E402
 from .data_import_routes import router as data_import_router  # noqa: E402
 from .analytics_routes import router as analytics_router  # noqa: E402
+from .bsmart_routes import router as bsmart_router  # noqa: E402
+from .audit_routes import router as audit_router  # noqa: E402
+from .batch_routes import router as batch_router  # noqa: E402
+from .insights_routes import router as insights_router  # noqa: E402
+from .bulk_import_routes import router as bulk_import_router  # noqa: E402
+from .planning_routes import router as planning_router  # noqa: E402
+from .receivables_routes import router as receivables_router  # noqa: E402
 from .database import create_schema  # noqa: E402
 from .schemas import Health  # noqa: E402
 
 app = FastAPI(
     title="AI-Powered Business Analytics API",
     description=(
-        "Customer segmentation, churn and return prediction, sales forecasting "
-        "and per-customer SHAP explanations for Bangladeshi retail data.\n\n"
-        "**Note on reported accuracy.** The segment model scores 67.07%, not the "
-        "94.69% an earlier version of this project reported. The higher figure came "
-        "from data leakage (customer-level labels split at transaction level, plus a "
-        "CLV feature that nearly determined the label). See `/api/models/metrics` "
-        "for the full ablation."
+        "B-SMART: constraint-aware strategy recommendation for Bangladeshi retail "
+        "pharmacy SMEs, plus the supporting analytics (demand forecasting, customer "
+        "inactivity risk, RFM segmentation) it consumes.\n\n"
+        "**Note on reported accuracy.** The segment model scores ~51% leak-free "
+        "against a 35.2% majority baseline, not the 85.27% a transaction-level split "
+        "with a CLV feature reports. That gap is data leakage, and it is published "
+        "rather than hidden — see `/api/models/metrics` for the full ablation.\n\n"
+        "**Architecture.** See `docs/BSMART_ARCHITECTURE.md`. Layer 5 (Algorithm 1) "
+        "is served read-only at `/api/research/bsmart/latest`; layers 9 and 10 "
+        "(owner decision, outcome and monitoring) live under `/api/app/bsmart/*`."
     ),
     version="2.0.0",
 )
@@ -86,12 +97,20 @@ app.add_middleware(
 )
 
 app.include_router(router)
+app.include_router(auth_router)
 app.include_router(app_router)
 app.include_router(commerce_router)
 app.include_router(directory_router)
 app.include_router(finance_router)
 app.include_router(data_import_router)
 app.include_router(analytics_router)
+app.include_router(bsmart_router)
+app.include_router(audit_router)
+app.include_router(batch_router)
+app.include_router(insights_router)
+app.include_router(bulk_import_router)
+app.include_router(planning_router)
+app.include_router(receivables_router)
 
 
 @app.on_event("startup")

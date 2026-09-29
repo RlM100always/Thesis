@@ -1,7 +1,15 @@
-# AI-Powered Business Analytics System for Bangladeshi Businesses
+# AI-Powered Business Analytics System for Bangladeshi Pharmacy SMEs
+
+> **Revised research scope (8 September 2026):** the initial implementation and
+> empirical validation target **multiple Bangladeshi retail pharmacies**, not
+> every SME category. B-SMART remains an extensible SME framework, but grocery,
+> fashion, electronics and other verticals are future work that require their
+> own data, constraints and validation. The authoritative scope, supervisor
+> sketch interpretation, presentation diagram and implementation roadmap are in
+> [the pharmacy vertical guideline](docs/PHARMACY_VERTICAL_SCOPE_AND_SUPERVISOR_GUIDELINE.md).
 
 > Current product status: the local, no-Google-auth thesis MVP now covers the
-> operational retail loop (catalogue → purchase/stock → sale/return → accounts),
+> operational pharmacy-retail loop (catalogue → purchase/stock → sale/return → accounts),
 > tenant-scoped dashboards, real-data import/training, and transparent action
 > ranking. See [the feature status](docs/FEATURE_STATUS.md) for exact boundaries.
 
@@ -20,7 +28,7 @@ synthetic comparison only.
 | Real transaction-method validation | [UCI Online Retail II](https://archive.ics.uci.edu/dataset/502/online+retail+ii), DOI `10.24432/C5CG6D` | UK invoices, dates, quantities, prices, SKUs and customer IDs | Daily demand and 90-day future-repeat validation; not evidence of Bangladeshi behaviour |
 | Real Bangladesh price evidence | [WFP Food Prices for Bangladesh](https://data.humdata.org/dataset/wfp-food-prices-for-bangladesh) | Observed market prices compiled with Bangladesh DAM/FAO sources | Commodity-price forecasting and market context; not SME sales |
 | National adoption context | [World Bank Bangladesh FAT Survey 2019](https://microdata.worldbank.org/catalog/8221), DOI `10.48529/hgry-h633` | National firm technology-adoption survey | Context only; not a prediction-training dataset here |
-| Controlled baseline | `BD_Business_Analytics_Dataset.csv` from `01_generate_dataset.py` | Nothing collected from a real firm; all rows are generated | Software tests, leakage study, model comparison and scalability |
+| Controlled baseline | `BD_Pharmacy_Dataset.csv` from `01_generate_dataset.py` | Nothing collected from a real firm; all rows are generated | Software tests, leakage study, model comparison and scalability |
 
 The comparable experiment maps only genuinely observed fields to a common daily
 quantity target and includes the generated file strictly as a control. Model
@@ -75,11 +83,11 @@ Current rerun commands (Python 3.12 environment):
 .\.venv312\Scripts\python.exe verify_references.py
 ```
 
-Primary consenting Bangladesh SME invoice data are still not collected. That is
+Primary consenting Bangladesh pharmacy invoice and inventory data are still not collected. That is
 the remaining requirement before making field-effectiveness or multi-business
 generalization claims.
 
-CSE 4th Year Thesis — an end-to-end machine learning pipeline that turns raw retail
+CSE 4th Year Thesis — an end-to-end machine learning pipeline that turns raw pharmacy-retail
 transaction records into decisions a business owner can actually act on: *who* the
 valuable customers are, *why* the model thinks so, and *what* next quarter's sales
 look like.
@@ -130,7 +138,7 @@ labels match the structure actually in the data.
 
 ## 3. The data
 
-`BD_Business_Analytics_Dataset.csv` — 32,000 transactions, 44 columns, synthetically
+`BD_Pharmacy_Dataset.csv` — 32,000 transactions, 44 columns, synthetically
 generated (Faker) but modelled on Bangladeshi business conditions:
 
 - **Geography** — all 8 divisions and their districts
@@ -147,7 +155,7 @@ status, returns) · behaviour (purchase frequency, recency, CLV) · marketing
 
 This synthetic dataset is retained only as a reproducible demo, leakage case study,
 and scalability fixture. Primary thesis evidence must come from consenting real
-Bangladeshi retail SMEs under `docs/REAL_DATA_PROTOCOL.md`; synthetic and real
+Bangladeshi retail pharmacies under `docs/REAL_DATA_PROTOCOL.md`; synthetic and real
 results are stored and reported separately.
 
 ---
@@ -158,7 +166,7 @@ Seven sequential stages. Each writes artifacts to `output/`; each stage reads on
 what the previous ones produced. No hidden state, no notebook execution-order traps.
 
 ```
-BD_Business_Analytics_Dataset.csv          (32,000 × 44, flat)
+BD_Pharmacy_Dataset.csv          (32,000 × 44, flat)
         │
         ▼
 ┌──────────────────────────────────────────────────────────┐
@@ -376,7 +384,7 @@ SHAP waterfall.
 
 Two exceptions are deliberately **tracked**:
 
-- `BD_Business_Analytics_Dataset.csv` (11 MB) — the source everything derives from.
+- `BD_Pharmacy_Dataset.csv` (11 MB) — the source everything derives from.
   Without it nothing reproduces.
 - `output/figures/*.png` (~1.2 MB) — cited in Chapter 4, so they are deliverables.
 
@@ -528,7 +536,8 @@ around the forecast rather than last month's sales.
   accuracy figures should be read as evidence the pipeline works, not as field results.
 - Forecasting operates on monthly aggregates, which gives the LSTM a short series.
   Daily or weekly aggregation would give deep learning more to work with.
-- Next steps: validate on real partner-business data, serve the models behind an API
+- Next steps: validate on multi-pharmacy partner data, build the pooled pharmacy
+  model and complete the constraint/feedback lifecycle
   with a dashboard, and add per-customer SHAP explanations at prediction time rather
   than only global summaries.
 
@@ -651,8 +660,8 @@ SHAP বিশ্লেষণ দেখাচ্ছে **কাস্টমা�
 **অ্যালগরিদম:** `drop_duplicates()` দিয়ে ইউনিক রেকর্ড বের করা, তারপর সারোগেট কী
 বসিয়ে `merge()` দিয়ে ফরেন কী ম্যাপিং।
 
-**ইনপুট:** `BD_Business_Analytics_Dataset.csv`
-**আউটপুট:** `normalized_data/`-এ ৭টা CSV + `output/BD_Business_Analytics_Dataset_Merged.csv`
+**ইনপুট:** `BD_Pharmacy_Dataset.csv`
+**আউটপুট:** `normalized_data/`-এ ৭টা CSV + `output/BD_Pharmacy_Dataset_Merged.csv`
 
 **কেন আবার জোড়া লাগালাম:** ML মডেল একটা চওড়া (wide) টেবিল চায়, আলাদা টেবিল না।
 তাই নরমালাইজেশনটা ডেটাবেজ ডিজাইন দেখানোর জন্য, আর জোড়া লাগানোটা ML-এর জন্য।
@@ -1277,7 +1286,7 @@ cd frontend && npm install && npm run dev
 
 **যা ইচ্ছাকৃতভাবে git-এ রাখা হয়েছে:**
 
-- `BD_Business_Analytics_Dataset.csv` (১১ MB) — **মূল ডেটাসেট**। বাকি সবকিছু এটা
+- `BD_Pharmacy_Dataset.csv` (১১ MB) — **মূল ডেটাসেট**। বাকি সবকিছু এটা
   থেকে তৈরি, তাই এটা না থাকলে কিছুই পুনরুৎপাদন করা যাবে না।
 - `output/figures/*.png` (~১.২ MB) — থিসিসের চতুর্থ অধ্যায়ে এই গ্রাফগুলোই বসবে,
   তাই এগুলো ফেলে দেওয়ার জিনিস নয়, ডেলিভারেবল।

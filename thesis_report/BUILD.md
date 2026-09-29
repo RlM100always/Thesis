@@ -5,6 +5,11 @@ initial submission completes Introduction, Background Study and Related Work,
 Proposed Methodology, and a current-stage Conclusion. Implementation and
 Experimental Results remain heading-only placeholders.
 
+> Scope note dated 8 September 2026: the report now uses Bangladeshi retail
+> pharmacies as its initial empirical vertical and incorporates the
+> supervisor-guided, shop-constraint-aware architecture recorded in
+> `../docs/PHARMACY_VERTICAL_SCOPE_AND_SUPERVISOR_GUIDELINE.md`.
+
 ## Tectonic (portable, recommended)
 
 From `thesis_report/`:
@@ -19,10 +24,11 @@ Tectonic resolves the bibliography and repeated references automatically.
 
 ## Overleaf or Prism
 
-Upload the supplied source ZIP as a new project. Set `main.tex` as the main
-document and use pdfLaTeX or XeLaTeX. The archive contains the class file,
-bibliography, chapter sources and the required logo; generated auxiliary files
-and unused experimental images are intentionally excluded.
+Upload `../Thesis_LaTeX_Minimal_Overleaf.zip` as a new project and set
+`main.tex` as the main document. The minimal archive contains only the complete,
+self-contained `main.tex` and the required `logo.pdf`; chapter text, template
+definitions and the resolved bibliography are already embedded in `main.tex`.
+Use pdfLaTeX or XeLaTeX.
 
 ## TeX Live or MiKTeX
 

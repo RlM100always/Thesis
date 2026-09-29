@@ -1,7 +1,13 @@
-# B-SMART UI/UX পুনর্নির্মাণ পরিকল্পনা
+# B-SMART pharmacy UI/UX পুনর্নির্মাণ পরিকল্পনা
 
 কোড পড়ে (অনুমান না) পাওয়া সমস্যা, তার কারণ, এবং একটা world-class,
 বাংলা-প্রথম, বাংলাদেশি SME-কেন্দ্রিক সিস্টেমে রূপান্তরের পূর্ণাঙ্গ পরিকল্পনা।
+
+**Revised scope:** প্রথম validated user group হলো retail pharmacy owner ও
+manager। Generic retail UI foundation রাখা হবে, কিন্তু constraint settings-এ
+budget, storage, supplier lead time, MOQ/pack size, batch, expiry এবং cold-chain
+field যোগ হবে। বিস্তারিত source of truth:
+[PHARMACY_VERTICAL_SCOPE_AND_SUPERVISOR_GUIDELINE.md](PHARMACY_VERTICAL_SCOPE_AND_SUPERVISOR_GUIDELINE.md)।
 
 ---
 
@@ -221,11 +227,12 @@ mockup আছে — success/error state, ConfidenceBadge, Bangla-only labels,
 
 ---
 
-## ৬. Backend–Frontend–Dataset ডায়নামিক সংযোগ — "যেকোনো ব্যবসার জন্য পূর্ণ সমাধান"
+## ৬. Backend–Frontend–Dataset ডায়নামিক সংযোগ — pharmacy-specific solution
 
-আপনার মূল চাওয়া: *"যেকোনো ডেটাসেট বা যেকোনো বিজনেস ওনার এখান থেকে তার real
-problem সমাধান করতে পারুক"*। এটা কাঠামোগতভাবে **ইতিমধ্যে সম্ভব** — শুধু UI
-সেই flow-টা স্পষ্ট করে দেখাচ্ছে না। প্রকৃত dynamic flow:
+Revised objective হলো প্রতিটি participating pharmacy owner-কে তার নিজস্ব data
+ও constraints অনুযায়ী recommendation দেওয়া। বর্তমান generic-retail flow
+foundation হিসেবে কাজ করে; full pharmacy flow **এখনো সম্পূর্ণ নয়**। Target
+dynamic flow:
 
 ```
 নতুন ব্যবসা মালিক
@@ -234,29 +241,26 @@ problem সমাধান করতে পারুক"*। এটা কাঠ
 [১] সাইন-আপ → Organization তৈরি (BusinessSetup.jsx → POST /api/app/organizations)
     │
     ▼
-[২] দৈনিক ব্যবহার শুরু → POS দিয়ে বিক্রি, স্টক, ক্রয় এন্ট্রি
+[২] দৈনিক ব্যবহার শুরু → POS দিয়ে বিক্রি, stock, batch/expiry ও purchase entry
     │  (এখান থেকেই তার নিজস্ব dataset ক্রমশ তৈরি হচ্ছে bsmart.db-তে)
     │
     ▼
-[৩] যথেষ্ট ইতিহাস জমলে (৯০+ দিন, ৫০০+ sales row)
-    → এক ক্লিকে "নিজের ডেটা দিয়ে AI ট্রেন করুন" বাটন
-    → export (/api/app/datasets/sales.csv) + train (ml/real_pipeline.py) —
-      এখন এটা ম্যানুয়াল CLI স্টেপ, UI বাটন বানানো দরকার (§৭ দেখুন)
+[৩] যথেষ্ট multi-pharmacy history জমলে
+    → baseline, pooled pharmacy model ও eligible shop adaptation compare
     │
     ▼
-[৪] তার নিজের ট্রেইন করা মডেল স্বয়ংক্রিয়ভাবে
-    /api/app/recommendations-এ ব্যবহার শুরু হয় (এটা ইতিমধ্যে কাজ করে —
-    আজকের সেশনে টেস্ট করা হয়েছে)
+[৪] owner-entered budget, storage, MOQ, lead-time, expiry ও consent constraint
+    prediction-এর ওপর apply হয়
     │
     ▼
-[৫] AI-চালিত পূর্ণ সমাধান: reorder পরিমাণ, কাস্টমার ঝুঁকি,
-    anomaly সতর্কতা — সবই তার নিজস্ব ব্যবসার real ডেটা থেকে
+[৫] pharmacy-specific action: reorder, stock-out/overstock, near-expiry,
+    consent-safe retention এবং anomaly investigation
+[৬] owner accept/reject/defer ও outcome record → monitoring → validated retraining
 ```
 
-**এই flow-টা technically সম্পূর্ণ**, কিন্তু ধাপ ৩-এর "নিজের ডেটা দিয়ে
-ট্রেন করুন" অংশটা এখনো UI-তে বাটন হিসেবে নেই — CLAUDE.md-এ লেখা আছে এটা
-"manual export → train step"। এটাই dynamic হওয়ার একমাত্র বাকি কাঠামোগত
-গ্যাপ, ফিচার-ভিত্তিক না।
+বর্তমানে organization-specific demand training button ও recommendation serving
+আছে। Pooled pharmacy model, pharmacy constraint form, expiry-aware action,
+persistent feedback এবং monitored model promotion এখনো implement করতে হবে।
 
 ---
 

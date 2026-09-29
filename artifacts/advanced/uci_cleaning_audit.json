@@ -1,0 +1,20 @@
+{
+  "source_rows": 1067371,
+  "exact_duplicates_removed": 34337,
+  "cancelled_lines": 19104,
+  "negative_quantity_lines": 22496,
+  "zero_quantity_lines": 0,
+  "invalid_price_lines": 5,
+  "missing_date": 0,
+  "missing_sku": 0,
+  "missing_customer_id": 235151,
+  "potential_impossible_quantity_lines": 131,
+  "bulk_threshold": "per-SKU 99.5th percentile, learned before 85% time cutoff",
+  "impossible_flag_threshold_global_dev_q9999": 3194.8550000009127,
+  "development_threshold_cutoff": "2011-08-20 19:16:15",
+  "currency": "GBP as supplied by UCI; no conversion performed",
+  "timezone": "UTC-normalized naive source timestamps",
+  "clean_rows_retained": 1033029,
+  "date_from": "2009-12-01",
+  "date_to": "2011-12-09"
+}

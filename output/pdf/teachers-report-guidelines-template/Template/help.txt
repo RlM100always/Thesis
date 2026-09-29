@@ -1,0 +1,17 @@
+Follow the following instruction to use the template smoothly.
+
+1. Edit title.tex according to your need.
+2. Edit preamble.tex. Just comment out the contents those you are not interested to add in your report.
+3. Edit declaration, funny quote, abstract, acknowledgement, abbreviation, constants, symbols, dedication etc whatever you need to complete your report. 
+4. Add contents in the main 6 chapters named introduction, artoftheworks, proposedMethod, implementations, experimentalResults and conclusion.
+5. Edit appendix sources in main.tex to add appendices.
+6. Add your references through Bibliography.bib file. some samples are given in the file. 
+7. Keep all of your graphics in the Figures/ folder.
+8. Have fun with the template changing according to your further need in the Thesis.cls file.
+
+
+
+For further clarification, you can contact anyone you believe that can help you.
+It will be appreciated if you modify the template for betterment and share with others. 
+
+

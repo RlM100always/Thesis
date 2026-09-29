@@ -22,6 +22,7 @@ import pandas as pd
 from ml.serving import predict_daily_rates
 
 from .auth import CurrentMembership
+from .permissions import require_permission
 from .canonical_sales import canonical_sales_frame
 from .database import get_db
 from .domain_models import (
@@ -43,6 +44,7 @@ def operational_dashboard(
     membership: CurrentMembership, db: Db,
     branch_id: str | None = None, days: int = Query(default=30, ge=7, le=365),
 ):
+    require_permission(membership, "dashboard:read")
     org_id = membership.organization_id
     now = datetime.now(timezone.utc)
     start = now - timedelta(days=days)
@@ -65,6 +67,10 @@ def operational_dashboard(
         func.coalesce(func.sum(SalesOrderItem.unit_cost_at_sale * SalesOrderItem.quantity), 0),
     ).join(SalesOrder, SalesOrder.id == SalesOrderItem.order_id).where(*sales_filters)
     revenue_lines, cost = db.execute(item_statement).one()
+    # A product sold without a recorded cost would otherwise look 100% profit. Report
+    # the profit on lines whose cost IS known, and how much of the revenue that covers.
+    known_revenue, known_cost = db.execute(item_statement.where(SalesOrderItem.unit_cost_at_sale > 0)).one()
+    cost_coverage = float(known_revenue) / float(revenue_lines) if revenue_lines else None
 
     inventory_filters = [Product.organization_id == org_id, Product.active.is_(True)]
     balance_join = (
@@ -102,6 +108,7 @@ def operational_dashboard(
         "sales": _money(sales_total), "net_sales": _money(sales_total - returns),
         "orders": sale_count, "average_order_value": _money(sales_total / sale_count if sale_count else 0),
         "gross_profit_before_expenses": _money(revenue_lines - cost - returns),
+        "gross_profit_known": _money(known_revenue - known_cost), "cost_coverage": cost_coverage,
         "expenses": _money(expenses),
         "estimated_operating_result": _money(revenue_lines - cost - returns - expenses),
         "returns": _money(returns), "stock_value_at_cost": _money(stock_value),
@@ -119,6 +126,7 @@ def recommendations(
     branch_id: str | None = None, top_k: int = Query(default=20, ge=1, le=100),
 ):
     """Rank feasible inventory, retention, and anomaly actions by transparent utility."""
+    require_permission(membership, "recommendations:read")
     org_id = membership.organization_id
     now = datetime.now(timezone.utc)
     history_start = now - timedelta(days=28)

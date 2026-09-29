@@ -14,15 +14,17 @@ applications. The owner may know that sales declined last month without knowing
 which products, customers or operating conditions caused the decline, whether
 the pattern is likely to continue, or which affordable action should be taken.
 
-The decision is more demanding than producing a dashboard. Before Ramadan or
-Eid, for example, a retailer must estimate demand early enough to order from a
-supplier. Ordering too little creates stock-outs and forgone sales; ordering too
-much immobilizes working capital and may create obsolete stock. At the same
-time, a previously valuable customer may be becoming inactive, a product may
-appear profitable only because costs were recorded incompletely, or a promotion
-may increase volume without increasing contribution. These questions draw on
-the same operational history but require different analytical tasks and a
-common decision context.
+The decision is more demanding than producing a dashboard. In a retail
+pharmacy, an owner must estimate product demand early enough to order from a
+supplier while respecting limited cash, storage, pack multiples and delivery
+time. Ordering too little creates stock-outs and forgone sales; ordering too
+much immobilizes working capital and may create near-expiry or expired stock.
+Batch, remaining shelf life and temperature-sensitive storage can change which
+otherwise attractive order is feasible. At the same time, a previously valuable
+customer may be becoming inactive, a product may appear profitable only because
+costs were recorded incompletely, or a promotion may increase volume without
+increasing contribution. These questions draw on the same operational history
+but require different analytical tasks and a common decision context.
 
 Retail forecasting research identifies hierarchy, intermittency, promotions,
 new products, changing assortment and the organizational use of forecasts as
@@ -35,11 +37,15 @@ therefore not to attach a fashionable model to a sales file. It is to construct
 a defensible path from business events to out-of-time predictions and then from
 predictions to feasible, explainable actions.
 
-\section{Bangladesh SME Context}
+\section{Bangladesh Pharmacy SME Context}
 
-The intended setting is an inventory-holding retail SME in Bangladesh. This
-scope is narrower than the approved thesis title, but it makes the business
-entities, prediction units and decisions testable. Bangladesh-specific studies
+The initial implementation and empirical setting is an inventory-holding retail
+pharmacy in Bangladesh. Multiple consenting pharmacies form one comparable
+vertical for model development and evaluation. The framework may later be
+adapted to grocery, fashion, electronics or other SME categories, but those
+extensions require separate data, constraints and validation. This scope is
+narrower than the approved thesis title, but it makes the business entities,
+prediction units and decisions testable. Bangladesh-specific studies
 show that ICT adoption in SMEs is shaped by perceived benefit, management and
 government support, cost, complexity and the surrounding organizational and
 technological conditions \cite{hoque2016ict,shahadat2023digital}. Research on
@@ -50,12 +56,14 @@ low-friction data entry and owner-readable explanations are design requirements,
 not optional presentation details.
 
 This study uses a functional definition of its population rather than relying
-on a regulatory size threshold that may change. A target business holds stock,
-records sales and purchases, makes branch- or product-level decisions, and has
-limited specialist analytics capacity. The unit of analysis may be a business,
-branch, stock-keeping unit (SKU), customer or historical customer snapshot,
-depending on the research question. Conclusions will be restricted to the
-participating firms and the evidence actually collected.
+on a regulatory size threshold that may change. A target pharmacy holds stock,
+records sales and purchases, makes branch-, product- or batch-level decisions,
+and has limited specialist analytics capacity. The unit of analysis may be a
+pharmacy, branch, stock-keeping unit (SKU), batch, customer or historical
+customer snapshot, depending on the research question. Conclusions will be
+restricted to the participating pharmacies and the evidence actually
+collected. The system supports business and inventory decisions only; diagnosis,
+prescription selection and dosage advice remain outside its scope.
 
 \section{Decision Environment and Stakeholder Requirements}
 
@@ -81,16 +89,16 @@ acts on an output and who bears the consequence of a poor decision.
 \small
 \caption{Stakeholder decisions and evidence requirements in the target setting.}
 \label{tab:stakeholder_requirements}
-\begin{tabularx}{\textwidth}{p{0.19\textwidth}p{0.27\textwidth}Y Y}
-\toprule
+\begin{tabularx}{\textwidth}{|p{0.19\textwidth}|p{0.27\textwidth}|Y|Y|}
+\hline
 \textbf{Role} & \textbf{Decision or responsibility} & \textbf{Evidence required} & \textbf{Design implication} \\
-\midrule
+\hline
 Owner or manager & Reorder, allocate cash, approve contact and accept or reject a recommendation & Current stock, expected demand, cost range, uncertainty and reason & Present a short feasible action with drill-down evidence and retain owner authority \\
 Sales or inventory staff & Record sales, returns, receipts and adjustments & Stable product keys, timestamps, quantities and correction history & Minimize duplicate entry; validate at import and preserve corrections \\
 Accounts function & Reconcile payments, expenses, receivables and margin inputs & Invoice-payment links, expense period and cost provenance & Separate cash movement, revenue and estimated profit; expose missing cost data \\
 Supplier or logistics contact & Confirm lead time, pack size, minimum order and incoming quantity & Dated purchase orders and receipt history & Treat lead time and order restrictions as constraints, not fixed universal constants \\
 Research and system team & Build, evaluate and monitor the artifact & Versioned datasets, cutoffs, code, parameters, metrics and audit events & Make every reported output reproducible from an immutable analytical snapshot \\
-\bottomrule
+\hline
 \end{tabularx}
 \end{table}
 
@@ -107,7 +115,7 @@ of credible evaluation.
 \section{Problem Statement}
 
 The central problem is the absence of a trustworthy and usable connection among
-three activities: recording SME operations, extracting predictive insight and
+three activities: recording pharmacy operations, extracting predictive insight and
 selecting a feasible business action. A transaction system can preserve orders
 and stock but still provide no forecast. A standalone model can report an
 accuracy score but still be unusable because its features would not exist at the
@@ -217,21 +225,23 @@ conditions instead of merging them into a single optimistic success label.
 \subsection{General Objective}
 
 The general objective is to design and evaluate an AI-powered business
-analytics framework that enables Bangladeshi retail SMEs to monitor performance,
-extract reliable and explainable insights, and prioritize feasible strategies.
+analytics framework that enables Bangladeshi retail pharmacies to monitor
+performance, extract reliable and explainable insights, and prioritize feasible
+strategies while retaining owner authority.
 
 \subsection{Specific Objectives}
 
 The study will:
 
 \begin{enumerate}[label=O\arabic*.]
-  \item define an auditable canonical data model for sales, products, stock,
-  purchases, returns, customers, suppliers, payments and expenses;
+  \item define an auditable pharmacy-oriented canonical data model for sales,
+  products, stock, batches, expiry, purchases, returns, customers, suppliers,
+  payments and expenses;
   \item construct reproducible, time-indexed preprocessing and feature pipelines
   for performance analysis, SKU demand, customer inactivity and segmentation;
-  \item compare simple, statistical and machine-learning approaches under
-  chronological or entity-safe validation, using both predictive and
-  decision-oriented measures;
+  \item compare transparent baselines, a pooled multi-pharmacy model and
+  eligible shop-adapted models under chronological and held-out-pharmacy
+  validation, using predictive and decision-oriented measures;
   \item quantify uncertainty and provide global and case-level supporting
   factors without presenting association as causation;
   \item formulate a constraint-aware mechanism for reorder, retention and
@@ -244,11 +254,15 @@ The study will:
 \section{Initial Solution Concept}
 
 The proposed solution is \system{}: the Bangladesh SME Monitoring, Analytics,
-Recommendation and Tracking framework. It is an end-to-end decision-support
-process rather than a new base classifier. Business events enter a governed
+Recommendation and Tracking framework. Its first validated vertical is retail
+pharmacy, while its architecture remains extensible to separately validated SME
+categories. It is an end-to-end decision-support process rather than a new base
+classifier. Pharmacy business events enter a governed
 operational layer; validated events are transformed into time-frozen analytical
-views; candidate models generate forecasts, risks and segment profiles; and a
-strategy layer removes infeasible actions before ranking the remainder. Each
+views; a transparent baseline, pooled pharmacy model and shop-adapted candidate
+are compared when the available evidence permits; the selected model generates
+forecasts, risks and segment profiles; and a strategy layer applies the active
+shop's owner-supplied constraints before ranking feasible actions. Each
 displayed action carries its data cutoff, model or baseline source, uncertainty
 and supporting factors. Owner response and later outcome are retained for
 evaluation and monitoring.
@@ -262,6 +276,37 @@ reorder quantity or retention priority, subject to cash, storage, lead time,
 minimum order quantity, current stock and contact consent. Chapter
 \ref{chapter_methodology} defines these components formally.
 
+Figure~\ref{fig:solution_scope} provides a compact scope map of this proposed
+decision-support path. It also makes explicit that governance and owner control
+are not optional add-ons: they constrain every stage from source records to
+subsequent learning.
+
+\begin{figure}[H]
+\centering
+\resizebox{\textwidth}{!}{%
+\begin{tikzpicture}[
+  stage/.style={draw=dugreen,rounded corners,fill=softgreen,text width=2.75cm,minimum height=1.35cm,align=center,font=\footnotesize},
+  guard/.style={draw=dugold,rounded corners,fill=softorange,text width=13.5cm,minimum height=0.9cm,align=center,font=\footnotesize},
+  flow/.style={-{Latex[length=2.2mm]},thick,draw=gray!75},
+  node distance=0.42cm
+]
+\node[stage] (records) {\textbf{Operational evidence}\\sales, stock, purchase, batch, customer};
+\node[stage,right=of records] (views) {\textbf{Historical views}\\validated KPIs and cutoff-safe features};
+\node[stage,right=of views] (insights) {\textbf{Analytical insight}\\demand, inactivity, segments, uncertainty};
+\node[stage,right=of insights] (decision) {\textbf{Owner decision}\\feasible ranked action and later outcome};
+\node[guard,below=1.35cm of $(views)!0.5!(insights)$] (guard) {Cross-cutting controls: pharmacy scope, provenance, privacy, leakage prevention, active constraints, explanation and audit trail};
+\draw[flow] (records) -- (views);
+\draw[flow] (views) -- (insights);
+\draw[flow] (insights) -- (decision);
+\draw[flow] (records.south) -- (records.south |- guard.north);
+\draw[flow] (views.south) -- (views.south |- guard.north);
+\draw[flow] (insights.south) -- (insights.south |- guard.north);
+\draw[flow] (decision.south) -- (decision.south |- guard.north);
+\end{tikzpicture}}
+\caption{Functional scope of \system{} from pharmacy evidence to an accountable owner decision.}
+\label{fig:solution_scope}
+\end{figure}
+
 \section{Research Questions}
 
 The thesis is guided by four questions:
@@ -269,7 +314,7 @@ The thesis is guided by four questions:
 \begin{description}[style=nextline,leftmargin=2em]
   \item[RQ1.] Do calendar, price, promotion and market-context features improve
   out-of-time branch--SKU demand forecasts over seasonal and statistical
-  baselines in the target SME setting?
+  baselines in the target pharmacy setting?
   \item[RQ2.] How accurately and reliably can a historical customer snapshot
   identify no repeat purchase during a fixed future horizon?
   \item[RQ3.] Under the same demand and operating constraints, does a
@@ -282,28 +327,33 @@ The thesis is guided by four questions:
 
 \section{Scope and Boundaries}
 
-The research covers retail and inventory-based SMEs, structured operational
-data, descriptive indicators, demand forecasting, customer inactivity,
-behavioral segmentation, explanation and two strategy families: replenishment
-and consent-aware customer retention. The initial geographical context is
-Bangladesh; an external dataset may test method portability but cannot establish
-Bangladeshi business behavior. Public price data may supply market context but
-cannot substitute for invoice-level evidence.
+The research covers Bangladeshi retail pharmacies, structured operational data,
+descriptive indicators, demand forecasting, customer inactivity, behavioral
+segmentation, explanation and pharmacy business strategies such as
+replenishment, stock-out review, overstock or near-expiry review and
+consent-aware customer retention. Participating pharmacies contribute only
+approved, de-identified research fields to cross-shop modelling; each deployed
+shop's raw records and constraint profile remain tenant-isolated. An external
+dataset may test method portability but cannot establish Bangladeshi pharmacy
+behavior. Public price data may supply market context but cannot substitute for
+invoice-, stock-, batch- and constraint-level evidence.
 
-The study excludes manufacturing scheduling, credit scoring, employee
-surveillance, fully autonomous price changes and unrestricted customer
-profiling. It does not claim causal effects from observational feature
-attributions. It will not treat generated data as field evidence, combine
-synthetic and real observations in a reported real-world score, or generalize
-from one retailer to all SMEs. Implementation detail, experimental results and
-final conclusions are deliberately reserved for Chapters
+The study excludes clinical diagnosis, prescription or dosage recommendation,
+manufacturing scheduling, credit scoring, employee surveillance, fully
+autonomous price changes and unrestricted customer profiling. It does not claim
+causal effects from observational feature attributions. It will not treat
+generated data as field evidence, combine synthetic and real observations in a
+reported real-world score, generalize from participating pharmacies to every
+pharmacy, or transfer results to another SME vertical without new validation.
+Implementation detail, experimental results and final conclusions are
+deliberately reserved for Chapters
 \ref{chapter_implementation}--\ref{chapter_conclusion}.
 
 \section{Expected Contributions and Significance}
 
 The expected research contribution is the evaluated integration of established
-methods under constraints that matter to small retailers. Specifically, the
-work is expected to provide: (i) a traceable operational-to-analytical data
+methods under constraints that matter to small retail pharmacies. Specifically, the
+  work is expected to provide: (i) a traceable pharmacy operational-to-analytical data
 design; (ii) reusable historical-snapshot protocols that prevent common forms
 of leakage; (iii) a Bangladesh-aware comparison of forecasting and customer
 analytics baselines; (iv) a transparent bridge from prediction to constrained
@@ -318,10 +368,12 @@ accurate output as profitable before business impact is measured.
 
 \section{Anticipated Challenges}
 
-The most consequential dependency is suitable primary data. The intended joint
-history of invoice lines, stock, products, prices and customers is difficult to
-obtain from a public Bangladesh source, and partner data may contain missing
-identifiers, changing SKU codes or incomplete cost records. Technical risks
+The most consequential dependency is suitable primary data from multiple
+consenting pharmacies. The intended joint history of invoice lines, stock,
+products, batches, expiry, prices and customers is difficult to obtain from a
+public Bangladesh source, and partner data may contain missing identifiers,
+changing SKU codes, inconsistent box--strip--piece units or incomplete cost and
+expiry records. Technical risks
 include intermittent demand, short histories, new products, stock-out censoring,
 class imbalance and drift. Scientific risks include target leakage, optimistic
 model selection, incompatible dataset comparisons and conclusions based on one
