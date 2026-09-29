@@ -10,6 +10,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from .accounting import Line, account_for_method, post_journal
+from .approvals import needs_approval, verify_override
 from .app_schemas import (
     InventoryView, ProductCreate, ProductUpdate, ProductView, SaleCreate, SaleDetailView,
     SaleLineView, SaleView, StockAdjustment,
@@ -238,6 +239,18 @@ def create_sale(payload: SaleCreate, membership: CurrentMembership, user: Curren
     paid = sum((p.amount for p in payload.payments), Decimal("0"))
     if paid > total:
         raise HTTPException(status_code=422, detail="Payments exceed sale total")
+
+    discount_override_pct = None
+    if subtotal > 0:
+        discount_pct = (discount_total / subtotal * 100).quantize(Decimal("0.1"))
+        rule = needs_approval(db, org_id, "discount_percent", discount_pct, membership.role)
+        if rule is not None:
+            if not verify_override(db, org_id, rule, payload.override_email, payload.override_password):
+                raise HTTPException(status_code=403, detail={
+                    "code": "discount_override_required", "discount_pct": float(discount_pct),
+                    "threshold": float(rule.threshold), "needs_role": rule.approver_role,
+                })
+            discount_override_pct = discount_pct
     if customer is not None and customer.credit_limit is not None and total > paid:
         owed = db.scalar(select(func.coalesce(func.sum(LedgerEntry.amount_delta), 0)).where(
             LedgerEntry.organization_id == org_id, LedgerEntry.ledger_type == "receivable",
@@ -338,6 +351,9 @@ def create_sale(payload: SaleCreate, membership: CurrentMembership, user: Curren
             organization_id=org_id, actor_user_id=user.id, action="sale.created",
             entity_type="sales_order", entity_id=order.id,
         ))
+        if discount_override_pct is not None:
+            record_audit(db, membership, "sale.discount_override", "sales_order", order.id,
+                         discount_pct=discount_override_pct, approver_email=payload.override_email)
         journal_lines = [
             Line(account_for_method(p.method), p.amount, ZERO) for p in payload.payments
         ]

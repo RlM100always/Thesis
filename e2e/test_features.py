@@ -5,7 +5,7 @@ from datetime import datetime, timedelta, timezone
 
 from playwright.sync_api import expect
 
-from .conftest import WEB, bn, call, in_days, sign_in
+from .conftest import PASSWORD, WEB, bn, call, in_days, sign_in
 from .test_panels import no_js_errors, seed_stock
 
 
@@ -420,3 +420,31 @@ def test_a_large_expense_waits_for_the_owner_and_shows_up_in_the_inbox(shop, new
     expect(page.get_by_text("অনুমোদন করা হয়েছে")).to_be_visible()
     expect(page.get_by_role("row", name=re.compile("৬,০০০|6,000|6000"))).to_be_hidden()   # no longer pending
     no_js_errors(owner_session)
+
+
+def test_a_cashier_needs_a_managers_password_for_a_big_discount(shop, new_session):
+    from .test_panels import invite
+    branch, product = seed_stock(shop)
+    manager_email = invite(shop, "manager")
+    cashier_email = invite(shop, "cashier")
+
+    s = new_session()
+    sign_in(s, cashier_email)
+    page = s.page
+    page.goto(f"{WEB}/#/sales")
+    page.get_by_placeholder("পণ্যের নাম, SKU বা বারকোড লিখুন…").fill("Napa")
+    page.get_by_role("button", name=re.compile("Napa")).first.click()
+    page.get_by_label(re.compile("Napa-এর ছাড়")).fill("10")   # ৳10 off a ৳15 line = 67% discount
+    page.get_by_role("button", name=re.compile("বিক্রি সম্পন্ন")).click()
+    expect(page.get_by_text("বড় ছাড়ের জন্য অনুমোদন লাগবে")).to_be_visible()
+
+    dialog = page.locator("dialog[open]")
+    dialog.get_by_label("অনুমোদনকারীর ইমেইল").fill(manager_email)
+    dialog.get_by_label("পাসওয়ার্ড").fill("wrong")
+    dialog.get_by_role("button", name="অনুমোদন করে বিক্রি সম্পন্ন করুন").click()
+    expect(page.get_by_text("মানানসই কর্মী পাওয়া যায়নি")).to_be_visible()
+
+    dialog.get_by_label("পাসওয়ার্ড").fill(PASSWORD)
+    dialog.get_by_role("button", name="অনুমোদন করে বিক্রি সম্পন্ন করুন").click()
+    expect(page.get_by_text("বিক্রি সম্পন্ন হয়েছে")).to_be_visible()
+    no_js_errors(s)

@@ -38,6 +38,16 @@ const read = (key, fallback) => { try { return JSON.parse(localStorage.getItem(k
 const write = (key, value) => { try { localStorage.setItem(key, JSON.stringify(value)); } catch { /* storage full or blocked */ } };
 const isOffline = (e) => e?.status === undefined;                 // no HTTP response at all
 const isAlreadySent = (e) => e?.status === 409 && /Invoice number already exists/i.test(e.message || "");
+// A structured discount-override error arrives as a JSON string in e.message
+// (see api.js's detailOf, which stringifies a non-string `detail`).
+const ROLE_LABEL_BN = { manager: "ম্যানেজার", owner: "মালিক" };
+function parseOverrideError(e) {
+  if (e?.status !== 403) return null;
+  try {
+    const body = JSON.parse(e.message);
+    return body?.code === "discount_override_required" ? body : null;
+  } catch { return null; }
+}
 
 const invoiceNumber = () => {
   const d = new Date();
@@ -66,6 +76,7 @@ export default function SalesPage() {
   const [received, setReceived] = useState(null); // null = "exactly the total"
   const [busy, setBusy] = useState(false);
   const [saleError, setSaleError] = useState("");
+  const [override, setOverride] = useState(null); // { payload, soldAt, info, email, password, error, busy }
   const [receipt, setReceipt] = useState(null);
   const queueKey = `pos.queue.${orgId}`;
   const cacheKey = `pos.cache.${orgId}.${branch}`;
@@ -237,6 +248,20 @@ export default function SalesPage() {
     && Number(customer.balance || 0) + totals.due > Number(customer.credit_limit));
   const canSell = cart.length > 0 && !busy && !needsCustomer && !overStock && !overLimit && cart.every((l) => Number(l.qty) > 0);
 
+  async function finishSale(payload, soldAt) {
+    const result = await api.createSale(orgId, payload);
+    setReceipt({
+      invoice: result.invoice_number, at: soldAt.toISOString(), lines: cart, total: Number(result.total),
+      paid: Number(result.paid), due: Number(result.due), change: totals.change, method,
+      customer: customers.find((c) => c.id === customerId),
+    });
+    setCart([]);
+    setReceived(null);
+    setCustomerId("");
+    setOverride(null);
+    load();
+  }
+
   async function sell() {
     setBusy(true);
     setSaleError("");
@@ -250,18 +275,12 @@ export default function SalesPage() {
       payments: totals.paid > 0 ? [{ method, amount: totals.paid.toFixed(2) }] : [],
     };
     try {
-      const result = await api.createSale(orgId, payload);
-      setReceipt({
-        invoice: result.invoice_number, at: soldAt.toISOString(), lines: cart, total: Number(result.total),
-        paid: Number(result.paid), due: Number(result.due), change: totals.change, method,
-        customer: customers.find((c) => c.id === customerId),
-      });
-      setCart([]);
-      setReceived(null);
-      setCustomerId("");
-      load();
+      await finishSale(payload, soldAt);
     } catch (e) {
-      if (isOffline(e)) {
+      const overrideNeeded = parseOverrideError(e);
+      if (overrideNeeded) {
+        setOverride({ payload, soldAt, info: overrideNeeded, email: "", password: "", error: "" });
+      } else if (isOffline(e)) {
         // Keep the bill on this device and carry on selling.
         const next = [...read(queueKey, []), { payload, at: soldAt.toISOString(), total: totals.total }];
         write(queueKey, next);
@@ -282,6 +301,16 @@ export default function SalesPage() {
       }
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function confirmOverride() {
+    setOverride((o) => ({ ...o, busy: true, error: "" }));
+    try {
+      await finishSale({ ...override.payload, override_email: override.email, override_password: override.password }, override.soldAt);
+    } catch (e) {
+      const stillNeeded = parseOverrideError(e);
+      setOverride((o) => ({ ...o, busy: false, error: stillNeeded ? "মানানসই কর্মী পাওয়া যায়নি — ইমেইল ও পাসওয়ার্ড আবার দেখুন।" : explain(e) }));
     }
   }
 
@@ -460,6 +489,24 @@ export default function SalesPage() {
           empty={<EmptyState icon="cart" title="এখনো কোনো বিক্রি নেই" hint="প্রথম বিক্রি করলে এখানে দেখা যাবে।" />}
         />
       </Card>
+
+      <Modal open={Boolean(override)} title="বড় ছাড়ের জন্য অনুমোদন লাগবে" onClose={() => setOverride(null)}
+             footer={<>
+               <Button variant="secondary" onClick={() => setOverride(null)}>বাতিল</Button>
+               <Button loading={override?.busy} disabled={!override?.email || !override?.password} onClick={confirmOverride}>অনুমোদন করে বিক্রি সম্পন্ন করুন</Button>
+             </>}>
+        {override && (
+          <div className="ui-form">
+            <Notice tone="warn">
+              এই বিলে {num(override.info.discount_pct)}% ছাড় দেওয়া হচ্ছে, যা {num(override.info.threshold)}%-এর সীমা ছাড়িয়ে যায়।
+              {" "}{ROLE_LABEL_BN[override.info.needs_role] || override.info.needs_role}-এর ইমেইল ও পাসওয়ার্ড দিন।
+            </Notice>
+            <Field label="অনুমোদনকারীর ইমেইল"><input type="email" value={override.email} onChange={(e) => setOverride({ ...override, email: e.target.value })} autoComplete="off" autoFocus /></Field>
+            <Field label="পাসওয়ার্ড"><input type="password" value={override.password} onChange={(e) => setOverride({ ...override, password: e.target.value })} autoComplete="off" /></Field>
+            {override.error && <Notice tone="danger">{override.error}</Notice>}
+          </div>
+        )}
+      </Modal>
 
       <Modal open={Boolean(receipt)} title="বিক্রি সম্পন্ন হয়েছে" onClose={() => { setReceipt(null); searchRef.current?.focus(); }}
              footer={<>

@@ -75,11 +75,18 @@ exact trap the user is trying to get out of.
 
 ## Next concrete step
 
-**A second approval kind: `discount_percent`.** Wire `commerce_routes.create_sale`
-so a line discount at or above an owner-set percentage held back by
-`needs_approval(db, org_id, "discount_percent", ...)` does not complete the sale
-immediately — but unlike an expense, a POS sale cannot simply sit "pending" while
-a queue waits, so this needs a synchronous manager-override design (a manager PIN
-or a second login confirms in the same request) rather than the async inbox
-pattern `expense_amount` uses. Work out that UX before writing the route: it is
-the harder half of this step, not the approval-rule plumbing itself.
+~~A second approval kind: `discount_percent`~~ — **done** (2026-09-29): a POS
+discount at or above the threshold needs a manager's/owner's own email and
+password typed inline (`api/approvals.py::verify_override`, real password
+verification against their actual hash and membership role — not a PIN
+pattern, since a PIN would need its own storage/reset flow this thesis has no
+time to build correctly). Recorded to the audit trail.
+
+**Next real step: refund approval.** The blueprint's third named gate
+("Refund approval") reuses the exact same synchronous-override pattern just
+built for discounts — wire it into `finance_routes.create_return`'s refund
+path the same way, gated on a new `refund_amount` rule kind. This is now a
+much smaller lift than the discount override was, because the hard design
+question (async inbox vs. synchronous override, and how to verify an inline
+credential) is already answered and the code to reuse (`needs_approval`,
+`verify_override`) already exists.

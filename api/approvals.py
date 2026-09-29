@@ -17,12 +17,14 @@ from decimal import Decimal
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from .domain_models import ApprovalRule
+from .domain_models import ApprovalRule, Membership, User
+from .security import verify_password
 
 # kind, threshold, approver_role. Seeded once per organization at creation
 # (and by a one-off migration for organizations that existed before this).
 DEFAULT_RULES: list[tuple[str, Decimal, str]] = [
     ("expense_amount", Decimal("5000"), "owner"),
+    ("discount_percent", Decimal("10"), "manager"),
 ]
 
 # A role's standing to approve, highest first. Someone at or above the rule's
@@ -50,3 +52,21 @@ def needs_approval(db: Session, org_id: str, kind: str, amount: Decimal, request
     if RANK.get(requester_role, 0) >= RANK.get(rule.approver_role, 4):
         return None
     return rule
+
+
+def verify_override(db: Session, org_id: str, rule: ApprovalRule, email: str | None, password: str | None) -> bool:
+    """A qualifying manager/owner types their own credentials inline, right at the
+    till, instead of the sale sitting in an async inbox — a checkout cannot wait
+    for someone to open a separate screen. Returns whether that person is real,
+    entered their own password, belongs to this business, and ranks high enough.
+    """
+    if not email or not password:
+        return False
+    user = db.scalar(select(User).where(User.email == email.strip().lower()))
+    if user is None or not verify_password(password, user.password_hash):
+        return False
+    membership = db.scalar(select(Membership).where(
+        Membership.organization_id == org_id, Membership.user_id == user.id, Membership.active.is_(True)))
+    if membership is None:
+        return False
+    return RANK.get(membership.role, 0) >= RANK.get(rule.approver_role, 4)

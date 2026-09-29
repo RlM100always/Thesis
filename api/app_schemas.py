@@ -131,6 +131,11 @@ class SaleCreate(BaseModel):
     tax_amount: Decimal = Field(default=Decimal("0"), ge=0, max_digits=14, decimal_places=2)
     items: list[SaleItemCreate] = Field(min_length=1, max_length=200)
     payments: list[SalePaymentCreate] = Field(default_factory=list, max_length=10)
+    # A discount at or above the shop's threshold needs a qualifying manager's
+    # credentials entered inline (a POS sale cannot sit in an async approval
+    # queue the way an expense can) — see api/commerce_routes.py::create_sale.
+    override_email: str | None = Field(default=None, max_length=255)
+    override_password: str | None = Field(default=None, max_length=200)
 
     @model_validator(mode="after")
     def unique_products(self):
