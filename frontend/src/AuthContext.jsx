@@ -22,8 +22,8 @@ export function AuthProvider({ children }) {
     if (getTokens()) api.me().then(setUser).catch(() => {});
   }, []);
 
-  const finish = useCallback(() => {
-    window.location.hash = "#/";
+  const finish = useCallback((hash = "#/") => {
+    window.location.hash = hash;
     window.location.reload();
   }, []);
 
@@ -37,10 +37,13 @@ export function AuthProvider({ children }) {
     finish();
   }, [finish]);
 
+  // Straight back to the login form, not the marketing landing page --
+  // someone who just chose to log out wants to sign back in, not be sold
+  // the product again.
   const signOut = useCallback(async () => {
     await api.logout();
     setUser(null);
-    finish();
+    finish("#/login");
   }, [finish]);
 
   const value = useMemo(

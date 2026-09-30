@@ -6,6 +6,7 @@ import { PermissionProvider, ROLE_LABELS, usePermissions } from "./PermissionCon
 import Actions from "./pages/Actions";
 import Customers from "./pages/Customers";
 import Forecast from "./pages/Forecast";
+import Landing from "./pages/Landing";
 import Login from "./pages/Login";
 import ModelReport from "./pages/ModelReport";
 import Overview from "./pages/Overview";
@@ -43,6 +44,7 @@ import AccountingPage from "./pages/Accounting";
 import StockCountPage from "./pages/StockCount";
 import OrdersPage from "./pages/Orders";
 import ReorderPlanPage from "./pages/ReorderPlan";
+import GuidePage from "./pages/Guide";
 import NotificationBell from "./components/NotificationBell";
 import AcceptInvite from "./pages/AcceptInvite";
 import Onboarding from "./pages/Onboarding";
@@ -116,6 +118,7 @@ const BUSINESS_NAV = [
     heading: "সেটআপ",
     items: [
       { to: "/setup", label: "ব্যবসা ও শাখা", icon: "sliders" },
+      { to: "/guide", label: "সাহায্য ও গাইড", icon: "info" },
       { to: "/import", label: "তথ্য আমদানি", icon: "upload", perm: "imports:write" },
       { to: "/approvals", label: "অনুমোদন", icon: "check", badgeKey: "approvals", perm: "approvals:read" },
       { to: "/staff", label: "কর্মী ও ভূমিকা", icon: "userCheck", perm: "staff:read" },
@@ -169,7 +172,12 @@ function Shell() {
   const { pathname } = useLocation();
   const { loading, organizations, error, wizardActive } = useBusiness();
   if (pathname === "/accept-invite") return <AcceptInvite />;
-  if (requiresLogin || pathname === "/login") return <Login />;
+  if (pathname === "/login") return <Login />;
+  // A fresh, never-authenticated visit to the root sees the landing page
+  // first. A session that expires deeper in the app (any other path) goes
+  // straight to the login form instead -- that visitor already knows the
+  // product and just needs to re-authenticate, not be sold it again.
+  if (requiresLogin) return pathname === "/" ? <Landing /> : <Login />;
   // Signed in but no business yet (right after signing up): create one first.
   // wizardActive keeps the setup wizard open through its later steps even after
   // the organization itself already exists (see BusinessContext.jsx).
@@ -224,6 +232,7 @@ function AppFrame() {
           <Route path="/bsmart" element={<BSmartAlgorithm />} />
           <Route path="/bsmart-actions" element={<Guard perm="bsmart:read"><BSmartActions /></Guard>} />
           <Route path="/setup" element={<BusinessSetup />} />
+          <Route path="/guide" element={<GuidePage />} />
           <Route path="/staff" element={<Guard perm="staff:read"><StaffPage /></Guard>} />
           <Route path="/audit" element={<Guard perm="audit:read"><AuditPage /></Guard>} />
           <Route path="/account" element={<AccountPage />} />

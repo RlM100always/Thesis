@@ -23,8 +23,9 @@ NAV = {
     "স্টক গণনা": "/stock-count",
     "বিক্রির ইতিহাস": "/sales-history", "ক্যাশ মেলান": "/cash", "রিপোর্ট": "/reports",
     "কী কিনবেন": "/reorder", "তথ্য আমদানি": "/import", "ইনসাইটস": "/insights", "আর্থিক প্রতিবেদন": "/accounting",
+    "সাহায্য ও গাইড": "/guide",
 }
-EVERYONE = {"ব্যবসা ও শাখা"}   # the settings page has no permission gate of its own
+EVERYONE = {"ব্যবসা ও শাখা", "সাহায্য ও গাইড"}   # neither page has a permission gate of its own
 
 # role → the menu items it must see. Everything else in NAV must be hidden.
 ROLE_MENU = {
@@ -64,6 +65,19 @@ def seed_stock(shop):
 
 
 # ── signup → first business → first steps ────────────────────────────────────
+
+def test_the_landing_page_explains_the_product_before_asking_to_sign_in(stack, new_session):
+    s = new_session()
+    page = s.page
+    page.goto(f"{WEB}/#/")
+    expect(page.get_by_role("heading", name="B-SMART")).to_be_visible(timeout=20000)
+    expect(page.get_by_text("কোন প্যানেল কী করে")).to_be_visible()
+    expect(page.get_by_text("ব্যবসা মোড", exact=True).first).to_be_visible()
+    expect(page.get_by_text("গবেষণা মোড", exact=True).first).to_be_visible()
+    page.get_by_role("link", name="লগইন করুন").click()
+    expect(page.get_by_role("button", name="লগইন", exact=True)).to_be_visible()
+    no_js_errors(s)
+
 
 def test_a_new_owner_signs_up_creates_a_business_and_is_guided(stack, new_session):
     s = new_session()
@@ -166,6 +180,16 @@ def test_credit_sale_collect_baki_record_expense_and_take_a_return(shop, new_ses
     dialog.locator("footer").get_by_role("button", name="রিটার্ন নিশ্চিত করুন").click()
     expect(page.get_by_text("রিটার্ন সম্পন্ন হয়েছে")).to_be_visible()
     expect(page.get_by_role("row", name=re.compile("RET-"))).to_be_visible()
+    no_js_errors(s)
+
+
+def test_a_signed_in_owner_can_open_the_in_app_guide(shop, new_session):
+    s = new_session()
+    page = s.page
+    sign_in(s, shop["email"])
+    page.goto(f"{WEB}/#/guide")
+    expect(page.get_by_role("heading", name="সাহায্য ও গাইড")).to_be_visible()
+    expect(page.get_by_text("কোন প্যানেল কী করে")).to_be_visible()
     no_js_errors(s)
 
 
