@@ -128,15 +128,40 @@ Bangla explanation of an R_t action, template-by-default, a real
 numbers with a number-verifier (Bengali-digit-normalized) rejecting any
 invented numeral. Not the full L1-L9 menu — deliberately just this one.
 
-**Next real steps, in order:** (1) ledger-derived outcome measurement
-(stock-out days/holding cost/expired value computed from
-`StockMovement`/`Batch` between decision and horizon) replacing today's
-hand-entered outcome fields; (2) an owner-declared budget field (even a
-single number on `Organization` or a new `ConstraintProfile` row) so the
-live engine's reorder can gain a real, non-degenerate budget constraint
-instead of staying unconstrained; (3) a public landing/guide page — right
-now there is no page explaining what this software is or which panel does
-what before a user signs up, and no in-app reference of "কোন প্যানেল কী করে"
-after signing up. These are what let Chapter 5 cite real acceptance/outcome
-numbers instead of only the frozen-dataset run, and (3) is what makes the
-product legible to a first-time owner rather than just functionally correct.
+~~(1) ledger-derived outcome measurement~~ — **done** (2026-09-30,
+`api/outcome_measurement.py`): stock-out days/holding cost/expired value now
+computed from `StockMovement`/`Batch` between decision and horizon, not
+hand-entered.
+
+~~(2) owner-declared budget field~~ — **done** (2026-09-30,
+`OrganizationSetting.reorder_budget_bdt`, Settings → কাজ ও পেমেন্ট): when set,
+`bsmart_live.feasibility_and_rank()` caps reorder candidates highest-utility-
+first until the budget runs out; unset stays unconstrained (not a fabricated
+cap). MOQ/pack/cold-chain/storage/campaign-capacity constraints are still not
+modelled — only budget is real so far.
+
+~~(3) public landing/guide page~~ — **done** (2026-09-30, `Landing.jsx`,
+`panelGuide.js`, commit `6d21b42`).
+
+**Gap analysis against the 100-feature "world-class B-SMART" wishlist
+(2026-09-30, code-verified, not aspirational):** POS, accounting core,
+inventory/batch tracking and the approval inbox are genuinely strong.
+Staff/HR/Payroll is almost entirely missing (`Staff.jsx` is role/permission
+management only — no attendance, payroll, salary structure or commission
+tracking anywhere in the repo). Sales Control (fraud signals, commission),
+Purchase/Supplier (RFQ, formal GRN, 3-way match, supplier scorecards),
+Quotation/Order/Delivery (delivery challan as its own document, rider
+tracking), Cashier Shift (shift distinct from day-open, mid-shift cash
+drop, wallet-statement matching) and CRM (credit-limit enforcement, and two
+disconnected churn signals — the `bsmart_live.py` heuristic vs. the ML churn
+model in `Customers.jsx` — that should be unified) are real but shallow.
+
+**Next real steps, in order** (user's own stated priority, endorsed
+2026-09-30): (1) POS + shift + cash reconciliation depth; (2) sales/order/
+delivery/COD; (3) purchase/GRN/payable; (4) CRM credit-limit + churn
+unification; (5) accounting depth (balance sheet tab, bank reconciliation,
+period lock); (6) an Integration Center with a usable sandbox UI (thermal/
+SMS receipts, payment-gateway simulator); (7) Staff/HR/Payroll — the
+biggest true gap; (8) offline multi-device conflict resolution; (9) the
+first real non-pharmacy vertical pack. Do not build (9) before (1)-(8) land
+— same trap this doc has warned against from the start.
