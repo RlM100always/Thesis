@@ -134,5 +134,18 @@ def get_org_membership(
     return membership
 
 
+def get_platform_admin(current_user: Annotated[User, Depends(get_current_user)]) -> User:
+    """Gate for `/api/platform/*` — every organization, not just one tenant.
+
+    Deliberately not part of the per-org permission matrix in
+    `api/permissions.py`: that matrix answers "what can this person do inside
+    the organization named by X-Organization-ID", a question platform routes
+    don't ask at all.
+    """
+    if not current_user.is_platform_admin:
+        raise HTTPException(status_code=403, detail="Platform admin access required")
+    return current_user
+
+
 CurrentUser = Annotated[User, Depends(get_current_user)]
 CurrentMembership = Annotated[Membership, Depends(get_org_membership)]

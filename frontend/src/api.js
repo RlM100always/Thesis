@@ -105,6 +105,9 @@ export const api = {
     appRequest("/api/app/bsmart/run", { method: "POST", organizationId: org }),
   bsmartExplain: (org, id) =>
     appRequest(`/api/app/bsmart/recommendations/${encodeURIComponent(id)}/explain`, { organizationId: org }),
+
+  platformOrganizations: () => appRequest("/api/platform/organizations"),
+  platformSummary: () => appRequest("/api/platform/summary"),
   bsmartMonitoring: (org) =>
     appRequest("/api/app/bsmart/monitoring", { organizationId: org }),
   customers: (q = "", page = 1, pageSize = 25) =>

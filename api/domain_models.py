@@ -125,6 +125,11 @@ class User(Base, TimestampMixin):
     setup_token_hash: Mapped[str | None] = mapped_column(String(64), index=True)
     setup_token_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     active: Mapped[bool] = mapped_column(Boolean, default=True)
+    # Platform-level super-admin: sees every organization, not just ones they
+    # have a Membership in. Never settable through any API -- only by a
+    # migration or a direct DB edit, the same bootstrap pattern any
+    # multi-tenant platform's first admin account needs.
+    is_platform_admin: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
 
 
 class Membership(Base, TimestampMixin):

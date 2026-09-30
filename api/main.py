@@ -72,6 +72,7 @@ from .purchase_return_routes import router as purchase_return_router  # noqa: E4
 from .reference_routes import router as reference_router  # noqa: E402
 from .integration_routes import router as integration_router  # noqa: E402
 from .loyalty_routes import router as loyalty_router  # noqa: E402
+from .platform_routes import router as platform_router  # noqa: E402
 from .database import create_schema  # noqa: E402
 from .schemas import Health  # noqa: E402
 
@@ -129,6 +130,7 @@ app.include_router(purchase_return_router)
 app.include_router(reference_router)
 app.include_router(integration_router)
 app.include_router(loyalty_router)
+app.include_router(platform_router)
 
 
 @app.on_event("startup")

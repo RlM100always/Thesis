@@ -289,6 +289,25 @@ def test_bsmart_can_run_on_the_shops_own_data_not_just_the_research_sample(shop,
     no_js_errors(s)
 
 
+def test_a_platform_admin_sees_every_business_an_ordinary_owner_cannot(shop, new_session, stack):
+    import sqlite3
+    db_path = stack["logs"] / "e2e.db"
+    conn = sqlite3.connect(db_path)
+    conn.execute("UPDATE users SET is_platform_admin = 1 WHERE email = ?", (shop["email"],))
+    conn.commit()
+    conn.close()
+
+    s = new_session()
+    page = s.page
+    sign_in(s, shop["email"])
+    page.get_by_role("link", name="প্ল্যাটফর্ম").click()
+    expect(page.get_by_role("heading", name="প্ল্যাটফর্ম")).to_be_visible()
+    expect(page.get_by_text("মোট ব্যবসা")).to_be_visible()
+    row = page.get_by_role("row", name=re.compile(shop["tag"]))
+    expect(row.first).to_be_visible()
+    no_js_errors(s)
+
+
 def test_wrong_password_is_explained_in_bangla_and_the_session_survives_a_reload(shop, new_session):
     s = new_session()
     page = s.page

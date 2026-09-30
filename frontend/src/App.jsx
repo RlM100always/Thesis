@@ -45,6 +45,7 @@ import StockCountPage from "./pages/StockCount";
 import OrdersPage from "./pages/Orders";
 import ReorderPlanPage from "./pages/ReorderPlan";
 import GuidePage from "./pages/Guide";
+import PlatformPage from "./pages/Platform";
 import NotificationBell from "./components/NotificationBell";
 import AcceptInvite from "./pages/AcceptInvite";
 import Onboarding from "./pages/Onboarding";
@@ -233,6 +234,7 @@ function AppFrame() {
           <Route path="/bsmart-actions" element={<Guard perm="bsmart:read"><BSmartActions /></Guard>} />
           <Route path="/setup" element={<BusinessSetup />} />
           <Route path="/guide" element={<GuidePage />} />
+          <Route path="/platform" element={<PlatformPage />} />
           <Route path="/staff" element={<Guard perm="staff:read"><StaffPage /></Guard>} />
           <Route path="/audit" element={<Guard perm="audit:read"><AuditPage /></Guard>} />
           <Route path="/account" element={<AccountPage />} />
@@ -383,6 +385,9 @@ function SidebarBody({ mode, setMode, badges }) {
               </div>
             </div>
             <div className="account-actions">
+              {user.is_platform_admin && (
+                <NavLink to="/platform"><Icon name="shield" size={14} />প্ল্যাটফর্ম</NavLink>
+              )}
               <NavLink to="/account"><Icon name="key" size={14} />পাসওয়ার্ড</NavLink>
               <button type="button" onClick={signOut}><Icon name="logout" size={14} />লগআউট</button>
             </div>
