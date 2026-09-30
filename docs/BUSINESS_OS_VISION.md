@@ -108,19 +108,27 @@ off by default, owner-set rate, capped redemption (never below zero,
 never more than the customer has), posts as a real revenue reduction not a
 separate write-off. First slice of blueprint item E9.
 
-**Thesis-critical gap, not just product breadth:** the B-SMART recommendation
-engine (`13_bsmart_recommendation_engine.py`) still runs only on the frozen
-research CSV — `/bsmart-actions` shows the thesis dataset's `R_t`, never a
-live tenant's own snapshot. This is bigger than any remaining product feature:
-it's the difference between "a shop management app with a research page
-attached" and the actual thesis claim ("AI-powered business analytics").
-Recommended next real step, in order: (1) run the engine against an org's own
-live data (`api/canonical_sales.py` + inventory/batch tables already exist to
-build a snapshot from — the constraint/scoring logic in `13_...py` is
-reusable, the input needs to change, not the algorithm); (2) one LLM call
-type only — Bangla explanation of an R_t action with a number-verifier and
-template fallback, not the full L1-L9 menu; (3) ledger-derived outcome
-measurement (stock-out days/holding cost/expired value computed from
-`StockMovement`/`Batch` between decision and horizon) replacing today's
-hand-entered outcome fields. These three together are what let Chapter 5 cite
-real acceptance/outcome numbers instead of only the frozen-dataset run.
+~~Thesis-critical gap: B-SMART on live tenant data~~ — **done** (2026-09-30,
+`api/bsmart_live.py`, `POST /api/app/bsmart/run`): a second implementation of
+Algorithm 1 runs against an org's own `Product`/`InventoryBalance`/
+`SalesOrder`/`Batch`/`Customer` records, not the frozen research CSV. It
+persists into the same `Recommendation` table the research import uses, so
+the existing decision/outcome/monitoring loop (layers 9-10) already works
+against real tenant recommendations, not only imported research ones.
+Honestly scoped down from the research engine — no budget/MOQ/pack/
+cold-chain/storage/campaign-capacity constraints, since the live schema has
+no fields for them yet (see `docs/BSMART_ARCHITECTURE.md` Layer 6). This
+closes the gap that mattered most: it's the difference between "a shop
+management app with a research page attached" and the thesis claim itself
+("AI-powered business analytics") being demonstrably true on a live shop.
+
+**Next real steps, in order:** (1) one LLM call type only — Bangla
+explanation of an R_t action with a number-verifier and template fallback,
+not the full L1-L9 menu; (2) ledger-derived outcome measurement (stock-out
+days/holding cost/expired value computed from `StockMovement`/`Batch`
+between decision and horizon) replacing today's hand-entered outcome fields;
+(3) an owner-declared budget field (even a single number on `Organization`
+or a new `ConstraintProfile` row) so the live engine's reorder can gain a
+real, non-degenerate budget constraint instead of staying unconstrained.
+These are what let Chapter 5 cite real acceptance/outcome numbers instead of
+only the frozen-dataset run.

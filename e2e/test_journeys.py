@@ -5,6 +5,7 @@ what they would see, not what the code returns.
 """
 
 import re
+from datetime import datetime, timedelta, timezone
 
 from playwright.sync_api import expect
 
@@ -255,6 +256,36 @@ def test_loyalty_points_are_earned_then_redeemed_at_the_till(shop, new_session):
     page.get_by_role("button", name="Loyal Customer", exact=True).click()
     expect(page.get_by_text("লয়্যালটি পয়েন্ট")).to_be_visible()
     expect(page.get_by_text(bn(14), exact=True)).to_be_visible()
+    no_js_errors(s)
+
+
+def test_bsmart_can_run_on_the_shops_own_data_not_just_the_research_sample(shop, new_session):
+    branch = call("GET", "/api/app/branches", token=shop["token"], org=shop["org"])[0]["id"]
+    product = call("POST", "/api/app/products",
+                   {"sku": "BS-1", "name": "Live Reorder Item", "selling_price": "100", "cost_price": "60",
+                    "reorder_level": "5"}, shop["token"], shop["org"])
+    call("POST", "/api/app/inventory/adjust",
+         {"branch_id": branch, "product_id": product["id"], "quantity_delta": "25", "reason": "opening stock"},
+         shop["token"], shop["org"])
+    now = datetime.now(timezone.utc)
+    for day in range(10):
+        sold_at = (now - timedelta(days=day)).isoformat()
+        call("POST", "/api/app/sales", {
+            "branch_id": branch, "invoice_number": f"BS-{day}", "sold_at": sold_at,
+            "items": [{"product_id": product["id"], "quantity": "2"}],
+            "payments": [{"method": "cash", "amount": "200"}],
+        }, shop["token"], shop["org"])
+
+    s = new_session()
+    page = s.page
+    sign_in(s, shop["email"])
+    open_page(s, "/bsmart-actions")
+    page.get_by_role("button", name="নিজের ব্যবসার ডেটা থেকে রান করুন").click()
+    expect(page.get_by_text("আপনার নিজের ব্যবসার ডেটা থেকে")).to_be_visible(timeout=20000)
+
+    card = page.locator(".reco", has_text="BS-1")
+    expect(card).to_be_visible()
+    expect(card.get_by_text("নিজের ডেটা")).to_be_visible()
     no_js_errors(s)
 
 

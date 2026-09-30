@@ -69,11 +69,26 @@ export default function RecommendationsPage() {
     try {
       const res = await api.bsmartImportRun(orgId);
       toast.success(res.status === "already_imported"
-        ? `এই তারিখের (${res.cutoff}) সুপারিশ আগেই আনা হয়েছে।`
-        : `${num(res.recommendations)}টি সুপারিশ আনা হয়েছে।`);
+        ? `এই তারিখের (${res.cutoff}) গবেষণা-ডেটার সুপারিশ আগেই আনা হয়েছে।`
+        : `${num(res.recommendations)}টি সুপারিশ আনা হয়েছে (গবেষণা ডেটাসেট)।`);
       await load();
     } catch (e) {
       toast.error(explain(e, { 404: "এখনো কোনো B-SMART রান পাওয়া যায়নি। আগে গবেষণা ডেটায় অ্যালগরিদম চালাতে হবে।" }));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function runLive() {
+    setBusy(true);
+    try {
+      const res = await api.bsmartRunLive(orgId);
+      toast.success(res.status === "already_imported"
+        ? `আজকের (${res.cutoff}) লাইভ সুপারিশ আগেই তৈরি হয়েছে।`
+        : `আপনার নিজের ব্যবসার ডেটা থেকে ${num(res.recommendations)}টি সুপারিশ তৈরি হয়েছে।`);
+      await load();
+    } catch (e) {
+      toast.error(explain(e, { 422: "প্রথমে অন্তত একটি শাখা যোগ করুন।" }));
     } finally {
       setBusy(false);
     }
@@ -145,7 +160,10 @@ export default function RecommendationsPage() {
       <PageHeader
         title="B-SMART সুপারিশ"
         subtitle="সিস্টেম প্রতিটি কাজের লাভ, খরচ ও ঝুঁকি হিসাব করে সাজিয়ে দেয়। চূড়ান্ত সিদ্ধান্ত সবসময় আপনার।"
-        actions={canImport && <Button icon="refresh" loading={busy && !deciding && !outcomeFor} onClick={importRun}>নতুন সুপারিশ আনুন</Button>}
+        actions={canImport && <>
+          <Button icon="zap" loading={busy && !deciding && !outcomeFor} onClick={runLive}>নিজের ব্যবসার ডেটা থেকে রান করুন</Button>
+          <Button icon="refresh" variant="secondary" loading={busy && !deciding && !outcomeFor} onClick={importRun}>গবেষণা ডেটাসেটের নমুনা আনুন</Button>
+        </>}
       />
       {error && <Notice tone="danger" action={<Button size="sm" variant="secondary" onClick={load}>আবার চেষ্টা</Button>}>{error}</Notice>}
 
@@ -186,6 +204,9 @@ export default function RecommendationsPage() {
                     <div className="row" style={{ gap: 8 }}>
                       <Badge tone="info">{TYPE_LABEL[item.action_type] ?? item.action_type}</Badge>
                       <ConfidenceBadge confidence={item.confidence} />
+                      <Badge tone={item.source === "live" ? "success" : "neutral"}>
+                        {item.source === "live" ? "নিজের ডেটা" : "গবেষণা নমুনা"}
+                      </Badge>
                       {d && <Badge tone={d[1]}>{d[0]}</Badge>}
                     </div>
                     <h4>{title}{item.quantity ? ` — ${num(item.quantity)} ইউনিট` : ""}</h4>

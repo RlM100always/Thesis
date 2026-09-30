@@ -104,6 +104,20 @@ this is a pharmacy:
 | **Near-expiry markdown** | **yes** | recorded batch expiry within the near-expiry window |
 | **Retention contact** | no | churn model + consent |
 
+**A second implementation runs on a tenant's own live data** (`api/bsmart_live.py`,
+2026-09-30, `/api/app/bsmart/run`), not the frozen research CSV above. It
+generates the same three action types from the operational schema —
+reorder from `Product`/`InventoryBalance`/`SalesOrder`, near-expiry from the
+live `Batch`/`BatchStock` ledger, retention from `Customer`/`SalesOrder` with
+the same consent gate — and persists into the same `Recommendation` table the
+research import does, so one decision/outcome/monitoring loop (layers 9-10)
+serves both. **[PARTIAL]**, not [IMPLEMENTED] to the same degree as the
+research engine: the live schema has no pack size, MOQ, cold-chain flag,
+storage capacity or owner-declared budget yet (see Layer 6 below), so those
+constraints are simply absent rather than approximated. `/bsmart-actions`
+labels every recommendation "নিজের ডেটা" (live) or "গবেষণা নমুনা" (research
+sample) so the two are never presented as the same evidence tier.
+
 ## Layer 6 — Constraint Engine **[IMPLEMENTED]**
 
 Infeasible actions are removed *before* ranking. Abstention is valid safety
@@ -124,6 +138,17 @@ behaviour, not a system error (report §3.2.4.2).
 | Product | cold chain | **[IMPLEMENTED]** — cold-chain SKUs are capped against refrigerated capacity, not shelf capacity |
 | Customer | contact consent | **[IMPLEMENTED]** — hard gate on `Marketing_Consent` |
 | Customer | business policy | **[IMPLEMENTED]** — campaign capacity per cycle; consent says who *may* be contacted, capacity says how many *can* be |
+
+This table describes the research engine (`13_bsmart_recommendation_engine.py`).
+The live engine (`api/bsmart_live.py`, Layer 5 above) implements current
+stock, incoming stock, supplier lead time (real, from `Supplier.typical_lead_days`,
+not a declared constant) and contact consent — the constraints the live
+operational schema actually has data for. It does **not** implement budget,
+MOQ, pack size, storage capacity, cold chain or campaign capacity: none of
+those fields exist on `Product`/`Supplier` yet, and approximating a budget as
+a fraction of one tenant's own small candidate set was tried and found to
+degenerate (see the module's own comment) rather than shipped as a fake
+constraint. Wire each one honestly as its underlying field is added.
 
 Cold-chain and prescription-only status are **real pharmacy domain facts**, not
 invented flags: insulin requires 2–8 °C storage, and antibiotics and

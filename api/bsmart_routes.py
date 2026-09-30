@@ -27,10 +27,11 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from . import bsmart_live
 from .auth import CurrentMembership
 from .database import get_db
 from .domain_models import (
-    Recommendation, RecommendationDecision, RecommendationOutcome, new_id,
+    Branch, Recommendation, RecommendationDecision, RecommendationOutcome, new_id,
 )
 from .audit import record_audit
 from .permissions import require_permission
@@ -40,6 +41,53 @@ Db = Annotated[Session, Depends(get_db)]
 
 ARTIFACT = Path("output/bsmart_recommendations.json")
 RUN_SUMMARY = Path("output/bsmart_run_summary.json")
+
+
+def _persist(db: Session, membership, cutoff: str, actions: list[dict], model_version: str) -> dict:
+    """Write one run's R_t into this organization's own Recommendation rows.
+
+    Shared by the research-artifact import and the live-data run below, so a
+    tenant's decision/outcome/monitoring loop (layers 9-10) works identically
+    against either source. Re-running the same cutoff twice is a no-op, so
+    both buttons are safe to press more than once.
+    """
+    existing = db.scalars(
+        select(Recommendation).where(
+            Recommendation.organization_id == membership.organization_id,
+            Recommendation.cutoff_date == cutoff,
+            Recommendation.model_version == model_version,
+        )
+    ).all()
+    if existing:
+        return {"status": "already_imported", "cutoff": cutoff, "recommendations": len(existing)}
+
+    run_id = new_id()
+    for rank, a in enumerate(actions, start=1):
+        db.add(Recommendation(
+            id=new_id(),
+            organization_id=membership.organization_id,
+            run_id=run_id,
+            cutoff_date=cutoff,
+            rank_in_rt=rank,
+            action_type=a["type"],
+            target_sku=a.get("sku"),
+            target_customer_id=a.get("customer_id"),
+            division=a.get("division"),
+            quantity=a.get("reorder_qty") or a.get("units_at_risk"),
+            benefit_bdt=a.get("benefit_bdt", 0),
+            action_cost_bdt=a.get("action_cost_bdt", 0),
+            risk_bdt=a.get("risk_bdt", 0),
+            utility_bdt=a.get("utility_bdt", 0),
+            confidence=a.get("confidence", "baseline"),
+            feasible=True,
+            reason=a.get("reason"),
+            explanation_json=json.dumps(a.get("explanation")) if a.get("explanation") else None,
+            model_version=model_version,
+        ))
+    record_audit(db, membership, "bsmart.imported", "recommendation_run", run_id,
+                 cutoff=cutoff, recommendations=len(actions), model_version=model_version)
+    db.commit()
+    return {"status": "imported", "cutoff": cutoff, "run_id": run_id, "recommendations": len(actions)}
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -94,48 +142,28 @@ def import_run(membership: CurrentMembership, db: Db):
     payload = json.loads(ARTIFACT.read_text(encoding="utf-8"))
     cutoff = payload.get("cutoff")
     actions = payload.get("R_t", [])
+    return _persist(db, membership, cutoff, actions, f"13_bsmart_recommendation_engine@{cutoff}")
 
-    existing = db.scalars(
-        select(Recommendation).where(
-            Recommendation.organization_id == membership.organization_id,
-            Recommendation.cutoff_date == cutoff,
-        )
-    ).all()
-    if existing:
-        return {
-            "status": "already_imported",
-            "cutoff": cutoff,
-            "recommendations": len(existing),
-        }
 
-    run_id = new_id()
-    for rank, a in enumerate(actions, start=1):
-        db.add(Recommendation(
-            id=new_id(),
-            organization_id=membership.organization_id,
-            run_id=run_id,
-            cutoff_date=cutoff,
-            rank_in_rt=rank,
-            action_type=a["type"],
-            target_sku=a.get("sku"),
-            target_customer_id=a.get("customer_id"),
-            division=a.get("division"),
-            quantity=a.get("reorder_qty") or a.get("units_at_risk"),
-            benefit_bdt=a.get("benefit_bdt", 0),
-            action_cost_bdt=a.get("action_cost_bdt", 0),
-            risk_bdt=a.get("risk_bdt", 0),
-            utility_bdt=a.get("utility_bdt", 0),
-            confidence=a.get("confidence", "baseline"),
-            feasible=True,
-            reason=a.get("reason"),
-            explanation_json=json.dumps(a.get("explanation")) if a.get("explanation") else None,
-            model_version=f"13_bsmart_recommendation_engine@{cutoff}",
-        ))
-    record_audit(db, membership, "bsmart.imported", "recommendation_run", run_id,
-                 cutoff=cutoff, recommendations=len(actions))
-    db.commit()
-    return {"status": "imported", "cutoff": cutoff, "run_id": run_id,
-            "recommendations": len(actions)}
+@router.post("/api/app/bsmart/run", tags=["bsmart"])
+def run_live(membership: CurrentMembership, db: Db):
+    """Run Algorithm 1 against this organization's own operational data.
+
+    Distinct from `import-run` above: this never touches the frozen research
+    dataset, so its recommendations rest entirely on this tenant's own sales,
+    inventory, batches and customers (`api/bsmart_live.py`). Re-running the
+    same day is a no-op, matching `import-run`'s safety.
+    """
+    require_permission(membership, "bsmart:import")
+    org_id = membership.organization_id
+    branches = list(db.scalars(select(Branch).where(
+        Branch.organization_id == org_id, Branch.active.is_(True))))
+    if not branches:
+        raise HTTPException(status_code=422, detail="No active branch yet — add one under ব্যবসা ও শাখা first.")
+    run = bsmart_live.generate(db, org_id, branches)
+    result = _persist(db, membership, run["cutoff"], run["R_t"], f"live@{run['cutoff']}")
+    result["summary"] = run["summary"]
+    return result
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -169,6 +197,7 @@ def list_recommendations(membership: CurrentMembership, db: Db, cutoff: str | No
             "run_id": r.run_id,
             "cutoff": r.cutoff_date,
             "rank": r.rank_in_rt,
+            "source": "live" if (r.model_version or "").startswith("live@") else "research_import",
             "action_type": r.action_type,
             "sku": r.target_sku,
             "customer_id": r.target_customer_id,

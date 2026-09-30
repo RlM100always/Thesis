@@ -175,7 +175,7 @@ def test_owner_decides_a_recommendation_and_records_what_happened(shop, new_sess
     page = s.page
     sign_in(s, shop["email"])
     page.goto(f"{WEB}/#/bsmart-actions")
-    page.get_by_role("button", name="নতুন সুপারিশ আনুন").click()
+    page.get_by_role("button", name="গবেষণা ডেটাসেটের নমুনা আনুন").click()
     expect(page.locator(".reco").first).to_be_visible(timeout=20000)
 
     page.get_by_role("button", name="গ্রহণ করুন").first.click()
