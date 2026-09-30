@@ -178,6 +178,10 @@ def test_owner_decides_a_recommendation_and_records_what_happened(shop, new_sess
     page.get_by_role("button", name="গবেষণা ডেটাসেটের নমুনা আনুন").click()
     expect(page.locator(".reco").first).to_be_visible(timeout=20000)
 
+    # L1: an on-demand plain-language explanation, template mode (no API key in this environment).
+    page.locator(".reco").first.get_by_role("button", name="সহজ ভাষায় ব্যাখ্যা শুনুন").click()
+    expect(page.locator(".reco").first.locator(".reco-ai-explain")).to_be_visible()
+
     page.get_by_role("button", name="গ্রহণ করুন").first.click()
     page.locator("dialog[open]").locator("footer").get_by_role("button", name="সিদ্ধান্ত নিশ্চিত করুন").click()
     expect(page.get_by_text("সিদ্ধান্ত রাখা হয়েছে")).to_be_visible()

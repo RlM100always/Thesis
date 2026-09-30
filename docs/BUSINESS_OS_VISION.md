@@ -122,13 +122,21 @@ closes the gap that mattered most: it's the difference between "a shop
 management app with a research page attached" and the thesis claim itself
 ("AI-powered business analytics") being demonstrably true on a live shop.
 
-**Next real steps, in order:** (1) one LLM call type only — Bangla
-explanation of an R_t action with a number-verifier and template fallback,
-not the full L1-L9 menu; (2) ledger-derived outcome measurement (stock-out
-days/holding cost/expired value computed from `StockMovement`/`Batch`
-between decision and horizon) replacing today's hand-entered outcome fields;
-(3) an owner-declared budget field (even a single number on `Organization`
-or a new `ConstraintProfile` row) so the live engine's reorder can gain a
-real, non-degenerate budget constraint instead of staying unconstrained.
-These are what let Chapter 5 cite real acceptance/outcome numbers instead of
-only the frozen-dataset run.
+~~L1: one LLM call type~~ — **done** (2026-09-30, `api/llm_gateway.py`):
+Bangla explanation of an R_t action, template-by-default, a real
+`ANTHROPIC_API_KEY` + `INTEGRATION_MODE=production` narrates the same
+numbers with a number-verifier (Bengali-digit-normalized) rejecting any
+invented numeral. Not the full L1-L9 menu — deliberately just this one.
+
+**Next real steps, in order:** (1) ledger-derived outcome measurement
+(stock-out days/holding cost/expired value computed from
+`StockMovement`/`Batch` between decision and horizon) replacing today's
+hand-entered outcome fields; (2) an owner-declared budget field (even a
+single number on `Organization` or a new `ConstraintProfile` row) so the
+live engine's reorder can gain a real, non-degenerate budget constraint
+instead of staying unconstrained; (3) a public landing/guide page — right
+now there is no page explaining what this software is or which panel does
+what before a user signs up, and no in-app reference of "কোন প্যানেল কী করে"
+after signing up. These are what let Chapter 5 cite real acceptance/outcome
+numbers instead of only the frozen-dataset run, and (3) is what makes the
+product legible to a first-time owner rather than just functionally correct.

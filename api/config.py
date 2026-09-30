@@ -44,6 +44,7 @@ class Settings(BaseSettings):
     sms_base_url: str = "https://api.sms.net.bd"
     sms_api_key: str | None = None
     sms_sender_id: str | None = None
+    anthropic_api_key: str | None = None
 
     @property
     def is_production(self) -> bool:

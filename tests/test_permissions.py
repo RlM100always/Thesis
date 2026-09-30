@@ -99,6 +99,7 @@ ENDPOINTS = [
     ("GET", "/api/app/recommendations", None, "recommendations:read"),
     ("GET", "/api/app/bsmart/recommendations", None, "bsmart:read"),
     ("GET", "/api/app/bsmart/monitoring", None, "monitoring:read"),
+    ("GET", "/api/app/bsmart/recommendations/missing/explain", None, "bsmart:read"),
     ("POST", "/api/app/bsmart/recommendations/missing/decision", {"decision": "accept"}, "bsmart:decide"),
     ("POST", "/api/app/bsmart/recommendations/missing/outcome", {}, "bsmart:outcome"),
     ("POST", "/api/app/bsmart/run", None, "bsmart:import"),

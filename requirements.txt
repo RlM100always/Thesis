@@ -42,6 +42,10 @@ pydantic-settings>=2.7.0
 # Optional application access tokens (external sign-in is deferred)
 PyJWT[crypto]>=2.10.0
 
+# L1 Bangla explanation of a B-SMART recommendation (api/llm_gateway.py).
+# Sandbox mode (default, no ANTHROPIC_API_KEY) never imports/calls this SDK.
+anthropic>=1.9.0
+
 # Verification
 pytest>=8.3.0
 playwright>=1.48.0      # end-to-end browser tests (e2e/); uses the installed Microsoft Edge

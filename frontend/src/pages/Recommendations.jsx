@@ -35,6 +35,7 @@ export default function RecommendationsPage() {
   const [error, setError] = useState("");
   const [filter, setFilter] = useState("pending");
   const [busy, setBusy] = useState(false);
+  const [explanations, setExplanations] = useState({}); // { [reco.id]: { loading, text, source, verified, error } }
 
   const [deciding, setDeciding] = useState(null); // { item, decision }
   const [qty, setQty] = useState("");
@@ -91,6 +92,16 @@ export default function RecommendationsPage() {
       toast.error(explain(e, { 422: "প্রথমে অন্তত একটি শাখা যোগ করুন।" }));
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function fetchExplanation(item) {
+    setExplanations((cur) => ({ ...cur, [item.id]: { loading: true } }));
+    try {
+      const res = await api.bsmartExplain(orgId, item.id);
+      setExplanations((cur) => ({ ...cur, [item.id]: { loading: false, ...res } }));
+    } catch (e) {
+      setExplanations((cur) => ({ ...cur, [item.id]: { loading: false, error: explain(e) } }));
     }
   }
 
@@ -222,6 +233,21 @@ export default function RecommendationsPage() {
                           </ul>
                         )}
                       </details>
+                    )}
+                    {explanations[item.id]?.text ? (
+                      <div className="reco-ai-explain">
+                        <Badge tone={explanations[item.id].source === "llm" ? "success" : "neutral"}>
+                          {explanations[item.id].source === "llm" ? "AI ব্যাখ্যা (যাচাই করা)" : "সংক্ষিপ্ত ব্যাখ্যা"}
+                        </Badge>
+                        <p>{explanations[item.id].text}</p>
+                      </div>
+                    ) : explanations[item.id]?.error ? (
+                      <Notice tone="danger">{explanations[item.id].error}</Notice>
+                    ) : (
+                      <Button size="sm" variant="ghost" icon="zap" loading={explanations[item.id]?.loading}
+                              onClick={() => fetchExplanation(item)}>
+                        সহজ ভাষায় ব্যাখ্যা শুনুন
+                      </Button>
                     )}
                   </div>
                   <div className="reco__buttons">

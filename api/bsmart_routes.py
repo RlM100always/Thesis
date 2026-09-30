@@ -27,7 +27,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from . import bsmart_live
+from . import bsmart_live, llm_gateway
 from .auth import CurrentMembership
 from .database import get_db
 from .domain_models import (
@@ -215,6 +215,27 @@ def list_recommendations(membership: CurrentMembership, db: Db, cutoff: str | No
             "outcome_logged": bool(r.outcomes),
         })
     return {"count": len(out), "recommendations": out}
+
+
+@router.get("/api/app/bsmart/recommendations/{recommendation_id}/explain", tags=["bsmart"])
+def explain_recommendation(recommendation_id: str, membership: CurrentMembership, db: Db):
+    """L1: a Bangla explanation of this one card (`api/llm_gateway.py`).
+
+    Called on demand (an owner expanding "কেন এই সুপারিশ?"), never on every
+    list load -- an LLM call costs money and latency, so it is not paid for
+    on a page the owner may not even look closely at.
+    """
+    require_permission(membership, "bsmart:read")
+    reco = db.get(Recommendation, recommendation_id)
+    if reco is None or reco.organization_id != membership.organization_id:
+        raise HTTPException(status_code=404, detail="Recommendation not found")
+    item = {
+        "benefit_bdt": float(reco.benefit_bdt), "action_cost_bdt": float(reco.action_cost_bdt),
+        "risk_bdt": float(reco.risk_bdt), "utility_bdt": float(reco.utility_bdt),
+        "quantity": reco.quantity, "reason": reco.reason,
+        "explanation": json.loads(reco.explanation_json) if reco.explanation_json else None,
+    }
+    return llm_gateway.explain(item)
 
 
 @router.post("/api/app/bsmart/recommendations/{recommendation_id}/decision", tags=["bsmart"])

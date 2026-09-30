@@ -660,6 +660,11 @@ a.btn-primary, a.btn-secondary { text-decoration: none; display: inline-block; }
   display: flex; justify-content: space-between; gap: 10px;
   font-size: 12px; padding: 2px 0; color: var(--text-muted);
 }
+.reco-ai-explain {
+  margin-top: 10px; padding: 10px 12px; border-radius: var(--radius);
+  background: var(--surface-2); border: 1px solid var(--border);
+}
+.reco-ai-explain p { margin: 6px 0 0; font-size: 13px; }
 
 .reco-utility {
   margin-top: 10px; font-size: 12px; color: var(--text-muted);
