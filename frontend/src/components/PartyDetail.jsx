@@ -30,6 +30,7 @@ export function CustomerDetail({ customerId, onClose, onCollect }) {
   const { active } = useBusiness();
   const toast = useToast();
   const { data, error } = useDetail((id) => api.customerSummary(active.id, id), customerId);
+  const { data: loyalty } = useDetail((id) => api.customerLoyalty(active.id, id), customerId);
 
   const reminder = data && Number(data.due) > 0
     ? `আসসালামু আলাইকুম ${data.name}, ${active.name} থেকে জানাচ্ছি — আপনার ${money(data.due)} বাকি আছে। সুবিধামতো পরিশোধ করলে ভালো হয়। ধন্যবাদ।`
@@ -55,6 +56,7 @@ export function CustomerDetail({ customerId, onClose, onCollect }) {
             <Stat label="শেষ কেনা" value={since(data.days_since_last_purchase)} sub={data.last_purchase_at ? dateTimeBn(data.last_purchase_at) : undefined}
                   tone={data.days_since_last_purchase > 60 ? "warn" : "neutral"} />
             <Stat label="বাকি আছে" value={money(data.due)} tone={Number(data.due) > 0 ? "warn" : "success"} />
+            {loyalty?.active && <Stat label="লয়্যালটি পয়েন্ট" value={num(loyalty.balance)} sub="বিক্রির সময় ছাড় হিসেবে ভাঙানো যাবে" />}
           </div>
 
           {Number(data.due) > 0 && (

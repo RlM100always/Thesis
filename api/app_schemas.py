@@ -156,6 +156,9 @@ class SaleCreate(BaseModel):
     # queue the way an expense can) — see api/commerce_routes.py::create_sale.
     override_email: str | None = Field(default=None, max_length=255)
     override_password: str | None = Field(default=None, max_length=200)
+    # Loyalty points this customer wants to spend on this bill; 0 if none or the
+    # shop has loyalty off. See api/loyalty.py.
+    redeem_points: Decimal = Field(default=Decimal("0"), ge=0, max_digits=14, decimal_places=3)
 
     @model_validator(mode="after")
     def unique_products(self):

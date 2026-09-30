@@ -506,6 +506,40 @@ class Expense(Base, TimestampMixin):
     incurred_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
 
 
+class LoyaltyRule(Base, TimestampMixin):
+    """How fast a customer earns points, and what a point is worth when spent.
+    One row per organization; a missing or inactive row means loyalty is off —
+    sales still work exactly the same, just without points."""
+
+    __tablename__ = "loyalty_rules"
+    __table_args__ = (UniqueConstraint("organization_id"),)
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    organization_id: Mapped[str] = mapped_column(ForeignKey("organizations.id", ondelete="CASCADE"), index=True)
+    # A customer earns 1 point per this many taka of net sale (before tax).
+    points_per_taka: Mapped[Decimal] = mapped_column(Numeric(14, 2))
+    # What redeeming 1 point is worth off a bill, in taka.
+    redemption_value: Mapped[Decimal] = mapped_column(Numeric(14, 4))
+    active: Mapped[bool] = mapped_column(Boolean, default=True)
+
+
+class LoyaltyEntry(Base, TimestampMixin):
+    """One earn or redeem event. A running balance is this table's sum for the
+    customer — an append-only ledger, the same discipline as `LedgerEntry`."""
+
+    __tablename__ = "loyalty_entries"
+    __table_args__ = (CheckConstraint("points_delta <> 0"),)
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    organization_id: Mapped[str] = mapped_column(ForeignKey("organizations.id", ondelete="CASCADE"), index=True)
+    customer_id: Mapped[str] = mapped_column(ForeignKey("customers.id"), index=True)
+    points_delta: Mapped[Decimal] = mapped_column(Numeric(14, 3))
+    reason: Mapped[str] = mapped_column(String(20))  # earned | redeemed | adjusted
+    reference_type: Mapped[str | None] = mapped_column(String(30))
+    reference_id: Mapped[str | None] = mapped_column(String(36))
+    occurred_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+
+
 class ApprovalRule(Base, TimestampMixin):
     """A threshold an owner set: an action of this ``kind`` at or above ``threshold``
     needs someone holding ``approver_role`` (or higher) to sign off before it takes

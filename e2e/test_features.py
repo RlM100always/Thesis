@@ -213,7 +213,7 @@ def test_the_shop_address_and_footer_appear_on_the_receipt(shop, new_session):
     page.get_by_label("ফোন নম্বর").fill("01712345678")
     page.get_by_label("VAT / BIN নম্বর").fill("BIN-4455")
     page.get_by_label("রসিদের শেষের লেখা").fill("আবার আসবেন")
-    page.get_by_role("button", name="সংরক্ষণ করুন").click()
+    page.locator(".ui-card", has_text="রসিদের তথ্য").get_by_role("button", name="সংরক্ষণ করুন").click()
     expect(page.get_by_text("দোকানের তথ্য সংরক্ষিত হয়েছে")).to_be_visible()
 
     page.goto(f"{WEB}/#/sales-history")

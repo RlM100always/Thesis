@@ -70,6 +70,8 @@ export default function SalesPage() {
   const [cart, setCart] = useState([]);
   const [query, setQuery] = useState("");
   const [customerId, setCustomerId] = useState("");
+  const [loyalty, setLoyalty] = useState(null); // { balance, active, redemption_value }
+  const [redeemPoints, setRedeemPoints] = useState("");
   const [method, setMethod] = useState("cash");
   const [received, setReceived] = useState(null); // null = "exactly the total"
   const [busy, setBusy] = useState(false);
@@ -184,10 +186,24 @@ export default function SalesPage() {
   const totals = useMemo(() => {
     const subtotal = cart.reduce((s, l) => s + l.price * Number(l.qty || 0), 0);
     const discount = cart.reduce((s, l) => s + Number(l.discount || 0), 0);
-    const total = Math.max(0, subtotal - discount);
+    const spendable = Math.max(0, subtotal - discount);
+    const pointsWanted = Math.min(Number(redeemPoints || 0), loyalty?.active ? Number(loyalty.balance) : 0);
+    const loyaltyDiscount = Math.min(spendable, pointsWanted * Number(loyalty?.redemption_value || 0));
+    const total = Math.max(0, spendable - loyaltyDiscount);
     const got = received === null ? total : Number(received || 0);
-    return { subtotal, discount, total, got, change: Math.max(0, got - total), due: Math.max(0, total - got), paid: Math.min(got, total) };
-  }, [cart, received]);
+    return {
+      subtotal, discount, loyaltyDiscount, total, got,
+      change: Math.max(0, got - total), due: Math.max(0, total - got), paid: Math.min(got, total),
+    };
+  }, [cart, received, redeemPoints, loyalty]);
+
+  useEffect(() => {
+    setRedeemPoints("");
+    if (!customerId) { setLoyalty(null); return; }
+    let current = true;
+    api.customerLoyalty(orgId, customerId).then((d) => current && setLoyalty(d)).catch(() => current && setLoyalty(null));
+    return () => { current = false; };
+  }, [orgId, customerId]);
 
   const customer = customers.find((c) => c.id === customerId);
   const wholesale = customer?.price_tier === "wholesale";
@@ -266,6 +282,7 @@ export default function SalesPage() {
     setCart([]);
     setReceived(null);
     setCustomerId("");
+    setRedeemPoints("");
     setOverride(null);
     load();
   }
@@ -282,6 +299,7 @@ export default function SalesPage() {
         product_id: l.product_id, quantity: String(l.qty), discount_amount: Number(l.discount || 0).toFixed(2),
       })),
       payments: totals.paid > 0 ? [{ method, amount: totals.paid.toFixed(2) }] : [],
+      redeem_points: totals.loyaltyDiscount > 0 ? String(Math.floor(Number(redeemPoints || 0))) : "0",
     };
     try {
       await finishSale(payload, soldAt);
@@ -303,7 +321,7 @@ export default function SalesPage() {
           invoice: payload.invoice_number, at: soldAt.toISOString(), lines: cart, total: totals.total, paid: totals.paid,
           due: totals.due, change: totals.change, method, customer: customers.find((c) => c.id === customerId), offline: true,
         });
-        setCart([]); setReceived(null); setCustomerId("");
+        setCart([]); setReceived(null); setCustomerId(""); setRedeemPoints("");
         toast.info("ইন্টারনেট নেই — বিক্রিটি এই ডিভাইসে জমা হয়েছে। সংযোগ ফিরলে নিজে পাঠানো হবে।");
       } else {
         setSaleError(/Credit limit/i.test(e.message || "") ? "বাকির সীমা ছাড়িয়ে যাবে। কিছু বাকি আদায় করুন বা বেশি টাকা নিন।" : explain(e, SALE_ERRORS));
@@ -436,6 +454,7 @@ export default function SalesPage() {
                 <div className="pos-totals">
                   {totals.discount > 0 && <div><span>মোট</span><span>{money(totals.subtotal)}</span></div>}
                   {totals.discount > 0 && <div><span>ছাড়</span><span>− {money(totals.discount)}</span></div>}
+                  {totals.loyaltyDiscount > 0 && <div><span>পয়েন্ট ছাড়</span><span>− {money(totals.loyaltyDiscount)}</span></div>}
                   <div className="grand"><span>পরিশোধযোগ্য</span><span>{money(totals.total)}</span></div>
                 </div>
 
@@ -449,6 +468,12 @@ export default function SalesPage() {
                       {customers.map((c) => <option key={c.id} value={c.id}>{c.display_name || c.code}</option>)}
                     </select>
                   </Field>
+                  {loyalty?.active && Number(loyalty.balance) > 0 && (
+                    <Field label={`লয়্যালটি পয়েন্ট ভাঙান (আছে ${num(loyalty.balance)})`} hint="পয়েন্ট দিয়ে বিলে ছাড় পাবেন">
+                      <input type="number" min="0" max={loyalty.balance} step="1" value={redeemPoints}
+                             placeholder="০" onChange={(e) => setRedeemPoints(e.target.value)} />
+                    </Field>
+                  )}
                   <div>
                     <div className="pay-methods" role="radiogroup" aria-label="পেমেন্টের মাধ্যম">
                       {enabledMethods.map(([value, label]) => (

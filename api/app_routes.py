@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 
 from .accounting import seed_default_accounts
 from .approvals import seed_default_rules
+from .loyalty import seed_default_rule as seed_default_loyalty_rule
 from .app_schemas import OrganizationCreate, OrganizationOperations, OrganizationProfile, OrganizationView, UserView
 from .audit import record_audit
 from .auth import CurrentMembership, CurrentUser
@@ -51,6 +52,7 @@ def create_organization(payload: OrganizationCreate, current_user: CurrentUser, 
         db.flush()
         seed_default_accounts(db, organization.id)
         seed_default_rules(db, organization.id)
+        seed_default_loyalty_rule(db, organization.id)
         db.add_all([
             Membership(organization_id=organization.id, user_id=current_user.id, role="owner"),
             OrganizationSetting(organization_id=organization.id),

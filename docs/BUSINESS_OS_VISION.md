@@ -52,6 +52,8 @@ buttons") applies doubly here.
 | Vertical packs beyond pharmacy (fashion variants, restaurant recipe/KDS, wholesale price tiers+route, electronics serial/IMEI, manufacturing BOM, service job-card, salon booking, clinic admin, coaching, agro, transport, rental) | none | NOT BUILT — `verticals.js` only distinguishes "has expiry" today |
 | Signup → 8-12 step wizard with opening balances/staff invite | `Onboarding.jsx` (2026-09-29): 4-step wizard (business → receipt profile → staff invite → finish), all steps past the first skippable | IMPLEMENTED (partial scope) — opening cash/stock and supplier dues are not wizard steps yet, reuse the separate bulk-import flow instead |
 | AI Copilot (Bangla Q&A grounded in the shop's own data) | none | NOT BUILT (this is `docs/THESIS_PRODUCT_MASTER_PLAN.md` section 7, L1/L2) |
+| Loyalty points (earn on sale, redeem at the till) | `api/loyalty.py`, `api/loyalty_routes.py` (2026-09-30) | IMPLEMENTED — off by default, owner-set rate, capped redemption, posts as real revenue reduction. First slice of blueprint item E9 |
+| Quotation/order → invoice, purchase returns/supplier claims, Bangladesh reference data (districts/banks/MFS), offline-sync outbox | `api/order_routes.py`, `api/purchase_return_routes.py`, `api/bangladesh_reference.py`, `SyncOperation` (swept in from concurrent work, dates unclear — verify before citing) | IMPLEMENTED, tested, not yet audited against this doc's per-item scope claims — reconcile in a follow-up pass |
 
 ## Build order (reconciling the user's "10 most important things" with what exists)
 
@@ -100,3 +102,25 @@ to close if that path stays in real use.
 expense/purchase, 2 synchronous: discount/refund). Move to the next roadmap
 item rather than adding a fifth kind speculatively — see the "Build order"
 table above.
+
+~~Loyalty points~~ — **done** (2026-09-30): earn-on-sale/redeem-at-till,
+off by default, owner-set rate, capped redemption (never below zero,
+never more than the customer has), posts as a real revenue reduction not a
+separate write-off. First slice of blueprint item E9.
+
+**Thesis-critical gap, not just product breadth:** the B-SMART recommendation
+engine (`13_bsmart_recommendation_engine.py`) still runs only on the frozen
+research CSV — `/bsmart-actions` shows the thesis dataset's `R_t`, never a
+live tenant's own snapshot. This is bigger than any remaining product feature:
+it's the difference between "a shop management app with a research page
+attached" and the actual thesis claim ("AI-powered business analytics").
+Recommended next real step, in order: (1) run the engine against an org's own
+live data (`api/canonical_sales.py` + inventory/batch tables already exist to
+build a snapshot from — the constraint/scoring logic in `13_...py` is
+reusable, the input needs to change, not the algorithm); (2) one LLM call
+type only — Bangla explanation of an R_t action with a number-verifier and
+template fallback, not the full L1-L9 menu; (3) ledger-derived outcome
+measurement (stock-out days/holding cost/expired value computed from
+`StockMovement`/`Batch` between decision and horizon) replacing today's
+hand-entered outcome fields. These three together are what let Chapter 5 cite
+real acceptance/outcome numbers instead of only the frozen-dataset run.

@@ -17,6 +17,7 @@ from sqlalchemy.pool import StaticPool
 
 from api.accounting import seed_default_accounts
 from api.approvals import seed_default_rules
+from api.loyalty import seed_default_rule as seed_default_loyalty_rule
 from api.analytics_routes import router as analytics_router
 from api.app_routes import router as app_router
 from api.auth import get_current_user
@@ -35,6 +36,7 @@ from api.order_routes import router as order_router
 from api.purchase_return_routes import router as purchase_return_router
 from api.reference_routes import router as reference_router
 from api.integration_routes import router as integration_router
+from api.loyalty_routes import router as loyalty_router
 from api.bsmart_routes import router as bsmart_router
 from api.commerce_routes import router as commerce_router
 from api.data_import_routes import router as data_import_router
@@ -46,7 +48,7 @@ from api.permissions import ROLES
 
 ROUTERS = (
     auth_router, app_router, commerce_router, directory_router, finance_router,
-    data_import_router, analytics_router, bsmart_router, audit_router, batch_router, insights_router, bulk_import_router, planning_router, receivables_router, insights_advanced_router, accounting_router, approval_router, stock_count_router, order_router, purchase_return_router, reference_router, integration_router,
+    data_import_router, analytics_router, bsmart_router, audit_router, batch_router, insights_router, bulk_import_router, planning_router, receivables_router, insights_advanced_router, accounting_router, approval_router, stock_count_router, order_router, purchase_return_router, reference_router, integration_router, loyalty_router,
 )
 
 
@@ -98,6 +100,8 @@ def world(engine):
         seed_default_accounts(db, org_b.id)
         seed_default_rules(db, org_a.id)
         seed_default_rules(db, org_b.id)
+        seed_default_loyalty_rule(db, org_a.id)
+        seed_default_loyalty_rule(db, org_b.id)
         users = {}
         for role in ROLES:
             user = User(email=f"{role}@a.example", display_name=f"{role} A")

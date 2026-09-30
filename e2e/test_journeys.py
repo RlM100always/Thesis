@@ -200,6 +200,64 @@ def test_the_phone_layout_works_end_to_end(shop, new_session):
     no_js_errors(s)
 
 
+def test_loyalty_points_are_earned_then_redeemed_at_the_till(shop, new_session):
+    branch = call("GET", "/api/app/branches", token=shop["token"], org=shop["org"])[0]["id"]
+    product = call("POST", "/api/app/products",
+                   {"sku": "LOY-1", "name": "Loyalty Item", "selling_price": "100", "cost_price": "60"},
+                   shop["token"], shop["org"])
+    call("POST", "/api/app/inventory/adjust",
+         {"branch_id": branch, "product_id": product["id"], "quantity_delta": "1000", "reason": "opening stock"},
+         shop["token"], shop["org"])
+    call("POST", "/api/app/customers", {"code": "LOY-C", "display_name": "Loyal Customer"}, shop["token"], shop["org"])
+
+    s = new_session()
+    page = s.page
+    sign_in(s, shop["email"])
+
+    # 1. Off by default: no redemption field shown yet for a customer with no points.
+    open_page(s, "/setup")
+    card = page.locator(".ui-card", has_text="লয়্যালটি পয়েন্ট")
+    expect(card.get_by_role("checkbox")).not_to_be_checked()
+
+    # 2. Turn it on: ৳100 = 1 point, each point worth ৳0.5.
+    card.get_by_role("checkbox").check()
+    card.get_by_label("কত টাকায় ১ পয়েন্ট").fill("100")
+    card.get_by_label("১ পয়েন্টের মূল্য (৳)").fill("0.5")
+    card.get_by_role("button", name="সংরক্ষণ করুন").click()
+    expect(page.get_by_text("লয়্যালটি পয়েন্টের নিয়ম সংরক্ষিত হয়েছে")).to_be_visible()
+
+    # 3. Sell ৳2000 to the customer: earns 20 points, no redemption offered yet (balance was 0 at sale time).
+    open_page(s, "/sales")
+    page.get_by_placeholder("পণ্যের নাম, SKU বা বারকোড লিখুন…").fill("Loyalty Item")
+    page.get_by_role("button", name=re.compile("Loyalty Item")).first.click()
+    page.locator("input[aria-label='Loyalty Item-এর পরিমাণ']").fill("20")
+    page.locator("select").filter(has_text="সাধারণ ক্রেতা").select_option(label="Loyal Customer")
+    page.get_by_role("button", name=re.compile("বিক্রি সম্পন্ন করুন")).click()
+    expect(page.get_by_role("heading", name="বিক্রি সম্পন্ন হয়েছে")).to_be_visible()
+    page.get_by_role("button", name="নতুন বিক্রি").click()
+
+    # 4. A second sale to the same customer offers redemption; using 10 points takes ৳5 off.
+    page.get_by_placeholder("পণ্যের নাম, SKU বা বারকোড লিখুন…").fill("Loyalty Item")
+    page.get_by_role("button", name=re.compile("Loyalty Item")).first.click()
+    page.locator("input[aria-label='Loyalty Item-এর পরিমাণ']").fill("5")
+    page.locator("select").filter(has_text="সাধারণ ক্রেতা").select_option(label="Loyal Customer")
+    redeem = page.get_by_label(re.compile("লয়্যালটি পয়েন্ট ভাঙান"))
+    expect(redeem).to_be_visible()
+    redeem.fill("10")
+    expect(page.get_by_text("পয়েন্ট ছাড়")).to_be_visible()
+    page.get_by_role("button", name=re.compile("বিক্রি সম্পন্ন করুন")).click()
+    expect(page.get_by_role("heading", name="বিক্রি সম্পন্ন হয়েছে")).to_be_visible()
+    expect(page.locator(".receipt")).to_contain_text(bn(495))            # ৳500 - ৳5 point discount
+    page.get_by_role("button", name="নতুন বিক্রি").click()
+
+    # 5. The customer's own page shows the remaining balance: 20 earned - 10 redeemed + 4 earned on ৳495.
+    open_page(s, "/directory")
+    page.get_by_role("button", name="Loyal Customer", exact=True).click()
+    expect(page.get_by_text("লয়্যালটি পয়েন্ট")).to_be_visible()
+    expect(page.get_by_text(bn(14), exact=True)).to_be_visible()
+    no_js_errors(s)
+
+
 def test_wrong_password_is_explained_in_bangla_and_the_session_survives_a_reload(shop, new_session):
     s = new_session()
     page = s.page

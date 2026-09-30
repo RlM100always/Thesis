@@ -305,6 +305,11 @@ export const api = {
   receivablesAgeing: (org) => appRequest("/api/app/receivables/ageing", { organizationId: org }),
   trainDemandModel: (org) =>
     appRequest("/api/app/train-demand-model", { method: "POST", organizationId: org }),
+
+  loyaltyRule: (org) => appRequest("/api/app/loyalty/rule", { organizationId: org }),
+  updateLoyaltyRule: (org, body) => appRequest("/api/app/loyalty/rule", { method: "PATCH", body, organizationId: org }),
+  customerLoyalty: (org, customerId) =>
+    appRequest(`/api/app/customers/${encodeURIComponent(customerId)}/loyalty`, { organizationId: org }),
 };
 
 // Money is in BDT and runs to billions — plain toLocaleString is unreadable.

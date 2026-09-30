@@ -202,6 +202,59 @@ function OperationsCard({ org, canEdit, onSaved }) {
   );
 }
 
+// Off by default: a shop that never opens this card sells exactly as before,
+// no points, no surprise line on a receipt.
+function LoyaltyCard({ orgId, canEdit }) {
+  const toast = useToast();
+  const [rule, setRule] = useState(null);
+  const [form, setForm] = useState({ points_per_taka: "100", redemption_value: "0.5", active: false });
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  const load = useCallback(() => (orgId ? api.loyaltyRule(orgId).then((r) => {
+    setRule(r);
+    if (r) setForm({ points_per_taka: String(r.points_per_taka), redemption_value: String(r.redemption_value), active: r.active });
+  }).catch(() => setRule(null)) : null), [orgId]);
+  useEffect(() => { load(); }, [load]);
+
+  async function save(e) {
+    e.preventDefault();
+    setBusy(true); setError("");
+    try {
+      await api.updateLoyaltyRule(orgId, {
+        points_per_taka: form.points_per_taka, redemption_value: form.redemption_value, active: form.active,
+      });
+      await load();
+      toast.success("লয়্যালটি পয়েন্টের নিয়ম সংরক্ষিত হয়েছে।");
+    } catch (err) {
+      setError(explain(err, { 403: "এই সেটিং শুধু মালিক বদলাতে পারেন।" }));
+    } finally { setBusy(false); }
+  }
+
+  return (
+    <Card title="লয়্যালটি পয়েন্ট" subtitle="চালু করলে প্রতিটি বিক্রিতে কাস্টমার পয়েন্ট পাবেন, পরে যা দিয়ে ছাড় নেওয়া যাবে। চালু না করলে আগের মতোই বিক্রি হবে, কোনো পরিবর্তন নেই।">
+      {!rule ? <Notice tone="info">তথ্য লোড হচ্ছে…</Notice> : (
+        <form className="ui-form" onSubmit={save}>
+          <label className="checkbox" style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+            <input type="checkbox" checked={form.active} onChange={(e) => setForm({ ...form, active: e.target.checked })} disabled={!canEdit} style={{ width: 20, height: 20, marginTop: 2 }} />
+            <span><strong>লয়্যালটি পয়েন্ট চালু করুন</strong></span>
+          </label>
+          <div className="ui-form ui-form--2">
+            <Field label="কত টাকায় ১ পয়েন্ট" hint="যেমন ১০০ মানে প্রতি ৳১০০ কেনাকাটায় ১ পয়েন্ট">
+              <input type="number" min="1" step="1" value={form.points_per_taka} onChange={(e) => setForm({ ...form, points_per_taka: e.target.value })} disabled={!canEdit} />
+            </Field>
+            <Field label="১ পয়েন্টের মূল্য (৳)" hint="যেমন ০.৫ মানে ১ পয়েন্ট = ৫০ পয়সা ছাড়">
+              <input type="number" min="0.0001" step="0.0001" value={form.redemption_value} onChange={(e) => setForm({ ...form, redemption_value: e.target.value })} disabled={!canEdit} />
+            </Field>
+          </div>
+          {error && <Notice tone="danger">{error}</Notice>}
+          {canEdit ? <div><Button type="submit" loading={busy}>সংরক্ষণ করুন</Button></div> : <Notice tone="info">এই সেটিং শুধু মালিক বদলাতে পারেন।</Notice>}
+        </form>
+      )}
+    </Card>
+  );
+}
+
 function TrainCard({ orgId, canTrain }) {
   const toast = useToast();
   const [busy, setBusy] = useState(false);
@@ -348,6 +401,7 @@ export default function SettingsPage() {
       </Card>
 
       <ImportCard orgId={orgId} canImport={can("imports:write")} canExport={can("dataset:export")} />
+      <LoyaltyCard key={`loyalty-${active.id}`} orgId={orgId} canEdit={can("settings:write")} />
       <TrainCard orgId={orgId} canTrain={can("model:train")} />
 
       <Modal open={addingBranch} title="নতুন শাখা" onClose={() => setAddingBranch(false)}

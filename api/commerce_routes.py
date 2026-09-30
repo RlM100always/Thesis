@@ -1,7 +1,7 @@
 """Tenant-safe catalog, inventory, and point-of-sale endpoints."""
 
 from datetime import date
-from decimal import Decimal, ROUND_HALF_UP
+from decimal import Decimal, ROUND_DOWN, ROUND_HALF_UP
 import hashlib
 import json
 from typing import Annotated
@@ -13,6 +13,9 @@ from sqlalchemy.orm import Session
 
 from .accounting import Line, account_for_method, post_journal
 from .approvals import needs_approval, verify_override
+from .loyalty import balance as loyalty_balance
+from .loyalty import get_rule as get_loyalty_rule
+from .loyalty import plan_redemption, points_earned
 from .app_schemas import (
     InventoryView, ProductCreate, ProductUpdate, ProductView, SaleCreate, SaleDetailView,
     SaleLineView, SaleView, StockAdjustment,
@@ -24,7 +27,7 @@ from .batches import (
     get_or_create_batch, remove_from_batch,
 )
 from .domain_models import (
-    AuditLog, Batch, Branch, Customer, InventoryBalance, LedgerEntry, Payment, Product,
+    AuditLog, Batch, Branch, Customer, InventoryBalance, LedgerEntry, LoyaltyEntry, Payment, Product,
     SaleItemBatch, SalesOrder, SalesOrderItem, StockMovement, SyncOperation, utcnow,
 )
 from .audit import record_audit
@@ -272,7 +275,25 @@ def create_sale(payload: SaleCreate, membership: CurrentMembership, user: Curren
         subtotal += gross
         discount_total += item.discount_amount
         line_values.append((item, product, unit_price, line_total))
-    total = (subtotal - discount_total + payload.tax_amount).quantize(MONEY)
+    loyalty_points_used = ZERO
+    loyalty_discount = ZERO
+    if payload.redeem_points > 0:
+        if customer is None:
+            raise HTTPException(status_code=422, detail="Redeeming loyalty points needs a customer")
+        available = loyalty_balance(db, org_id, customer.id)
+        if payload.redeem_points > available:
+            raise HTTPException(status_code=409, detail=(
+                f"This customer only has {available} loyalty points (asked to use {payload.redeem_points})"))
+        rule = get_loyalty_rule(db, org_id)
+        # A bill is never discounted below zero: points beyond what the bill
+        # needs are simply not spent, kept for next time — not an error.
+        spendable = subtotal - discount_total
+        max_useful_points = (spendable / rule.redemption_value).to_integral_value(rounding=ROUND_DOWN) \
+            if rule and rule.active and rule.redemption_value > 0 else ZERO
+        redemption = plan_redemption(rule, available, min(payload.redeem_points, max_useful_points))
+        loyalty_points_used, loyalty_discount = redemption.points, redemption.discount
+
+    total = (subtotal - discount_total - loyalty_discount + payload.tax_amount).quantize(MONEY)
     paid = sum((p.amount for p in payload.payments), Decimal("0"))
     if paid > total:
         raise HTTPException(status_code=422, detail="Payments exceed sale total")
@@ -397,13 +418,26 @@ def create_sale(payload: SaleCreate, membership: CurrentMembership, user: Curren
         if discount_override_pct is not None:
             record_audit(db, membership, "sale.discount_override", "sales_order", order.id,
                          discount_pct=discount_override_pct, approver_email=payload.override_email)
+        net_revenue = subtotal - discount_total - loyalty_discount
+        if loyalty_points_used > 0:
+            db.add(LoyaltyEntry(
+                organization_id=org_id, customer_id=customer.id, points_delta=-loyalty_points_used,
+                reason="redeemed", reference_type="sales_order", reference_id=order.id, occurred_at=payload.sold_at,
+            ))
+        if customer is not None:
+            earned = points_earned(get_loyalty_rule(db, org_id), net_revenue)
+            if earned > 0:
+                db.add(LoyaltyEntry(
+                    organization_id=org_id, customer_id=customer.id, points_delta=earned,
+                    reason="earned", reference_type="sales_order", reference_id=order.id, occurred_at=payload.sold_at,
+                ))
         journal_lines = [
             Line(account_for_method(p.method), p.amount, ZERO) for p in payload.payments
         ]
         if total > paid:
             journal_lines.append(Line("1100", total - paid, ZERO, "customer", payload.customer_id))
-        if subtotal - discount_total > 0:
-            journal_lines.append(Line("4000", ZERO, subtotal - discount_total))
+        if net_revenue > 0:
+            journal_lines.append(Line("4000", ZERO, net_revenue))
         if payload.tax_amount > 0:
             journal_lines.append(Line("2100", ZERO, payload.tax_amount))
         if cogs_total > 0:
