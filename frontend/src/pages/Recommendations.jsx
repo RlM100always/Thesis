@@ -134,6 +134,19 @@ export default function RecommendationsPage() {
     }
   }
 
+  async function measureOutcome(item) {
+    setBusy(true);
+    try {
+      const res = await api.bsmartMeasure(orgId, item.id);
+      toast.success("লেজার থেকে ফলাফল স্বয়ংক্রিয়ভাবে মাপা হয়েছে।");
+      await load();
+    } catch (e) {
+      toast.error(explain(e, { 422: "এই সুপারিশের জন্য স্বয়ংক্রিয় মাপা সম্ভব নয়।" }));
+    } finally {
+      setBusy(false);
+    }
+  }
+
   function startOutcome(item) {
     setOutcomeFor(item);
     setOutcome({ observation_window_days: "30" });
@@ -258,8 +271,17 @@ export default function RecommendationsPage() {
                       <Button variant="danger" onClick={() => startDecision(item, "reject")}>বাতিল</Button>
                     </>}
                     {item.decision && (item.outcome_logged
-                      ? <Badge tone="success" icon="check">ফলাফল লেখা হয়েছে</Badge>
-                      : canOutcome && <Button variant="secondary" icon="edit" onClick={() => startOutcome(item)}>ফলাফল লিখুন</Button>)}
+                      ? <Badge tone="success" icon="check">
+                          {item.outcome_measured_by === "ledger_auto" ? "ফলাফল লেজার থেকে মাপা হয়েছে" : "ফলাফল লেখা হয়েছে"}
+                        </Badge>
+                      : canOutcome && <>
+                          {item.source === "live" && (
+                            <Button variant="secondary" icon="zap" loading={busy} onClick={() => measureOutcome(item)}>
+                              স্বয়ংক্রিয়ভাবে মাপুন
+                            </Button>
+                          )}
+                          <Button variant="secondary" icon="edit" onClick={() => startOutcome(item)}>নিজে লিখুন</Button>
+                        </>)}
                   </div>
                 </div>
               </Card>

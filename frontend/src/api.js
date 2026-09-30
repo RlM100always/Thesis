@@ -106,6 +106,10 @@ export const api = {
   bsmartExplain: (org, id) =>
     appRequest(`/api/app/bsmart/recommendations/${encodeURIComponent(id)}/explain`, { organizationId: org }),
 
+  bsmartMeasure: (org, id, windowDays = 30) =>
+    appRequest(`/api/app/bsmart/recommendations/${encodeURIComponent(id)}/measure`,
+      { method: "POST", body: { observation_window_days: windowDays }, organizationId: org }),
+
   platformOrganizations: () => appRequest("/api/platform/organizations"),
   platformSummary: () => appRequest("/api/platform/summary"),
   bsmartMonitoring: (org) =>

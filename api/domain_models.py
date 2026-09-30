@@ -958,5 +958,8 @@ class RecommendationOutcome(Base, TimestampMixin):
 
     drift_flag: Mapped[bool] = mapped_column(Boolean, default=False)
     note: Mapped[str | None] = mapped_column(Text)
+    # "manual" (owner-entered) or "ledger_auto" (api/outcome_measurement.py) --
+    # a reader must be able to tell which without trusting the numbers equally.
+    measured_by: Mapped[str] = mapped_column(String(12), default="manual", server_default="manual")
 
     recommendation: Mapped["Recommendation"] = relationship(back_populates="outcomes")

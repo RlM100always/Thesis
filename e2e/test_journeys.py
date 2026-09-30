@@ -286,6 +286,18 @@ def test_bsmart_can_run_on_the_shops_own_data_not_just_the_research_sample(shop,
     card = page.locator(".reco", has_text="BS-1")
     expect(card).to_be_visible()
     expect(card.get_by_text("নিজের ডেটা")).to_be_visible()
+
+    # Accept, then measure the outcome straight from the ledger -- no typing
+    # numbers in by hand, since this recommendation came from the shop's own data.
+    card.get_by_role("button", name="গ্রহণ করুন").click()
+    page.locator("dialog[open]").locator("footer").get_by_role("button", name="সিদ্ধান্ত নিশ্চিত করুন").click()
+    expect(page.get_by_text("সিদ্ধান্ত রাখা হয়েছে")).to_be_visible()
+
+    page.get_by_role("tab", name=re.compile("সিদ্ধান্ত হয়েছে")).click()
+    decided_card = page.locator(".reco", has_text="BS-1")
+    decided_card.get_by_role("button", name="স্বয়ংক্রিয়ভাবে মাপুন").click()
+    expect(page.get_by_text("লেজার থেকে ফলাফল স্বয়ংক্রিয়ভাবে মাপা হয়েছে")).to_be_visible(timeout=20000)
+    expect(decided_card.get_by_text("ফলাফল লেজার থেকে মাপা হয়েছে")).to_be_visible()
     no_js_errors(s)
 
 

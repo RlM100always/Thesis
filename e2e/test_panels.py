@@ -211,7 +211,7 @@ def test_owner_decides_a_recommendation_and_records_what_happened(shop, new_sess
     expect(page.get_by_text("সিদ্ধান্ত রাখা হয়েছে")).to_be_visible()
 
     page.get_by_role("tab", name=re.compile("সিদ্ধান্ত হয়েছে")).click()
-    page.get_by_role("button", name="ফলাফল লিখুন").first.click()
+    page.get_by_role("button", name="নিজে লিখুন").first.click()
     dialog = page.locator("dialog[open]")
     dialog.get_by_label("কাজটি কি সত্যিই করেছেন?").select_option("yes")
     dialog.locator("footer").get_by_role("button", name="ফলাফল রাখুন").click()

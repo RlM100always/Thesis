@@ -27,7 +27,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from . import bsmart_live, llm_gateway
+from . import bsmart_live, llm_gateway, outcome_measurement
 from .auth import CurrentMembership
 from .database import get_db
 from .domain_models import (
@@ -213,6 +213,7 @@ def list_recommendations(membership: CurrentMembership, db: Db, cutoff: str | No
             "decision": latest_decision.decision if latest_decision else None,
             "decided_at": latest_decision.created_at.isoformat() if latest_decision else None,
             "outcome_logged": bool(r.outcomes),
+            "outcome_measured_by": (sorted(r.outcomes, key=lambda o: o.created_at)[-1].measured_by if r.outcomes else None),
         })
     return {"count": len(out), "recommendations": out}
 
@@ -313,6 +314,46 @@ def record_outcome(
     record_audit(db, membership, "bsmart.outcome_recorded", "recommendation", reco.id)
     db.commit()
     return {"status": "recorded", "outcome_id": row.id}
+
+
+class MeasureIn(BaseModel):
+    observation_window_days: int = Field(default=30, ge=1, le=365)
+
+
+@router.post("/api/app/bsmart/recommendations/{recommendation_id}/measure", tags=["bsmart"])
+def measure_outcome(
+    recommendation_id: str, body: MeasureIn, membership: CurrentMembership, db: Db,
+):
+    """Compute an outcome from the ledger instead of asking the owner to type
+    numbers in by hand -- only possible for a recommendation that came from
+    this tenant's own live data (`api/bsmart_live.py`), since only those rows
+    name a real product/branch/customer in this database (see
+    `api/outcome_measurement.py`'s module docstring)."""
+    require_permission(membership, "bsmart:outcome")
+    reco = db.get(Recommendation, recommendation_id)
+    if reco is None or reco.organization_id != membership.organization_id:
+        raise HTTPException(status_code=404, detail="Recommendation not found")
+    if not (reco.model_version or "").startswith("live@"):
+        raise HTTPException(status_code=422, detail=(
+            "স্বয়ংক্রিয় মাপা শুধু নিজের ডেটা থেকে তৈরি সুপারিশের জন্য সম্ভব -- "
+            "গবেষণা নমুনার পণ্য/শাখা/কাস্টমার এই ব্যবসার ডেটাবেজে নেই।"))
+    decision = sorted(reco.decisions, key=lambda d: d.created_at)[-1] if reco.decisions else None
+    if decision is None:
+        raise HTTPException(status_code=422, detail="আগে একটা সিদ্ধান্ত নিন, তারপর মাপা যাবে।")
+
+    try:
+        computed = outcome_measurement.measure(db, membership.organization_id, reco, decision.created_at, body.observation_window_days)
+    except outcome_measurement.CannotMeasure as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    row = RecommendationOutcome(
+        id=new_id(), organization_id=membership.organization_id, recommendation_id=reco.id,
+        observed_at=datetime.now(timezone.utc), measured_by="ledger_auto", **computed,
+    )
+    db.add(row)
+    record_audit(db, membership, "bsmart.outcome_measured", "recommendation", reco.id, **computed)
+    db.commit()
+    return {"status": "recorded", "outcome_id": row.id, "measured": computed}
 
 
 @router.get("/api/app/bsmart/monitoring", tags=["bsmart"])
