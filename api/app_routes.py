@@ -28,11 +28,12 @@ Db = Annotated[Session, Depends(get_db)]
 
 def _setting_values(setting: OrganizationSetting | None) -> dict:
     if setting is None:
-        return {"business_mode": "products", "payment_methods": ["cash"], "sales_channels": ["in_store"]}
+        return {"business_mode": "products", "payment_methods": ["cash"], "sales_channels": ["in_store"], "reorder_budget_bdt": None}
     return {
         "business_mode": setting.business_mode,
         "payment_methods": json.loads(setting.payment_methods_json),
         "sales_channels": json.loads(setting.sales_channels_json),
+        "reorder_budget_bdt": setting.reorder_budget_bdt,
     }
 
 
@@ -151,9 +152,11 @@ def update_organization_operations(payload: OrganizationOperations, membership: 
     setting.business_mode = payload.business_mode
     setting.payment_methods_json = json.dumps(payload.payment_methods)
     setting.sales_channels_json = json.dumps(payload.sales_channels)
+    if payload.reorder_budget_bdt is not None:
+        setting.reorder_budget_bdt = payload.reorder_budget_bdt
     record_audit(db, membership, "organization.operations_updated", "organization", org.id,
                  business_mode=payload.business_mode, payment_methods=payload.payment_methods,
-                 sales_channels=payload.sales_channels)
+                 sales_channels=payload.sales_channels, reorder_budget_bdt=payload.reorder_budget_bdt)
     db.commit()
     return OrganizationView(
         id=org.id, name=org.name, slug=org.slug, sector=org.sector, size_class=org.size_class,

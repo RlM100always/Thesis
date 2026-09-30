@@ -70,6 +70,9 @@ class OrganizationSetting(Base, TimestampMixin):
     business_mode: Mapped[str] = mapped_column(String(20), default="products")
     payment_methods_json: Mapped[str] = mapped_column(Text, default='["cash"]')
     sales_channels_json: Mapped[str] = mapped_column(Text, default='["in_store"]')
+    # None = not declared yet -- the live B-SMART engine (api/bsmart_live.py)
+    # must not invent a budget cap when the owner hasn't set a real one.
+    reorder_budget_bdt: Mapped[Decimal | None] = mapped_column(Numeric(14, 2))
 
 
 class ReferenceValue(Base, TimestampMixin):

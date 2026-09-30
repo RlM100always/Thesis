@@ -230,26 +230,46 @@ def build_retention_candidates(db: Session, org_id: str, now: datetime) -> tuple
     return candidates, consent_excluded
 
 
-def feasibility_and_rank(reorder: list[dict], expiry: list[dict], retention: list[dict]) -> tuple[list[dict], list[dict]]:
-    """No reorder budget cap here, unlike the research-CSV engine.
+def feasibility_and_rank(
+    reorder: list[dict], expiry: list[dict], retention: list[dict], budget_bdt: float | None = None,
+) -> tuple[list[dict], list[dict]]:
+    """Reorder budget cap, applied only when the owner has actually declared
+    one (``OrganizationSetting.reorder_budget_bdt``, Settings -> কাজ ও পেমেন্ট).
 
-    That engine declares its budget as a fraction of the *total* identified
-    need across hundreds of SKUs, which is a reasonable stand-in when no real
-    budget figure exists. Applied to one live shop's much smaller candidate
-    set the same formula degenerates: a shop with a single item needing
-    reorder has ``total_need == that item's own cost``, so a 40%-of-total
-    cap always blocks it -- capping to zero, not a meaningful constraint.
-    There is also no owner-declared budget field yet (constraint-profile UI,
-    docs/BUSINESS_OS_VISION.md H7, is not built). Rather than fabricate a
-    number that would silently abstain real shops, every reorder/expiry/
-    retention candidate here is feasible by construction; only the quota
-    below decides what makes R_t. Wire a real budget constraint here once
-    H7 exists.
+    The research-CSV engine declares its budget as a fraction of the *total*
+    identified need across hundreds of SKUs -- a reasonable stand-in when no
+    real figure exists. That formula degenerates for one live shop's much
+    smaller candidate set: a shop with a single item needing reorder has
+    ``total_need == that item's own cost``, so a 40%-of-total cap always
+    blocks it. Rather than fabricate a number, a live shop that has not set
+    a real budget gets every reorder/expiry/retention candidate feasible by
+    construction, same as before; only the quota decides R_t. Once a real
+    budget exists, it caps reorder the honest way: highest-utility items
+    first, until the declared BDT figure runs out.
     """
     audit = []
-    for a in reorder + expiry + retention:
+    for a in expiry + retention:
         a["feasible"], a["infeasible_reason"] = True, None
         audit.append(a)
+
+    if budget_bdt is None:
+        for a in reorder:
+            a["feasible"], a["infeasible_reason"] = True, None
+            a["explanation"]["constraints"]["budget"] = "not gated (no owner-declared budget yet)"
+            audit.append(a)
+    else:
+        spent = 0.0
+        for a in sorted(reorder, key=lambda x: x["utility_bdt"], reverse=True):
+            cost = a["reorder_cost_bdt"]
+            if spent + cost <= budget_bdt:
+                a["feasible"], a["infeasible_reason"] = True, None
+                spent += cost
+                a["explanation"]["constraints"]["budget"] = f"ok (৳{cost:,.0f} of ৳{budget_bdt:,.0f})"
+            else:
+                a["feasible"] = False
+                a["infeasible_reason"] = f"মাসিক রিঅর্ডার বাজেট (৳{budget_bdt:,.0f}) শেষ; ৳{spent:,.0f} ইতিমধ্যে বেশি-উপযোগী পণ্যে খরচ হয়েছে"
+                a["explanation"]["constraints"]["budget"] = f"BLOCKED (৳{budget_bdt:,.0f} cap reached)"
+            audit.append(a)
 
     feasible = [a for a in audit if a["feasible"]]
     feasible.sort(key=lambda a: a["utility_bdt"], reverse=True)
@@ -272,8 +292,12 @@ def feasibility_and_rank(reorder: list[dict], expiry: list[dict], retention: lis
     return top_k, audit
 
 
-def generate(db: Session, org_id: str, branches: list[Branch]) -> dict[str, Any]:
+def generate(db: Session, org_id: str, branches: list[Branch], budget_bdt: float | None = None) -> dict[str, Any]:
     """Run Algorithm 1 against this organization's own operational data.
+
+    ``budget_bdt`` comes from ``OrganizationSetting.reorder_budget_bdt``
+    (Settings -> কাজ ও পেমেন্ট) -- ``None`` when the owner never set one,
+    which leaves reorder unconstrained rather than fabricating a cap.
 
     Returns the same shape `13_bsmart_recommendation_engine.py` writes to
     `output/bsmart_recommendations.json`, so `api/bsmart_routes.py` can
@@ -284,7 +308,7 @@ def generate(db: Session, org_id: str, branches: list[Branch]) -> dict[str, Any]
     reorder = build_reorder_candidates(db, org_id, branches, now)
     expiry = build_expiry_candidates(db, org_id, branches, today)
     retention, consent_excluded = build_retention_candidates(db, org_id, now)
-    r_t, audit = feasibility_and_rank(reorder, expiry, retention)
+    r_t, audit = feasibility_and_rank(reorder, expiry, retention, budget_bdt)
     return {
         "cutoff": today.isoformat(),
         "assumptions": ASSUMPTIONS,

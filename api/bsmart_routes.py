@@ -31,7 +31,7 @@ from . import bsmart_live, llm_gateway, outcome_measurement
 from .auth import CurrentMembership
 from .database import get_db
 from .domain_models import (
-    Branch, Recommendation, RecommendationDecision, RecommendationOutcome, new_id,
+    Branch, OrganizationSetting, Recommendation, RecommendationDecision, RecommendationOutcome, new_id,
 )
 from .audit import record_audit
 from .permissions import require_permission
@@ -160,7 +160,9 @@ def run_live(membership: CurrentMembership, db: Db):
         Branch.organization_id == org_id, Branch.active.is_(True))))
     if not branches:
         raise HTTPException(status_code=422, detail="No active branch yet — add one under ব্যবসা ও শাখা first.")
-    run = bsmart_live.generate(db, org_id, branches)
+    budget = db.scalar(select(OrganizationSetting.reorder_budget_bdt).where(
+        OrganizationSetting.organization_id == org_id))
+    run = bsmart_live.generate(db, org_id, branches, float(budget) if budget is not None else None)
     result = _persist(db, membership, run["cutoff"], run["R_t"], f"live@{run['cutoff']}")
     result["summary"] = run["summary"]
     return result

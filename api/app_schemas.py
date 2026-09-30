@@ -42,6 +42,7 @@ class OrganizationView(BaseModel):
     business_mode: str = "products"
     payment_methods: list[str] = Field(default_factory=lambda: ["cash"])
     sales_channels: list[str] = Field(default_factory=lambda: ["in_store"])
+    reorder_budget_bdt: Decimal | None = None
 
 
 class OrganizationProfile(BaseModel):
@@ -57,6 +58,9 @@ class OrganizationOperations(BaseModel):
     business_mode: str = Field(pattern=r"^(products|services|both)$")
     payment_methods: list[str] = Field(min_length=1, max_length=8)
     sales_channels: list[str] = Field(min_length=1, max_length=8)
+    # None = leave the reorder budget as-is; the live B-SMART engine treats an
+    # organization that never set one as genuinely unconstrained, not zero.
+    reorder_budget_bdt: Decimal | None = Field(default=None, ge=0, max_digits=14, decimal_places=2)
 
     @model_validator(mode="after")
     def validate_choices(self):

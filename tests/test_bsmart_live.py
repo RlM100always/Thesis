@@ -37,6 +37,13 @@ class Shop:
             "reorder_level": reorder_level, "track_expiry": track_expiry,
         })
 
+    def set_budget(self, amount):
+        r = self.c.patch("/api/app/organization/operations", headers=self.h, json={
+            "business_mode": "products", "payment_methods": ["cash"], "sales_channels": ["in_store"],
+            "reorder_budget_bdt": amount,
+        })
+        assert r.status_code == 200, r.text
+
     def stock(self, product_id, qty):
         self.post("/inventory/adjust", {
             "branch_id": self.w["branch_a"], "product_id": product_id,
@@ -174,3 +181,32 @@ def test_live_and_research_import_runs_coexist(shop):
     assert r.status_code in (200, 404)
     recos = shop.get("/bsmart/recommendations")["recommendations"]
     assert all(r["source"] in ("live", "research_import") for r in recos)
+
+
+def test_an_owner_declared_budget_caps_reorder_to_the_highest_utility_items(shop):
+    cheap = shop.product("BUD-1", reorder_level="5")
+    pricey = shop.product("BUD-2", reorder_level="5")
+    for product in (cheap, pricey):
+        shop.stock(product["id"], 25)
+        for day in range(10):
+            shop.sale(product["id"], 2, NOW - timedelta(days=day))
+
+    # Only enough budget for one of the two reorders, whichever scores higher.
+    shop.set_budget("50")
+    result = shop.post("/bsmart/run", {})
+    assert result["status"] == "imported"
+    recos = shop.get("/bsmart/recommendations")["recommendations"]
+    reorder_skus = {r["sku"] for r in recos if r["action_type"] == "reorder"}
+    assert reorder_skus <= {"BUD-1", "BUD-2"}
+    assert len(reorder_skus) <= 1   # the tiny budget cannot cover both
+
+
+def test_no_declared_budget_leaves_reorder_unconstrained(shop):
+    product = shop.product("BUD-3", reorder_level="5")
+    shop.stock(product["id"], 25)
+    for day in range(10):
+        shop.sale(product["id"], 2, NOW - timedelta(days=day))
+    # No set_budget() call: default behaviour, same as before this feature.
+    shop.post("/bsmart/run", {})
+    recos = shop.get("/bsmart/recommendations")["recommendations"]
+    assert "BUD-3" in {r["sku"] for r in recos if r["action_type"] == "reorder"}

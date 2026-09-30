@@ -162,6 +162,7 @@ function OperationsCard({ org, canEdit, onSaved }) {
     business_mode: org.business_mode || "products",
     payment_methods: org.payment_methods || ["cash"],
     sales_channels: org.sales_channels || ["in_store"],
+    reorder_budget_bdt: org.reorder_budget_bdt != null ? String(org.reorder_budget_bdt) : "",
   });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -176,7 +177,11 @@ function OperationsCard({ org, canEdit, onSaved }) {
     }
     setBusy(true); setError("");
     try {
-      await api.updateOrganizationOperations(org.id, form); await onSaved();
+      await api.updateOrganizationOperations(org.id, {
+        ...form,
+        reorder_budget_bdt: form.reorder_budget_bdt === "" ? null : form.reorder_budget_bdt,
+      });
+      await onSaved();
       toast.success("কাজের ধরন সংরক্ষিত হয়েছে। POS এখন এই পেমেন্ট মাধ্যমগুলোই দেখাবে।");
     } catch (err) { setError(explain(err, { 403: "এই সেটিং শুধু মালিক বদলাতে পারেন।" })); }
     finally { setBusy(false); }
@@ -195,6 +200,11 @@ function OperationsCard({ org, canEdit, onSaved }) {
         <div className="ui-field"><label>বিক্রির মাধ্যম</label><div className="choice-grid">
           {CHANNEL_CHOICES.map(([value, label]) => <label key={value} className={`choice-check ${form.sales_channels.includes(value) ? "on" : ""}`}><input type="checkbox" disabled={!canEdit} checked={form.sales_channels.includes(value)} onChange={() => toggle("sales_channels", value)} />{label}</label>)}
         </div></div>
+        <Field label="মাসিক রিঅর্ডার বাজেট (৳, ঐচ্ছিক)"
+               hint="দিলে AI সুপারিশ এই বাজেটের মধ্যে থেকে অর্ডার সাজাবে। খালি রাখলে বাজেট সীমা ছাড়াই সুপারিশ দেখাবে।">
+          <input type="number" min="0" step="0.01" value={form.reorder_budget_bdt}
+                 onChange={(e) => setForm({ ...form, reorder_budget_bdt: e.target.value })} disabled={!canEdit} />
+        </Field>
         {error && <Notice tone="danger">{error}</Notice>}
         {canEdit ? <div><Button type="submit" loading={busy}>কাজের মাধ্যম আপডেট</Button></div> : <Notice tone="info">এই সেটিং শুধু মালিক বদলাতে পারেন।</Notice>}
       </form>
