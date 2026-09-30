@@ -68,7 +68,7 @@ export default function WorkspaceBar({ onMenu }) {
         <button type="button" className="workspace-menu" onClick={onMenu} aria-label="মেনু খুলুন"><Icon name="menu" /></button>
         <div className="workspace-context">
           <div className="workspace-context__business">
-            <span>ব্যবসা</span><strong>{business.active?.name || "B-SMART"}</strong>
+            <span>ব্যবসা</span><strong>{business.active?.name || "AI Powered Business Analytics System"}</strong>
           </div>
           <span className="workspace-divider" />
           <label className="workspace-branch">

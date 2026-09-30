@@ -1,4 +1,4 @@
-// B-SMART সুপারিশ — architecture layers 9 and 10, owner-facing.
+// AI সুপারিশ — architecture layers 9 and 10, owner-facing.
 // The system ranks and explains; the owner decides, and later records what
 // actually happened. Nothing here changes stock or money by itself.
 
@@ -74,7 +74,7 @@ export default function RecommendationsPage() {
         : `${num(res.recommendations)}টি সুপারিশ আনা হয়েছে (গবেষণা ডেটাসেট)।`);
       await load();
     } catch (e) {
-      toast.error(explain(e, { 404: "এখনো কোনো B-SMART রান পাওয়া যায়নি। আগে গবেষণা ডেটায় অ্যালগরিদম চালাতে হবে।" }));
+      toast.error(explain(e, { 404: "এখনো কোনো সুপারিশ রান পাওয়া যায়নি। আগে গবেষণা ডেটায় অ্যালগরিদম চালাতে হবে।" }));
     } finally {
       setBusy(false);
     }
@@ -182,7 +182,7 @@ export default function RecommendationsPage() {
   return (
     <div className="page stack">
       <PageHeader
-        title="B-SMART সুপারিশ"
+        title="সুপারিশ"
         subtitle="সিস্টেম প্রতিটি কাজের লাভ, খরচ ও ঝুঁকি হিসাব করে সাজিয়ে দেয়। চূড়ান্ত সিদ্ধান্ত সবসময় আপনার।"
         actions={canImport && <>
           <Button icon="zap" loading={busy && !deciding && !outcomeFor} onClick={runLive}>নিজের ব্যবসার ডেটা থেকে রান করুন</Button>
@@ -215,7 +215,7 @@ export default function RecommendationsPage() {
 
       {items === null ? <Skeleton lines={4} height={22} /> : shown.length === 0 ? (
         <Card><EmptyState icon="target" title={items.length ? "এই তালিকায় কিছু নেই" : "এখনো কোনো সুপারিশ নেই"}
-                          hint={items.length ? "অন্য ফিল্টার দেখুন।" : "‘নতুন সুপারিশ আনুন’ চাপলে সর্বশেষ B-SMART ফলাফল আপনার ব্যবসায় যোগ হবে।"} /></Card>
+                          hint={items.length ? "অন্য ফিল্টার দেখুন।" : "‘নতুন সুপারিশ আনুন’ চাপলে সর্বশেষ ফলাফল আপনার ব্যবসায় যোগ হবে।"} /></Card>
       ) : (
         <div className="reco-list">
           {shown.map((item) => {

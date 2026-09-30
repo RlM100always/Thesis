@@ -21,7 +21,7 @@ export default function Landing() {
       <header className="landing-hero">
         <div className="landing-hero-inner">
           <Badge tone="success" icon="zap">বাংলাদেশি SME-দের জন্য</Badge>
-          <h1>B-SMART</h1>
+          <h1>AI Powered Business Analytics System</h1>
           <p className="landing-tagline">
             আপনার নিজের বিক্রি, স্টক ও কাস্টমারের ডেটা থেকে — কী করবেন, তার
             স্পষ্ট, ব্যাখ্যাসহ সুপারিশ। POS থেকে হিসাব-নিকাশ পর্যন্ত পুরো

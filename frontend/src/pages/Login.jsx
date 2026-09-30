@@ -16,7 +16,7 @@ export function AuthLayout({ title, subtitle, children }) {
   return (
     <div className="auth-shell">
       <section className="auth-brand" aria-hidden="true">
-        <h1>B-SMART</h1>
+        <h1>AI Powered Business Analytics System</h1>
         <p>ছোট ও মাঝারি ব্যবসার জন্য সিদ্ধান্তের সহকারী — আপনার নিজের হিসাব থেকে, আপনার ভাষায়।</p>
         <ul className="auth-points">
           {POINTS.map(([icon, text]) => (
@@ -26,7 +26,7 @@ export function AuthLayout({ title, subtitle, children }) {
       </section>
       <main className="auth-panel">
         <div className="auth-card">
-          <div className="auth-mobile-brand"><strong>B-SMART</strong></div>
+          <div className="auth-mobile-brand"><strong>AI Powered Business Analytics System</strong></div>
           <div>
             <h2>{title}</h2>
             {subtitle && <p className="muted" style={{ margin: "6px 0 0" }}>{subtitle}</p>}

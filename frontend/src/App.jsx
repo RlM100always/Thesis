@@ -109,7 +109,7 @@ const BUSINESS_NAV = [
     heading: "AI সুপারিশ",
     items: [
       { to: "/strategy", label: "আজকের করণীয়", icon: "zap", perm: "recommendations:read" },
-      { to: "/bsmart-actions", label: "B-SMART সুপারিশ", icon: "target", perm: "bsmart:read" },
+      { to: "/bsmart-actions", label: "সুপারিশ", icon: "target", perm: "bsmart:read" },
       { to: "/forecast", label: "বিক্রির পূর্বাভাস", icon: "trend" },
       { to: "/segments", label: "কাস্টমার গ্রুপ", icon: "pie" },
       { to: "/upload", label: "নিজের ফাইল আপলোড করুন", icon: "upload" },
@@ -322,7 +322,7 @@ function SidebarBody({ mode, setMode, badges }) {
   return (
     <>
       <div className="brand">
-        <div className="brand-row"><h1>B-SMART</h1><NotificationBell /></div>
+        <div className="brand-row"><h1>AI Powered Business Analytics System</h1><NotificationBell /></div>
         <p className="subtitle">বাংলাদেশি SME ব্যবসা বিশ্লেষণ</p>
         {business.organizations.length > 1 ? (
           <select className="business-switch" value={business.active?.id || ""} aria-label="ব্যবসা বদলান"

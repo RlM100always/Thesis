@@ -70,7 +70,7 @@ def test_the_landing_page_explains_the_product_before_asking_to_sign_in(stack, n
     s = new_session()
     page = s.page
     page.goto(f"{WEB}/#/")
-    expect(page.get_by_role("heading", name="B-SMART")).to_be_visible(timeout=20000)
+    expect(page.get_by_role("heading", name="AI Powered Business Analytics System")).to_be_visible(timeout=20000)
     expect(page.get_by_text("কোন প্যানেল কী করে")).to_be_visible()
     expect(page.get_by_text("ব্যবসা মোড", exact=True).first).to_be_visible()
     expect(page.get_by_text("গবেষণা মোড", exact=True).first).to_be_visible()
