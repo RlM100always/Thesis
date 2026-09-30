@@ -72,7 +72,7 @@ def test_take_screenshots(shop, new_session):
     page.get_by_placeholder(re.compile("পণ্যের নাম")).fill("")
     page.wait_for_timeout(700)
     page.screenshot(path=str(out / "d-sales.png"), full_page=True)
-    for name, path in [("dashboard", "/"), ("cash", "/cash"), ("history", "/sales-history"), ("reports", "/reports"), ("directory", "/directory"), ("accounts", "/accounts"), ("returns", "/returns"), ("strategy", "/strategy"), ("settings", "/setup"), ("staff", "/staff"), ("products", "/products"), ("inventory", "/inventory"), ("expiry", "/expiry"), ("purchases", "/purchases"), ("audit", "/audit")]:
+    for name, path in [("dashboard", "/"), ("cash", "/cash"), ("history", "/sales-history"), ("reports", "/reports"), ("directory", "/directory"), ("accounts", "/accounts"), ("returns", "/returns"), ("strategy", "/strategy"), ("settings", "/setup"), ("staff", "/staff"), ("products", "/products"), ("inventory", "/inventory"), ("expiry", "/expiry"), ("purchases", "/purchases"), ("audit", "/audit"), ("insights", "/insights"), ("accounting", "/accounting"), ("approvals", "/approvals"), ("stockcount", "/stock-count"), ("import", "/import"), ("reorder", "/reorder")]:
         page.goto(f"{WEB}/#{path}")
         page.wait_for_load_state("networkidle")
         page.wait_for_timeout(600)

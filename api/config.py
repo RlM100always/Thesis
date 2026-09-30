@@ -29,6 +29,21 @@ class Settings(BaseSettings):
     allow_registration: bool = True
     login_max_failures: int = 5
     login_lockout_minutes: int = 15
+    integration_mode: str = "sandbox"
+    public_app_url: str = "http://127.0.0.1:8000"
+    bkash_base_url: str = "https://tokenized.sandbox.bka.sh/v1.2.0-beta/tokenized/checkout"
+    bkash_app_key: str | None = None
+    bkash_app_secret: str | None = None
+    bkash_username: str | None = None
+    bkash_password: str | None = None
+    whatsapp_graph_version: str = "v23.0"
+    whatsapp_phone_number_id: str | None = None
+    whatsapp_access_token: str | None = None
+    whatsapp_verify_token: str | None = None
+    whatsapp_app_secret: str | None = None
+    sms_base_url: str = "https://api.sms.net.bd"
+    sms_api_key: str | None = None
+    sms_sender_id: str | None = None
 
     @property
     def is_production(self) -> bool:
@@ -41,6 +56,8 @@ class Settings(BaseSettings):
             raise RuntimeError("JWT_SECRET must be changed in production")
         if self.is_production and self.database_url.startswith("sqlite"):
             raise RuntimeError("Production requires PostgreSQL DATABASE_URL")
+        if self.integration_mode not in {"sandbox", "production"}:
+            raise RuntimeError("INTEGRATION_MODE must be sandbox or production")
 
 
 @lru_cache

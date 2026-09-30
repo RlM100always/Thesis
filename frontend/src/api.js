@@ -79,6 +79,7 @@ async function detailOf(res) {
 }
 
 export const api = {
+  bangladeshReference: () => request("/api/reference/bangladesh"),
   health: () => request("/health"),
   overview: () => request("/api/overview"),
   segments: () => request("/api/segments"),
@@ -226,6 +227,11 @@ export const api = {
   adjustStock: (org, body) => appRequest("/api/app/inventory/adjust", { method: "POST", body, organizationId: org }),
   createSale: (org, body) => appRequest("/api/app/sales", { method: "POST", body, organizationId: org }),
   salesApp: (org, branch = "") => appRequest(`/api/app/sales${branch ? `?branch_id=${encodeURIComponent(branch)}` : ""}`, { organizationId: org }),
+  salesDocuments: (org, type = "") => appRequest(`/api/app/sales-documents${type ? `?document_type=${type}` : ""}`, { organizationId: org }),
+  createSalesDocument: (org, body) => appRequest("/api/app/sales-documents", { method: "POST", body, organizationId: org }),
+  salesDocumentStatus: (org, id, status) => appRequest(`/api/app/sales-documents/${id}/status`, { method: "POST", body: { status }, organizationId: org }),
+  convertQuote: (org, id, body) => appRequest(`/api/app/sales-documents/${id}/convert-to-order`, { method: "POST", body, organizationId: org }),
+  invoiceSalesOrder: (org, id, body) => appRequest(`/api/app/sales-documents/${id}/invoice`, { method: "POST", body, organizationId: org }),
   customersApp: (org) => appRequest("/api/app/customers", { organizationId: org }),
   createCustomer: (org, body) => appRequest("/api/app/customers", { method: "POST", body, organizationId: org }),
   suppliers: (org) => appRequest("/api/app/suppliers", { organizationId: org }),
@@ -233,6 +239,11 @@ export const api = {
   purchases: (org, status = "") => appRequest(`/api/app/purchases${status ? `?status=${encodeURIComponent(status)}` : ""}`, { organizationId: org }),
   createPurchase: (org, body) => appRequest("/api/app/purchases", { method: "POST", body, organizationId: org }),
   receivePurchase: (org, id, body) => appRequest(`/api/app/purchases/${id}/receive`, { method: "POST", body, organizationId: org }),
+  purchaseReturns: (org, status = "") => appRequest(`/api/app/purchase-returns${status ? `?status=${encodeURIComponent(status)}` : ""}`, { organizationId: org }),
+  createPurchaseReturn: (org, body) => appRequest("/api/app/purchase-returns", { method: "POST", body, organizationId: org }),
+  dispatchPurchaseReturn: (org, id, body) => appRequest(`/api/app/purchase-returns/${id}/dispatch`, { method: "POST", body, organizationId: org }),
+  creditPurchaseReturn: (org, id, body) => appRequest(`/api/app/purchase-returns/${id}/credit-note`, { method: "POST", body, organizationId: org }),
+  rejectPurchaseReturn: (org, id, body) => appRequest(`/api/app/purchase-returns/${id}/reject`, { method: "POST", body, organizationId: org }),
   returns: (org) => appRequest("/api/app/returns", { organizationId: org }),
   createReturn: (org, sale, body) => appRequest(`/api/app/sales/${sale}/returns`, { method: "POST", body, organizationId: org }),
   createExpense: (org, body) => appRequest("/api/app/expenses", { method: "POST", body, organizationId: org }),
@@ -284,6 +295,7 @@ export const api = {
   importCommit: (org, kind, file, mapping, { mode = "skip_existing", branchId = "" } = {}) =>
     formRequest("/api/app/import/commit", org, { kind, mapping: JSON.stringify(mapping), mode, ...(branchId ? { branch_id: branchId } : {}) }, file),
   updateOrganization: (org, body) => appRequest("/api/app/organization", { method: "PATCH", body, organizationId: org }),
+  updateOrganizationOperations: (org, body) => appRequest("/api/app/organization/operations", { method: "PATCH", body, organizationId: org }),
   reorderPlan: (org, branch, coverDays = 14) =>
     appRequest(`/api/app/reorder-plan?branch_id=${encodeURIComponent(branch)}&cover_days=${coverDays}`, { organizationId: org }),
   createPlanOrders: (org, body) => appRequest("/api/app/reorder-plan/orders", { method: "POST", body, organizationId: org }),

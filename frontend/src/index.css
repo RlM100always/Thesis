@@ -122,7 +122,12 @@ label.checkbox input { width: auto; }
 .business-chip { margin: 10px 0 0; padding: 7px 9px; border-radius: 7px; background: rgba(255,255,255,.08); color: #fff; font-size: 12px; }
 .error-box { padding: 12px; border: 1px solid var(--red); border-radius: 8px; color: var(--red); margin-bottom: 14px; }
 
-.app { display: flex; min-height: 100vh; }
+.app {
+  display: grid;
+  grid-template-columns: 232px minmax(0, 1fr);
+  grid-template-rows: auto 1fr;
+  min-height: 100vh;
+}
 
 /* ── Sidebar ─────────────────────────────── */
 .sidebar {
@@ -133,6 +138,8 @@ label.checkbox input { width: auto; }
   padding: 22px 0;
   display: flex;
   flex-direction: column;
+  grid-column: 1;
+  grid-row: 1 / -1;
 }
 
 .sidebar .brand { padding: 0 20px 14px; }
@@ -185,7 +192,7 @@ label.checkbox input { width: auto; }
 }
 
 /* ── Main ────────────────────────────────── */
-.main { flex: 1; padding: 28px 34px; max-width: 1400px; overflow-x: hidden; }
+.main { grid-column: 2; grid-row: 2; width: 100%; max-width: 1440px; padding: 28px 34px; overflow-x: hidden; }
 
 .page-title { font-size: 23px; font-weight: 700; margin: 0 0 4px; }
 .page-sub { color: var(--text-muted); margin: 0 0 24px; font-size: 14px; }

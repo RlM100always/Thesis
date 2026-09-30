@@ -7,6 +7,18 @@ import DataTable from "../ui/DataTable";
 import { Badge, Card, Field, Notice, PageHeader, Segmented, Stat } from "../ui/kit";
 
 const TYPE_LABEL = { asset: "সম্পদ", liability: "দায়", equity: "মূলধন", revenue: "আয়", expense: "খরচ" };
+// The account's own name (api/accounting.py's DEFAULT_ACCOUNTS) is English —
+// bookkeeping-conventional and useful if this data is ever exported. A shop
+// owner reading it on screen needs Bangla, per code (never the raw name).
+const ACCOUNT_NAME_BN = {
+  "1000": "নগদ", "1010": "মোবাইল ব্যাংকিং (বিকাশ/নগদ)", "1020": "ব্যাংক",
+  "1100": "পাওনা (কাস্টমারের বাকি)", "1200": "স্টকের মূল্য",
+  "2000": "দেনা (সাপ্লায়ারের বাকি)", "2100": "ভ্যাট বাকি", "3000": "মালিকের মূলধন",
+  "4000": "বিক্রয় আয়", "4100": "বিক্রয় ফেরত",
+  "5000": "বিক্রিত পণ্যের ক্রয়মূল্য", "5900": "পরিচালন খরচ",
+  "5910": "স্টক গরমিলের সমন্বয়", "5950": "ক্যাশ গরমিল",
+};
+const accountName = (a) => ACCOUNT_NAME_BN[a.code] || a.name;
 const monthAgo = () => { const d = new Date(); d.setDate(d.getDate() - 30); return d.toISOString().slice(0, 10); };
 
 // The real double-entry books: every taka the shop posted, and where it sits.
@@ -60,7 +72,7 @@ export default function AccountingPage() {
           <Card pad={false}>
             <DataTable rowKey="code" rows={trial.accounts.filter((a) => Number(a.debit) || Number(a.credit))} caption="ট্রায়াল ব্যালেন্স"
                        columns={[
-                         { key: "name", label: "হিসাব", primary: true, render: (a) => <div><strong>{a.name}</strong><div className="muted" style={{ fontSize: 12.5 }}>{a.code} · {TYPE_LABEL[a.type]}</div></div> },
+                         { key: "name", label: "হিসাব", primary: true, render: (a) => <div><strong>{accountName(a)}</strong><div className="muted" style={{ fontSize: 12.5 }}>{a.code} · {TYPE_LABEL[a.type]}</div></div> },
                          { key: "debit", label: "ডেবিট", align: "right", render: (a) => money(a.debit) },
                          { key: "credit", label: "ক্রেডিট", align: "right", render: (a) => money(a.credit) },
                          { key: "balance", label: "উদ্বৃত্ত", align: "right", render: (a) => (
@@ -81,11 +93,11 @@ export default function AccountingPage() {
           </div>
           <Card title="আয়ের উৎস">
             <DataTable rowKey="code" rows={pnl.revenue_lines} caption="আয়ের হিসাব"
-                       columns={[{ key: "name", label: "হিসাব", primary: true }, { key: "amount", label: "পরিমাণ", align: "right", render: (r) => money(r.amount) }]} />
+                       columns={[{ key: "name", label: "হিসাব", primary: true, render: accountName }, { key: "amount", label: "পরিমাণ", align: "right", render: (r) => money(r.amount) }]} />
           </Card>
           <Card title="খরচের খাত">
             <DataTable rowKey="code" rows={pnl.expense_lines} caption="খরচের হিসাব"
-                       columns={[{ key: "name", label: "হিসাব", primary: true }, { key: "amount", label: "পরিমাণ", align: "right", render: (r) => money(r.amount) }]} />
+                       columns={[{ key: "name", label: "হিসাব", primary: true, render: accountName }, { key: "amount", label: "পরিমাণ", align: "right", render: (r) => money(r.amount) }]} />
           </Card>
         </>
       )}

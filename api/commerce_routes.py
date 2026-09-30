@@ -2,6 +2,8 @@
 
 from datetime import date
 from decimal import Decimal, ROUND_HALF_UP
+import hashlib
+import json
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -23,7 +25,7 @@ from .batches import (
 )
 from .domain_models import (
     AuditLog, Batch, Branch, Customer, InventoryBalance, LedgerEntry, Payment, Product,
-    SaleItemBatch, SalesOrder, SalesOrderItem, StockMovement, utcnow,
+    SaleItemBatch, SalesOrder, SalesOrderItem, StockMovement, SyncOperation, utcnow,
 )
 from .audit import record_audit
 from .permissions import require_permission
@@ -196,10 +198,45 @@ def inventory(membership: CurrentMembership, db: Db, branch_id: str):
     ) for p, qty in rows]
 
 
+def _sale_view(db: Session, order: SalesOrder) -> SaleView:
+    paid = Decimal(db.scalar(select(func.coalesce(func.sum(Payment.amount), 0)).where(
+        Payment.organization_id == order.organization_id, Payment.order_id == order.id,
+        Payment.status == "completed",
+    )))
+    return SaleView(
+        id=order.id, invoice_number=order.invoice_number, subtotal=order.subtotal,
+        discount_amount=order.discount_amount, tax_amount=order.tax_amount,
+        total=order.total, paid=paid, due=order.total - paid, status=order.status,
+    )
+
+
+def _operation_hash(payload: SaleCreate) -> str:
+    safe = payload.model_dump(mode="json", exclude={"override_email", "override_password"})
+    return hashlib.sha256(json.dumps(safe, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+
+
 @router.post("/sales", response_model=SaleView, tags=["sales"])
 def create_sale(payload: SaleCreate, membership: CurrentMembership, user: CurrentUser, db: Db):
     require_permission(membership, "sales:create")
     org_id = membership.organization_id
+    operation_hash = _operation_hash(payload) if payload.client_operation_id else None
+    if payload.client_operation_id:
+        receipt = db.scalar(select(SyncOperation).where(
+            SyncOperation.organization_id == org_id,
+            SyncOperation.operation_id == payload.client_operation_id,
+        ))
+        if receipt is not None:
+            if receipt.operation_type != "sale" or receipt.payload_hash != operation_hash:
+                raise HTTPException(status_code=409, detail={
+                    "code": "sync_conflict", "operation_id": payload.client_operation_id,
+                    "message": "This offline operation id was already used for different data",
+                })
+            order = db.scalar(select(SalesOrder).where(
+                SalesOrder.id == receipt.entity_id, SalesOrder.organization_id == org_id,
+            ))
+            if order is None:
+                raise HTTPException(status_code=409, detail="The sync receipt points to a missing sale")
+            return _sale_view(db, order)
     branch = db.scalar(select(Branch).where(Branch.id == payload.branch_id, Branch.organization_id == org_id))
     if branch is None:
         raise HTTPException(status_code=404, detail="Branch not found")
@@ -351,6 +388,12 @@ def create_sale(payload: SaleCreate, membership: CurrentMembership, user: Curren
             organization_id=org_id, actor_user_id=user.id, action="sale.created",
             entity_type="sales_order", entity_id=order.id,
         ))
+        if payload.client_operation_id:
+            db.add(SyncOperation(
+                organization_id=org_id, operation_id=payload.client_operation_id,
+                operation_type="sale", payload_hash=operation_hash,
+                entity_type="sales_order", entity_id=order.id,
+            ))
         if discount_override_pct is not None:
             record_audit(db, membership, "sale.discount_override", "sales_order", order.id,
                          discount_pct=discount_override_pct, approver_email=payload.override_email)
@@ -372,11 +415,7 @@ def create_sale(payload: SaleCreate, membership: CurrentMembership, user: Curren
     except IntegrityError as exc:
         db.rollback()
         raise HTTPException(status_code=409, detail="Invoice number already exists") from exc
-    return SaleView(
-        id=order.id, invoice_number=order.invoice_number, subtotal=subtotal,
-        discount_amount=discount_total, tax_amount=payload.tax_amount, total=total,
-        paid=paid, due=total-paid, status=order.status,
-    )
+    return _sale_view(db, order)
 
 
 @router.get("/sales", response_model=list[SaleDetailView], tags=["sales"])

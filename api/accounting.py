@@ -36,6 +36,7 @@ DEFAULT_ACCOUNTS: list[tuple[str, str, str]] = [
     ("1020", "Bank", "asset"),
     ("1100", "Accounts Receivable", "asset"),
     ("1200", "Inventory", "asset"),
+    ("1250", "Supplier Claims", "asset"),
     ("2000", "Accounts Payable", "liability"),
     ("2100", "VAT Payable", "liability"),
     ("3000", "Owner's Equity", "equity"),

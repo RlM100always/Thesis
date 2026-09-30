@@ -2,13 +2,20 @@ import { useCallback, useEffect, useState } from "react";
 import { api } from "../api";
 import { useBusiness } from "../BusinessContext";
 import { explain } from "../errors";
-import { dateTimeBn, money } from "../format";
+import { dateTimeBn, money, num } from "../format";
 import { usePermissions } from "../PermissionContext";
 import DataTable from "../ui/DataTable";
 import { Badge, Button, Card, EmptyState, Field, Modal, Notice, PageHeader, Segmented } from "../ui/kit";
 import { useToast } from "../ui/Toast";
 
-const KIND_LABEL = { expense_amount: "খরচ", purchase_amount: "ক্রয় অর্ডার" };
+const KIND_LABEL = {
+  expense_amount: "খরচ", purchase_amount: "ক্রয় অর্ডার",
+  discount_percent: "বিক্রিতে ছাড়", refund_amount: "টাকা ফেরত",
+};
+// discount_percent's threshold is a percentage, not taka — showing it with money()
+// would print "৳ ১০" for a 10% rule, which is simply wrong, not just unpolished.
+const isPercentKind = (kind) => kind === "discount_percent";
+const formatThreshold = (kind, value) => (isPercentKind(kind) ? `${num(value)}%` : money(value));
 const ROLE_LABEL = { manager: "ম্যানেজার", owner: "মালিক" };
 const STATUS_LABEL = { pending: "অপেক্ষমাণ", approved: "অনুমোদিত", rejected: "বাতিল" };
 
@@ -67,7 +74,7 @@ export default function ApprovalsPage() {
 
   return (
     <div className="page stack">
-      <PageHeader title="অনুমোদনের তালিকা" subtitle="নির্দিষ্ট সীমার বেশি খরচ মালিকের অনুমোদন ছাড়া হিসাবে যোগ হয় না।" />
+      <PageHeader title="অনুমোদনের তালিকা" subtitle="নির্দিষ্ট সীমার বেশি খরচ, ক্রয় অর্ডার, ছাড় বা টাকা ফেরত অনুমোদন ছাড়া হয় না।" />
       {error && <Notice tone="danger">{error}</Notice>}
 
       {canEditRules && rules && rules.length > 0 && (
@@ -76,7 +83,7 @@ export default function ApprovalsPage() {
             {rules.map((r) => (
               <div key={r.kind} className="row" style={{ justifyContent: "space-between" }}>
                 <span>
-                  <strong>{KIND_LABEL[r.kind] || r.kind}</strong> — {money(r.threshold)}-এর বেশি হলে {ROLE_LABEL[r.approver_role] || r.approver_role}-এর অনুমোদন লাগবে
+                  <strong>{KIND_LABEL[r.kind] || r.kind}</strong> — {formatThreshold(r.kind, r.threshold)}-এর বেশি হলে {ROLE_LABEL[r.approver_role] || r.approver_role}-এর অনুমোদন লাগবে
                   {!r.active && <> <Badge>বন্ধ</Badge></>}
                 </span>
                 <Button size="sm" variant="secondary" onClick={() => { setEditingRule(r); setRuleForm({ threshold: String(r.threshold), approver_role: r.approver_role }); }}>বদলান</Button>
@@ -137,7 +144,7 @@ export default function ApprovalsPage() {
       <Modal open={Boolean(editingRule)} title="নিয়ম পরিবর্তন করুন" onClose={() => setEditingRule(null)}
              footer={<><Button variant="secondary" onClick={() => setEditingRule(null)}>বাতিল</Button><Button type="submit" form="rule-form" loading={busy}>সংরক্ষণ করুন</Button></>}>
         <form id="rule-form" className="ui-form" onSubmit={saveRule}>
-          <Field label="সীমা (৳)" hint="এর বেশি হলে অনুমোদন লাগবে">
+          <Field label={editingRule && isPercentKind(editingRule.kind) ? "সীমা (%)" : "সীমা (৳)"} hint="এর বেশি হলে অনুমোদন লাগবে">
             <input type="number" min="0" step="0.01" value={ruleForm.threshold} onChange={(e) => setRuleForm({ ...ruleForm, threshold: e.target.value })} />
           </Field>
           <Field label="কার অনুমোদন লাগবে">

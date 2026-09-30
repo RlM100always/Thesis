@@ -25,6 +25,7 @@ import ProductsPage from "./pages/Products";
 import InventoryPage from "./pages/Inventory";
 import ExpiryPage from "./pages/Expiry";
 import PurchasesPage from "./pages/Purchases";
+import PurchaseReturnsPage from "./pages/PurchaseReturns";
 import OperationalDashboard from "./pages/Dashboard";
 import RealDataValidation from "./pages/RealDataValidation";
 import BSmartAlgorithm from "./pages/BSmartAlgorithm";
@@ -40,12 +41,15 @@ import InsightsPage from "./pages/Insights";
 import ApprovalsPage from "./pages/Approvals";
 import AccountingPage from "./pages/Accounting";
 import StockCountPage from "./pages/StockCount";
+import OrdersPage from "./pages/Orders";
 import ReorderPlanPage from "./pages/ReorderPlan";
 import NotificationBell from "./components/NotificationBell";
 import AcceptInvite from "./pages/AcceptInvite";
 import Onboarding from "./pages/Onboarding";
 import Icon from "./ui/Icon";
 import { Avatar, Button, EmptyState, PageHeader } from "./ui/kit";
+import { BranchProvider } from "./useBranch";
+import WorkspaceBar from "./components/WorkspaceBar";
 
 // HashRouter rather than BrowserRouter: the production build is served as
 // static files by FastAPI, and hash routing needs no server-side rewrite
@@ -64,20 +68,37 @@ const BUSINESS_NAV = [
     heading: "দৈনিক কাজ",
     items: [
       { to: "/", label: "ড্যাশবোর্ড", icon: "home", end: true, perm: "dashboard:read" },
+    ],
+  },
+  {
+    heading: "বিক্রি ও কাস্টমার",
+    items: [
       { to: "/sales", label: "বিক্রি", icon: "cart", perm: "sales:read" },
       { to: "/sales-history", label: "বিক্রির ইতিহাস", icon: "fileText", perm: "sales:read" },
+      { to: "/orders", label: "কোটেশন ও অর্ডার", icon: "fileText", perm: "orders:read" },
+      { to: "/returns", label: "রিটার্ন", icon: "undo", perm: "returns:read" },
+      { to: "/directory", label: "কাস্টমার ও সাপ্লায়ার", icon: "users", perm: "customers:read" },
+    ],
+  },
+  {
+    heading: "স্টক ও ক্রয়",
+    items: [
       { to: "/inventory", label: "স্টক", icon: "box", badgeKey: "lowStock", perm: "inventory:read" },
       { to: "/expiry", label: "মেয়াদ ও ব্যাচ", icon: "clock", perm: "inventory:read", feature: "expiry" },
       { to: "/stock-count", label: "স্টক গণনা", icon: "check", perm: "inventory:read" },
       { to: "/products", label: "পণ্য", icon: "tag", perm: "catalog:read" },
       { to: "/reorder", label: "কী কিনবেন", icon: "zap", perm: "purchases:read" },
       { to: "/purchases", label: "ক্রয়", icon: "truck", perm: "purchases:read" },
-      { to: "/returns", label: "রিটার্ন", icon: "undo", perm: "returns:read" },
-      { to: "/directory", label: "কাস্টমার ও সাপ্লায়ার", icon: "users", perm: "customers:read" },
+      { to: "/purchase-returns", label: "সাপ্লায়ার ক্লেইম", icon: "undo", perm: "purchase_returns:read" },
+    ],
+  },
+  {
+    heading: "টাকা ও প্রতিবেদন",
+    items: [
       { to: "/accounts", label: "হিসাব", icon: "card", perm: "ledger:read" },
-      { to: "/insights", label: "ইনসাইটস", icon: "pie", perm: "inventory:read" },
-      { to: "/accounting", label: "আর্থিক প্রতিবেদন", icon: "fileText", perm: "ledger:read" },
       { to: "/cash", label: "ক্যাশ মেলান", icon: "wallet", perm: "cash:read" },
+      { to: "/accounting", label: "আর্থিক প্রতিবেদন", icon: "fileText", perm: "ledger:read" },
+      { to: "/insights", label: "ইনসাইটস", icon: "pie", perm: "inventory:read" },
       { to: "/reports", label: "রিপোর্ট", icon: "download", perm: "ledger:read" },
     ],
   },
@@ -126,11 +147,13 @@ export default function App() {
       <AuthProvider>
         <WorkspaceProvider>
           <BusinessProvider>
-            <PermissionProvider>
-              <Router>
-                <Shell />
-              </Router>
-            </PermissionProvider>
+            <BranchProvider>
+              <PermissionProvider>
+                <Router>
+                  <Shell />
+                </Router>
+              </PermissionProvider>
+            </BranchProvider>
           </BusinessProvider>
         </WorkspaceProvider>
       </AuthProvider>
@@ -183,18 +206,7 @@ function AppFrame() {
     <div className="app">
       <aside className="sidebar"><SidebarBody {...body} /></aside>
 
-      <header className="topbar">
-        <div>
-          <strong>B-SMART</strong>
-          {business.active && <small>{business.active.name}</small>}
-        </div>
-        <div className="row" style={{ gap: 8, flexWrap: "nowrap" }}>
-          <NotificationBell />
-          <button type="button" onClick={() => setDrawerOpen(true)} aria-label="মেনু খুলুন">
-            <Icon name="menu" />
-          </button>
-        </div>
-      </header>
+      <WorkspaceBar onMenu={() => setDrawerOpen(true)} />
 
       <main className="main">
         <Routes>
@@ -216,6 +228,7 @@ function AppFrame() {
           <Route path="/audit" element={<Guard perm="audit:read"><AuditPage /></Guard>} />
           <Route path="/account" element={<AccountPage />} />
           <Route path="/sales-history" element={<Guard perm="sales:read"><SalesHistoryPage /></Guard>} />
+          <Route path="/orders" element={<Guard perm="orders:read"><OrdersPage /></Guard>} />
           <Route path="/cash" element={<Guard perm="cash:read"><CashPage /></Guard>} />
           <Route path="/import" element={<Guard perm="imports:write"><ImportDataPage /></Guard>} />
           <Route path="/reorder" element={<Guard perm="purchases:read"><ReorderPlanPage /></Guard>} />
@@ -230,6 +243,7 @@ function AppFrame() {
           <Route path="/accounting" element={<Guard perm="ledger:read"><AccountingPage /></Guard>} />
           <Route path="/approvals" element={<Guard perm="approvals:read"><ApprovalsPage /></Guard>} />
           <Route path="/purchases" element={<Guard perm="purchases:read"><PurchasesPage /></Guard>} />
+          <Route path="/purchase-returns" element={<Guard perm="purchase_returns:read"><PurchaseReturnsPage /></Guard>} />
           <Route path="/returns" element={<Guard perm="returns:read"><ReturnsPage /></Guard>} />
           <Route path="/directory" element={<Guard perm="customers:read"><DirectoryPage /></Guard>} />
           <Route path="/strategy" element={<Guard perm="recommendations:read"><StrategyPage /></Guard>} />

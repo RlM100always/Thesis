@@ -12,6 +12,7 @@ import useBranch from "../useBranch";
 
 const METHODS = [
   ["cash", "ক্যাশ"], ["bkash", "বিকাশ"], ["nagad", "নগদ"], ["card", "কার্ড"], ["bangla_qr", "বাংলা QR"],
+  ["bank", "ব্যাংক"], ["cod", "COD"], ["other", "অন্যান্য"],
 ];
 const METHOD_LABEL = Object.fromEntries(METHODS);
 const SALE_ERRORS = {
@@ -46,10 +47,15 @@ const invoiceNumber = () => {
   const pad = (n) => String(n).padStart(2, "0");
   return `INV-${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}-${Date.now().toString(36).toUpperCase()}`;
 };
+const operationId = () => globalThis.crypto?.randomUUID?.() || `pos-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
 export default function SalesPage() {
   const { active } = useBusiness();
   const orgId = active?.id;
+  const enabledMethods = useMemo(
+    () => METHODS.filter(([value]) => (active?.payment_methods || ["cash"]).includes(value)),
+    [active?.payment_methods],
+  );
   const toast = useToast();
   const { branches, branch, setBranch, current: branchInfo } = useBranch(orgId);
   const searchRef = useRef(null);
@@ -71,6 +77,7 @@ export default function SalesPage() {
   const [override, setOverride] = useState(null); // { payload, soldAt, info, email, password, error, busy }
   const [receipt, setReceipt] = useState(null);
   const queueKey = `pos.queue.${orgId}`;
+  const conflictKey = `pos.conflicts.${orgId}`;
   const cacheKey = `pos.cache.${orgId}.${branch}`;
   const [queue, setQueue] = useState([]);
   const [rejected, setRejected] = useState([]);
@@ -110,6 +117,10 @@ export default function SalesPage() {
 
   useEffect(() => { load(); }, [load]);
   useEffect(() => { if (orgId) setQueue(read(queueKey, [])); }, [orgId, queueKey]);
+  useEffect(() => { if (orgId) setRejected(read(conflictKey, [])); }, [orgId, conflictKey]);
+  useEffect(() => {
+    if (!enabledMethods.some(([value]) => value === method)) setMethod(enabledMethods[0]?.[0] || "cash");
+  }, [enabledMethods, method]);
 
   // Send whatever is waiting. Called on reconnect, on a timer while anything waits, and by hand.
   const flush = useCallback(async () => {
@@ -123,16 +134,21 @@ export default function SalesPage() {
         await api.createSale(orgId, item.payload);
         sent += 1;
       } catch (e) {
-        if (isAlreadySent(e)) sent += 1;                                   // it had already gone through
+        if (isAlreadySent(e) && !item.payload.client_operation_id) sent += 1; // legacy queue item
         else if (isOffline(e)) remaining = [...remaining, item];           // still no connection: keep it
-        else setRejected((r) => [...r, { ...item, reason: explain(e, SALE_ERRORS) }]); // the shop must decide
+        else setRejected((current) => {
+          const next = [...current.filter((row) => row.payload.client_operation_id !== item.payload.client_operation_id),
+            { ...item, reason: explain(e, SALE_ERRORS) }];
+          write(conflictKey, next);
+          return next;
+        }); // the shop must decide
       }
     }
     write(queueKey, remaining);
     setQueue(remaining);
     setSyncing(false);
     if (sent) { toast.success(`${num(sent)}টি জমা থাকা বিক্রি পাঠানো হয়েছে।`); load(); }
-  }, [orgId, queueKey, toast, load]);
+  }, [orgId, queueKey, conflictKey, toast, load]);
 
   useEffect(() => {
     if (!orgId) return undefined;
@@ -259,6 +275,7 @@ export default function SalesPage() {
     setSaleError("");
     const soldAt = new Date();
     const payload = {
+      client_operation_id: operationId(),
       branch_id: branch, customer_id: customerId || null, invoice_number: invoiceNumber(),
       sold_at: soldAt.toISOString(),
       items: cart.map((l) => ({
@@ -434,7 +451,7 @@ export default function SalesPage() {
                   </Field>
                   <div>
                     <div className="pay-methods" role="radiogroup" aria-label="পেমেন্টের মাধ্যম">
-                      {METHODS.map(([value, label]) => (
+                      {enabledMethods.map(([value, label]) => (
                         <button key={value} type="button" role="radio" aria-checked={method === value}
                                 className={method === value ? "on" : ""} onClick={() => setMethod(value)}>{label}</button>
                       ))}

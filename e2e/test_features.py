@@ -381,7 +381,7 @@ def test_the_accounting_page_shows_a_balanced_trial_balance_and_correct_pnl(shop
     page = s.page
     page.goto(f"{WEB}/#/accounting")
     expect(page.get_by_text("হিসাব মিলেছে।")).to_be_visible()
-    row = page.get_by_role("row", name=re.compile("^Cash "))
+    row = page.get_by_role("row", name=re.compile("^নগদ "))
     expect(row).to_be_visible()
 
     page.get_by_role("tab", name="লাভ-ক্ষতি (P&L)").click()

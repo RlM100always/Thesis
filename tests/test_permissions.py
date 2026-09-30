@@ -107,6 +107,7 @@ ENDPOINTS = [
     ("GET", "/api/app/customers", None, "customers:read"),
     ("GET", "/api/app/suppliers", None, "suppliers:read"),
     ("GET", "/api/app/purchases", None, "purchases:read"),
+    ("GET", "/api/app/purchase-returns", None, "purchase_returns:read"),
     ("GET", "/api/app/expenses", None, "expenses:read"),
     ("GET", "/api/app/ledger/payable", None, "ledger:read"),
     ("GET", "/api/app/staff", None, "staff:read"),

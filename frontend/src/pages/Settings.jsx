@@ -15,6 +15,8 @@ const SALES_ROLES = [
   ["quantity", "পরিমাণ"], ["unit_price", "প্রতি ইউনিট দাম"],
 ];
 const makeSlug = () => `shop-${Math.random().toString(36).slice(2, 8)}${Date.now().toString(36).slice(-3)}`;
+const PAYMENT_CHOICES = [["cash", "ক্যাশ"], ["bkash", "বিকাশ"], ["nagad", "নগদ"], ["bangla_qr", "বাংলা QR"], ["card", "কার্ড"], ["bank", "ব্যাংক"], ["cod", "COD"]];
+const CHANNEL_CHOICES = [["in_store", "দোকানে"], ["phone", "ফোন"], ["whatsapp", "WhatsApp"], ["facebook", "Facebook"], ["website", "ওয়েবসাইট"], ["delivery", "ডেলিভারি"]];
 
 // The owner's own past sales, kept as a durable record and usable to train a
 // model. Separate from the one-off "upload and score" tool.
@@ -154,6 +156,52 @@ function ProfileCard({ org, canEdit, onSaved }) {
   );
 }
 
+function OperationsCard({ org, canEdit, onSaved }) {
+  const toast = useToast();
+  const [form, setForm] = useState({
+    business_mode: org.business_mode || "products",
+    payment_methods: org.payment_methods || ["cash"],
+    sales_channels: org.sales_channels || ["in_store"],
+  });
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const toggle = (field, value) => setForm((current) => ({
+    ...current, [field]: current[field].includes(value)
+      ? current[field].filter((item) => item !== value) : [...current[field], value],
+  }));
+  async function save(e) {
+    e.preventDefault();
+    if (!form.payment_methods.length || !form.sales_channels.length) {
+      setError("কমপক্ষে একটি পেমেন্ট ও একটি বিক্রির মাধ্যম রাখুন।"); return;
+    }
+    setBusy(true); setError("");
+    try {
+      await api.updateOrganizationOperations(org.id, form); await onSaved();
+      toast.success("কাজের ধরন সংরক্ষিত হয়েছে। POS এখন এই পেমেন্ট মাধ্যমগুলোই দেখাবে।");
+    } catch (err) { setError(explain(err, { 403: "এই সেটিং শুধু মালিক বদলাতে পারেন।" })); }
+    finally { setBusy(false); }
+  }
+  return (
+    <Card title="কাজ ও পেমেন্ট" subtitle="POS এবং ভবিষ্যৎ order inbox-এ কোন মাধ্যমগুলো থাকবে তা নিয়ন্ত্রণ করুন।">
+      <form className="ui-form" onSubmit={save}>
+        <Field label="ব্যবসার ধরন">
+          <select value={form.business_mode} onChange={(e) => setForm({ ...form, business_mode: e.target.value })} disabled={!canEdit}>
+            <option value="products">পণ্য</option><option value="services">সেবা</option><option value="both">পণ্য ও সেবা</option>
+          </select>
+        </Field>
+        <div className="ui-field"><label>পেমেন্ট মাধ্যম</label><div className="choice-grid">
+          {PAYMENT_CHOICES.map(([value, label]) => <label key={value} className={`choice-check ${form.payment_methods.includes(value) ? "on" : ""}`}><input type="checkbox" disabled={!canEdit} checked={form.payment_methods.includes(value)} onChange={() => toggle("payment_methods", value)} />{label}</label>)}
+        </div></div>
+        <div className="ui-field"><label>বিক্রির মাধ্যম</label><div className="choice-grid">
+          {CHANNEL_CHOICES.map(([value, label]) => <label key={value} className={`choice-check ${form.sales_channels.includes(value) ? "on" : ""}`}><input type="checkbox" disabled={!canEdit} checked={form.sales_channels.includes(value)} onChange={() => toggle("sales_channels", value)} />{label}</label>)}
+        </div></div>
+        {error && <Notice tone="danger">{error}</Notice>}
+        {canEdit ? <div><Button type="submit" loading={busy}>কাজের মাধ্যম আপডেট</Button></div> : <Notice tone="info">এই সেটিং শুধু মালিক বদলাতে পারেন।</Notice>}
+      </form>
+    </Card>
+  );
+}
+
 function TrainCard({ orgId, canTrain }) {
   const toast = useToast();
   const [busy, setBusy] = useState(false);
@@ -200,6 +248,7 @@ export default function SettingsPage() {
   const orgId = active?.id;
 
   const [branches, setBranches] = useState(null);
+  const [bdReference, setBdReference] = useState({ divisions: [], districts: [], mfs_providers: [] });
   const [addingBranch, setAddingBranch] = useState(false);
   const [branch, setBranch] = useState({ code: "", name: "", division: "", district: "", address: "" });
   const [addingBusiness, setAddingBusiness] = useState(false);
@@ -209,6 +258,13 @@ export default function SettingsPage() {
 
   const loadBranches = useCallback(() => (orgId ? api.branches(orgId).then(setBranches).catch(() => setBranches([])) : null), [orgId]);
   useEffect(() => { loadBranches(); }, [loadBranches]);
+  useEffect(() => { api.bangladeshReference().then(setBdReference).catch(() => {}); }, []);
+
+  const districts = bdReference.districts.filter((item) => item.parent_code === branch.division);
+  const locationLabel = (code) => {
+    const item = [...bdReference.divisions, ...bdReference.districts].find((row) => row.code === code);
+    return item ? item.label_bn : code;
+  };
 
   async function saveBranch(e) {
     e.preventDefault();
@@ -262,13 +318,34 @@ export default function SettingsPage() {
         <DataTable rowKey="id" loading={branches === null} rows={branches || []} caption="শাখার তালিকা"
                    columns={[
                      { key: "name", label: "শাখা", primary: true, render: (b) => <div><strong>{b.name}</strong><div className="muted" style={{ fontSize: 12.5 }}>{b.code}</div></div> },
-                     { key: "place", label: "এলাকা", render: (b) => [b.district, b.division].filter(Boolean).join(", ") || "—" },
+                     { key: "place", label: "এলাকা", render: (b) => [locationLabel(b.district), locationLabel(b.division)].filter(Boolean).join(", ") || "—" },
                      { key: "active", label: "অবস্থা", render: (b) => (b.active ? <Badge tone="success" icon="check">চালু</Badge> : <Badge>বন্ধ</Badge>) },
                    ]}
                    empty={<EmptyState icon="sliders" title="কোনো শাখা নেই" />} />
       </Card>
 
       <ProfileCard key={active.id} org={active} canEdit={can("settings:write")} onSaved={refresh} />
+      <OperationsCard key={`operations-${active.id}`} org={active} canEdit={can("settings:write")} onSaved={refresh} />
+
+      <Card title="যাচাইকৃত বাংলাদেশি রেফারেন্স" subtitle="Location ও payment provider-এর নাম অনুমান করে নয়—সরকারি public source থেকে versioned data হিসেবে রাখা হয়েছে।">
+        <div className="summary">
+          <div><span>বিভাগ</span><strong>{num(bdReference.divisions.length)}</strong></div>
+          <div><span>জেলা</span><strong>{num(bdReference.districts.length)}</strong></div>
+          <div><span>Bangladesh Bank MFS</span><strong>{num(bdReference.mfs_providers.length)}</strong></div>
+        </div>
+        {bdReference.mfs_providers.length > 0 && <details style={{ marginTop: 14 }}>
+          <summary style={{ cursor: "pointer", fontWeight: 700 }}>অনুমোদিত MFS provider দেখুন</summary>
+          <div className="choice-grid" style={{ marginTop: 10 }}>
+            {bdReference.mfs_providers.map((provider) => <div className="choice-check on" key={provider.code}>
+              <span><strong>{provider.label_bn}</strong><small className="muted" style={{ display: "block" }}>{provider.details}</small></span>
+            </div>)}
+          </div>
+        </details>}
+        {bdReference.districts[0] && <p className="muted" style={{ margin: "14px 0 0", fontSize: 12.5 }}>
+          যাচাই: {dateBn(bdReference.districts[0].verified_on)} · <a href={bdReference.districts[0].source_url} target="_blank" rel="noreferrer">DGHS/BBS district source</a>
+          {" · "}<a href={bdReference.mfs_providers[0]?.source_url} target="_blank" rel="noreferrer">Bangladesh Bank MFS source</a>
+        </p>}
+      </Card>
 
       <ImportCard orgId={orgId} canImport={can("imports:write")} canExport={can("dataset:export")} />
       <TrainCard orgId={orgId} canTrain={can("model:train")} />
@@ -279,8 +356,14 @@ export default function SettingsPage() {
           <div className="ui-form ui-form--2">
             <Field label="শাখার কোড" required hint="যেমন MIRPUR"><input value={branch.code} onChange={(e) => setBranch({ ...branch, code: e.target.value })} autoComplete="off" /></Field>
             <Field label="শাখার নাম" required><input value={branch.name} onChange={(e) => setBranch({ ...branch, name: e.target.value })} minLength={2} autoComplete="off" /></Field>
-            <Field label="বিভাগ"><input value={branch.division} onChange={(e) => setBranch({ ...branch, division: e.target.value })} /></Field>
-            <Field label="জেলা"><input value={branch.district} onChange={(e) => setBranch({ ...branch, district: e.target.value })} /></Field>
+            <Field label="বিভাগ"><select value={branch.division} onChange={(e) => setBranch({ ...branch, division: e.target.value, district: "" })}>
+              <option value="">— বিভাগ বেছে নিন —</option>
+              {bdReference.divisions.map((item) => <option key={item.code} value={item.code}>{item.label_bn} · {item.label_en}</option>)}
+            </select></Field>
+            <Field label="জেলা"><select value={branch.district} onChange={(e) => setBranch({ ...branch, district: e.target.value })} disabled={!branch.division}>
+              <option value="">— জেলা বেছে নিন —</option>
+              {districts.map((item) => <option key={item.code} value={item.code}>{item.label_bn} · {item.label_en}</option>)}
+            </select></Field>
           </div>
           <Field label="ঠিকানা"><input value={branch.address} onChange={(e) => setBranch({ ...branch, address: e.target.value })} /></Field>
           {formError && <Notice tone="danger">{formError}</Notice>}

@@ -38,6 +38,9 @@ class OrganizationView(BaseModel):
     phone: str | None = None
     vat_reg_no: str | None = None
     receipt_footer: str | None = None
+    business_mode: str = "products"
+    payment_methods: list[str] = Field(default_factory=lambda: ["cash"])
+    sales_channels: list[str] = Field(default_factory=lambda: ["in_store"])
 
 
 class OrganizationProfile(BaseModel):
@@ -47,6 +50,22 @@ class OrganizationProfile(BaseModel):
     phone: str | None = Field(default=None, max_length=30)
     vat_reg_no: str | None = Field(default=None, max_length=40)
     receipt_footer: str | None = Field(default=None, max_length=200)
+
+
+class OrganizationOperations(BaseModel):
+    business_mode: str = Field(pattern=r"^(products|services|both)$")
+    payment_methods: list[str] = Field(min_length=1, max_length=8)
+    sales_channels: list[str] = Field(min_length=1, max_length=8)
+
+    @model_validator(mode="after")
+    def validate_choices(self):
+        payments = {"cash", "bkash", "nagad", "bank", "card", "bangla_qr", "cod", "other"}
+        channels = {"in_store", "phone", "whatsapp", "facebook", "website", "delivery"}
+        if len(self.payment_methods) != len(set(self.payment_methods)) or not set(self.payment_methods) <= payments:
+            raise ValueError("Unknown or duplicate payment method")
+        if len(self.sales_channels) != len(set(self.sales_channels)) or not set(self.sales_channels) <= channels:
+            raise ValueError("Unknown or duplicate sales channel")
+        return self
 
 
 class ProductCreate(BaseModel):
@@ -123,6 +142,7 @@ class SalePaymentCreate(BaseModel):
 
 
 class SaleCreate(BaseModel):
+    client_operation_id: str | None = Field(default=None, min_length=8, max_length=100)
     branch_id: str
     invoice_number: str = Field(min_length=1, max_length=80)
     customer_id: str | None = None
@@ -174,6 +194,26 @@ class SaleDetailView(SaleView):
     sold_at: datetime
     channel: str
     items: list[SaleLineView]
+
+
+class SalesDocumentCreate(BaseModel):
+    document_type: str = Field(pattern=r"^(quotation|order)$")
+    document_number: str = Field(min_length=1, max_length=80)
+    branch_id: str
+    customer_id: str | None = None
+    channel: str = Field(default="in_store", max_length=30)
+    issued_at: datetime
+    valid_until: date | None = None
+    expected_delivery_at: datetime | None = None
+    notes: str | None = Field(default=None, max_length=1000)
+    tax_amount: Decimal = Field(default=Decimal("0"), ge=0, max_digits=14, decimal_places=2)
+    items: list[SaleItemCreate] = Field(min_length=1, max_length=200)
+
+
+class SalesDocumentInvoice(BaseModel):
+    invoice_number: str = Field(min_length=1, max_length=80)
+    sold_at: datetime
+    payments: list[SalePaymentCreate] = Field(default_factory=list, max_length=10)
 
 
 class BranchCreate(BaseModel):
@@ -317,6 +357,68 @@ class ReceiveItem(BaseModel):
 class PurchaseReceive(BaseModel):
     received_at: datetime
     items: list[ReceiveItem] = Field(min_length=1, max_length=200)
+
+
+class PurchaseReturnItemCreate(BaseModel):
+    purchase_order_item_id: str
+    quantity: Decimal = Field(gt=0, max_digits=14, decimal_places=3)
+    batch_id: str | None = None
+
+
+class PurchaseReturnCreate(BaseModel):
+    purchase_order_id: str
+    return_number: str = Field(min_length=1, max_length=80)
+    claim_type: str = Field(pattern=r"^(damaged|expired|wrong_item|quality|short_shipment|other)$")
+    reason: str = Field(min_length=2, max_length=300)
+    submitted_at: datetime
+    items: list[PurchaseReturnItemCreate] = Field(min_length=1, max_length=200)
+
+
+class PurchaseReturnLineView(BaseModel):
+    id: str
+    purchase_order_item_id: str
+    product_id: str
+    product_name: str
+    sku: str
+    batch_id: str | None
+    batch_no: str | None
+    quantity: Decimal
+    unit_cost: Decimal
+    amount: Decimal
+
+
+class PurchaseReturnView(BaseModel):
+    id: str
+    purchase_order_id: str
+    purchase_order_number: str
+    supplier_id: str
+    supplier_name: str
+    branch_id: str
+    return_number: str
+    claim_type: str
+    reason: str
+    status: str
+    total: Decimal
+    submitted_at: datetime
+    dispatched_at: datetime | None
+    settled_at: datetime | None
+    credit_note_number: str | None
+    supplier_note: str | None
+    items: list[PurchaseReturnLineView]
+
+
+class PurchaseReturnDispatch(BaseModel):
+    dispatched_at: datetime
+
+
+class PurchaseReturnCreditNote(BaseModel):
+    credit_note_number: str = Field(min_length=1, max_length=100)
+    accepted_at: datetime
+    supplier_note: str | None = Field(default=None, max_length=1000)
+
+
+class PurchaseReturnReject(BaseModel):
+    reason: str = Field(min_length=2, max_length=300)
 
 
 class SettlementCreate(BaseModel):

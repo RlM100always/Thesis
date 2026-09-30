@@ -54,6 +54,61 @@ class Organization(Base, TimestampMixin):
     active: Mapped[bool] = mapped_column(Boolean, default=True)
 
 
+class OrganizationSetting(Base, TimestampMixin):
+    """Operational choices that shape an organization's workspace.
+
+    Kept in its own table so older installations can gain the settings through
+    ``create_schema`` without an unsafe rewrite of the core organization row.
+    JSON stores small validated lists only; credentials never belong here.
+    """
+
+    __tablename__ = "organization_settings"
+
+    organization_id: Mapped[str] = mapped_column(
+        ForeignKey("organizations.id", ondelete="CASCADE"), primary_key=True
+    )
+    business_mode: Mapped[str] = mapped_column(String(20), default="products")
+    payment_methods_json: Mapped[str] = mapped_column(Text, default='["cash"]')
+    sales_channels_json: Mapped[str] = mapped_column(Text, default='["in_store"]')
+
+
+class ReferenceValue(Base, TimestampMixin):
+    """Auditable public reference data shared by all organizations."""
+
+    __tablename__ = "reference_values"
+    __table_args__ = (UniqueConstraint("kind", "code"), Index("ix_reference_kind_parent", "kind", "parent_code"))
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    code: Mapped[str] = mapped_column(String(50))
+    kind: Mapped[str] = mapped_column(String(30), index=True)
+    parent_code: Mapped[str | None] = mapped_column(String(50), index=True)
+    label_en: Mapped[str] = mapped_column(String(120))
+    label_bn: Mapped[str] = mapped_column(String(120))
+    details: Mapped[str | None] = mapped_column(String(240))
+    source_url: Mapped[str] = mapped_column(String(500))
+    verified_on: Mapped[date] = mapped_column(Date)
+
+
+class OutboundMessage(Base, TimestampMixin):
+    """Durable SMS/WhatsApp outbox; provider secrets are never stored here."""
+
+    __tablename__ = "outbound_messages"
+    __table_args__ = (UniqueConstraint("organization_id", "idempotency_key"),)
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    organization_id: Mapped[str] = mapped_column(ForeignKey("organizations.id", ondelete="CASCADE"), index=True)
+    channel: Mapped[str] = mapped_column(String(20), index=True)
+    recipient: Mapped[str] = mapped_column(String(40))
+    template: Mapped[str] = mapped_column(String(80))
+    body: Mapped[str] = mapped_column(Text)
+    idempotency_key: Mapped[str] = mapped_column(String(100), index=True)
+    status: Mapped[str] = mapped_column(String(20), index=True)
+    provider_message_id: Mapped[str | None] = mapped_column(String(160))
+    last_error: Mapped[str | None] = mapped_column(String(500))
+    requested_by_user_id: Mapped[str] = mapped_column(ForeignKey("users.id"))
+    sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
 class User(Base, TimestampMixin):
     __tablename__ = "users"
 
@@ -175,6 +230,21 @@ class SalesOrder(Base, TimestampMixin):
     )
 
 
+class SyncOperation(Base, TimestampMixin):
+    """Durable receipt for an offline/retriable client mutation."""
+
+    __tablename__ = "sync_operations"
+    __table_args__ = (UniqueConstraint("organization_id", "operation_id"),)
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    organization_id: Mapped[str] = mapped_column(ForeignKey("organizations.id", ondelete="CASCADE"), index=True)
+    operation_id: Mapped[str] = mapped_column(String(100), index=True)
+    operation_type: Mapped[str] = mapped_column(String(30), index=True)
+    payload_hash: Mapped[str] = mapped_column(String(64))
+    entity_type: Mapped[str] = mapped_column(String(30))
+    entity_id: Mapped[str] = mapped_column(String(36), index=True)
+
+
 class SalesOrderItem(Base, TimestampMixin):
     __tablename__ = "sales_order_items"
     __table_args__ = (
@@ -194,6 +264,58 @@ class SalesOrderItem(Base, TimestampMixin):
     returned_quantity: Mapped[Decimal] = mapped_column(Numeric(14, 3), default=0)
 
     order: Mapped[SalesOrder] = relationship(back_populates="items")
+
+
+class SalesDocument(Base, TimestampMixin):
+    """A pre-invoice commercial document: quotation or fulfilment order.
+
+    It reserves no stock and posts no money. Only conversion to a real invoice
+    goes through the canonical sale path, keeping inventory and accounting in
+    one implementation.
+    """
+
+    __tablename__ = "sales_documents"
+    __table_args__ = (
+        UniqueConstraint("organization_id", "document_number"),
+        CheckConstraint("document_type in ('quotation','order')", name="ck_sales_document_type"),
+        Index("ix_sales_document_org_time", "organization_id", "issued_at"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    organization_id: Mapped[str] = mapped_column(ForeignKey("organizations.id", ondelete="CASCADE"), index=True)
+    branch_id: Mapped[str] = mapped_column(ForeignKey("branches.id"), index=True)
+    customer_id: Mapped[str | None] = mapped_column(ForeignKey("customers.id"), index=True)
+    document_type: Mapped[str] = mapped_column(String(20), index=True)
+    document_number: Mapped[str] = mapped_column(String(80))
+    status: Mapped[str] = mapped_column(String(20), index=True)
+    channel: Mapped[str] = mapped_column(String(30), default="in_store")
+    issued_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    valid_until: Mapped[date | None] = mapped_column(Date)
+    expected_delivery_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    notes: Mapped[str | None] = mapped_column(Text)
+    subtotal: Mapped[Decimal] = mapped_column(Numeric(14, 2))
+    discount_amount: Mapped[Decimal] = mapped_column(Numeric(14, 2), default=0)
+    tax_amount: Mapped[Decimal] = mapped_column(Numeric(14, 2), default=0)
+    total: Mapped[Decimal] = mapped_column(Numeric(14, 2))
+    invoice_id: Mapped[str | None] = mapped_column(ForeignKey("sales_orders.id"), index=True)
+
+    lines: Mapped[list["SalesDocumentLine"]] = relationship(back_populates="document", cascade="all, delete-orphan")
+
+
+class SalesDocumentLine(Base, TimestampMixin):
+    __tablename__ = "sales_document_lines"
+    __table_args__ = (CheckConstraint("quantity > 0 AND unit_price >= 0 AND discount_amount >= 0"),)
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    organization_id: Mapped[str] = mapped_column(ForeignKey("organizations.id", ondelete="CASCADE"), index=True)
+    document_id: Mapped[str] = mapped_column(ForeignKey("sales_documents.id", ondelete="CASCADE"), index=True)
+    product_id: Mapped[str] = mapped_column(ForeignKey("products.id"), index=True)
+    quantity: Mapped[Decimal] = mapped_column(Numeric(14, 3))
+    unit_price: Mapped[Decimal] = mapped_column(Numeric(14, 2))
+    discount_amount: Mapped[Decimal] = mapped_column(Numeric(14, 2), default=0)
+    line_total: Mapped[Decimal] = mapped_column(Numeric(14, 2))
+
+    document: Mapped[SalesDocument] = relationship(back_populates="lines")
 
 
 class Payment(Base, TimestampMixin):
@@ -458,6 +580,62 @@ class PurchaseOrderItem(Base, TimestampMixin):
     quantity: Mapped[Decimal] = mapped_column(Numeric(14, 3))
     received_quantity: Mapped[Decimal] = mapped_column(Numeric(14, 3), default=0)
     unit_cost: Mapped[Decimal] = mapped_column(Numeric(14, 2))
+
+
+class PurchaseReturn(Base, TimestampMixin):
+    """A supplier claim raised against goods that were actually received.
+
+    Stock leaves only when the claim is dispatched.  The supplier balance is
+    reduced later, when their credit note is accepted, so an unaccepted claim
+    can never silently understate Accounts Payable.
+    """
+
+    __tablename__ = "purchase_returns"
+    __table_args__ = (
+        UniqueConstraint("organization_id", "return_number"),
+        UniqueConstraint("organization_id", "supplier_id", "credit_note_number"),
+        CheckConstraint("total >= 0"),
+        CheckConstraint(
+            "status in ('submitted','dispatched','settled','rejected')",
+            name="ck_purchase_return_status",
+        ),
+        Index("ix_purchase_return_org_time", "organization_id", "submitted_at"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    organization_id: Mapped[str] = mapped_column(ForeignKey("organizations.id", ondelete="CASCADE"), index=True)
+    branch_id: Mapped[str] = mapped_column(ForeignKey("branches.id"), index=True)
+    purchase_order_id: Mapped[str] = mapped_column(ForeignKey("purchase_orders.id"), index=True)
+    supplier_id: Mapped[str] = mapped_column(ForeignKey("suppliers.id"), index=True)
+    return_number: Mapped[str] = mapped_column(String(80))
+    claim_type: Mapped[str] = mapped_column(String(30))
+    reason: Mapped[str] = mapped_column(String(300))
+    status: Mapped[str] = mapped_column(String(20), default="submitted", index=True)
+    total: Mapped[Decimal] = mapped_column(Numeric(14, 2))
+    submitted_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    dispatched_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    settled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    credit_note_number: Mapped[str | None] = mapped_column(String(100))
+    supplier_note: Mapped[str | None] = mapped_column(Text)
+
+    items: Mapped[list[PurchaseReturnItem]] = relationship(back_populates="purchase_return", cascade="all, delete-orphan")
+
+
+class PurchaseReturnItem(Base, TimestampMixin):
+    __tablename__ = "purchase_return_items"
+    __table_args__ = (CheckConstraint("quantity > 0 AND unit_cost >= 0 AND amount >= 0"),)
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    organization_id: Mapped[str] = mapped_column(ForeignKey("organizations.id", ondelete="CASCADE"), index=True)
+    purchase_return_id: Mapped[str] = mapped_column(ForeignKey("purchase_returns.id", ondelete="CASCADE"), index=True)
+    purchase_order_item_id: Mapped[str] = mapped_column(ForeignKey("purchase_order_items.id"), index=True)
+    product_id: Mapped[str] = mapped_column(ForeignKey("products.id"), index=True)
+    batch_id: Mapped[str | None] = mapped_column(ForeignKey("batches.id"), index=True)
+    quantity: Mapped[Decimal] = mapped_column(Numeric(14, 3))
+    unit_cost: Mapped[Decimal] = mapped_column(Numeric(14, 2))
+    amount: Mapped[Decimal] = mapped_column(Numeric(14, 2))
+
+    purchase_return: Mapped[PurchaseReturn] = relationship(back_populates="items")
 
 
 class LedgerEntry(Base, TimestampMixin):
