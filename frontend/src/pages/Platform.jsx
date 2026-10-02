@@ -5,9 +5,9 @@
 // this page is reachable in the UI only for an account already carrying that
 // flag; every api.platform*() call returns 403 for anyone else regardless of
 // what this page renders.
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { api } from "../api";
 import { useConfirm } from "../components/ConfirmDialog";
 import { explain } from "../errors";
@@ -1401,7 +1401,7 @@ export default function PlatformPage() {
 }
 
 // ════════════════════════════════════════════════════════════════════════════
-// NEW 50-CAPABILITY ADMIN PANELS
+// ADMIN PANEL SHARED UTILITIES
 // ════════════════════════════════════════════════════════════════════════════
 
 function useAdminFetch(fn, deps = []) {
@@ -1416,39 +1416,220 @@ function useAdminFetch(fn, deps = []) {
   return { data, loading, error, reload: load };
 }
 
+// Live SLA countdown — re-renders every 10s
+function useSlaCountdown(dueAt) {
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 10_000);
+    return () => clearInterval(id);
+  }, []);
+  if (!dueAt) return null;
+  return new Date(dueAt).getTime() - now;
+}
+
+function SlaTimer({ dueAt, small }) {
+  const diff = useSlaCountdown(dueAt);
+  if (diff === null) return null;
+  const breached = diff <= 0;
+  const abs = Math.abs(diff);
+  const h = Math.floor(abs / 3600000);
+  const m = Math.floor((abs % 3600000) / 60000);
+  const color = breached ? "#E63946" : diff < 3_600_000 ? "#f59e0b" : "#0A8754";
+  const txt = breached ? `+${h}h ${m}m breached` : h > 0 ? `${h}h ${m}m left` : `${m}m left`;
+  return <span style={{ color, fontWeight: 700, fontSize: small ? 11 : 13 }}>{txt}</span>;
+}
+
+function SlaBar({ createdAt, dueAt }) {
+  const total = new Date(dueAt) - new Date(createdAt);
+  const elapsed = Date.now() - new Date(createdAt);
+  const pct = Math.min(100, Math.max(0, (elapsed / total) * 100));
+  const bg = pct > 90 ? "#E63946" : pct > 70 ? "#f59e0b" : "#0A8754";
+  return (
+    <div style={{ background: "var(--color-border, #e5e7eb)", borderRadius: 3, height: 5, width: "100%", overflow: "hidden" }}>
+      <div style={{ width: `${pct}%`, height: "100%", background: bg, transition: "width 2s" }} />
+    </div>
+  );
+}
+
+// Vertical event timeline
+function Timeline({ events, emptyText }) {
+  if (!events?.length) return <p style={{ color: "var(--color-muted)", fontSize: 13 }}>{emptyText || "No events yet."}</p>;
+  return (
+    <div style={{ position: "relative", paddingLeft: 22 }}>
+      <div style={{ position: "absolute", left: 7, top: 4, bottom: 4, width: 2, background: "var(--color-border, #e5e7eb)" }} />
+      {events.map((e, i) => (
+        <div key={e.id || i} style={{ position: "relative", marginBottom: 14 }}>
+          <div style={{
+            position: "absolute", left: -19, top: 3, width: 10, height: 10,
+            borderRadius: "50%", background: "var(--color-primary, #0D1B2A)",
+            border: "2px solid var(--color-bg, white)",
+          }} />
+          <div style={{ fontSize: 11, color: "var(--color-muted)", marginBottom: 2 }}>
+            {dateTimeBn(e.created_at)}
+            {e.event_type && <Badge tone="info" style={{ marginLeft: 6, fontSize: 10 }}>{e.event_type.replace(/_/g, " ")}</Badge>}
+          </div>
+          <div style={{ fontSize: 13, lineHeight: 1.4 }}>{e.body || e.message || e.description}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// Rollout stage pipeline bar
+const ROLLOUT_STAGES = ["internal", "pilot", "5pct", "20pct", "50pct", "all"];
+const STAGE_LBL = { internal: "Internal", pilot: "Pilot", "5pct": "5%", "20pct": "20%", "50pct": "50%", all: "All" };
+function StagePipeline({ currentStage }) {
+  const ci = ROLLOUT_STAGES.indexOf(currentStage);
+  return (
+    <div style={{ display: "flex", alignItems: "center" }}>
+      {ROLLOUT_STAGES.map((s, i) => {
+        const done = i < ci; const cur = i === ci;
+        return (
+          <div key={s} style={{ display: "flex", alignItems: "center" }}>
+            <div style={{
+              padding: "3px 9px", borderRadius: 4, fontSize: 11, fontWeight: cur ? 700 : 400,
+              background: done ? "#0A8754" : cur ? "#0D1B2A" : "var(--color-border, #e5e7eb)",
+              color: (done || cur) ? "white" : "var(--color-muted)",
+              outline: cur ? "2px solid #0A8754" : "none", outlineOffset: 2,
+            }}>{STAGE_LBL[s]}</div>
+            {i < ROLLOUT_STAGES.length - 1 && (
+              <div style={{ width: 14, height: 2, background: done ? "#0A8754" : "var(--color-border, #e5e7eb)" }} />
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// Health score ring — colored number
+function HealthScore({ score, risk }) {
+  const color = risk === "high" ? "#E63946" : risk === "medium" ? "#f59e0b" : "#0A8754";
+  return (
+    <div style={{
+      width: 56, height: 56, borderRadius: "50%",
+      border: `4px solid ${color}`, display: "flex", alignItems: "center",
+      justifyContent: "center", flexShrink: 0,
+    }}>
+      <span style={{ fontSize: 18, fontWeight: 800, color }}>{score}</span>
+    </div>
+  );
+}
+
+function priorityColor(p) {
+  return p >= 70 ? "#E63946" : p >= 40 ? "#f59e0b" : "#64748B";
+}
+
+function PriorityPill({ priority }) {
+  const c = priorityColor(priority);
+  return <span style={{ background: c + "22", color: c, borderRadius: 12, padding: "1px 8px", fontSize: 11, fontWeight: 700 }}>P{priority}</span>;
+}
+
+// Mini inline stat
+function KpiCard({ label, value, sub, color }) {
+  return (
+    <Card style={{ padding: "12px 16px", flex: 1, minWidth: 0 }}>
+      <div style={{ fontSize: 26, fontWeight: 800, color: color || "var(--color-text)" }}>{value}</div>
+      <div style={{ fontSize: 12, fontWeight: 600, color: "var(--color-muted)" }}>{label}</div>
+      {sub && <div style={{ fontSize: 11, color: "var(--color-muted)", marginTop: 2 }}>{sub}</div>}
+    </Card>
+  );
+}
+
 // ── Admin Overview ────────────────────────────────────────────────────────────
 function AdminOverviewPanel() {
   const { data, loading, error, reload } = useAdminFetch(() => api.adminOverview());
+  const { data: missions } = useAdminFetch(() => api.adminMissionQueue("open"));
+  const { data: alerts } = useAdminFetch(() => api.adminSecurityAlerts("open"));
+  const { data: incidents } = useAdminFetch(() => api.adminIncidents("open"));
   const toast = useToast();
 
   async function generateMissions() {
     try {
       const r = await api.adminGenerateMissionQueue();
-      toast.success(`${r.message}`);
+      toast.success(r.message);
       reload();
     } catch (e) { toast.error(e?.message || "Error"); }
   }
 
-  if (loading) return <Skeleton lines={4} />;
+  if (loading) return <Skeleton lines={6} />;
   if (error) return <Notice tone="danger">{error}</Notice>;
+
+  const topMissions = (missions?.items || []).slice(0, 5);
+  const topAlerts = (alerts?.alerts || []).slice(0, 4);
+  const openIncidents = (incidents?.incidents || []).filter(i => i.severity === "p1" || i.severity === "p2");
+
   return (
-    <div className="stack">
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <h3>Admin Command Center</h3>
-        <Button size="sm" onClick={generateMissions}>Mission Queue Generate করুন</Button>
+    <div className="stack" style={{ gap: 16 }}>
+      {/* P1/P2 incidents banner */}
+      {openIncidents.map(inc => (
+        <Notice key={inc.id} tone="danger">
+          🚨 <strong>{inc.severity.toUpperCase()} Incident:</strong> {inc.title} — {inc.affected_org_count ?? 0} tenants affected
+        </Notice>
+      ))}
+      {data?.ai_kill_switches?.disabled_count > 0 && (
+        <Notice tone="warning">⚠ {data.ai_kill_switches.disabled_count}টি AI feature kill switch active</Notice>
+      )}
+
+      {/* KPI row */}
+      <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+        <KpiCard label="Open Missions" value={data?.mission_queue?.open ?? 0} color={data?.mission_queue?.open > 0 ? "#f59e0b" : "#0A8754"} />
+        <KpiCard label="Support Cases" value={data?.support?.open_cases ?? 0} sub={data?.support?.breached_sla > 0 ? `${data.support.breached_sla} SLA breached` : "All on time"} color={data?.support?.breached_sla > 0 ? "#E63946" : undefined} />
+        <KpiCard label="Open Incidents" value={data?.incidents?.open ?? 0} color={data?.incidents?.open > 0 ? "#E63946" : "#0A8754"} />
+        <KpiCard label="Security Alerts" value={data?.security?.open_alerts ?? 0} color={data?.security?.open_alerts > 0 ? "#E63946" : "#0A8754"} />
+        <KpiCard label="High Churn Risk" value={data?.churn_risk?.high ?? 0} color={data?.churn_risk?.high > 0 ? "#f59e0b" : "#0A8754"} />
+        <KpiCard label="Failed Jobs" value={data?.jobs?.failed ?? 0} color={data?.jobs?.failed > 0 ? "#E63946" : "#0A8754"} />
+        <KpiCard label="Active JIT Grants" value={data?.jit_access?.active ?? 0} />
+        <KpiCard label="Privacy Requests" value={data?.privacy_requests?.pending ?? 0} color={data?.privacy_requests?.pending > 0 ? "#f59e0b" : undefined} />
       </div>
-      <div className="platform-metrics">
-        <Stat icon="target" label="Open Missions" value={data?.mission_queue?.open ?? 0} />
-        <Stat icon="messageSquare" label="Open Cases" value={data?.support?.open_cases ?? 0} />
-        <Stat icon="alertCircle" label="Open Incidents" value={data?.incidents?.open ?? 0} />
-        <Stat icon="alertOctagon" label="Security Alerts" value={data?.security?.open_alerts ?? 0} />
-        <Stat icon="alertTriangle" label="High Churn Risk" value={data?.churn_risk?.high ?? 0} />
-        <Stat icon="unlock" label="Active JIT Grants" value={data?.jit_access?.active ?? 0} />
-        <Stat icon="cpu" label="Failed Jobs" value={data?.jobs?.failed ?? 0} />
-        <Stat icon="lock" label="Pending Privacy Reqs" value={data?.privacy_requests?.pending ?? 0} />
-        {data?.ai_kill_switches?.disabled_count > 0 && (
-          <Stat icon="power" label="AI Features Disabled" value={data.ai_kill_switches.disabled_count} />
-        )}
+
+      {/* Two-column: missions + alerts */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+        {/* Mission queue */}
+        <div>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+            <strong>Priority Missions</strong>
+            <Button size="sm" variant="ghost" onClick={generateMissions}>⟳ Generate</Button>
+          </div>
+          <div className="stack" style={{ gap: 6 }}>
+            {topMissions.length === 0 && <EmptyState icon="check" title="কোনো mission নেই" />}
+            {topMissions.map(m => (
+              <div key={m.id} style={{
+                borderLeft: `4px solid ${priorityColor(m.priority)}`,
+                padding: "8px 10px", background: "var(--color-surface)", borderRadius: "0 6px 6px 0",
+              }}>
+                <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                  <PriorityPill priority={m.priority} />
+                  {m.affected_org_name && <Badge tone="info" style={{ fontSize: 10 }}>{m.affected_org_name}</Badge>}
+                </div>
+                <div style={{ fontSize: 13, fontWeight: 600, marginTop: 3 }}>{m.title}</div>
+                {m.recommended_action && <div style={{ fontSize: 11, color: "var(--color-muted)", marginTop: 2 }}>→ {m.recommended_action}</div>}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Security alert feed */}
+        <div>
+          <strong>Security Alert Feed</strong>
+          <div className="stack" style={{ gap: 6, marginTop: 8 }}>
+            {topAlerts.length === 0 && <EmptyState icon="shield" title="কোনো alert নেই" />}
+            {topAlerts.map(a => (
+              <div key={a.id} style={{
+                display: "flex", gap: 8, alignItems: "flex-start",
+                padding: "8px 10px", background: "var(--color-surface)", borderRadius: 6,
+                borderLeft: `4px solid ${a.severity === "critical" || a.severity === "high" ? "#E63946" : "#f59e0b"}`,
+              }}>
+                <div style={{ flex: 1 }}>
+                  <Badge tone={a.severity === "critical" ? "danger" : "warning"} style={{ fontSize: 10 }}>{a.severity}</Badge>
+                  <div style={{ fontSize: 12, fontWeight: 600, marginTop: 2 }}>{a.alert_type?.replace(/_/g, " ")}</div>
+                  {a.org_name && <div style={{ fontSize: 11, color: "var(--color-muted)" }}>{a.org_name}</div>}
+                </div>
+                <div style={{ fontSize: 11, color: "var(--color-muted)", flexShrink: 0 }}>{dateBn(a.created_at)}</div>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -1495,42 +1676,136 @@ function UniversalSearchPanel() {
 
 // ── Mission Queue ─────────────────────────────────────────────────────────────
 function MissionQueuePanel() {
-  const { data, loading, error, reload } = useAdminFetch(() => api.adminMissionQueue("open"));
+  const [statusTab, setStatusTab] = useState("open");
+  const { data, loading, reload } = useAdminFetch(() => api.adminMissionQueue(statusTab), [statusTab]);
+  const [expanded, setExpanded] = useState(null);
+  const [addOpen, setAddOpen] = useState(false);
+  const [form, setForm] = useState({ kind: "manual", priority: 50, title: "", description: "", recommended_action: "" });
   const toast = useToast();
 
-  async function resolve(id) {
+  async function setStatus(id, s) {
     try {
-      await api.adminUpdateMissionItem(id, { status: "resolved" });
-      toast.success("Resolved.");
+      await api.adminUpdateMissionItem(id, { status: s });
+      toast.success(`Mission → ${s}`);
+      setExpanded(null); reload();
+    } catch (e) { toast.error(e?.message || "Error"); }
+  }
+
+  async function generate() {
+    try {
+      const r = await api.adminGenerateMissionQueue();
+      toast.success(r.message);
       reload();
     } catch (e) { toast.error(e?.message || "Error"); }
   }
 
-  if (loading) return <Skeleton lines={4} />;
-  if (error) return <Notice tone="danger">{error}</Notice>;
+  async function create() {
+    try {
+      await api.adminCreateMissionItem(form);
+      toast.success("Mission তৈরি হয়েছে।");
+      setAddOpen(false);
+      setForm({ kind: "manual", priority: 50, title: "", description: "", recommended_action: "" });
+      reload();
+    } catch (e) { toast.error(e?.message || "Error"); }
+  }
+
+  if (loading) return <Skeleton lines={5} />;
   return (
     <div className="stack">
-      <div style={{ display: "flex", justifyContent: "space-between" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <h3>Admin Mission Queue</h3>
-        <Badge tone="warning">{data?.count ?? 0} open</Badge>
+        <div style={{ display: "flex", gap: 6 }}>
+          <Button size="sm" variant="ghost" onClick={generate}>⟳ Auto-Generate</Button>
+          <Button size="sm" onClick={() => setAddOpen(true)}>+ Mission</Button>
+        </div>
       </div>
-      {data?.items?.length === 0 && <EmptyState icon="check" title="কোনো মিশন নেই" body="সব কাজ সম্পন্ন হয়েছে।" />}
-      {data?.items?.map((item) => (
-        <Card key={item.id} style={{ borderLeft: `4px solid ${item.priority >= 70 ? "#E63946" : item.priority >= 40 ? "#f59e0b" : "#64748B"}` }}>
-          <div style={{ display: "flex", justifyContent: "space-between" }}>
-            <div>
-              <strong>{item.title}</strong>
-              {item.affected_org_name && <Badge tone="info" style={{ marginLeft: 8 }}>{item.affected_org_name}</Badge>}
-              <p style={{ fontSize: 13, color: "var(--color-muted)", margin: "4px 0" }}>{item.description}</p>
-              {item.recommended_action && <p style={{ fontSize: 12, fontStyle: "italic" }}>→ {item.recommended_action}</p>}
+
+      {/* Status tabs */}
+      <div style={{ display: "flex", gap: 4, borderBottom: "1px solid var(--color-border)", paddingBottom: 8 }}>
+        {["open", "in_progress", "resolved", "dismissed"].map(s => (
+          <button key={s} onClick={() => setStatusTab(s)} style={{
+            padding: "4px 12px", borderRadius: 20, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 600,
+            background: statusTab === s ? "#0D1B2A" : "transparent",
+            color: statusTab === s ? "white" : "var(--color-muted)",
+          }}>{s.replace("_", " ")}</button>
+        ))}
+        <Badge tone="warning" style={{ marginLeft: "auto" }}>{data?.count ?? 0}</Badge>
+      </div>
+
+      {data?.items?.length === 0 && <EmptyState icon="check" title="কোনো মিশন নেই" body="এই status এ কোনো item নেই।" />}
+
+      {data?.items?.map(item => (
+        <div key={item.id} style={{
+          borderLeft: `4px solid ${priorityColor(item.priority)}`,
+          background: "var(--color-surface)",
+          borderRadius: "0 8px 8px 0",
+          overflow: "hidden",
+        }}>
+          {/* Card header — always visible */}
+          <div
+            style={{ padding: "10px 14px", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}
+            onClick={() => setExpanded(expanded === item.id ? null : item.id)}
+          >
+            <div style={{ flex: 1 }}>
+              <div style={{ display: "flex", gap: 6, alignItems: "center", marginBottom: 4 }}>
+                <PriorityPill priority={item.priority} />
+                <Badge tone="neutral" style={{ fontSize: 10 }}>{item.kind.replace(/_/g, " ")}</Badge>
+                {item.affected_org_name && <Badge tone="info" style={{ fontSize: 10 }}>{item.affected_org_name}</Badge>}
+              </div>
+              <div style={{ fontSize: 14, fontWeight: 600 }}>{item.title}</div>
             </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 4, alignItems: "flex-end" }}>
-              <Badge tone={item.priority >= 70 ? "danger" : "warning"}>Priority {item.priority}</Badge>
-              <Button size="sm" variant="ghost" onClick={() => resolve(item.id)}>Resolve</Button>
+            <div style={{ display: "flex", gap: 6, alignItems: "center", flexShrink: 0 }}>
+              {item.deadline_at && (
+                <span style={{ fontSize: 11, color: new Date(item.deadline_at) < new Date() ? "#E63946" : "#f59e0b" }}>
+                  ⏰ {dateBn(item.deadline_at)}
+                </span>
+              )}
+              <Icon name={expanded === item.id ? "chevronUp" : "chevronDown"} size={14} />
             </div>
           </div>
-        </Card>
+
+          {/* Expanded detail */}
+          {expanded === item.id && (
+            <div style={{ padding: "0 14px 14px", borderTop: "1px solid var(--color-border)" }}>
+              {item.description && <p style={{ fontSize: 13, marginTop: 10 }}>{item.description}</p>}
+              {item.estimated_impact && (
+                <div style={{ fontSize: 12, marginTop: 6 }}>
+                  <strong>Impact:</strong> <span style={{ color: "var(--color-muted)" }}>{item.estimated_impact}</span>
+                </div>
+              )}
+              {item.recommended_action && (
+                <div style={{
+                  background: "var(--color-primary, #0D1B2A)22",
+                  borderRadius: 6, padding: "8px 12px", marginTop: 8,
+                  fontSize: 13, fontStyle: "italic"
+                }}>
+                  → {item.recommended_action}
+                </div>
+              )}
+              <div style={{ display: "flex", gap: 6, marginTop: 12 }}>
+                {item.status === "open" && <Button size="sm" onClick={() => setStatus(item.id, "in_progress")}>Start Working</Button>}
+                {item.status === "in_progress" && <Button size="sm" onClick={() => setStatus(item.id, "resolved")}>✓ Resolve</Button>}
+                {item.status !== "resolved" && <Button size="sm" variant="ghost" onClick={() => setStatus(item.id, "dismissed")}>Dismiss</Button>}
+              </div>
+            </div>
+          )}
+        </div>
       ))}
+
+      {addOpen && (
+        <Modal title="নতুন Mission Item" onClose={() => setAddOpen(false)}>
+          <div className="stack">
+            <Field label="Title"><input className="field-input" value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} /></Field>
+            <Field label="Description"><textarea className="field-input" rows={3} value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} /></Field>
+            <Field label="Recommended Action"><input className="field-input" value={form.recommended_action} onChange={e => setForm(f => ({ ...f, recommended_action: e.target.value }))} /></Field>
+            <Field label="Priority (1-100)">
+              <input type="range" min={1} max={100} value={form.priority} onChange={e => setForm(f => ({ ...f, priority: parseInt(e.target.value) }))} style={{ width: "100%" }} />
+              <PriorityPill priority={form.priority} />
+            </Field>
+            <Button onClick={create}>তৈরি করুন</Button>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }
@@ -1626,117 +1901,277 @@ function DecisionJournalPanel() {
 }
 
 // ── Tenant State Machine ──────────────────────────────────────────────────────
+const LIFECYCLE_STATES = ["lead", "trial", "onboarding", "live", "at_risk", "grace_period", "suspended", "offboarded"];
+const STATE_CFG = {
+  lead: { color: "#64748B", icon: "👤", label: "Lead" },
+  trial: { color: "#0D1B2A", icon: "🔬", label: "Trial" },
+  onboarding: { color: "#f59e0b", icon: "⚙", label: "Onboarding" },
+  live: { color: "#0A8754", icon: "✅", label: "Live" },
+  at_risk: { color: "#eab308", icon: "⚠", label: "At Risk" },
+  grace_period: { color: "#f97316", icon: "⏰", label: "Grace Period" },
+  suspended: { color: "#E63946", icon: "🚫", label: "Suspended" },
+  offboarded: { color: "#94a3b8", icon: "🏁", label: "Offboarded" },
+};
+const VALID_TRANSITIONS = {
+  lead: ["trial"],
+  trial: ["onboarding", "offboarded"],
+  onboarding: ["live", "suspended", "offboarded"],
+  live: ["at_risk", "suspended", "offboarded"],
+  at_risk: ["live", "grace_period", "suspended"],
+  grace_period: ["live", "suspended"],
+  suspended: ["live", "offboarded"],
+  offboarded: [],
+};
+
 function TenantStateMachinePanel() {
-  const { data } = useAdminFetch(() => api.platformOrganizations());
+  const { data: orgsData } = useAdminFetch(() => api.platformOrganizations());
   const [selectedOrg, setSelectedOrg] = useState("");
   const [history, setHistory] = useState(null);
   const [toState, setToState] = useState("");
   const [reason, setReason] = useState("");
   const toast = useToast();
+  const confirm = useConfirm();
 
   async function loadHistory(orgId) {
     setSelectedOrg(orgId);
-    const h = await api.adminTenantStateHistory(orgId);
-    setHistory(h);
+    setHistory(null);
+    if (!orgId) return;
+    try {
+      const h = await api.adminTenantStateHistory(orgId);
+      setHistory(h);
+    } catch {}
   }
 
-  async function transition() {
+  async function doTransition() {
+    if (!toState || !reason.trim()) return;
+    if (!await confirm(`"${selectedOrgName}" → ${STATE_CFG[toState]?.label}?\n\nReason: ${reason}`)) return;
     try {
       await api.adminTransitionTenantState(selectedOrg, { to_state: toState, reason });
       toast.success(`State → ${toState}`);
-      loadHistory(selectedOrg);
+      setToState(""); setReason("");
+      await loadHistory(selectedOrg);
     } catch (e) { toast.error(e?.message || "Error"); }
   }
 
-  const STATES = ["lead", "trial", "onboarding", "live", "at_risk", "grace_period", "suspended", "offboarded"];
-  const STATE_COLORS = { live: "success", at_risk: "warning", suspended: "danger", offboarded: "neutral" };
+  const orgs = orgsData?.organizations || [];
+  const selectedOrgName = orgs.find(o => o.id === selectedOrg)?.name;
+  const currentState = history?.events?.length > 0 ? history.events[history.events.length - 1]?.to_state : "lead";
+  const validNextStates = VALID_TRANSITIONS[currentState] || [];
 
   return (
     <div className="stack">
-      <h3>Tenant State Machine</h3>
-      <Card>
-        <Field label="Business বেছে নিন">
-          <select className="field-input" value={selectedOrg} onChange={(e) => loadHistory(e.target.value)}>
-            <option value="">-- বেছে নিন --</option>
-            {data?.organizations?.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
-          </select>
-        </Field>
-        {history && (
-          <>
-            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", margin: "8px 0" }}>
-              {history.events.map((e, i) => (
-                <span key={i} style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                  <Badge tone={STATE_COLORS[e.to_state] || "info"}>{e.to_state}</Badge>
-                  {i < history.events.length - 1 && <span>→</span>}
-                </span>
-              ))}
+      <h3>Tenant Lifecycle State Machine</h3>
+      <Field label="Business বেছে নিন">
+        <select className="field-input" value={selectedOrg} onChange={e => loadHistory(e.target.value)}>
+          <option value="">-- বেছে নিন --</option>
+          {orgs.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
+        </select>
+      </Field>
+
+      {selectedOrg && history && (
+        <>
+          {/* Current state badge */}
+          <Card style={{ padding: "14px 16px" }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: "var(--color-muted)", marginBottom: 8 }}>CURRENT STATE</div>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <div style={{
+                fontSize: 32, width: 56, height: 56, borderRadius: "50%",
+                border: `3px solid ${STATE_CFG[currentState]?.color || "#64748B"}`,
+                display: "flex", alignItems: "center", justifyContent: "center",
+              }}>
+                {STATE_CFG[currentState]?.icon}
+              </div>
+              <div>
+                <div style={{ fontWeight: 700, fontSize: 18, color: STATE_CFG[currentState]?.color }}>{STATE_CFG[currentState]?.label}</div>
+                <div style={{ fontSize: 12, color: "var(--color-muted)" }}>{selectedOrgName}</div>
+              </div>
             </div>
-            <div style={{ display: "flex", gap: 8, alignItems: "flex-end" }}>
-              <Field label="নতুন State" style={{ flex: 1 }}>
-                <select className="field-input" value={toState} onChange={(e) => setToState(e.target.value)}>
-                  <option value="">-- বেছে নিন --</option>
-                  {STATES.map((s) => <option key={s} value={s}>{s}</option>)}
-                </select>
-              </Field>
-              <Field label="কারণ" style={{ flex: 2 }}>
-                <input className="field-input" value={reason} onChange={(e) => setReason(e.target.value)} />
-              </Field>
-              <Button onClick={transition}>Transition</Button>
+          </Card>
+
+          {/* State flow visualization */}
+          <Card style={{ padding: "12px 16px" }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: "var(--color-muted)", marginBottom: 8 }}>LIFECYCLE FLOW</div>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+              {LIFECYCLE_STATES.map(s => {
+                const cfg = STATE_CFG[s];
+                const isCurrent = s === currentState;
+                const isPast = history.events.some(e => e.to_state === s);
+                const isValidNext = validNextStates.includes(s);
+                return (
+                  <div key={s} style={{
+                    padding: "6px 12px", borderRadius: 20, fontSize: 12, fontWeight: isCurrent ? 700 : 400,
+                    background: isCurrent ? cfg.color : isPast ? cfg.color + "33" : "var(--color-border)",
+                    color: isCurrent ? "white" : isPast ? cfg.color : "var(--color-muted)",
+                    border: isValidNext ? `2px dashed ${cfg.color}` : "2px solid transparent",
+                    cursor: isValidNext ? "pointer" : "default",
+                    transform: isCurrent ? "scale(1.05)" : "scale(1)",
+                  }} onClick={() => isValidNext && setToState(s)}>
+                    {cfg.icon} {cfg.label}
+                  </div>
+                );
+              })}
             </div>
-          </>
-        )}
-      </Card>
+            <div style={{ fontSize: 11, color: "var(--color-muted)", marginTop: 6 }}>Dashed border = valid next state (click to select)</div>
+          </Card>
+
+          {/* Transition form */}
+          {validNextStates.length > 0 && (
+            <Card style={{ padding: "12px 16px" }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: "var(--color-muted)", marginBottom: 8 }}>TRANSITION</div>
+              <Field label="New State">
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                  {validNextStates.map(s => (
+                    <button key={s} onClick={() => setToState(toState === s ? "" : s)} style={{
+                      padding: "6px 14px", borderRadius: 20, border: `2px solid ${STATE_CFG[s]?.color}`,
+                      background: toState === s ? STATE_CFG[s]?.color : "transparent",
+                      color: toState === s ? "white" : STATE_CFG[s]?.color,
+                      cursor: "pointer", fontWeight: 600, fontSize: 13,
+                    }}>
+                      {STATE_CFG[s]?.icon} {STATE_CFG[s]?.label}
+                    </button>
+                  ))}
+                </div>
+              </Field>
+              {toState && (
+                <>
+                  <Field label="Reason">
+                    <textarea className="field-input" rows={2} value={reason} onChange={e => setReason(e.target.value)} placeholder={`কেন ${STATE_CFG[toState]?.label} state এ নিচ্ছেন...`} />
+                  </Field>
+                  <Button onClick={doTransition} disabled={!reason.trim()} variant={toState === "suspended" || toState === "offboarded" ? "danger" : "primary"}>
+                    Transition → {STATE_CFG[toState]?.label}
+                  </Button>
+                </>
+              )}
+            </Card>
+          )}
+
+          {/* Transition history */}
+          <div>
+            <div style={{ fontSize: 12, fontWeight: 700, color: "var(--color-muted)", marginBottom: 6 }}>HISTORY</div>
+            <Timeline events={history.events?.map(e => ({
+              ...e, body: `→ ${STATE_CFG[e.to_state]?.label || e.to_state}${e.reason ? ` — ${e.reason}` : ""}`,
+            }))} emptyText="No state changes recorded." />
+          </div>
+        </>
+      )}
     </div>
   );
 }
 
 // ── Tenant Health Score ───────────────────────────────────────────────────────
 function TenantHealthPanel() {
-  const { data } = useAdminFetch(() => api.platformOrganizations());
-  const [health, setHealth] = useState(null);
-  const [selectedOrg, setSelectedOrg] = useState("");
+  const { data: orgs, loading: orgsLoading } = useAdminFetch(() => api.platformOrganizations());
+  const [scores, setScores] = useState({}); // orgId → health data
+  const [loadingOrg, setLoadingOrg] = useState(null);
+  const [expanded, setExpanded] = useState(null);
+  const [sortBy, setSortBy] = useState("score"); // score | name
   const toast = useToast();
 
-  async function loadHealth(orgId) {
-    setSelectedOrg(orgId);
-    try {
-      const h = await api.adminTenantHealthScore(orgId);
-      setHealth(h);
-    } catch (e) { toast.error(e?.message || "Error"); }
+  async function loadAll() {
+    if (!orgs?.organizations) return;
+    for (const org of orgs.organizations.slice(0, 20)) {
+      setLoadingOrg(org.id);
+      try {
+        const h = await api.adminTenantHealthScore(org.id);
+        setScores(s => ({ ...s, [org.id]: { ...h, org_name: org.name, org_id: org.id } }));
+      } catch {}
+    }
+    setLoadingOrg(null);
   }
 
+  const orgList = orgs?.organizations || [];
+  const scored = orgList.map(o => scores[o.id] || { org_id: o.id, org_name: o.name, score: null }).filter(x => x.score !== null);
+  const sorted = [...scored].sort((a, b) => sortBy === "score" ? a.score - b.score : a.org_name.localeCompare(b.org_name));
+
+  if (orgsLoading) return <Skeleton lines={4} />;
   return (
     <div className="stack">
-      <h3>Tenant Health Score</h3>
-      <Card>
-        <Field label="Business বেছে নিন">
-          <select className="field-input" value={selectedOrg} onChange={(e) => loadHealth(e.target.value)}>
-            <option value="">-- বেছে নিন --</option>
-            {data?.organizations?.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
-          </select>
-        </Field>
-        {health && (
-          <div style={{ marginTop: 12 }}>
-            <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
-              <div style={{ fontSize: 48, fontWeight: 700, color: health.risk_level === "high" ? "#E63946" : health.risk_level === "medium" ? "#f59e0b" : "#0A8754" }}>
-                {health.score}
-              </div>
-              <div>
-                <Badge tone={health.risk_level === "high" ? "danger" : health.risk_level === "medium" ? "warning" : "success"}>{health.risk_level.toUpperCase()} RISK</Badge>
-                <p style={{ marginTop: 4 }}>{health.recommendation}</p>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <h3>Tenant Health Matrix</h3>
+        <div style={{ display: "flex", gap: 6 }}>
+          <Button size="sm" variant="ghost" onClick={() => setSortBy(sortBy === "score" ? "name" : "score")}>
+            Sort: {sortBy === "score" ? "↑ Worst first" : "A-Z"}
+          </Button>
+          <Button size="sm" onClick={loadAll} disabled={!!loadingOrg}>
+            {loadingOrg ? "Loading..." : "Load All Scores"}
+          </Button>
+        </div>
+      </div>
+
+      {scored.length === 0 && (
+        <EmptyState icon="activity" title="Score লোড করুন" body="'Load All Scores' click করে সব tenant এর health score দেখুন।" />
+      )}
+
+      {/* Health summary bar */}
+      {scored.length > 0 && (
+        <div style={{ display: "flex", gap: 8 }}>
+          <KpiCard label="High Risk" value={scored.filter(s => s.risk_level === "high").length} color="#E63946" />
+          <KpiCard label="Medium Risk" value={scored.filter(s => s.risk_level === "medium").length} color="#f59e0b" />
+          <KpiCard label="Low Risk" value={scored.filter(s => s.risk_level === "low").length} color="#0A8754" />
+          <KpiCard label="Avg Score" value={Math.round(scored.reduce((a, b) => a + (b.score || 0), 0) / scored.length)} />
+        </div>
+      )}
+
+      {/* Health grid */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 10 }}>
+        {sorted.map(h => (
+          <div key={h.org_id} style={{
+            background: "var(--color-surface)", borderRadius: 8, padding: "12px 14px",
+            border: `1px solid ${h.risk_level === "high" ? "#E6394644" : h.risk_level === "medium" ? "#f59e0b44" : "var(--color-border)"}`,
+            cursor: "pointer",
+          }} onClick={() => setExpanded(expanded === h.org_id ? null : h.org_id)}>
+            <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+              <HealthScore score={h.score} risk={h.risk_level} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontWeight: 600, fontSize: 13, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{h.org_name}</div>
+                <Badge tone={h.risk_level === "high" ? "danger" : h.risk_level === "medium" ? "warning" : "success"} style={{ marginTop: 4 }}>
+                  {h.risk_level?.toUpperCase()} RISK
+                </Badge>
               </div>
             </div>
-            <div style={{ marginTop: 8 }}>
-              {Object.entries(health.factors).map(([k, v]) => (
-                <div key={k} style={{ display: "flex", justifyContent: "space-between", fontSize: 13, padding: "2px 0" }}>
-                  <span>{k.replace(/_/g, " ")}</span>
-                  <Badge tone={v < 0 ? "danger" : "success"}>{v > 0 ? "+" : ""}{v}</Badge>
-                </div>
-              ))}
+
+            {/* Factor mini bars */}
+            {expanded === h.org_id && h.factors && (
+              <div style={{ marginTop: 10, borderTop: "1px solid var(--color-border)", paddingTop: 8 }}>
+                {Object.entries(h.factors).map(([k, v]) => (
+                  <div key={k} style={{ marginBottom: 5 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, marginBottom: 2 }}>
+                      <span>{k.replace(/_/g, " ")}</span>
+                      <span style={{ fontWeight: 700, color: v < 0 ? "#E63946" : "#0A8754" }}>{v > 0 ? "+" : ""}{v}</span>
+                    </div>
+                    <div style={{ background: "var(--color-border)", borderRadius: 3, height: 4, overflow: "hidden" }}>
+                      <div style={{
+                        width: `${Math.min(100, Math.abs(v) * 10)}%`, height: "100%",
+                        background: v < 0 ? "#E63946" : "#0A8754",
+                      }} />
+                    </div>
+                  </div>
+                ))}
+                {h.recommendation && (
+                  <div style={{ marginTop: 8, fontSize: 12, fontStyle: "italic", color: "var(--color-muted)", borderTop: "1px solid var(--color-border)", paddingTop: 6 }}>
+                    💡 {h.recommendation}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        ))}
+
+        {/* Unloaded orgs */}
+        {orgList.filter(o => !scores[o.id]).map(o => (
+          <div key={o.id} style={{
+            background: "var(--color-surface)", borderRadius: 8, padding: "12px 14px",
+            border: "1px solid var(--color-border)", opacity: 0.5,
+          }}>
+            <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+              <div style={{ width: 56, height: 56, borderRadius: "50%", border: "4px solid var(--color-border)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                {loadingOrg === o.id ? "..." : "?"}
+              </div>
+              <div style={{ fontWeight: 600, fontSize: 13 }}>{o.name}</div>
             </div>
           </div>
-        )}
-      </Card>
+        ))}
+      </div>
     </div>
   );
 }
@@ -1744,32 +2179,92 @@ function TenantHealthPanel() {
 // ── Churn Risk ────────────────────────────────────────────────────────────────
 function ChurnRiskPanel() {
   const { data, loading, reload } = useAdminFetch(() => api.adminChurnRisk());
+  const [computing, setComputing] = useState(false);
   const toast = useToast();
 
   async function compute() {
+    setComputing(true);
     try {
       const r = await api.adminComputeChurnRisk();
       toast.success(`${r.updated} tenants updated.`);
       reload();
-    } catch (e) { toast.error(e?.message || "Error"); }
+    } catch (e) { toast.error(e?.message || "Error"); } finally { setComputing(false); }
   }
 
   if (loading) return <Skeleton lines={4} />;
+
+  const risks = data?.risks || [];
+  const high = risks.filter(r => r.risk_level === "high");
+  const medium = risks.filter(r => r.risk_level === "medium");
+  const low = risks.filter(r => r.risk_level === "low");
+
+  // Bar chart data for risk distribution
+  const distData = [
+    { name: "High", count: high.length, fill: "#E63946" },
+    { name: "Medium", count: medium.length, fill: "#f59e0b" },
+    { name: "Low", count: low.length, fill: "#0A8754" },
+  ];
+
   return (
     <div className="stack">
-      <div style={{ display: "flex", justifyContent: "space-between" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <h3>Tenant Churn Risk</h3>
-        <Button size="sm" onClick={compute}>Risk Compute করুন</Button>
+        <Button size="sm" loading={computing} onClick={compute}>⟳ Recompute All</Button>
       </div>
-      <DataTable
-        rows={data?.risks || []}
-        columns={[
-          { key: "org_name", label: "Business" },
-          { key: "score", label: "Score", render: (v) => `${v}%` },
-          { key: "risk_level", label: "Risk", render: (v) => <Badge tone={v === "high" ? "danger" : v === "medium" ? "warning" : "success"}>{v}</Badge> },
-          { key: "computed_at", label: "Computed", render: (v) => dateBn(v) },
-        ]}
-      />
+
+      {risks.length > 0 && (
+        <div style={{ display: "flex", gap: 12, alignItems: "stretch" }}>
+          <div style={{ display: "flex", gap: 8, flex: 1 }}>
+            <KpiCard label="High Risk" value={high.length} color="#E63946" sub="Immediate action needed" />
+            <KpiCard label="Medium Risk" value={medium.length} color="#f59e0b" sub="Monitor closely" />
+            <KpiCard label="Low Risk" value={low.length} color="#0A8754" sub="Healthy" />
+          </div>
+          <Card style={{ width: 200 }}>
+            <div style={{ height: 100 }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={distData} barSize={30}>
+                  <XAxis dataKey="name" tick={{ fontSize: 10 }} />
+                  <Tooltip />
+                  <Bar dataKey="count" radius={[3, 3, 0, 0]}>
+                    {distData.map((d, i) => <Cell key={i} fill={d.fill} />)}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {risks.length === 0 && <EmptyState icon="activity" title="Risk score নেই" body="'Recompute All' চালান।" />}
+
+      {/* High risk tenants first */}
+      {[...high, ...medium, ...low].map(r => (
+        <div key={r.id || r.org_id} style={{
+          display: "flex", alignItems: "center", gap: 12,
+          padding: "10px 14px", background: "var(--color-surface)", borderRadius: 8,
+          borderLeft: `4px solid ${r.risk_level === "high" ? "#E63946" : r.risk_level === "medium" ? "#f59e0b" : "#0A8754"}`,
+        }}>
+          {/* Score ring */}
+          <div style={{
+            width: 44, height: 44, borderRadius: "50%",
+            border: `3px solid ${r.risk_level === "high" ? "#E63946" : r.risk_level === "medium" ? "#f59e0b" : "#0A8754"}`,
+            display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+          }}>
+            <span style={{ fontSize: 14, fontWeight: 800, color: r.risk_level === "high" ? "#E63946" : r.risk_level === "medium" ? "#f59e0b" : "#0A8754" }}>
+              {r.score}%
+            </span>
+          </div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontWeight: 600, fontSize: 13 }}>{r.org_name}</div>
+            <div style={{ fontSize: 11, color: "var(--color-muted)", marginTop: 2 }}>
+              Computed {dateBn(r.computed_at)}
+            </div>
+          </div>
+          <Badge tone={r.risk_level === "high" ? "danger" : r.risk_level === "medium" ? "warning" : "success"}>
+            {r.risk_level.toUpperCase()}
+          </Badge>
+        </div>
+      ))}
     </div>
   );
 }
@@ -1825,16 +2320,19 @@ function PlansPanel() {
 }
 
 // ── Billing Ledger ────────────────────────────────────────────────────────────
+const ENTRY_ICON = { invoice: "📄", payment: "💰", credit_note: "📝", refund: "↩", overage: "⚠" };
+
 function BillingLedgerPanel() {
   const { data: orgs } = useAdminFetch(() => api.platformOrganizations());
   const [selectedOrg, setSelectedOrg] = useState("");
   const [ledger, setLedger] = useState(null);
-  const [form, setForm] = useState({ entry_type: "invoice", amount_bdt: "", description: "" });
+  const [entryOpen, setEntryOpen] = useState(false);
+  const [form, setForm] = useState({ entry_type: "invoice", amount_bdt: "", description: "", period_month: "" });
   const toast = useToast();
 
   async function loadLedger(orgId) {
     setSelectedOrg(orgId);
-    if (!orgId) return;
+    if (!orgId) { setLedger(null); return; }
     const r = await api.adminBillingLedger(orgId);
     setLedger(r);
   }
@@ -1843,44 +2341,102 @@ function BillingLedgerPanel() {
     try {
       await api.adminAddBillingEntry(selectedOrg, { ...form, amount_bdt: parseFloat(form.amount_bdt) });
       toast.success("Entry added.");
-      loadLedger(selectedOrg);
+      setEntryOpen(false);
+      setForm({ entry_type: "invoice", amount_bdt: "", description: "", period_month: "" });
+      await loadLedger(selectedOrg);
     } catch (e) { toast.error(e?.message || "Error"); }
   }
 
+  // Build monthly chart data from entries
+  const chartData = useMemo(() => {
+    if (!ledger?.entries) return [];
+    const byMonth = {};
+    for (const e of ledger.entries) {
+      const m = e.created_at?.slice(0, 7) || "?";
+      if (!byMonth[m]) byMonth[m] = { month: m, invoiced: 0, paid: 0 };
+      if (e.entry_type === "invoice" || e.entry_type === "overage") byMonth[m].invoiced += e.amount_bdt;
+      if (e.entry_type === "payment") byMonth[m].paid += e.amount_bdt;
+    }
+    return Object.values(byMonth).sort((a, b) => a.month.localeCompare(b.month)).slice(-6);
+  }, [ledger]);
+
   return (
     <div className="stack">
-      <h3>BDT Billing Ledger</h3>
+      <h3>Billing Ledger</h3>
       <Field label="Business বেছে নিন">
-        <select className="field-input" value={selectedOrg} onChange={(e) => loadLedger(e.target.value)}>
+        <select className="field-input" value={selectedOrg} onChange={e => loadLedger(e.target.value)}>
           <option value="">-- বেছে নিন --</option>
-          {orgs?.organizations?.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
+          {orgs?.organizations?.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
         </select>
       </Field>
+
       {ledger && (
         <>
-          <Card><Stat icon="creditCard" label="Outstanding (BDT)" value={`৳${ledger.outstanding_bdt}`} /></Card>
-          <Card>
-            <h4>নতুন Entry</h4>
-            <div style={{ display: "flex", gap: 8 }}>
-              <select className="field-input" value={form.entry_type} onChange={(e) => setForm((f) => ({ ...f, entry_type: e.target.value }))}>
-                {["invoice", "payment", "credit_note", "refund", "overage"].map((t) => <option key={t} value={t}>{t}</option>)}
-              </select>
-              <input type="number" className="field-input" placeholder="Amount BDT" value={form.amount_bdt} onChange={(e) => setForm((f) => ({ ...f, amount_bdt: e.target.value }))} />
-              <input className="field-input" placeholder="Description" value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} style={{ flex: 2 }} />
-              <Button onClick={addEntry}>Add</Button>
+          {/* Outstanding + summary */}
+          <div style={{ display: "flex", gap: 10 }}>
+            <KpiCard label="Outstanding (BDT)" value={`৳${ledger.outstanding_bdt?.toLocaleString()}`} color={ledger.outstanding_bdt > 0 ? "#E63946" : "#0A8754"} />
+            <KpiCard label="Total Invoiced" value={`৳${ledger.entries?.filter(e => e.entry_type === "invoice").reduce((a, b) => a + b.amount_bdt, 0).toLocaleString()}`} />
+            <KpiCard label="Total Paid" value={`৳${ledger.entries?.filter(e => e.entry_type === "payment").reduce((a, b) => a + b.amount_bdt, 0).toLocaleString()}`} color="#0A8754" />
+          </div>
+
+          {/* Revenue chart */}
+          {chartData.length > 0 && (
+            <Card>
+              <div style={{ fontSize: 12, fontWeight: 700, color: "var(--color-muted)", marginBottom: 8 }}>INVOICED vs PAID (last 6 months)</div>
+              <div style={{ height: 160 }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={chartData} barSize={20}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                    <XAxis dataKey="month" tick={{ fontSize: 11 }} />
+                    <YAxis tick={{ fontSize: 11 }} />
+                    <Tooltip formatter={v => `৳${v?.toLocaleString()}`} />
+                    <Bar dataKey="invoiced" name="Invoiced" fill="#0D1B2A" radius={[3, 3, 0, 0]} />
+                    <Bar dataKey="paid" name="Paid" fill="#0A8754" radius={[3, 3, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </Card>
+          )}
+
+          <div style={{ display: "flex", justifyContent: "flex-end" }}>
+            <Button size="sm" onClick={() => setEntryOpen(true)}>+ New Entry</Button>
+          </div>
+
+          {/* Ledger table */}
+          {ledger.entries?.map(e => (
+            <div key={e.id} style={{
+              display: "flex", gap: 10, alignItems: "center",
+              padding: "8px 12px", background: "var(--color-surface)", borderRadius: 6,
+              borderLeft: `3px solid ${e.entry_type === "invoice" ? "#0D1B2A" : e.entry_type === "payment" ? "#0A8754" : e.entry_type === "refund" ? "#f59e0b" : "#64748B"}`,
+            }}>
+              <span style={{ fontSize: 18 }}>{ENTRY_ICON[e.entry_type]}</span>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 600, fontSize: 13 }}>{e.description || e.entry_type}</div>
+                <div style={{ fontSize: 11, color: "var(--color-muted)" }}>{e.period_month} · {dateBn(e.created_at)}</div>
+              </div>
+              <div style={{ fontWeight: 700, fontSize: 15, color: e.entry_type === "payment" ? "#0A8754" : e.entry_type === "invoice" ? "#E63946" : "var(--color-text)" }}>
+                {e.entry_type === "payment" ? "-" : "+"}৳{e.amount_bdt?.toLocaleString()}
+              </div>
+              <Badge tone={e.status === "paid" ? "success" : "warning"}>{e.status}</Badge>
             </div>
-          </Card>
-          <DataTable
-            rows={ledger.entries}
-            columns={[
-              { key: "entry_type", label: "Type" },
-              { key: "amount_bdt", label: "Amount", render: (v) => `৳${v}` },
-              { key: "description", label: "Description" },
-              { key: "status", label: "Status", render: (v) => <Badge tone={v === "paid" ? "success" : "warning"}>{v}</Badge> },
-              { key: "created_at", label: "Date", render: (v) => dateBn(v) },
-            ]}
-          />
+          ))}
         </>
+      )}
+
+      {entryOpen && (
+        <Modal title="নতুন Billing Entry" onClose={() => setEntryOpen(false)}>
+          <div className="stack">
+            <Field label="Entry Type">
+              <select className="field-input" value={form.entry_type} onChange={e => setForm(f => ({ ...f, entry_type: e.target.value }))}>
+                {["invoice", "payment", "credit_note", "refund", "overage"].map(t => <option key={t} value={t}>{ENTRY_ICON[t]} {t}</option>)}
+              </select>
+            </Field>
+            <Field label="Amount (BDT)"><input type="number" className="field-input" value={form.amount_bdt} onChange={e => setForm(f => ({ ...f, amount_bdt: e.target.value }))} /></Field>
+            <Field label="Period Month (YYYY-MM)"><input className="field-input" value={form.period_month} onChange={e => setForm(f => ({ ...f, period_month: e.target.value }))} placeholder="2026-10" /></Field>
+            <Field label="Description"><input className="field-input" value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} /></Field>
+            <Button onClick={addEntry} disabled={!form.amount_bdt}>Add Entry</Button>
+          </div>
+        </Modal>
       )}
     </div>
   );
@@ -1944,48 +2500,180 @@ function ReconciliationPanel() {
 
 // ── Support Cases ─────────────────────────────────────────────────────────────
 function SupportCasesPanel() {
-  const [status, setStatus] = useState("open");
-  const { data, loading, reload } = useAdminFetch(() => api.adminSupportCases(status), [status]);
-  const [form, setForm] = useState({ subject: "", priority: "normal", source: "manual" });
+  const [statusTab, setStatusTab] = useState("open");
+  const { data: sla } = useAdminFetch(() => api.adminSlaSummary());
+  const { data, loading, reload } = useAdminFetch(() => api.adminSupportCases(statusTab), [statusTab]);
+  const [expanded, setExpanded] = useState(null);
+  const [events, setEvents] = useState({});
+  const [noteText, setNoteText] = useState("");
+  const [newCaseOpen, setNewCaseOpen] = useState(false);
+  const [form, setForm] = useState({ subject: "", priority: "normal", source: "manual", description: "" });
   const toast = useToast();
+
+  async function loadEvents(caseId) {
+    if (events[caseId]) return;
+    const r = await api.adminCaseEvents(caseId);
+    setEvents(ev => ({ ...ev, [caseId]: r.events }));
+  }
+
+  async function toggleExpand(c) {
+    const next = expanded === c.id ? null : c.id;
+    setExpanded(next);
+    if (next) await loadEvents(c.id);
+  }
+
+  async function addNote(caseId) {
+    if (!noteText.trim()) return;
+    try {
+      await api.adminUpdateSupportCase(caseId, { status: "open", comment: noteText });
+      toast.success("Note added.");
+      setNoteText("");
+      const r = await api.adminCaseEvents(caseId);
+      setEvents(ev => ({ ...ev, [caseId]: r.events }));
+    } catch (e) { toast.error(e?.message || "Error"); }
+  }
+
+  async function changeStatus(caseId, s) {
+    try {
+      await api.adminUpdateSupportCase(caseId, { status: s });
+      toast.success(`Case → ${s}`);
+      setExpanded(null); reload();
+    } catch (e) { toast.error(e?.message || "Error"); }
+  }
 
   async function createCase() {
     try {
       await api.adminCreateSupportCase(form);
       toast.success("Case তৈরি হয়েছে।");
-      setForm({ subject: "", priority: "normal", source: "manual" });
+      setNewCaseOpen(false);
+      setForm({ subject: "", priority: "normal", source: "manual", description: "" });
       reload();
     } catch (e) { toast.error(e?.message || "Error"); }
   }
 
-  if (loading) return <Skeleton lines={4} />;
+  const PRIORITY_COLOR = { urgent: "#E63946", high: "#f59e0b", normal: "#64748B", low: "#94a3b8" };
+
+  if (loading) return <Skeleton lines={5} />;
   return (
     <div className="stack">
-      <h3>Support Cases</h3>
-      <div style={{ display: "flex", gap: 8 }}>
-        {["open", "pending", "resolved", "closed"].map((s) => (
-          <Button key={s} size="sm" variant={status === s ? "primary" : "ghost"} onClick={() => setStatus(s)}>{s}</Button>
-        ))}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <h3>Support Case Management</h3>
+        <Button size="sm" onClick={() => setNewCaseOpen(true)}>+ New Case</Button>
       </div>
-      <Card>
+
+      {/* SLA summary cards */}
+      {sla && (
         <div style={{ display: "flex", gap: 8 }}>
-          <input className="field-input" style={{ flex: 2 }} placeholder="Subject" value={form.subject} onChange={(e) => setForm((f) => ({ ...f, subject: e.target.value }))} />
-          <select className="field-input" value={form.priority} onChange={(e) => setForm((f) => ({ ...f, priority: e.target.value }))}>
-            {["low", "normal", "high", "urgent"].map((p) => <option key={p} value={p}>{p}</option>)}
-          </select>
-          <Button onClick={createCase}>New Case</Button>
+          <KpiCard label="Total Open" value={sla.total_open ?? 0} />
+          <KpiCard label="Response Breached" value={sla.response_breached ?? 0} color={sla.response_breached > 0 ? "#E63946" : undefined} />
+          <KpiCard label="Resolution Breached" value={sla.resolution_breached ?? 0} color={sla.resolution_breached > 0 ? "#E63946" : undefined} />
+          <KpiCard label="At Risk (<2h)" value={sla.at_risk_response ?? 0} color={sla.at_risk_response > 0 ? "#f59e0b" : undefined} />
         </div>
-      </Card>
-      <DataTable
-        rows={data?.cases || []}
-        columns={[
-          { key: "subject", label: "Subject" },
-          { key: "org_name", label: "Business" },
-          { key: "priority", label: "Priority", render: (v) => <Badge tone={v === "urgent" || v === "high" ? "danger" : "info"}>{v}</Badge> },
-          { key: "status", label: "Status" },
-          { key: "created_at", label: "Created", render: (v) => dateBn(v) },
-        ]}
-      />
+      )}
+
+      {/* Status tabs */}
+      <div style={{ display: "flex", gap: 4, borderBottom: "1px solid var(--color-border)", paddingBottom: 6 }}>
+        {["open", "pending", "resolved", "closed"].map(s => (
+          <button key={s} onClick={() => { setStatusTab(s); setExpanded(null); }} style={{
+            padding: "4px 14px", borderRadius: 20, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 600,
+            background: statusTab === s ? "#0D1B2A" : "transparent",
+            color: statusTab === s ? "white" : "var(--color-muted)",
+          }}>{s}</button>
+        ))}
+        <span style={{ marginLeft: "auto", fontSize: 12, color: "var(--color-muted)", lineHeight: "26px" }}>{data?.count ?? 0} cases</span>
+      </div>
+
+      {data?.cases?.length === 0 && <EmptyState icon="messageSquare" title="কোনো case নেই" />}
+
+      {data?.cases?.map(c => (
+        <div key={c.id} style={{
+          borderRadius: 8, overflow: "hidden", border: "1px solid var(--color-border)",
+          borderLeft: `4px solid ${PRIORITY_COLOR[c.priority] || "#64748B"}`,
+        }}>
+          {/* Case header */}
+          <div style={{ padding: "10px 14px", cursor: "pointer", display: "flex", gap: 12 }} onClick={() => toggleExpand(c)}>
+            <div style={{ flex: 1 }}>
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 4 }}>
+                <Badge tone={c.priority === "urgent" || c.priority === "high" ? "danger" : "info"}>{c.priority}</Badge>
+                {c.org_name && <Badge tone="neutral">{c.org_name}</Badge>}
+                {c.affected_feature && <Badge tone="warning" style={{ fontSize: 10 }}>{c.affected_feature}</Badge>}
+              </div>
+              <div style={{ fontWeight: 600, fontSize: 14 }}>{c.subject}</div>
+              {/* SLA bar */}
+              {c.sla_response_due_at && statusTab === "open" && (
+                <div style={{ marginTop: 6 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 3 }}>
+                    <span style={{ fontSize: 11, color: "var(--color-muted)" }}>Response SLA</span>
+                    <SlaTimer dueAt={c.sla_response_due_at} small />
+                  </div>
+                  <SlaBar createdAt={c.created_at} dueAt={c.sla_response_due_at} />
+                </div>
+              )}
+              {c.sla_resolution_due_at && statusTab === "open" && (
+                <div style={{ marginTop: 5 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 3 }}>
+                    <span style={{ fontSize: 11, color: "var(--color-muted)" }}>Resolution SLA</span>
+                    <SlaTimer dueAt={c.sla_resolution_due_at} small />
+                  </div>
+                  <SlaBar createdAt={c.created_at} dueAt={c.sla_resolution_due_at} />
+                </div>
+              )}
+            </div>
+            <div style={{ flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4 }}>
+              <span style={{ fontSize: 11, color: "var(--color-muted)" }}>{dateBn(c.created_at)}</span>
+              <Icon name={expanded === c.id ? "chevronUp" : "chevronDown"} size={14} />
+            </div>
+          </div>
+
+          {/* Expanded: event timeline + actions */}
+          {expanded === c.id && (
+            <div style={{ padding: "0 14px 14px", borderTop: "1px solid var(--color-border)", background: "var(--color-surface-2, var(--color-surface))" }}>
+              <div style={{ marginTop: 10, marginBottom: 8, fontSize: 12, fontWeight: 700, color: "var(--color-muted)" }}>HISTORY</div>
+              {events[c.id]
+                ? <Timeline events={events[c.id]} emptyText="No events yet." />
+                : <Skeleton lines={2} />
+              }
+              {/* Add note */}
+              {statusTab !== "resolved" && statusTab !== "closed" && (
+                <div style={{ marginTop: 12 }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: "var(--color-muted)", marginBottom: 6 }}>ADD NOTE / UPDATE</div>
+                  <div style={{ display: "flex", gap: 6 }}>
+                    <input className="field-input" style={{ flex: 1 }} value={noteText} onChange={e => setNoteText(e.target.value)} placeholder="Note লিখুন..." />
+                    <Button size="sm" onClick={() => addNote(c.id)}>Add</Button>
+                  </div>
+                  <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
+                    {c.status !== "pending" && <Button size="sm" variant="ghost" onClick={() => changeStatus(c.id, "pending")}>Mark Pending</Button>}
+                    {c.status !== "resolved" && <Button size="sm" onClick={() => changeStatus(c.id, "resolved")}>✓ Resolve</Button>}
+                    {c.status !== "closed" && <Button size="sm" variant="ghost" onClick={() => changeStatus(c.id, "closed")}>Close</Button>}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      ))}
+
+      {newCaseOpen && (
+        <Modal title="নতুন Support Case" onClose={() => setNewCaseOpen(false)}>
+          <div className="stack">
+            <Field label="Subject"><input className="field-input" value={form.subject} onChange={e => setForm(f => ({ ...f, subject: e.target.value }))} /></Field>
+            <Field label="Description"><textarea className="field-input" rows={3} value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} /></Field>
+            <div style={{ display: "flex", gap: 8 }}>
+              <Field label="Priority" style={{ flex: 1 }}>
+                <select className="field-input" value={form.priority} onChange={e => setForm(f => ({ ...f, priority: e.target.value }))}>
+                  {["low", "normal", "high", "urgent"].map(p => <option key={p} value={p}>{p}</option>)}
+                </select>
+              </Field>
+              <Field label="Source" style={{ flex: 1 }}>
+                <select className="field-input" value={form.source} onChange={e => setForm(f => ({ ...f, source: e.target.value }))}>
+                  {["manual", "call", "email", "whatsapp", "in_app"].map(s => <option key={s} value={s}>{s}</option>)}
+                </select>
+              </Field>
+            </div>
+            <Button onClick={createCase}>Case তৈরি করুন</Button>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }
@@ -2045,75 +2733,209 @@ function SupportSessionsPanel() {
 function SlaSummaryPanel() {
   const { data, loading } = useAdminFetch(() => api.adminSlaSummary());
   if (loading) return <Skeleton lines={2} />;
+
+  const pieData = [
+    { name: "Response Breached", value: data?.response_breached ?? 0, color: "#E63946" },
+    { name: "Resolution Breached", value: data?.resolution_breached ?? 0, color: "#f59e0b" },
+    { name: "At Risk", value: data?.at_risk_response ?? 0, color: "#eab308" },
+    { name: "Healthy", value: Math.max(0, (data?.total_open ?? 0) - (data?.response_breached ?? 0) - (data?.resolution_breached ?? 0) - (data?.at_risk_response ?? 0)), color: "#0A8754" },
+  ].filter(d => d.value > 0);
+
   return (
     <div className="stack">
-      <h3>SLA Management</h3>
-      <div className="platform-metrics">
-        <Stat icon="clock" label="Total Open" value={data?.total_open ?? 0} />
-        <Stat icon="alertCircle" label="Response Breached" value={data?.response_breached ?? 0} />
-        <Stat icon="alertTriangle" label="Resolution Breached" value={data?.resolution_breached ?? 0} />
-        <Stat icon="zap" label="At Risk (2h)" value={data?.at_risk_response ?? 0} />
+      <h3>SLA Health Dashboard</h3>
+      <div style={{ display: "flex", gap: 14, flexWrap: "wrap" }}>
+        <KpiCard label="Total Open" value={data?.total_open ?? 0} />
+        <KpiCard label="Response Breached" value={data?.response_breached ?? 0} color={data?.response_breached > 0 ? "#E63946" : undefined} />
+        <KpiCard label="Resolution Breached" value={data?.resolution_breached ?? 0} color={data?.resolution_breached > 0 ? "#E63946" : undefined} />
+        <KpiCard label="At Risk (<2h)" value={data?.at_risk_response ?? 0} color={data?.at_risk_response > 0 ? "#f59e0b" : undefined} />
       </div>
+      {pieData.length > 0 && (
+        <Card>
+          <strong style={{ fontSize: 13 }}>Status breakdown</strong>
+          <div style={{ height: 200 }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie data={pieData} cx="50%" cy="50%" innerRadius={50} outerRadius={80} dataKey="value" label={({ name, value }) => `${name}: ${value}`} labelLine>
+                  {pieData.map((d, i) => <Cell key={i} fill={d.color} />)}
+                </Pie>
+                <Tooltip />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+        </Card>
+      )}
     </div>
   );
 }
 
 // ── Security Alerts ───────────────────────────────────────────────────────────
 function SecurityAlertsPanel() {
-  const [status, setStatus] = useState("open");
-  const { data, loading, reload } = useAdminFetch(() => api.adminSecurityAlerts(status), [status]);
+  const [statusTab, setStatusTab] = useState("open");
+  const { data, loading, reload } = useAdminFetch(() => api.adminSecurityAlerts(statusTab), [statusTab]);
+  const [resolveModal, setResolveModal] = useState(null); // alert being resolved
+  const [responseAction, setResponseAction] = useState("");
+  const [expanded, setExpanded] = useState(null);
   const toast = useToast();
 
-  async function resolve(id) {
-    const action = prompt("Response action:");
-    if (!action) return;
+  async function doResolve() {
+    if (!responseAction.trim()) return;
     try {
-      await api.adminResolveAlert(id, { response_action: action });
-      toast.success("Resolved.");
-      reload();
+      await api.adminResolveAlert(resolveModal.id, { response_action: responseAction });
+      toast.success("Alert resolved.");
+      setResolveModal(null); setResponseAction(""); reload();
     } catch (e) { toast.error(e?.message || "Error"); }
   }
 
+  const SEV_ORDER = ["critical", "high", "medium", "low"];
+  const SEV_COLOR = { critical: "#E63946", high: "#f59e0b", medium: "#eab308", low: "#64748B" };
+
   if (loading) return <Skeleton lines={4} />;
+
+  // Group by severity
+  const grouped = SEV_ORDER.reduce((acc, s) => {
+    const items = (data?.alerts || []).filter(a => a.severity === s);
+    if (items.length) acc.push({ sev: s, items });
+    return acc;
+  }, []);
+
+  // Severity bar chart
+  const sevCounts = SEV_ORDER.map(s => ({
+    name: s, count: (data?.alerts || []).filter(a => a.severity === s).length,
+    fill: SEV_COLOR[s],
+  })).filter(d => d.count > 0);
+
   return (
     <div className="stack">
-      <div style={{ display: "flex", gap: 8, justifyContent: "space-between" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <h3>Security Risk Inbox</h3>
         <div style={{ display: "flex", gap: 4 }}>
-          {["open", "resolved"].map((s) => <Button key={s} size="sm" variant={status === s ? "primary" : "ghost"} onClick={() => setStatus(s)}>{s}</Button>)}
+          {["open", "resolved"].map(s => (
+            <button key={s} onClick={() => setStatusTab(s)} style={{
+              padding: "4px 12px", borderRadius: 20, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 600,
+              background: statusTab === s ? "#0D1B2A" : "transparent",
+              color: statusTab === s ? "white" : "var(--color-muted)",
+            }}>{s}</button>
+          ))}
         </div>
       </div>
-      <DataTable
-        rows={data?.alerts || []}
-        columns={[
-          { key: "alert_type", label: "Type" },
-          { key: "severity", label: "Severity", render: (v) => <Badge tone={v === "critical" || v === "high" ? "danger" : "warning"}>{v}</Badge> },
-          { key: "org_name", label: "Business" },
-          { key: "status", label: "Status" },
-          { key: "created_at", label: "Time", render: (v) => dateBn(v) },
-          { key: "id", label: "", render: (_, row) => row.status === "open" ? <Button size="sm" onClick={() => resolve(row.id)}>Resolve</Button> : null },
-        ]}
-      />
+
+      {/* Severity distribution bar */}
+      {sevCounts.length > 0 && (
+        <Card style={{ padding: "10px 14px" }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: "var(--color-muted)", marginBottom: 8 }}>SEVERITY DISTRIBUTION</div>
+          <div style={{ height: 80 }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={sevCounts} layout="vertical">
+                <XAxis type="number" hide />
+                <YAxis type="category" dataKey="name" width={60} tick={{ fontSize: 11 }} />
+                <Tooltip />
+                <Bar dataKey="count" radius={[0, 4, 4, 0]}>
+                  {sevCounts.map((d, i) => <Cell key={i} fill={d.fill} />)}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </Card>
+      )}
+
+      {data?.alerts?.length === 0 && <EmptyState icon="shield" title="কোনো security alert নেই" />}
+
+      {/* Grouped by severity */}
+      {grouped.map(({ sev, items }) => (
+        <div key={sev}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "8px 0 4px" }}>
+            <div style={{ height: 2, flex: 1, background: SEV_COLOR[sev] + "66" }} />
+            <Badge tone={sev === "critical" || sev === "high" ? "danger" : "warning"} style={{ fontSize: 11 }}>{sev.toUpperCase()} ({items.length})</Badge>
+            <div style={{ height: 2, flex: 1, background: SEV_COLOR[sev] + "66" }} />
+          </div>
+          {items.map(a => (
+            <div key={a.id} style={{
+              background: "var(--color-surface)", borderRadius: 8,
+              borderLeft: `4px solid ${SEV_COLOR[a.severity]}`,
+              marginBottom: 6, overflow: "hidden",
+            }}>
+              <div style={{ padding: "10px 14px", display: "flex", gap: 10, cursor: "pointer" }} onClick={() => setExpanded(expanded === a.id ? null : a.id)}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontWeight: 600, fontSize: 13 }}>{a.alert_type?.replace(/_/g, " ")}</div>
+                  {a.org_name && <div style={{ fontSize: 12, color: "var(--color-muted)" }}>{a.org_name}</div>}
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4 }}>
+                  <span style={{ fontSize: 11, color: "var(--color-muted)" }}>{dateTimeBn(a.created_at)}</span>
+                  {a.status === "open" && (
+                    <Button size="sm" variant="danger" onClick={e => { e.stopPropagation(); setResolveModal(a); }}>Resolve</Button>
+                  )}
+                </div>
+              </div>
+              {expanded === a.id && a.details && (
+                <div style={{ padding: "0 14px 10px", borderTop: "1px solid var(--color-border)", fontSize: 12 }}>
+                  {JSON.stringify(a.details, null, 2)}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      ))}
+
+      {resolveModal && (
+        <Modal title={`Resolve: ${resolveModal.alert_type}`} onClose={() => { setResolveModal(null); setResponseAction(""); }}>
+          <div className="stack">
+            <Notice tone="warning">Alert severity: <strong>{resolveModal.severity}</strong> — org: {resolveModal.org_name || "global"}</Notice>
+            <Field label="Response Action (কী করা হলো)">
+              <textarea className="field-input" rows={4} value={responseAction} onChange={e => setResponseAction(e.target.value)} placeholder="e.g. Blocked IP range, notified tenant, revoked session..." />
+            </Field>
+            <Button variant="danger" onClick={doResolve} disabled={!responseAction.trim()}>Confirm Resolve</Button>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }
 
 // ── JIT Access ────────────────────────────────────────────────────────────────
+function JitCountdown({ expiresAt, revokedAt }) {
+  const diff = useSlaCountdown(revokedAt ? null : expiresAt);
+  if (revokedAt) return <Badge tone="neutral">Revoked</Badge>;
+  if (diff === null) return null;
+  if (diff <= 0) return <Badge tone="danger">Expired</Badge>;
+  const color = diff < 600_000 ? "#E63946" : diff < 1_800_000 ? "#f59e0b" : "#0A8754";
+  const h = Math.floor(diff / 3600000);
+  const m = Math.floor((diff % 3600000) / 60000);
+  const s = Math.floor((diff % 60000) / 1000);
+  const txt = h > 0 ? `${h}h ${m}m` : `${m}m ${s}s`;
+  return <span style={{ fontFamily: "monospace", fontWeight: 700, fontSize: 13, color }}>{txt} left</span>;
+}
+
 function JitAccessPanel() {
   const { data, loading, reload } = useAdminFetch(() => api.adminJitGrants());
-  const [form, setForm] = useState({ grantee_id: "", permission: "", reason: "", duration_minutes: 60 });
+  const [grantOpen, setGrantOpen] = useState(false);
+  const [form, setForm] = useState({ grantee_id: "", permission: "platform_admin", reason: "", duration_minutes: 60 });
+  const confirm = useConfirm();
   const toast = useToast();
 
+  const DURATIONS = [
+    { label: "15 min", value: 15 },
+    { label: "30 min", value: 30 },
+    { label: "1 hour", value: 60 },
+    { label: "4 hours", value: 240 },
+    { label: "8 hours", value: 480 },
+  ];
+
+  const PERMISSIONS = ["platform_admin", "tenant_read", "billing_override", "impersonate", "data_export", "ai_disable"];
+
   async function grant() {
+    if (!await confirm(`JIT access grant করা হবে:\nPermission: ${form.permission}\nDuration: ${form.duration_minutes}min\n\nনিশ্চিত?`)) return;
     try {
       await api.adminGrantJit({ ...form, duration_minutes: parseInt(form.duration_minutes) });
       toast.success("JIT access granted.");
-      setForm({ grantee_id: "", permission: "", reason: "", duration_minutes: 60 });
+      setGrantOpen(false);
+      setForm({ grantee_id: "", permission: "platform_admin", reason: "", duration_minutes: 60 });
       reload();
     } catch (e) { toast.error(e?.message || "Error"); }
   }
 
-  async function revoke(id) {
+  async function revoke(id, email) {
+    if (!await confirm(`${email} এর JIT access revoke করা হবে?`)) return;
     try {
       await api.adminRevokeJit(id);
       toast.success("Revoked.");
@@ -2122,28 +2944,83 @@ function JitAccessPanel() {
   }
 
   if (loading) return <Skeleton lines={3} />;
+
+  const active = (data?.grants || []).filter(g => !g.revoked_at && new Date(g.expires_at) > new Date());
+  const expired = (data?.grants || []).filter(g => g.revoked_at || new Date(g.expires_at) <= new Date());
+
   return (
     <div className="stack">
-      <h3>Just-in-Time Privileged Access</h3>
-      <Card>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-          <Field label="Grantee User ID"><input className="field-input" value={form.grantee_id} onChange={(e) => setForm((f) => ({ ...f, grantee_id: e.target.value }))} /></Field>
-          <Field label="Permission"><input className="field-input" value={form.permission} onChange={(e) => setForm((f) => ({ ...f, permission: e.target.value }))} placeholder="e.g. platform_admin" /></Field>
-          <Field label="Reason" style={{ gridColumn: "1/-1" }}><input className="field-input" value={form.reason} onChange={(e) => setForm((f) => ({ ...f, reason: e.target.value }))} /></Field>
-          <Field label="Duration (min)"><input type="number" className="field-input" value={form.duration_minutes} onChange={(e) => setForm((f) => ({ ...f, duration_minutes: e.target.value }))} /></Field>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <h3>Just-in-Time Access</h3>
+        <Button size="sm" onClick={() => setGrantOpen(true)}>+ Grant JIT Access</Button>
+      </div>
+
+      {active.length === 0 && <Notice tone="success">কোনো active JIT grant নেই — privileged access clear।</Notice>}
+
+      {active.length > 0 && (
+        <div>
+          <div style={{ fontSize: 12, fontWeight: 700, color: "#E63946", marginBottom: 6 }}>ACTIVE GRANTS ({active.length})</div>
+          {active.map(g => (
+            <Card key={g.id} style={{ display: "flex", gap: 12, alignItems: "center", marginBottom: 8, borderLeft: "4px solid #f59e0b" }}>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 600 }}>{g.grantee_email || g.grantee_id}</div>
+                <div style={{ display: "flex", gap: 6, marginTop: 3 }}>
+                  <Badge tone="warning">{g.permission}</Badge>
+                  <JitCountdown expiresAt={g.expires_at} revokedAt={g.revoked_at} />
+                </div>
+                <div style={{ fontSize: 12, color: "var(--color-muted)", marginTop: 4 }}>Reason: {g.reason}</div>
+              </div>
+              <Button size="sm" variant="danger" onClick={() => revoke(g.id, g.grantee_email)}>Revoke</Button>
+            </Card>
+          ))}
         </div>
-        <Button onClick={grant}>Grant JIT Access</Button>
-      </Card>
-      <DataTable
-        rows={data?.grants || []}
-        columns={[
-          { key: "grantee_email", label: "Grantee" },
-          { key: "permission", label: "Permission" },
-          { key: "reason", label: "Reason" },
-          { key: "expires_at", label: "Expires", render: (v) => dateTimeBn(v) },
-          { key: "id", label: "", render: (_, row) => <Button size="sm" variant="danger" onClick={() => revoke(row.id)}>Revoke</Button> },
-        ]}
-      />
+      )}
+
+      {expired.length > 0 && (
+        <details>
+          <summary style={{ fontSize: 12, color: "var(--color-muted)", cursor: "pointer", padding: "4px 0" }}>
+            Expired / revoked grants ({expired.length})
+          </summary>
+          <div style={{ marginTop: 6 }}>
+            {expired.slice(0, 10).map(g => (
+              <div key={g.id} style={{ display: "flex", gap: 8, padding: "6px 0", fontSize: 12, borderBottom: "1px solid var(--color-border)" }}>
+                <span style={{ flex: 1, color: "var(--color-muted)" }}>{g.grantee_email || g.grantee_id}</span>
+                <Badge tone="neutral">{g.permission}</Badge>
+                <JitCountdown expiresAt={g.expires_at} revokedAt={g.revoked_at} />
+                <span style={{ color: "var(--color-muted)" }}>{dateBn(g.expires_at)}</span>
+              </div>
+            ))}
+          </div>
+        </details>
+      )}
+
+      {grantOpen && (
+        <Modal title="JIT Access Grant করুন" onClose={() => setGrantOpen(false)}>
+          <div className="stack">
+            <Notice tone="warning">JIT access দেওয়া একটি privileged action — সব access audit log এ record হয়।</Notice>
+            <Field label="Grantee User ID"><input className="field-input" value={form.grantee_id} onChange={e => setForm(f => ({ ...f, grantee_id: e.target.value }))} /></Field>
+            <Field label="Permission">
+              <select className="field-input" value={form.permission} onChange={e => setForm(f => ({ ...f, permission: e.target.value }))}>
+                {PERMISSIONS.map(p => <option key={p} value={p}>{p}</option>)}
+              </select>
+            </Field>
+            <Field label="Duration">
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                {DURATIONS.map(d => (
+                  <button key={d.value} onClick={() => setForm(f => ({ ...f, duration_minutes: d.value }))} style={{
+                    padding: "5px 12px", borderRadius: 20, border: "1px solid var(--color-border)",
+                    background: form.duration_minutes === d.value ? "#0D1B2A" : "transparent",
+                    color: form.duration_minutes === d.value ? "white" : "var(--color-text)",
+                    cursor: "pointer", fontSize: 12,
+                  }}>{d.label}</button>
+                ))}
+              </div>
+            </Field>
+            <Field label="Reason (required)"><textarea className="field-input" rows={3} value={form.reason} onChange={e => setForm(f => ({ ...f, reason: e.target.value }))} placeholder="কেন এই access দরকার..." /></Field>
+            <Button onClick={grant} disabled={!form.grantee_id || !form.reason.trim()}>Grant Access</Button>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }
@@ -2238,46 +3115,160 @@ function EmergencyContainmentPanel() {
 
 // ── Incident Command ──────────────────────────────────────────────────────────
 function IncidentPanel() {
-  const [status, setStatus] = useState("open");
-  const { data, loading, reload } = useAdminFetch(() => api.adminIncidents(status), [status]);
-  const [form, setForm] = useState({ title: "", severity: "p2", affected_org_count: 0 });
+  const [statusTab, setStatusTab] = useState("open");
+  const { data, loading, reload } = useAdminFetch(() => api.adminIncidents(statusTab), [statusTab]);
+  const [expanded, setExpanded] = useState(null);
+  const [incTimelines, setIncTimelines] = useState({});
+  const [updateText, setUpdateText] = useState("");
+  const [newOpen, setNewOpen] = useState(false);
+  const [form, setForm] = useState({ title: "", severity: "p2", affected_org_count: 0, description: "" });
   const toast = useToast();
+
+  const SEV_COLOR = { p1: "#E63946", p2: "#f59e0b", p3: "#64748B", p4: "#94a3b8" };
+  const SEV_LABEL = { p1: "P1 Critical", p2: "P2 Major", p3: "P3 Minor", p4: "P4 Low" };
+
+  async function toggleExpand(inc) {
+    const next = expanded === inc.id ? null : inc.id;
+    setExpanded(next);
+    if (next && !incTimelines[next]) {
+      try {
+        const r = await api.adminIncidentTimeline(next);
+        setIncTimelines(t => ({ ...t, [next]: r.events || [] }));
+      } catch {}
+    }
+  }
+
+  async function addUpdate(incId, currentStatus) {
+    if (!updateText.trim()) return;
+    try {
+      await api.adminUpdateIncident(incId, { status: currentStatus, update_message: updateText });
+      toast.success("Update posted.");
+      setUpdateText("");
+      const r = await api.adminIncidentTimeline(incId);
+      setIncTimelines(t => ({ ...t, [incId]: r.events || [] }));
+    } catch (e) { toast.error(e?.message || "Error"); }
+  }
+
+  async function changeStatus(incId, s) {
+    try {
+      await api.adminUpdateIncident(incId, { status: s });
+      toast.success(`Incident → ${s}`);
+      setExpanded(null); reload();
+    } catch (e) { toast.error(e?.message || "Error"); }
+  }
 
   async function create() {
     try {
       await api.adminCreateIncident(form);
       toast.success("Incident opened.");
-      setForm({ title: "", severity: "p2", affected_org_count: 0 });
+      setNewOpen(false);
+      setForm({ title: "", severity: "p2", affected_org_count: 0, description: "" });
       reload();
     } catch (e) { toast.error(e?.message || "Error"); }
   }
 
   if (loading) return <Skeleton lines={4} />;
+
+  const p1p2 = (data?.incidents || []).filter(i => i.severity === "p1" || i.severity === "p2");
+
   return (
     <div className="stack">
-      <h3>Incident Command Center</h3>
-      <Card>
-        <div style={{ display: "flex", gap: 8 }}>
-          <input className="field-input" style={{ flex: 2 }} placeholder="Incident title" value={form.title} onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))} />
-          <select className="field-input" value={form.severity} onChange={(e) => setForm((f) => ({ ...f, severity: e.target.value }))}>
-            {["p1", "p2", "p3", "p4"].map((s) => <option key={s} value={s}>{s.toUpperCase()}</option>)}
-          </select>
-          <Button onClick={create}>Open Incident</Button>
-        </div>
-      </Card>
-      <div style={{ display: "flex", gap: 4 }}>
-        {["open", "mitigated", "resolved"].map((s) => <Button key={s} size="sm" variant={status === s ? "primary" : "ghost"} onClick={() => setStatus(s)}>{s}</Button>)}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <h3>Incident Command Center</h3>
+        <Button size="sm" variant="danger" onClick={() => setNewOpen(true)}>⚡ Declare Incident</Button>
       </div>
-      <DataTable
-        rows={data?.incidents || []}
-        columns={[
-          { key: "title", label: "Title" },
-          { key: "severity", label: "Severity", render: (v) => <Badge tone={v === "p1" ? "danger" : v === "p2" ? "warning" : "info"}>{v.toUpperCase()}</Badge> },
-          { key: "status", label: "Status" },
-          { key: "affected_org_count", label: "Tenants" },
-          { key: "created_at", label: "Opened", render: (v) => dateBn(v) },
-        ]}
-      />
+
+      {/* P1/P2 banner */}
+      {p1p2.map(inc => (
+        <div key={inc.id} style={{
+          background: SEV_COLOR[inc.severity] + "22", borderRadius: 8,
+          border: `2px solid ${SEV_COLOR[inc.severity]}`,
+          padding: "10px 14px", display: "flex", gap: 10, alignItems: "center",
+        }}>
+          <Badge tone="danger">{SEV_LABEL[inc.severity]}</Badge>
+          <strong style={{ flex: 1 }}>{inc.title}</strong>
+          <span style={{ fontSize: 12 }}>{inc.affected_org_count ?? 0} tenants affected</span>
+          <Button size="sm" onClick={() => toggleExpand(inc)}>Manage ▼</Button>
+        </div>
+      ))}
+
+      {/* Status tabs */}
+      <div style={{ display: "flex", gap: 4, borderBottom: "1px solid var(--color-border)", paddingBottom: 6 }}>
+        {["open", "mitigated", "resolved"].map(s => (
+          <button key={s} onClick={() => { setStatusTab(s); setExpanded(null); }} style={{
+            padding: "4px 14px", borderRadius: 20, border: "none", cursor: "pointer", fontSize: 12, fontWeight: 600,
+            background: statusTab === s ? "#0D1B2A" : "transparent",
+            color: statusTab === s ? "white" : "var(--color-muted)",
+          }}>{s}</button>
+        ))}
+      </div>
+
+      {data?.incidents?.length === 0 && <EmptyState icon="checkCircle" title="No active incidents" />}
+
+      {data?.incidents?.map(inc => (
+        <div key={inc.id} style={{
+          borderRadius: 8, overflow: "hidden",
+          border: `1px solid ${SEV_COLOR[inc.severity]}44`,
+          borderLeft: `5px solid ${SEV_COLOR[inc.severity]}`,
+        }}>
+          <div style={{ padding: "10px 14px", display: "flex", gap: 10, cursor: "pointer" }} onClick={() => toggleExpand(inc)}>
+            <div style={{ flex: 1 }}>
+              <div style={{ display: "flex", gap: 6, marginBottom: 4 }}>
+                <Badge tone={inc.severity === "p1" ? "danger" : inc.severity === "p2" ? "warning" : "neutral"}>{SEV_LABEL[inc.severity]}</Badge>
+                <Badge tone="info">{inc.status}</Badge>
+                {inc.affected_org_count > 0 && <span style={{ fontSize: 12, color: "var(--color-muted)" }}>{inc.affected_org_count} tenants</span>}
+              </div>
+              <div style={{ fontWeight: 600, fontSize: 14 }}>{inc.title}</div>
+              <div style={{ fontSize: 11, color: "var(--color-muted)", marginTop: 3 }}>Opened {dateTimeBn(inc.created_at)}</div>
+            </div>
+            <Icon name={expanded === inc.id ? "chevronUp" : "chevronDown"} size={14} style={{ flexShrink: 0, marginTop: 4 }} />
+          </div>
+
+          {expanded === inc.id && (
+            <div style={{ padding: "0 14px 14px", borderTop: "1px solid var(--color-border)", background: "var(--color-surface-2, var(--color-surface))" }}>
+              <div style={{ marginTop: 10, marginBottom: 8, fontSize: 12, fontWeight: 700, color: "var(--color-muted)" }}>INCIDENT TIMELINE</div>
+              {incTimelines[inc.id]
+                ? <Timeline events={incTimelines[inc.id]} emptyText="No updates posted yet." />
+                : <Skeleton lines={2} />
+              }
+              {/* Post update */}
+              <div style={{ marginTop: 12, padding: "10px", background: "var(--color-surface)", borderRadius: 6 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 6 }}>POST UPDATE</div>
+                <div style={{ display: "flex", gap: 6 }}>
+                  <input className="field-input" style={{ flex: 1 }} value={updateText} onChange={e => setUpdateText(e.target.value)} placeholder="Status update, mitigation steps..." />
+                  <Button size="sm" onClick={() => addUpdate(inc.id, inc.status)}>Post</Button>
+                </div>
+                <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
+                  {inc.status === "open" && <Button size="sm" variant="ghost" onClick={() => changeStatus(inc.id, "mitigated")}>Mark Mitigated</Button>}
+                  {inc.status !== "resolved" && <Button size="sm" onClick={() => changeStatus(inc.id, "resolved")}>✓ Resolve</Button>}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      ))}
+
+      {newOpen && (
+        <Modal title="Incident Declare করুন" onClose={() => setNewOpen(false)}>
+          <div className="stack">
+            <Field label="Severity">
+              <div style={{ display: "flex", gap: 6 }}>
+                {["p1", "p2", "p3", "p4"].map(s => (
+                  <button key={s} onClick={() => setForm(f => ({ ...f, severity: s }))} style={{
+                    flex: 1, padding: "8px 0", borderRadius: 6, border: `2px solid ${form.severity === s ? SEV_COLOR[s] : "var(--color-border)"}`,
+                    background: form.severity === s ? SEV_COLOR[s] + "22" : "transparent",
+                    fontWeight: 700, fontSize: 13, cursor: "pointer", color: SEV_COLOR[s],
+                  }}>{SEV_LABEL[s]}</button>
+                ))}
+              </div>
+            </Field>
+            <Field label="Title"><input className="field-input" value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} /></Field>
+            <Field label="Description"><textarea className="field-input" rows={3} value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} /></Field>
+            <Field label="Affected Tenant Count"><input type="number" className="field-input" value={form.affected_org_count} onChange={e => setForm(f => ({ ...f, affected_org_count: parseInt(e.target.value) || 0 }))} /></Field>
+            <Button variant="danger" onClick={create} disabled={!form.title}>Declare Incident</Button>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }
@@ -2321,28 +3312,37 @@ function JobConsolePanel() {
 // ── Rollout ───────────────────────────────────────────────────────────────────
 function RolloutPanel() {
   const { data, loading, reload } = useAdminFetch(() => api.adminRolloutConfigs());
+  const [newOpen, setNewOpen] = useState(false);
   const [form, setForm] = useState({ feature_key: "", auto_rollback_enabled: true });
+  const confirm = useConfirm();
   const toast = useToast();
 
   async function create() {
     try {
-      await api.adminCreateRollout({ ...form, stages: ["internal", "pilot", "5pct", "20pct", "50pct", "all"] });
+      await api.adminCreateRollout({ ...form, stages: ROLLOUT_STAGES });
       toast.success("Rollout config created.");
+      setNewOpen(false);
+      setForm({ feature_key: "", auto_rollback_enabled: true });
       reload();
     } catch (e) { toast.error(e?.message || "Error"); }
   }
 
-  async function advance(id) {
+  async function advance(c) {
+    const ci = ROLLOUT_STAGES.indexOf(c.current_stage);
+    const next = ROLLOUT_STAGES[ci + 1];
+    if (!next) return toast.error("Already at final stage.");
+    if (!await confirm(`"${c.feature_key}" → ${STAGE_LBL[next]} stage এ advance করা হবে। নিশ্চিত?`)) return;
     try {
-      await api.adminAdvanceRollout(id, {});
-      toast.success("Advanced to next stage.");
+      await api.adminAdvanceRollout(c.id, {});
+      toast.success(`Advanced → ${next}`);
       reload();
     } catch (e) { toast.error(e?.message || "Error"); }
   }
 
-  async function rollback(id) {
+  async function rollback(c) {
+    if (!await confirm(`"${c.feature_key}" rollback করা হবে। নিশ্চিত?`)) return;
     try {
-      await api.adminRollbackRollout(id);
+      await api.adminRollbackRollout(c.id);
       toast.success("Rolled back.");
       reload();
     } catch (e) { toast.error(e?.message || "Error"); }
@@ -2351,31 +3351,54 @@ function RolloutPanel() {
   if (loading) return <Skeleton lines={3} />;
   return (
     <div className="stack">
-      <h3>Progressive Feature Rollout</h3>
-      <Card>
-        <div style={{ display: "flex", gap: 8 }}>
-          <input className="field-input" style={{ flex: 1 }} placeholder="Feature key" value={form.feature_key} onChange={(e) => setForm((f) => ({ ...f, feature_key: e.target.value }))} />
-          <Button onClick={create}>Create Config</Button>
-        </div>
-      </Card>
-      {data?.configs?.map((c) => (
-        <Card key={c.id}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <div>
-              <strong>{c.feature_key}</strong>
-              <Badge tone="info" style={{ marginLeft: 8 }}>{c.current_stage}</Badge>
-              {c.rollback_count > 0 && <Badge tone="warning" style={{ marginLeft: 4 }}>Rollbacks: {c.rollback_count}</Badge>}
-              <div style={{ fontSize: 12, color: "var(--color-muted)", marginTop: 4 }}>
-                Stages: {c.stages?.join(" → ")}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <h3>Progressive Feature Rollout</h3>
+        <Button size="sm" onClick={() => setNewOpen(true)}>+ New Rollout</Button>
+      </div>
+
+      {data?.configs?.length === 0 && <EmptyState icon="gitBranch" title="কোনো rollout config নেই" />}
+
+      {data?.configs?.map(c => {
+        const ci = ROLLOUT_STAGES.indexOf(c.current_stage);
+        const atFinal = ci === ROLLOUT_STAGES.length - 1;
+        return (
+          <Card key={c.id} style={{ padding: "14px 16px" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
+              <div>
+                <strong style={{ fontSize: 15 }}>{c.feature_key}</strong>
+                {c.rollback_count > 0 && <Badge tone="warning" style={{ marginLeft: 8 }}>↩ {c.rollback_count} rollbacks</Badge>}
+                {atFinal && <Badge tone="success" style={{ marginLeft: 8 }}>✓ Fully Rolled Out</Badge>}
+              </div>
+              <div style={{ display: "flex", gap: 4 }}>
+                {!atFinal && <Button size="sm" onClick={() => advance(c)}>Advance ▶</Button>}
+                {ci > 0 && <Button size="sm" variant="ghost" onClick={() => rollback(c)}>◀ Rollback</Button>}
               </div>
             </div>
-            <div style={{ display: "flex", gap: 4 }}>
-              <Button size="sm" onClick={() => advance(c.id)}>Advance ▶</Button>
-              <Button size="sm" variant="ghost" onClick={() => rollback(c.id)}>◀ Rollback</Button>
+            <StagePipeline currentStage={c.current_stage} />
+            {c.auto_rollback_enabled && (
+              <div style={{ fontSize: 11, color: "var(--color-muted)", marginTop: 6 }}>⚙ Auto-rollback enabled</div>
+            )}
+          </Card>
+        );
+      })}
+
+      {newOpen && (
+        <Modal title="New Rollout Config" onClose={() => setNewOpen(false)}>
+          <div className="stack">
+            <Field label="Feature Key (unique)">
+              <input className="field-input" value={form.feature_key} onChange={e => setForm(f => ({ ...f, feature_key: e.target.value }))} placeholder="e.g. ai_demand_forecast_v2" />
+            </Field>
+            <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13 }}>
+              <input type="checkbox" checked={form.auto_rollback_enabled} onChange={e => setForm(f => ({ ...f, auto_rollback_enabled: e.target.checked }))} />
+              Error rate বেশি হলে auto-rollback করুন
+            </label>
+            <div style={{ fontSize: 12, color: "var(--color-muted)" }}>
+              Stages: {ROLLOUT_STAGES.map(s => STAGE_LBL[s]).join(" → ")}
             </div>
+            <Button onClick={create} disabled={!form.feature_key}>Create</Button>
           </div>
-        </Card>
-      ))}
+        </Modal>
+      )}
     </div>
   );
 }
@@ -2870,47 +3893,134 @@ function AiOutcomesPanel() {
 }
 
 // ── AI Kill Switch ────────────────────────────────────────────────────────────
+const AI_FEATURES = [
+  { key: "auto_reorder", label: "Auto Reorder Suggestions", description: "AI-generated SKU reorder recommendations" },
+  { key: "churn_prediction", label: "Churn Prediction", description: "Customer inactivity risk scoring" },
+  { key: "demand_forecast", label: "Demand Forecasting", description: "ML-based sales demand forecast" },
+  { key: "price_recommendations", label: "Pricing Recommendations", description: "Dynamic pricing suggestions" },
+  { key: "assistant", label: "Business Assistant (LLM)", description: "AI chat assistant for owners" },
+  { key: "sentiment_analysis", label: "Customer Sentiment Analysis", description: "AI-based feedback analysis" },
+];
+
 function AiKillSwitchPanel() {
   const { data, loading, reload } = useAdminFetch(() => api.adminKillSwitches());
-  const [form, setForm] = useState({ feature: "", disabled: false, reason: "" });
+  const [editFeature, setEditFeature] = useState(null);
+  const [reason, setReason] = useState("");
   const confirm = useConfirm();
   const toast = useToast();
 
-  async function save() {
-    if (form.disabled && !await confirm(`⚠ AI feature "${form.feature}" বন্ধ করা হবে। নিশ্চিত?`)) return;
+  async function toggle(feature, currentlyDisabled) {
+    const disabling = !currentlyDisabled;
+    if (disabling) {
+      if (!await confirm(`⚠ "${feature}" AI feature সব tenants এর জন্য DISABLE করা হবে।\n\nEmeregncy situation ছাড়া এটি করবেন না।\n\nনিশ্চিত?`)) return;
+      if (!reason.trim()) { toast.error("Reason required before disabling."); return; }
+    }
     try {
-      await api.adminSetKillSwitch(form);
-      toast.success(`Kill switch ${form.disabled ? "activated" : "deactivated"}.`);
-      setForm({ feature: "", disabled: false, reason: "" });
+      await api.adminSetKillSwitch({ feature, disabled: disabling, reason: reason || `Re-enabled by admin` });
+      toast.success(disabling ? `🔴 ${feature} disabled.` : `🟢 ${feature} re-enabled.`);
+      setEditFeature(null); setReason("");
       reload();
     } catch (e) { toast.error(e?.message || "Error"); }
   }
 
   if (loading) return <Skeleton lines={3} />;
+
+  const switchMap = {};
+  (data?.switches || []).forEach(s => { switchMap[s.feature] = s; });
+
+  const disabledCount = (data?.switches || []).filter(s => s.disabled).length;
+
   return (
     <div className="stack">
-      <h3>AI Kill Switch & Human Approval Gates</h3>
-      <Notice tone="warning">AI feature এর kill switch বা human approval requirement এখানে configure করুন।</Notice>
-      <Card>
-        <div style={{ display: "flex", gap: 8, alignItems: "flex-end" }}>
-          <Field label="Feature" style={{ flex: 1 }}><input className="field-input" value={form.feature} onChange={(e) => setForm((f) => ({ ...f, feature: e.target.value }))} placeholder="e.g. auto_reorder" /></Field>
-          <Field label="Reason" style={{ flex: 2 }}><input className="field-input" value={form.reason} onChange={(e) => setForm((f) => ({ ...f, reason: e.target.value }))} /></Field>
-          <label style={{ display: "flex", alignItems: "center", gap: 6, paddingBottom: 4 }}>
-            <input type="checkbox" checked={form.disabled} onChange={(e) => setForm((f) => ({ ...f, disabled: e.target.checked }))} />
-            Disable
-          </label>
-          <Button onClick={save} variant={form.disabled ? "danger" : "primary"}>Save</Button>
-        </div>
-      </Card>
-      <DataTable
-        rows={data?.switches || []}
-        columns={[
-          { key: "feature", label: "Feature" },
-          { key: "disabled", label: "Status", render: (v) => <Badge tone={v ? "danger" : "success"}>{v ? "🔴 DISABLED" : "🟢 Active"}</Badge> },
-          { key: "reason", label: "Reason" },
-          { key: "disabled_at", label: "Disabled At", render: (v) => v ? dateBn(v) : "—" },
-        ]}
-      />
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <h3>AI Kill Switch & Feature Gates</h3>
+        {disabledCount > 0 && <Badge tone="danger">⚠ {disabledCount} features disabled</Badge>}
+      </div>
+
+      <Notice tone="warning">
+        Kill switch activate করলে <strong>সব tenants</strong> এর জন্য সেই AI feature বন্ধ হয়ে যাবে। Manual review পর্যন্ত feature টি হিউম্যান fallback এ চলবে।
+      </Notice>
+
+      <div className="stack" style={{ gap: 8 }}>
+        {AI_FEATURES.map(feat => {
+          const sw = switchMap[feat.key];
+          const isDisabled = sw?.disabled === true;
+          const isEdit = editFeature === feat.key;
+
+          return (
+            <div key={feat.key} style={{
+              borderRadius: 10, border: `1px solid ${isDisabled ? "#E63946" : "var(--color-border)"}`,
+              background: isDisabled ? "#E6394611" : "var(--color-surface)",
+              overflow: "hidden",
+            }}>
+              <div style={{ padding: "12px 16px", display: "flex", gap: 12, alignItems: "center" }}>
+                {/* Status indicator */}
+                <div style={{
+                  width: 12, height: 12, borderRadius: "50%", flexShrink: 0,
+                  background: isDisabled ? "#E63946" : "#0A8754",
+                  boxShadow: isDisabled ? "0 0 0 3px #E6394622" : "0 0 0 3px #0A875422",
+                }} />
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontWeight: 600, fontSize: 14 }}>{feat.label}</div>
+                  <div style={{ fontSize: 12, color: "var(--color-muted)" }}>{feat.description}</div>
+                  {isDisabled && sw.disabled_at && (
+                    <div style={{ fontSize: 11, color: "#E63946", marginTop: 3 }}>
+                      Disabled {dateTimeBn(sw.disabled_at)} — {sw.reason}
+                    </div>
+                  )}
+                </div>
+                <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                  <Badge tone={isDisabled ? "danger" : "success"}>{isDisabled ? "🔴 OFF" : "🟢 ON"}</Badge>
+                  <Button
+                    size="sm"
+                    variant={isDisabled ? "ghost" : "danger"}
+                    onClick={() => { setEditFeature(isEdit ? null : feat.key); setReason(""); }}
+                  >
+                    {isDisabled ? "Re-enable" : "Disable"}
+                  </Button>
+                </div>
+              </div>
+
+              {/* Inline reason + confirm */}
+              {isEdit && (
+                <div style={{ padding: "0 16px 14px", borderTop: "1px solid var(--color-border)" }}>
+                  {!isDisabled && (
+                    <Field label="Disable reason (required)">
+                      <textarea className="field-input" rows={2} value={reason} onChange={e => setReason(e.target.value)} placeholder="e.g. Accuracy degradation detected, disabling pending investigation..." />
+                    </Field>
+                  )}
+                  <Button
+                    size="sm"
+                    variant={isDisabled ? "primary" : "danger"}
+                    onClick={() => toggle(feat.key, isDisabled)}
+                    disabled={!isDisabled && !reason.trim()}
+                  >
+                    {isDisabled ? "✓ Re-enable feature" : "⛔ Confirm Disable"}
+                  </Button>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Custom feature kill switch */}
+      <details style={{ marginTop: 4 }}>
+        <summary style={{ fontSize: 12, color: "var(--color-muted)", cursor: "pointer" }}>Custom feature kill switch...</summary>
+        <Card style={{ marginTop: 8 }}>
+          <div style={{ display: "flex", gap: 8 }}>
+            <input className="field-input" style={{ flex: 1 }} placeholder="Feature key" id="custom-kill-key" />
+            <textarea className="field-input" style={{ flex: 2, height: 36 }} placeholder="Reason" id="custom-kill-reason" />
+            <Button size="sm" variant="danger" onClick={async () => {
+              const k = document.getElementById("custom-kill-key").value;
+              const r = document.getElementById("custom-kill-reason").value;
+              if (!k || !r) return;
+              await api.adminSetKillSwitch({ feature: k, disabled: true, reason: r });
+              toast.success(`${k} disabled.`); reload();
+            }}>Kill</Button>
+          </div>
+        </Card>
+      </details>
     </div>
   );
 }
