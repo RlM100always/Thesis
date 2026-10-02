@@ -94,12 +94,12 @@ function CommandCenterPanel() {
       {/* KPI row */}
       {ol ? <Skeleton lines={2} /> : oe ? <Notice tone="danger">{oe}</Notice> : (
         <div className="pa-stats-grid" style={{ marginBottom: 24 }}>
-          <Stat label="মোট ব্যবসা"      value={fmt(o.total_organizations)} />
-          <Stat label="সক্রিয়"          value={fmt(o.active_organizations)}   tone="success" />
-          <Stat label="স্থগিত"          value={fmt(o.suspended_organizations)} tone="danger" />
-          <Stat label="মোট ব্যবহারকারী" value={fmt(o.total_users)} />
-          <Stat label="গতকালের বিক্রি"  value={`৳${fmt(o.yesterday_revenue_bdt)}`} />
-          <Stat label="খোলা ইস্যু"       value={fmt(o.open_issues ?? items.length)} tone={items.length > 5 ? "danger" : "neutral"} />
+          <Stat label="মিশন কিউ (খোলা)"   value={fmt(o.mission_queue?.open)}          tone={o.mission_queue?.open > 10 ? "danger" : "warn"} />
+          <Stat label="ইনসিডেন্ট (খোলা)"  value={fmt(o.incidents?.open)}              tone={o.incidents?.open > 0 ? "danger" : "success"} />
+          <Stat label="সিকিউরিটি অ্যালার্ট" value={fmt(o.security?.open_alerts)}      tone={o.security?.open_alerts > 0 ? "danger" : "success"} />
+          <Stat label="চার্ন রিস্ক (উচ্চ)" value={fmt(o.churn_risk?.high)}            tone={o.churn_risk?.high > 0 ? "warn" : "success"} />
+          <Stat label="ব্যর্থ জব"          value={fmt(o.jobs?.failed)}                tone={o.jobs?.failed > 0 ? "danger" : "success"} />
+          <Stat label="খোলা সাপোর্ট কেস"  value={fmt(o.support?.open_cases)}          tone="neutral" />
         </div>
       )}
 
@@ -365,9 +365,9 @@ function AiGovernancePanel() {
   const toast = useToast();
   const [subTab, setSubTab] = useState("registry");
 
-  const models = registry?.models || registry || [];
+  const models = registry?.entries || [];
   const switches = kills?.switches || kills || [];
-  const outcomeList = outcomes?.outcomes || outcomes || [];
+  const outcomeList = outcomes?.records || [];
 
   async function toggleKill(sw) {
     try {
@@ -532,7 +532,7 @@ function PlansPanel() {
   const toast = useToast();
 
   const plans = plansData?.plans || plansData || [];
-  const usage = usageData?.usage || usageData || [];
+  const usage = usageData?.tenants || [];
 
   async function createPlan() {
     try { await api.adminCreatePlan(newPlan); toast.success("প্ল্যান তৈরি হয়েছে"); reload(); setCreating(false); }
@@ -612,7 +612,7 @@ function SupportSuccessPanel() {
   const [newCase, setNewCase] = useState({ title: "", priority: "medium", organization_id: "" });
 
   const cases = casesData?.cases || casesData || [];
-  const churned = churnData?.tenants || churnData || [];
+  const churned = churnData?.risks || [];
 
   async function createCase() {
     try { await api.adminCreateSupportCase(newCase); toast.success("কেস তৈরি হয়েছে"); cReload(); setCreating(false); }
@@ -676,11 +676,10 @@ function SupportSuccessPanel() {
         <>
           {sla ? (
             <div className="pa-stats-grid">
-              <Stat label="মোট কেস"    value={fmt(sla.total_cases)} />
-              <Stat label="SLA ভঙ্গ"   value={fmt(sla.breached)}  tone="danger" />
-              <Stat label="ঝুঁকিতে"   value={fmt(sla.at_risk)}   tone="warn" />
-              <Stat label="সময়মতো"    value={fmt(sla.on_time)}   tone="success" />
-              <Stat label="গড় রেসপন্স" value={sla.avg_response_hours != null ? `${sla.avg_response_hours.toFixed(1)}h` : "—"} />
+              <Stat label="মোট খোলা কেস"       value={fmt(sla.total_open)} />
+              <Stat label="রেসপন্স ভঙ্গ"       value={fmt(sla.response_breached)}    tone={sla.response_breached > 0 ? "danger" : "success"} />
+              <Stat label="রেজোলিউশন ভঙ্গ"     value={fmt(sla.resolution_breached)}  tone={sla.resolution_breached > 0 ? "danger" : "success"} />
+              <Stat label="রেসপন্স ঝুঁকিতে"    value={fmt(sla.at_risk_response)}     tone={sla.at_risk_response > 0 ? "warn" : "success"} />
             </div>
           ) : <Skeleton lines={2} />}
         </>
@@ -725,8 +724,8 @@ function SecurityAuditPanel() {
 
   const alerts = alertsData?.alerts || alertsData || [];
   const jit = jitData?.grants || jitData || [];
-  const audit = auditData?.events || auditData || [];
-  const admins = adminsData?.users || adminsData || [];
+  const audit = auditData?.entries || [];
+  const admins = adminsData?.administrators || [];
 
   async function resolveAlert(a) {
     const resolution = window.prompt("সমাধানের বিবরণ:");
@@ -815,7 +814,7 @@ function SecurityAuditPanel() {
                 <tbody>{admins.map(u => (
                   <tr key={u.id}>
                     <td>{u.email}</td>
-                    <td>{u.full_name || "—"}</td>
+                    <td>{u.display_name || "—"}</td>
                     <td><Badge tone={u.is_platform_admin ? "success" : "neutral"}>{u.is_platform_admin ? "হ্যাঁ" : "না"}</Badge></td>
                     <td>
                       <Button size="sm" variant={u.is_platform_admin ? "danger" : "secondary"} onClick={() => toggleAdmin(u)}>
@@ -840,8 +839,8 @@ function SecurityAuditPanel() {
                 <tbody>{audit.slice(0, 50).map((e, i) => (
                   <tr key={i}>
                     <td style={{ fontFamily: "monospace", fontSize: 12 }}>{e.action}</td>
-                    <td style={{ fontSize: 12 }}>{e.actor_email || e.actor_id || "system"}</td>
-                    <td style={{ fontSize: 12 }} className="pa-muted">{e.target_type} {e.target_id}</td>
+                    <td style={{ fontSize: 12 }}>{e.actor_email || "system"}</td>
+                    <td style={{ fontSize: 12 }} className="pa-muted">{e.entity_type} {e.entity_id?.slice(0, 8)}</td>
                     <td className="pa-muted" style={{ fontSize: 12 }}>{dateTimeBn(e.created_at)}</td>
                   </tr>
                 ))}</tbody>
@@ -871,7 +870,7 @@ function SystemOpsPanel() {
   const jobs = jobsData?.jobs || jobsData || [];
   const incidents = inciData?.incidents || inciData || [];
   const rollouts = rolloutData?.configs || rolloutData || [];
-  const backups = backupsData || [];
+  const backups = backupsData?.backups || [];
 
   async function retryJob(job) {
     try { await api.adminRetryJob(job.id); toast.success("পুনরায় চেষ্টা শুরু হয়েছে"); jReload(); }
@@ -903,17 +902,29 @@ function SystemOpsPanel() {
       {subTab === "health" && (
         <>
           {hl ? <Skeleton lines={3} /> : (
-            <div className="pa-stats-grid">
-              {h.components ? Object.entries(h.components).map(([name, info]) => (
-                <Stat key={name} label={name} value={info.status || info} tone={HEALTH_TONE[info.status] || "neutral"} />
-              )) : (
-                <>
-                  <Stat label="API" value={h.api_status || "—"} tone={HEALTH_TONE[h.api_status] || "neutral"} />
-                  <Stat label="Database" value={h.db_status || "—"} tone={HEALTH_TONE[h.db_status] || "neutral"} />
-                  <Stat label="Queue" value={h.queue_status || "—"} tone={HEALTH_TONE[h.queue_status] || "neutral"} />
-                </>
+            <>
+              <div className="pa-stats-grid" style={{ marginBottom: 16 }}>
+                <Stat label="ডেটাবেজ"       value={h.database?.connected ? "সংযুক্ত" : "বিচ্ছিন্ন"} tone={h.database?.connected ? "success" : "danger"} />
+                <Stat label="পরিবেশ"         value={h.environment || "—"} />
+                <Stat label="Auth মোড"        value={h.auth_mode || "—"} />
+                <Stat label="Integration"     value={h.integration_mode || "—"} />
+                <Stat label="Provider প্রস্তুত" value={`${h.provider_ready_count ?? 0} / ${h.provider_total ?? 0}`} tone={h.provider_ready_count > 0 ? "success" : "warn"} />
+              </div>
+              {(h.providers || []).length > 0 && (
+                <div className="pa-table-wrap">
+                  <table className="pa-table">
+                    <thead><tr><th>Provider</th><th>ধরন</th><th>অবস্থা</th></tr></thead>
+                    <tbody>{(h.providers || []).map(p => (
+                      <tr key={p.key}>
+                        <td style={{ fontWeight: 500 }}>{p.name}</td>
+                        <td className="pa-muted">{p.category}</td>
+                        <td><Badge tone={p.configured ? "success" : "neutral"}>{p.configured ? "কনফিগার্ড" : "কনফিগার নেই"}</Badge></td>
+                      </tr>
+                    ))}</tbody>
+                  </table>
+                </div>
               )}
-            </div>
+            </>
           )}
         </>
       )}
