@@ -1534,3 +1534,344 @@ a.btn-primary, a.btn-secondary { text-decoration: none; display: inline-block; }
   .before-after-cell.before { background: #fdf4f4; font-size: 12.5px; }
   .before-after-cell.after { border-top: 1px dashed #dbe5df; }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   RESPONSIVE ENGINEERING — full public site
+   Device tiers:
+     ≥1200px  large desktop          (baseline)
+     1120px   small desktop / laptop (already handled above)
+     900px    tablet landscape       (already handled above)
+     860px    tablet portrait        (already handled above)
+     640px    large phone / phablet  (new — fills gap between 860 and 620)
+     480px    standard phone         (new — 390–480 range: iPhone 14, Pixel 7)
+     375px    small phone            (new — iPhone SE, Galaxy A)
+   Touch targets: all interactive ≥ 44 × 44 px per WCAG 2.5.5
+   Side gutter: 16px minimum at 480px, 12px at 375px
+   Typography: fluid clamp() everywhere — no layout-shift font jumps
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── 640px: phablet / large phone landscape ─────────────────────────────── */
+@media (max-width: 640px) {
+  /* Nav */
+  .public-navwrap { height: 60px; }
+  .public-site > main { padding-top: 60px; }
+  .public-nav { top: 60px; }
+  .public-brand strong { font-size: 16px; }
+
+  /* Hero */
+  .public-hero { padding: 52px 0 56px; min-height: auto; }
+  .public-hero h1, .public-pagehero h1 { font-size: clamp(34px, 9vw, 44px); }
+  .public-hero-copy > p, .public-pagehero > p { font-size: 15px; }
+  .public-hero-actions { flex-direction: column; align-items: stretch; }
+  .public-hero-actions .public-cta, .public-hero-actions .public-ghost { justify-content: center; }
+  .public-assurances { flex-direction: column; gap: 8px; }
+
+  /* Sections */
+  .public-section { padding: 60px 18px; }
+  .public-sectionhead { margin-bottom: 28px; }
+  .public-sectionhead h2 { font-size: clamp(26px, 7vw, 34px); }
+  .public-sectionhead p { font-size: 14px; }
+
+  /* Actor cards — 2-col max */
+  .actor-cards { grid-template-columns: repeat(2, 1fr); }
+
+  /* Flow — 2-col */
+  .public-flow { grid-template-columns: repeat(2, 1fr); gap: 9px; }
+  .public-flow > div { min-height: 118px; width: auto; }
+
+  /* Solution grid — 1-col */
+  .solution-grid.compact, .solution-grid.full { grid-template-columns: 1fr; }
+
+  /* Feature / trust / promise / help — 2-col */
+  .feature-grid, .trust-grid { grid-template-columns: repeat(2, 1fr); }
+  .promise-grid { grid-template-columns: repeat(2, 1fr); }
+  .help-grid { grid-template-columns: repeat(2, 1fr); }
+
+  /* Pricing — 1-col */
+  .pricing-grid { grid-template-columns: 1fr; }
+
+  /* About grid — 2-col */
+  .about-grid { grid-template-columns: repeat(2, 1fr); }
+
+  /* CTA band */
+  .public-ctaband { flex-direction: column; align-items: flex-start; gap: 28px; padding: 52px 20px; }
+  .public-ctaband > div:last-child { width: 100%; flex-direction: column; display: flex; gap: 10px; }
+  .public-ctaband h2 { font-size: 28px; }
+
+  /* Dark callout */
+  .public-darkcallout { grid-template-columns: 1fr; margin-inline: 16px; padding: 36px 24px; gap: 28px; }
+  .public-darkcallout h2 { font-size: 30px; }
+  .decision-card { transform: none; }
+
+  /* Page hero */
+  .public-pagehero { padding: 70px 18px 56px; min-height: auto; }
+  .public-pagehero > div { flex-direction: column; align-items: stretch; }
+  .public-pagehero > div .public-cta, .public-pagehero > div .public-ghost { justify-content: center; }
+
+  /* Footer */
+  .public-footergrid { grid-template-columns: 1fr 1fr; gap: 30px; }
+  .public-footergrid > div:first-child { grid-column: 1 / -1; }
+  .public-footnote { flex-direction: column; gap: 10px; }
+
+  /* Guideline */
+  .guideline-steps { grid-template-columns: 1fr; }
+  .guideline-head h2 { font-size: 24px; }
+
+  /* Legal */
+  .legal-copy { grid-template-columns: 1fr; }
+
+  /* Status */
+  .status-row, .status-components { grid-template-columns: 1fr; }
+  .status-summary { align-items: flex-start; flex-direction: column; gap: 10px; }
+
+  /* Product tour */
+  .product-tour-stage { grid-template-columns: 1fr; gap: 28px; padding: 28px 20px; border-radius: 20px; }
+  .tour-window { transform: none; min-height: auto; }
+
+  /* Solution checks — stacked */
+  .solution-checks { gap: 8px; }
+
+  /* Story image */
+  .public-story-image, .public-story-image img { min-height: 300px; }
+
+  /* Strip — readable on narrow */
+  .public-strip { flex-direction: column; align-items: flex-start; gap: 8px; padding: 24px 18px; }
+  .public-strip i { display: none; }
+
+  /* Productshot */
+  .public-productshot { transform: none; border-radius: 16px; }
+  .productshot-layout { grid-template-columns: 1fr; min-height: auto; }
+  .productshot-layout aside { display: none; }
+  .productshot-main { padding: 16px; }
+  .productshot-welcome i { display: none; }
+  .productshot-stats { grid-template-columns: 1fr 1fr; }
+  .productshot-stats div:last-child { grid-column: 1 / -1; }
+  .productshot-bottom { grid-template-columns: 1fr; }
+  .mission-list { display: none; }
+  .fake-chart { min-height: 140px; }
+  .fake-chart svg { height: 88px; }
+
+  /* Customer questions */
+  .customer-questions > div:last-child { grid-template-columns: 1fr; }
+
+  /* Hybrid map */
+  .hybrid-map { grid-template-columns: 1fr 1fr; }
+  .hybrid-map > div { grid-column: 1 / -1; }
+
+  /* Owner problem */
+  .owner-problem-grid { grid-template-columns: 1fr; }
+
+  /* AI decision */
+  .ai-decision-section { grid-template-columns: 1fr; gap: 30px; }
+  .ai-decision-head { position: static; }
+  .ai-decision-grid { grid-template-columns: 1fr; }
+
+  /* BD ready */
+  .bd-ready-section { grid-template-columns: 1fr; gap: 28px; }
+  .bd-ready-intro { position: static; }
+}
+
+/* ── 480px: standard modern phone ───────────────────────────────────────── */
+@media (max-width: 480px) {
+  /* Nav: collapse brand tagline, minimal header */
+  .public-navwrap { height: 56px; width: calc(100% - 24px); }
+  .public-site > main { padding-top: 56px; }
+  .public-brand small { display: none; }
+  .public-brand strong { font-size: 15px; }
+  .public-theme-toggle { width: 36px; height: 36px; font-size: 15px; }
+  .public-nav { top: 56px; left: 10px; right: 10px; }
+  .public-actions .public-cta { padding: 0 12px; font-size: 12px; min-height: 40px; }
+  .public-actions .public-cta .ui-icon { display: none; }
+
+  /* Hero — comfortable on 390px screen */
+  .public-hero { width: calc(100% - 28px); padding: 48px 0 52px; }
+  .public-hero h1, .public-pagehero h1 { font-size: clamp(30px, 8.5vw, 38px); letter-spacing: -.018em; }
+  .public-hero-copy > p { font-size: 14.5px; }
+  .public-hero::before { display: none; } /* remove decorative blob on small screens */
+
+  /* Sections: 16px gutter */
+  .public-section { padding: 52px 16px; }
+  .public-sectionhead { margin-bottom: 24px; }
+  .public-sectionhead h2 { font-size: clamp(24px, 6.5vw, 30px); }
+  .public-sectionhead p { font-size: 13.5px; }
+
+  /* Actor cards — 1-col at 480px */
+  .actor-cards { grid-template-columns: 1fr; }
+  .actor-cards article { padding: 18px 16px; }
+
+  /* Flow — 1-col */
+  .public-flow { grid-template-columns: 1fr 1fr; gap: 8px; }
+  .public-flow > div { min-height: 100px; padding: 14px; }
+  .public-flow b { font-size: 13px; }
+  .public-flow span { font-size: 11px; }
+
+  /* Feature / trust — 1-col */
+  .feature-grid, .trust-grid { grid-template-columns: 1fr; }
+  .feature-grid article, .trust-grid article { min-height: auto; padding: 20px; }
+
+  /* Promise — 1-col on 480px */
+  .promise-grid { grid-template-columns: repeat(2, 1fr); }
+
+  /* Help grid — 2-col */
+  .help-grid { grid-template-columns: repeat(2, 1fr); }
+  .help-grid > a { padding: 16px; }
+
+  /* About grid — 1-col */
+  .about-grid { grid-template-columns: 1fr; }
+
+  /* Solution checks */
+  .solution-checks > div { padding: 14px 15px; gap: 10px; }
+
+  /* Customer questions cards */
+  .customer-questions article { flex-direction: column; }
+
+  /* Story */
+  .public-story, .public-people-story { gap: 28px; }
+  .public-story-image, .public-story-image img { min-height: 260px; }
+  .public-people-story > div:first-child { height: 280px; }
+  .story-points { grid-template-columns: 1fr; }
+
+  /* Dark callout */
+  .public-darkcallout { margin-inline: 12px; padding: 28px 18px; border-radius: 18px; }
+  .public-darkcallout h2 { font-size: 26px; }
+
+  /* CTA band */
+  .public-ctaband { padding: 44px 16px; }
+  .public-ctaband h2 { font-size: 24px; }
+  .public-ctaband > div:last-child { flex-direction: column; gap: 10px; }
+
+  /* Page hero */
+  .public-pagehero { padding: 60px 16px 48px; }
+  .public-pagehero h1 { font-size: clamp(28px, 8vw, 36px); }
+
+  /* Pricing */
+  .pricing-grid { grid-template-columns: 1fr; }
+  .pricing-grid article { padding: 22px; }
+
+  /* Security */
+  .security-table { grid-template-columns: 1fr; gap: 28px; }
+
+  /* Strip */
+  .public-strip { padding: 18px 16px; font-size: 12px; gap: 6px; }
+  .public-strip span { width: 100%; }
+
+  /* Footer */
+  .public-footergrid { grid-template-columns: 1fr; gap: 24px; }
+  .public-footergrid > div:first-child { grid-column: auto; }
+  .public-footer { padding: 48px 16px 20px; }
+
+  /* Contact grid */
+  .contact-grid { grid-template-columns: 1fr; }
+
+  /* Legal */
+  .legal-copy { grid-template-columns: 1fr; }
+  .legal-copy article { padding: 20px; }
+
+  /* Solution hero */
+  .solution-hero { padding: 52px 16px; }
+  .solution-hero h1 { font-size: clamp(28px, 8vw, 38px); }
+  .solution-hero-visual { height: 300px; }
+
+  /* Guideline */
+  .guideline-layout { grid-template-columns: 1fr; }
+  .guideline-roles { position: static; }
+  .guideline-head h2 { font-size: 22px; }
+  .guideline-steps { grid-template-columns: 1fr; }
+  .guideline-steps article { padding: 16px; }
+  .guideline-features > div { gap: 6px; }
+  .guideline-features span { padding: 7px 9px; font-size: 11px; }
+
+  /* Product tour tabs — horizontal scroll */
+  .product-tour-tabs { width: 100%; }
+  .product-tour-stage { padding: 24px 16px; gap: 24px; border-radius: 16px; }
+  .product-tour-copy h2 { font-size: 26px; }
+
+  /* Before-after */
+  .before-after-row { grid-template-columns: 1fr; }
+  .before-after-cell { font-size: 12px; padding: 13px 16px; }
+
+  /* Hybrid map — 1-col */
+  .hybrid-map { grid-template-columns: 1fr; }
+
+  /* BD ready */
+  .bd-ready-grid article { min-height: auto; }
+
+  /* Getting started */
+  .getting-started { grid-template-columns: 1fr; gap: 28px; }
+
+  /* Owner problem */
+  .owner-problem-grid { grid-template-columns: 1fr; }
+  .owner-problem-grid article { padding: 18px; }
+}
+
+/* ── 375px: small phone (iPhone SE, older Galaxy A) ─────────────────────── */
+@media (max-width: 375px) {
+  .public-navwrap { height: 52px; width: calc(100% - 18px); }
+  .public-site > main { padding-top: 52px; }
+  .public-brand strong { font-size: 14px; }
+  .public-theme-toggle { width: 32px; height: 32px; font-size: 14px; }
+  .public-nav { top: 52px; left: 8px; right: 8px; }
+
+  .public-hero { width: calc(100% - 24px); padding: 44px 0 48px; }
+  .public-hero h1 { font-size: clamp(27px, 8vw, 32px); }
+  .public-hero-copy > p { font-size: 13.5px; }
+  .public-assurances { font-size: 12px; }
+
+  .public-section { padding: 44px 12px; }
+  .public-sectionhead h2 { font-size: clamp(22px, 6vw, 26px); }
+
+  .public-flow { grid-template-columns: 1fr; }
+  .public-flow > div { min-height: 80px; flex-direction: row; justify-content: flex-start; gap: 12px; text-align: left; }
+
+  .promise-grid { grid-template-columns: 1fr; }
+  .help-grid { grid-template-columns: 1fr; }
+
+  .public-ctaband { padding: 36px 12px; }
+  .public-ctaband h2 { font-size: 21px; }
+  .public-pagehero { padding: 52px 12px 40px; }
+  .public-pagehero h1 { font-size: clamp(24px, 7.5vw, 30px); }
+  .solution-hero { padding: 44px 12px; }
+  .solution-hero h1 { font-size: clamp(24px, 7vw, 32px); }
+
+  .public-darkcallout { margin-inline: 8px; padding: 22px 14px; }
+  .public-darkcallout h2 { font-size: 22px; }
+  .public-footer { padding: 36px 12px 16px; }
+
+  .product-tour-stage { padding: 20px 12px; }
+  .product-tour-copy h2 { font-size: 22px; }
+  .tour-kpis { grid-template-columns: 1fr 1fr; }
+}
+
+/* ── Fluid touch target enforcement (all sizes) ─────────────────────────── */
+@media (pointer: coarse) {
+  /* All tappable elements in public site get at least 44px hit area */
+  .public-site .public-nav a { min-height: 52px; }
+  .public-site .public-cta, .public-site .public-ghost { min-height: 50px; }
+  .public-site .public-menu { min-height: 50px; min-width: 50px; }
+  .public-site .faq-list summary { min-height: 52px; display: flex; align-items: center; }
+  .public-site .guideline-roles button { min-height: 52px; }
+  .public-site .product-tour-tabs button { min-height: 48px; padding-inline: 18px; }
+  .public-site .public-theme-toggle { min-height: 44px; min-width: 44px; }
+
+  /* Reduce perspective transform on touch to avoid jank */
+  .public-productshot { transform: none; }
+  .tour-window { transform: none; }
+}
+
+/* ── Reduced-motion: disable transitions and animations on all public ─────── */
+@media (prefers-reduced-motion: reduce) {
+  .public-site .public-cta,
+  .public-site .public-ghost,
+  .public-site .solution-grid > a,
+  .public-site .ai-decision-grid article { transition: none; transform: none !important; }
+}
+
+/* ── Print: clean single-column ─────────────────────────────────────────── */
+@media print {
+  .public-header, .public-footer, .public-ctaband, .public-strip,
+  .public-theme-toggle, .public-cta, .public-ghost { display: none !important; }
+  .public-site { color: #000 !important; background: #fff !important; }
+  .public-section { padding: 24px 0; break-inside: avoid; }
+  .actor-cards, .feature-grid, .trust-grid, .pricing-grid { grid-template-columns: repeat(2, 1fr); }
+  .public-darkcallout { background: #eee !important; color: #000 !important; }
+}
