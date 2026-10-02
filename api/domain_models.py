@@ -52,6 +52,15 @@ class Organization(Base, TimestampMixin):
     vat_reg_no: Mapped[str | None] = mapped_column(String(40))
     receipt_footer: Mapped[str | None] = mapped_column(String(200))
     active: Mapped[bool] = mapped_column(Boolean, default=True)
+    # Platform-admin suspend, distinct from `active`: a suspended org's own
+    # owner/staff see a "contact support" lock screen instead of logging in,
+    # vs. an org that deactivated itself. Null means never suspended.
+    suspended_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    suspended_reason: Mapped[str | None] = mapped_column(String(300))
+    # JSON object of {flag_key: bool}; a missing key means "enabled" (opt-out,
+    # not opt-in), so adding a new module never silently locks out every
+    # existing tenant. Only a platform admin ever writes this.
+    feature_flags_json: Mapped[str | None] = mapped_column(Text)
 
 
 class OrganizationSetting(Base, TimestampMixin):
@@ -118,6 +127,12 @@ class User(Base, TimestampMixin):
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
     email: Mapped[str] = mapped_column(String(254), unique=True, index=True)
     display_name: Mapped[str] = mapped_column(String(120))
+    phone: Mapped[str | None] = mapped_column(String(30))
+    # Small profile photo stored inline as a data: URL -- this app has no
+    # object storage (S3/GCS) anywhere, so a second storage system just for
+    # avatars would be new infrastructure for one field. Capped at ~300KB by
+    # the upload endpoint, resized client-side first; fine for a face photo.
+    avatar_data_url: Mapped[str | None] = mapped_column(Text)
     google_subject: Mapped[str | None] = mapped_column(String(255), unique=True)
     password_hash: Mapped[str | None] = mapped_column(String(255))
     # Bumped on logout / password change; tokens carry the value they were issued
@@ -129,10 +144,41 @@ class User(Base, TimestampMixin):
     setup_token_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     active: Mapped[bool] = mapped_column(Boolean, default=True)
     # Platform-level super-admin: sees every organization, not just ones they
-    # have a Membership in. Never settable through any API -- only by a
-    # migration or a direct DB edit, the same bootstrap pattern any
-    # multi-tenant platform's first admin account needs.
+    # have a Membership in. The first account is bootstrapped directly; later
+    # grants are MFA-gated, self-lockout protected and audit logged by the
+    # platform administrator governance API.
     is_platform_admin: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
+    # TOTP MFA (AUTH-003). The secret is set on /mfa/setup but mfa_enabled only
+    # flips true once the owner proves they can generate a matching code on
+    # /mfa/enable -- a secret alone, never confirmed, must not gate login.
+    mfa_totp_secret: Mapped[str | None] = mapped_column(String(64))
+    mfa_enabled: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
+    # JSON list of SHA-256 digests; each one-time recovery code is removed
+    # (not just marked used) the moment it is spent.
+    mfa_recovery_codes_json: Mapped[str | None] = mapped_column(Text)
+
+
+class UserSession(Base, TimestampMixin):
+    """One rotating-refresh-token family (one logged-in device/browser).
+
+    ``current_jti_hash`` is the SHA-256 digest of the one refresh token that is
+    currently valid for this session; every ``/auth/refresh`` call replaces it
+    (rotation). A refresh call presenting a *previous* token's jti means that
+    token was stolen and already used elsewhere, or replayed -- the whole
+    session is revoked rather than trusted (AUTH-005 reuse detection).
+    """
+
+    __tablename__ = "user_sessions"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    current_jti_hash: Mapped[str] = mapped_column(String(64), index=True)
+    device_label: Mapped[str | None] = mapped_column(String(200))
+    ip_address: Mapped[str | None] = mapped_column(String(64))
+    last_used_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    revoked_reason: Mapped[str | None] = mapped_column(String(60))
 
 
 class Membership(Base, TimestampMixin):
@@ -144,6 +190,9 @@ class Membership(Base, TimestampMixin):
     user_id: Mapped[str] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
     role: Mapped[str] = mapped_column(String(20), default="cashier")
     active: Mapped[bool] = mapped_column(Boolean, default=True)
+    # Monthly base salary for payroll (SRD Panel H06). Null means "not set yet" --
+    # such a person is skipped when a payroll run is generated, not paid ৳0.
+    base_salary: Mapped[Decimal | None] = mapped_column(Numeric(14, 2))
 
 
 class Branch(Base, TimestampMixin):
@@ -158,6 +207,45 @@ class Branch(Base, TimestampMixin):
     district: Mapped[str | None] = mapped_column(String(50))
     address: Mapped[str | None] = mapped_column(Text)
     active: Mapped[bool] = mapped_column(Boolean, default=True)
+
+
+class Warehouse(Base, TimestampMixin):
+    """A physical stock location under a branch (SRD 11.1 Tenant aggregate).
+
+    A branch may have more than one: a shop floor plus a back-room store, for
+    example. Stock movements/balances reference ``warehouse_id`` once a
+    warehouse exists for their branch; a branch with none keeps stock at
+    branch granularity (backward compatible with installations before this
+    table existed).
+    """
+
+    __tablename__ = "warehouses"
+    __table_args__ = (UniqueConstraint("branch_id", "code"),)
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    organization_id: Mapped[str] = mapped_column(ForeignKey("organizations.id", ondelete="CASCADE"), index=True)
+    branch_id: Mapped[str] = mapped_column(ForeignKey("branches.id", ondelete="CASCADE"), index=True)
+    code: Mapped[str] = mapped_column(String(30))
+    name: Mapped[str] = mapped_column(String(120))
+    is_default: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
+    active: Mapped[bool] = mapped_column(Boolean, default=True)
+
+
+class MembershipBranch(Base, TimestampMixin):
+    """Branch-scoping for a membership (SRD 2.3 ABAC: ``branch_id in assigned_branches``).
+
+    No rows for a membership means org-wide access (the default today, and
+    how ``owner``/``accountant`` typically operate). Any row present narrows
+    that membership to only the listed branches -- enforced in
+    ``api/permissions.py: require_branch_access``.
+    """
+
+    __tablename__ = "membership_branches"
+    __table_args__ = (UniqueConstraint("membership_id", "branch_id"),)
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    membership_id: Mapped[str] = mapped_column(ForeignKey("memberships.id", ondelete="CASCADE"), index=True)
+    branch_id: Mapped[str] = mapped_column(ForeignKey("branches.id", ondelete="CASCADE"), index=True)
 
 
 class Product(Base, TimestampMixin):
@@ -201,6 +289,174 @@ class Customer(Base, TimestampMixin):
     price_tier: Mapped[str] = mapped_column(String(20), default="retail", server_default="retail")
 
 
+class SupportTicket(Base, TimestampMixin):
+    """Customer support ticket (SRD Panel C07). Status is a small fixed set,
+    not free text, so a Support dashboard can filter/count reliably."""
+
+    __tablename__ = "support_tickets"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    organization_id: Mapped[str] = mapped_column(ForeignKey("organizations.id", ondelete="CASCADE"), index=True)
+    branch_id: Mapped[str | None] = mapped_column(ForeignKey("branches.id"), index=True)
+    customer_id: Mapped[str | None] = mapped_column(ForeignKey("customers.id"), index=True)
+    subject: Mapped[str] = mapped_column(String(200))
+    category: Mapped[str] = mapped_column(String(40), default="general")
+    priority: Mapped[str] = mapped_column(String(10), default="normal")  # low/normal/high/urgent
+    status: Mapped[str] = mapped_column(String(20), default="open", index=True)  # open/pending/resolved/closed
+    created_by_user_id: Mapped[str] = mapped_column(ForeignKey("users.id"))
+    assigned_to_user_id: Mapped[str | None] = mapped_column(ForeignKey("users.id"), index=True)
+    resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class TicketMessage(Base, TimestampMixin):
+    """One conversation entry on a ticket. ``internal`` marks a staff-only note,
+    never shown on a future Customer Portal view of the same ticket."""
+
+    __tablename__ = "ticket_messages"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    ticket_id: Mapped[str] = mapped_column(ForeignKey("support_tickets.id", ondelete="CASCADE"), index=True)
+    author_user_id: Mapped[str] = mapped_column(ForeignKey("users.id"))
+    body: Mapped[str] = mapped_column(Text)
+    internal: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
+
+
+class Lead(Base, TimestampMixin):
+    """A prospective customer moving through a sales pipeline (SRD Panel C06).
+
+    Converting a won lead creates a real ``Customer`` row (``converted_customer_id``);
+    a lead itself never has a credit limit, loyalty balance or sales history --
+    those only make sense for an actual customer.
+    """
+
+    __tablename__ = "leads"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    organization_id: Mapped[str] = mapped_column(ForeignKey("organizations.id", ondelete="CASCADE"), index=True)
+    name: Mapped[str] = mapped_column(String(160))
+    phone_hash: Mapped[str | None] = mapped_column(String(128), index=True)
+    source: Mapped[str | None] = mapped_column(String(60))
+    stage: Mapped[str] = mapped_column(String(20), default="new", index=True)
+    # new -> qualified -> quoted -> won/lost
+    estimated_value: Mapped[Decimal | None] = mapped_column(Numeric(14, 2))
+    owner_user_id: Mapped[str | None] = mapped_column(ForeignKey("users.id"), index=True)
+    lost_reason: Mapped[str | None] = mapped_column(String(200))
+    converted_customer_id: Mapped[str | None] = mapped_column(ForeignKey("customers.id"))
+    closed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class LeadActivity(Base, TimestampMixin):
+    """One logged touch-point (call, visit, note) on a lead."""
+
+    __tablename__ = "lead_activities"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    lead_id: Mapped[str] = mapped_column(ForeignKey("leads.id", ondelete="CASCADE"), index=True)
+    author_user_id: Mapped[str] = mapped_column(ForeignKey("users.id"))
+    note: Mapped[str] = mapped_column(Text)
+
+
+class Feedback(Base, TimestampMixin):
+    """Post-sale/delivery feedback (SRD Panel C08). ``score`` is an NPS-style
+    0-10 rating; nothing here is fabricated -- only what the customer actually
+    submitted is stored, and a low score is meant to drive a follow-up, not a
+    public rating display.
+    """
+
+    __tablename__ = "feedback_entries"
+    __table_args__ = (CheckConstraint("score >= 0 AND score <= 10"),)
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    organization_id: Mapped[str] = mapped_column(ForeignKey("organizations.id", ondelete="CASCADE"), index=True)
+    customer_id: Mapped[str | None] = mapped_column(ForeignKey("customers.id"), index=True)
+    sales_order_id: Mapped[str | None] = mapped_column(ForeignKey("sales_orders.id"), index=True)
+    score: Mapped[int] = mapped_column(Integer)
+    comment: Mapped[str | None] = mapped_column(Text)
+    follow_up_ticket_id: Mapped[str | None] = mapped_column(ForeignKey("support_tickets.id"))
+
+
+class Notification(Base, TimestampMixin):
+    """An in-app bell-icon notification for one person (SRD Panel G03).
+
+    Always created server-side by a domain event (a ticket, an approval, a low
+    stock alert), never by direct API write -- a notification is a pointer to
+    something real that happened, not freestanding content a client can inject.
+    """
+
+    __tablename__ = "notifications"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    organization_id: Mapped[str] = mapped_column(ForeignKey("organizations.id", ondelete="CASCADE"), index=True)
+    recipient_user_id: Mapped[str] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    category: Mapped[str] = mapped_column(String(20))  # action_required/money/stock/staff/system/security
+    severity: Mapped[str] = mapped_column(String(10), default="info")  # info/warning/critical
+    title: Mapped[str] = mapped_column(String(200))
+    body: Mapped[str | None] = mapped_column(Text)
+    link_type: Mapped[str | None] = mapped_column(String(30))
+    link_id: Mapped[str | None] = mapped_column(String(36))
+    read_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    snoozed_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class AttendanceRecord(Base, TimestampMixin):
+    """One check-in/check-out pair (SRD Panel H03). ``source`` says how it was
+    created; a manager correction never edits the original row -- it adds a
+    new one with ``source="manager_correction"`` and ``corrects_record_id``
+    pointing at the one being fixed, so the original stays on the books.
+    """
+
+    __tablename__ = "attendance_records"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    organization_id: Mapped[str] = mapped_column(ForeignKey("organizations.id", ondelete="CASCADE"), index=True)
+    branch_id: Mapped[str | None] = mapped_column(ForeignKey("branches.id"), index=True)
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), index=True)
+    check_in_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    check_out_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    source: Mapped[str] = mapped_column(String(20), default="device")  # device/manager_correction/import
+    corrects_record_id: Mapped[str | None] = mapped_column(ForeignKey("attendance_records.id"))
+    note: Mapped[str | None] = mapped_column(String(300))
+
+
+class LeaveRequest(Base, TimestampMixin):
+    """A staff leave request (SRD Panel H04): submit -> approve/reject -> (cancel
+    while still pending). Dates are inclusive calendar dates, not timestamps --
+    leave is taken in whole/half days, not at a specific minute."""
+
+    __tablename__ = "leave_requests"
+    __table_args__ = (CheckConstraint("end_date >= start_date"),)
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    organization_id: Mapped[str] = mapped_column(ForeignKey("organizations.id", ondelete="CASCADE"), index=True)
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), index=True)
+    leave_type: Mapped[str] = mapped_column(String(30), default="casual")
+    start_date: Mapped[date] = mapped_column(Date)
+    end_date: Mapped[date] = mapped_column(Date)
+    reason: Mapped[str | None] = mapped_column(String(300))
+    status: Mapped[str] = mapped_column(String(20), default="pending", index=True)
+    decided_by_user_id: Mapped[str | None] = mapped_column(ForeignKey("users.id"))
+    decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    decision_reason: Mapped[str | None] = mapped_column(String(300))
+
+
+class RosterShift(Base, TimestampMixin):
+    """A planned shift assignment (SRD Panel H02) -- separate from `AttendanceRecord`,
+    which is what actually happened. The roster is the plan; attendance is the fact."""
+
+    __tablename__ = "roster_shifts"
+    __table_args__ = (CheckConstraint("end_time > start_time"),)
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    organization_id: Mapped[str] = mapped_column(ForeignKey("organizations.id", ondelete="CASCADE"), index=True)
+    branch_id: Mapped[str] = mapped_column(ForeignKey("branches.id"), index=True)
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), index=True)
+    shift_date: Mapped[date] = mapped_column(Date, index=True)
+    start_time: Mapped[str] = mapped_column(String(5))  # "HH:MM", 24h
+    end_time: Mapped[str] = mapped_column(String(5))
+    station: Mapped[str | None] = mapped_column(String(60))
+    created_by_user_id: Mapped[str] = mapped_column(ForeignKey("users.id"))
+
+
 class Supplier(Base, TimestampMixin):
     __tablename__ = "suppliers"
     __table_args__ = (UniqueConstraint("organization_id", "code"),)
@@ -210,6 +466,74 @@ class Supplier(Base, TimestampMixin):
     code: Mapped[str] = mapped_column(String(80))
     name: Mapped[str] = mapped_column(String(160))
     typical_lead_days: Mapped[int] = mapped_column(Integer, default=0)
+
+
+class Store(Base, TimestampMixin):
+    """One optional public storefront per organization.
+
+    Activating a store does not affect normal POS or inventory operations —
+    it only opens a public URL at /store/{org_id} where anonymous buyers can
+    browse listed products and place online orders. All settings here control
+    what the public page shows; nothing financial is ever visible.
+    """
+
+    __tablename__ = "stores"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    organization_id: Mapped[str] = mapped_column(
+        ForeignKey("organizations.id", ondelete="CASCADE"), unique=True, index=True
+    )
+    slug: Mapped[str] = mapped_column(String(80), unique=True, index=True)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=False)
+    display_name: Mapped[str] = mapped_column(String(160))
+    tagline: Mapped[str | None] = mapped_column(String(300))
+    # Logo and cover stored inline as data: URLs (same pattern as User.avatar_data_url).
+    logo_data_url: Mapped[str | None] = mapped_column(Text)
+    cover_data_url: Mapped[str | None] = mapped_column(Text)
+    theme_preset: Mapped[str] = mapped_column(String(20), default="clean")
+    theme_color: Mapped[str] = mapped_column(String(7), default="#0a8752")
+    category: Mapped[str | None] = mapped_column(String(60))
+    area: Mapped[str | None] = mapped_column(String(120))
+    # Visibility toggles — all default to the privacy-first setting.
+    show_phone: Mapped[bool] = mapped_column(Boolean, default=False)
+    show_exact_address: Mapped[bool] = mapped_column(Boolean, default=False)
+    show_hours: Mapped[bool] = mapped_column(Boolean, default=True)
+    show_stock_level: Mapped[str] = mapped_column(String(20), default="available_only")
+    show_price: Mapped[bool] = mapped_column(Boolean, default=True)
+    # Payment methods accepted at checkout.
+    payment_cod: Mapped[bool] = mapped_column(Boolean, default=True)
+    payment_bkash: Mapped[bool] = mapped_column(Boolean, default=False)
+    payment_nagad: Mapped[bool] = mapped_column(Boolean, default=False)
+    min_order_bdt: Mapped[Decimal | None] = mapped_column(Numeric(10, 2))
+    delivery_note: Mapped[str | None] = mapped_column(String(300))
+    hours_json: Mapped[str | None] = mapped_column(Text)
+    meta_title: Mapped[str | None] = mapped_column(String(160))
+    meta_desc: Mapped[str | None] = mapped_column(String(320))
+
+
+class StoreProduct(Base, TimestampMixin):
+    """Opt-in listing of an existing Product on this org's storefront.
+
+    Only products with is_listed=True appear in the public catalog. The
+    owner can override the selling price, add a longer description, upload
+    a product photo, and tag items for filtering — none of that touches the
+    canonical Product record used by the POS.
+    """
+
+    __tablename__ = "store_products"
+    __table_args__ = (UniqueConstraint("store_id", "product_id"),)
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    store_id: Mapped[str] = mapped_column(ForeignKey("stores.id", ondelete="CASCADE"), index=True)
+    product_id: Mapped[str] = mapped_column(ForeignKey("products.id", ondelete="CASCADE"), index=True)
+    is_listed: Mapped[bool] = mapped_column(Boolean, default=True)
+    sort_order: Mapped[int] = mapped_column(Integer, default=0)
+    online_price_bdt: Mapped[Decimal | None] = mapped_column(Numeric(14, 2))
+    description_long: Mapped[str | None] = mapped_column(Text)
+    image_data_url: Mapped[str | None] = mapped_column(Text)
+    tags: Mapped[str | None] = mapped_column(String(300))
+    is_featured: Mapped[bool] = mapped_column(Boolean, default=False)
+    max_order_qty: Mapped[int | None] = mapped_column(Integer)
 
 
 class SalesOrder(Base, TimestampMixin):
@@ -306,6 +630,16 @@ class SalesDocument(Base, TimestampMixin):
     tax_amount: Mapped[Decimal] = mapped_column(Numeric(14, 2), default=0)
     total: Mapped[Decimal] = mapped_column(Numeric(14, 2))
     invoice_id: Mapped[str | None] = mapped_column(ForeignKey("sales_orders.id"), index=True)
+    # Set only for an order placed through the public online-storefront
+    # checkout, where there is no staff member to key in a walk-in sale and
+    # often no existing Customer record at all.
+    shipping_name: Mapped[str | None] = mapped_column(String(160))
+    shipping_phone: Mapped[str | None] = mapped_column(String(32))
+    shipping_address: Mapped[str | None] = mapped_column(Text)
+    # Unguessable token handed back to the customer at checkout so they can
+    # look up their own order status without an account. Null for orders that
+    # were never placed through the public endpoint.
+    access_token: Mapped[str | None] = mapped_column(String(64), unique=True, index=True)
 
     lines: Mapped[list["SalesDocumentLine"]] = relationship(back_populates="document", cascade="all, delete-orphan")
 
@@ -338,6 +672,10 @@ class Payment(Base, TimestampMixin):
     reference: Mapped[str | None] = mapped_column(String(120))
     status: Mapped[str] = mapped_column(String(20), default="completed")
     paid_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    # Which cashier drawer this belongs to, when the cashier had a shift open
+    # at sale time (api/shift_routes.py). Null for sales made with no open
+    # shift -- shifts are additive accountability, not a hard requirement.
+    shift_id: Mapped[str | None] = mapped_column(ForeignKey("cashier_shifts.id"), index=True)
 
 
 class StockMovement(Base, TimestampMixin):
@@ -484,6 +822,49 @@ class CashClose(Base, TimestampMixin):
     closed_by: Mapped[str | None] = mapped_column(String(36))
 
 
+class CashierShift(Base, TimestampMixin):
+    """A cashier's own drawer accountability window -- distinct from
+    ``CashClose``, which is the owner/accountant's once-a-day book for the
+    whole branch. A shift is opened with a counted float, every cash sale and
+    refund made while it is open belongs to it, and it is closed with its own
+    count and variance. Several cashiers can each have their own open shift
+    on the same branch on the same day."""
+
+    __tablename__ = "cashier_shifts"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    organization_id: Mapped[str] = mapped_column(ForeignKey("organizations.id", ondelete="CASCADE"), index=True)
+    branch_id: Mapped[str] = mapped_column(ForeignKey("branches.id"), index=True)
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), index=True)
+    drawer_label: Mapped[str | None] = mapped_column(String(60))
+    status: Mapped[str] = mapped_column(String(10), default="open")  # open | closed
+    opening_cash: Mapped[Decimal] = mapped_column(Numeric(14, 2), default=0)
+    opened_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    expected_cash: Mapped[Decimal | None] = mapped_column(Numeric(14, 2))
+    counted_cash: Mapped[Decimal | None] = mapped_column(Numeric(14, 2))
+    variance: Mapped[Decimal | None] = mapped_column(Numeric(14, 2))
+    note: Mapped[str | None] = mapped_column(String(300))
+    closed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    closed_by: Mapped[str | None] = mapped_column(String(36))
+
+
+class CashMovement(Base, TimestampMixin):
+    """Cash physically added to or removed from a drawer mid-shift (a drop to
+    the safe, topping up change) -- not a sale, refund or expense, but it
+    still changes what should be left in the drawer at close."""
+
+    __tablename__ = "cash_movements"
+    __table_args__ = (CheckConstraint("amount > 0"),)
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    organization_id: Mapped[str] = mapped_column(ForeignKey("organizations.id", ondelete="CASCADE"), index=True)
+    shift_id: Mapped[str] = mapped_column(ForeignKey("cashier_shifts.id", ondelete="CASCADE"), index=True)
+    direction: Mapped[str] = mapped_column(String(10))  # drop | add
+    amount: Mapped[Decimal] = mapped_column(Numeric(14, 2))
+    reason: Mapped[str] = mapped_column(String(200))
+    created_by: Mapped[str | None] = mapped_column(String(36))
+
+
 class InventoryBalance(Base, TimestampMixin):
     """Lockable projection of the append-only movement ledger."""
 
@@ -546,6 +927,221 @@ class LoyaltyEntry(Base, TimestampMixin):
     reference_type: Mapped[str | None] = mapped_column(String(30))
     reference_id: Mapped[str | None] = mapped_column(String(36))
     occurred_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+
+
+class SalesTarget(Base, TimestampMixin):
+    """A sales quota for one person over one period (SRD Panel H05).
+
+    Progress is never stored here -- it's computed on read from `SalesOrder` +
+    `AuditLog` (who actually rang up each sale), so it can never drift from
+    what the sales ledger says actually happened.
+    """
+
+    __tablename__ = "sales_targets"
+    __table_args__ = (
+        UniqueConstraint("organization_id", "user_id", "period_start"),
+        CheckConstraint("period_end >= period_start"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    organization_id: Mapped[str] = mapped_column(ForeignKey("organizations.id", ondelete="CASCADE"), index=True)
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), index=True)
+    period_start: Mapped[date] = mapped_column(Date)
+    period_end: Mapped[date] = mapped_column(Date)
+    target_amount: Mapped[Decimal] = mapped_column(Numeric(14, 2))
+    created_by_user_id: Mapped[str] = mapped_column(ForeignKey("users.id"))
+
+
+class CommissionRule(Base, TimestampMixin):
+    """A flat percentage of net sale revenue paid to whoever rang up the sale
+    (SRD Panel H05). One row per organization, same pattern as `LoyaltyRule` --
+    inactive until the owner turns it on, so sales work identically either way.
+    """
+
+    __tablename__ = "commission_rules"
+    __table_args__ = (UniqueConstraint("organization_id"),)
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    organization_id: Mapped[str] = mapped_column(ForeignKey("organizations.id", ondelete="CASCADE"), index=True)
+    rate_percent: Mapped[Decimal] = mapped_column(Numeric(5, 2))
+    active: Mapped[bool] = mapped_column(Boolean, default=False)
+
+
+class CommissionEntry(Base, TimestampMixin):
+    """One earn or clawback event -- append-only, same discipline as `LoyaltyEntry`.
+    A return/void of a commissioned sale clawbacks proportionally, it never
+    rewrites the original earn row."""
+
+    __tablename__ = "commission_entries"
+    __table_args__ = (CheckConstraint("amount <> 0"),)
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    organization_id: Mapped[str] = mapped_column(ForeignKey("organizations.id", ondelete="CASCADE"), index=True)
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), index=True)
+    sales_order_id: Mapped[str] = mapped_column(ForeignKey("sales_orders.id"), index=True)
+    amount: Mapped[Decimal] = mapped_column(Numeric(14, 2))
+    reason: Mapped[str] = mapped_column(String(20))  # earned | clawback
+    occurred_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+
+
+class Delivery(Base, TimestampMixin):
+    """A rider's assignment to deliver one invoiced sale (SRD Panels E04-E06).
+
+    "Delivered" and "the business has the COD cash" are different facts, kept
+    as different states here -- ``status="delivered"`` only means the package
+    reached the customer; the money isn't counted until a `CODHandover` row
+    exists for it.
+    """
+
+    __tablename__ = "deliveries"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    organization_id: Mapped[str] = mapped_column(ForeignKey("organizations.id", ondelete="CASCADE"), index=True)
+    branch_id: Mapped[str] = mapped_column(ForeignKey("branches.id"), index=True)
+    sales_order_id: Mapped[str] = mapped_column(ForeignKey("sales_orders.id"), index=True)
+    rider_user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), index=True)
+    status: Mapped[str] = mapped_column(String(20), default="assigned", index=True)
+    # assigned -> out_for_delivery -> delivered/failed
+    cod_amount_expected: Mapped[Decimal] = mapped_column(Numeric(14, 2), default=0)
+    cod_amount_collected: Mapped[Decimal | None] = mapped_column(Numeric(14, 2))
+    proof_note: Mapped[str | None] = mapped_column(String(300))
+    failure_reason: Mapped[str | None] = mapped_column(String(300))
+    delivered_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_by_user_id: Mapped[str] = mapped_column(ForeignKey("users.id"))
+
+
+class CODHandover(Base, TimestampMixin):
+    """The rider physically gives collected cash to a cashier -- a separate,
+    later fact from `Delivery.cod_amount_collected`, with a shortage computed
+    rather than assumed to always match."""
+
+    __tablename__ = "cod_handovers"
+    __table_args__ = (UniqueConstraint("delivery_id"),)
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    organization_id: Mapped[str] = mapped_column(ForeignKey("organizations.id", ondelete="CASCADE"), index=True)
+    delivery_id: Mapped[str] = mapped_column(ForeignKey("deliveries.id", ondelete="CASCADE"), index=True)
+    shift_id: Mapped[str] = mapped_column(ForeignKey("cashier_shifts.id"), index=True)
+    handed_over_amount: Mapped[Decimal] = mapped_column(Numeric(14, 2))
+    shortage_amount: Mapped[Decimal] = mapped_column(Numeric(14, 2), default=0)
+    received_by_user_id: Mapped[str] = mapped_column(ForeignKey("users.id"))
+
+
+class StaffAdvance(Base, TimestampMixin):
+    """A cash advance issued to staff (SRD Panel H06), repaid over time.
+
+    Standalone for now -- there is no payroll run yet to net it against
+    automatically (CLAUDE.md: don't fake a feature that doesn't exist), so
+    repayment here is recorded explicitly rather than deducted from a payslip.
+    """
+
+    __tablename__ = "staff_advances"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    organization_id: Mapped[str] = mapped_column(ForeignKey("organizations.id", ondelete="CASCADE"), index=True)
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), index=True)
+    amount: Mapped[Decimal] = mapped_column(Numeric(14, 2))
+    reason: Mapped[str | None] = mapped_column(String(300))
+    status: Mapped[str] = mapped_column(String(20), default="outstanding", index=True)  # outstanding/settled
+    issued_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    created_by_user_id: Mapped[str] = mapped_column(ForeignKey("users.id"))
+
+
+class StaffAdvanceRepayment(Base, TimestampMixin):
+    __tablename__ = "staff_advance_repayments"
+    __table_args__ = (CheckConstraint("amount > 0"),)
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    organization_id: Mapped[str] = mapped_column(ForeignKey("organizations.id", ondelete="CASCADE"), index=True)
+    advance_id: Mapped[str] = mapped_column(ForeignKey("staff_advances.id", ondelete="CASCADE"), index=True)
+    amount: Mapped[Decimal] = mapped_column(Numeric(14, 2))
+    occurred_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    recorded_by_user_id: Mapped[str] = mapped_column(ForeignKey("users.id"))
+
+
+class PayrollRun(Base, TimestampMixin):
+    """One pay period's payroll (SRD Panel H06): draft -> approved -> paid.
+
+    Once approved, `PayrollLine` rows are frozen -- a mistake found later is a
+    new, separate run or an explicit adjustment, never a silent edit to a
+    period someone has already been told their pay for.
+    """
+
+    __tablename__ = "payroll_runs"
+    __table_args__ = (UniqueConstraint("organization_id", "period_start", "period_end"),)
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    organization_id: Mapped[str] = mapped_column(ForeignKey("organizations.id", ondelete="CASCADE"), index=True)
+    period_start: Mapped[date] = mapped_column(Date)
+    period_end: Mapped[date] = mapped_column(Date)
+    status: Mapped[str] = mapped_column(String(20), default="draft", index=True)  # draft/approved/paid
+    created_by_user_id: Mapped[str] = mapped_column(ForeignKey("users.id"))
+    approved_by_user_id: Mapped[str | None] = mapped_column(ForeignKey("users.id"))
+    approved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    paid_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class PayrollLine(Base, TimestampMixin):
+    """One person's pay within a `PayrollRun` -- a frozen snapshot once the run
+    is approved, same discipline as a `SalesOrder` line after it's invoiced."""
+
+    __tablename__ = "payroll_lines"
+    __table_args__ = (UniqueConstraint("payroll_run_id", "user_id"),)
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    organization_id: Mapped[str] = mapped_column(ForeignKey("organizations.id", ondelete="CASCADE"), index=True)
+    payroll_run_id: Mapped[str] = mapped_column(ForeignKey("payroll_runs.id", ondelete="CASCADE"), index=True)
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), index=True)
+    base_salary: Mapped[Decimal] = mapped_column(Numeric(14, 2))
+    commission_amount: Mapped[Decimal] = mapped_column(Numeric(14, 2), default=0)
+    advance_deduction: Mapped[Decimal] = mapped_column(Numeric(14, 2), default=0)
+    net_pay: Mapped[Decimal] = mapped_column(Numeric(14, 2))
+
+
+class FiscalPeriod(Base, TimestampMixin):
+    """One calendar month's accounting lock (SRD Panel F09).
+
+    No row for a month means it's open -- periods aren't pre-created, only
+    recorded when someone actually closes one. `post_journal` refuses any
+    entry whose `occurred_at` falls in a closed month; reopening is a
+    separate, audited, explicit action, never implicit.
+    """
+
+    __tablename__ = "fiscal_periods"
+    __table_args__ = (UniqueConstraint("organization_id", "period_month"),)
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    organization_id: Mapped[str] = mapped_column(ForeignKey("organizations.id", ondelete="CASCADE"), index=True)
+    period_month: Mapped[date] = mapped_column(Date)  # always the 1st of the month
+    status: Mapped[str] = mapped_column(String(10), default="closed")  # closed | reopened
+    closed_by_user_id: Mapped[str] = mapped_column(ForeignKey("users.id"))
+    closed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    reopened_by_user_id: Mapped[str | None] = mapped_column(ForeignKey("users.id"))
+    reopened_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    reopen_reason: Mapped[str | None] = mapped_column(String(300))
+
+
+class Reservation(Base, TimestampMixin):
+    """Stock earmarked for one order line before it is invoiced (SRD Panel E02).
+
+    Never touches `InventoryBalance.quantity` -- on-hand stays exactly what is
+    physically there. Availability is computed as on-hand minus the sum of
+    *other* active, unexpired reservations (see `reservations.py`), so a
+    reservation makes stock unavailable to everyone else without ever lying
+    about what is actually on the shelf.
+    """
+
+    __tablename__ = "reservations"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    organization_id: Mapped[str] = mapped_column(ForeignKey("organizations.id", ondelete="CASCADE"), index=True)
+    branch_id: Mapped[str] = mapped_column(ForeignKey("branches.id"), index=True)
+    product_id: Mapped[str] = mapped_column(ForeignKey("products.id"), index=True)
+    sales_document_id: Mapped[str] = mapped_column(ForeignKey("sales_documents.id", ondelete="CASCADE"), index=True)
+    quantity: Mapped[Decimal] = mapped_column(Numeric(14, 3))
+    status: Mapped[str] = mapped_column(String(10), default="active", index=True)  # active/released/fulfilled
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    created_by_user_id: Mapped[str] = mapped_column(ForeignKey("users.id"))
 
 
 class ApprovalRule(Base, TimestampMixin):
@@ -966,3 +1562,37 @@ class RecommendationOutcome(Base, TimestampMixin):
     measured_by: Mapped[str] = mapped_column(String(12), default="manual", server_default="manual")
 
     recommendation: Mapped["Recommendation"] = relationship(back_populates="outcomes")
+
+
+class TeamMessage(Base, TimestampMixin):
+    """One organization-wide staff chat channel -- everyone with an active
+    Membership in the org can read and post. Intentionally a single shared
+    channel, not DMs or per-branch rooms: a small shop's whole team already
+    sits in one WhatsApp group, this mirrors that rather than adding rooms
+    nobody will organize. ``branch_id`` is optional context on a message
+    (e.g. "posted from Mirpur branch"), not a separate channel."""
+
+    __tablename__ = "team_messages"
+    __table_args__ = (Index("ix_team_messages_org_time", "organization_id", "created_at"),)
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    organization_id: Mapped[str] = mapped_column(ForeignKey("organizations.id", ondelete="CASCADE"), index=True)
+    branch_id: Mapped[str | None] = mapped_column(ForeignKey("branches.id"))
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), index=True)
+    body: Mapped[str] = mapped_column(Text)
+
+
+class SiteContent(Base, TimestampMixin):
+    """Generic key/value store for public-site copy a platform admin can edit
+    without a redeploy. Not a full CMS -- a small, deliberately generic table
+    so new editable fields (a new FAQ, a changed headline) are a new `key`,
+    never a new migration. `frontend/src/pages/PublicSite.jsx` fetches this
+    once at `GET /api/site-content` (public, no auth) and overlays it onto its
+    own hardcoded defaults; a missing key just means "use the default copy",
+    so this table can start empty without breaking the site."""
+
+    __tablename__ = "site_content"
+
+    key: Mapped[str] = mapped_column(String(80), primary_key=True)
+    value_json: Mapped[str] = mapped_column(Text)
+    updated_by_user_id: Mapped[str | None] = mapped_column(ForeignKey("users.id"))

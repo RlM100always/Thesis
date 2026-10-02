@@ -67,12 +67,32 @@ from .insights_advanced_routes import router as insights_advanced_router  # noqa
 from .accounting_routes import router as accounting_router  # noqa: E402
 from .approval_routes import router as approval_router  # noqa: E402
 from .stock_count_routes import router as stock_count_router  # noqa: E402
-from .order_routes import router as order_router  # noqa: E402
+from .order_routes import router as order_router, public_router as public_order_router  # noqa: E402
 from .purchase_return_routes import router as purchase_return_router  # noqa: E402
 from .reference_routes import router as reference_router  # noqa: E402
 from .integration_routes import router as integration_router  # noqa: E402
 from .loyalty_routes import router as loyalty_router  # noqa: E402
 from .platform_routes import router as platform_router  # noqa: E402
+from .admin_platform_routes import router as admin_platform_router  # noqa: E402
+from .shift_routes import router as shift_router  # noqa: E402
+from .ticket_routes import router as ticket_router  # noqa: E402
+from .team_chat_routes import router as team_chat_router  # noqa: E402
+from .assistant_routes import router as assistant_router  # noqa: E402
+from .lead_routes import router as lead_router  # noqa: E402
+from .feedback_routes import router as feedback_router  # noqa: E402
+from .notification_routes import router as notification_router  # noqa: E402
+from .attendance_routes import router as attendance_router  # noqa: E402
+from .leave_routes import router as leave_router  # noqa: E402
+from .roster_routes import router as roster_router  # noqa: E402
+from .commission_routes import router as commission_router  # noqa: E402
+from .target_routes import router as target_router  # noqa: E402
+from .delivery_routes import router as delivery_router  # noqa: E402
+from .advance_routes import router as advance_router  # noqa: E402
+from .payroll_routes import router as payroll_router  # noqa: E402
+from .health_score_routes import router as health_score_router  # noqa: E402
+from .mission_queue_routes import router as mission_queue_router  # noqa: E402
+from .reservation_routes import router as reservation_router  # noqa: E402
+from .store_routes import router as store_router, public_router as public_store_router  # noqa: E402
 from .database import create_schema  # noqa: E402
 from .schemas import Health  # noqa: E402
 
@@ -126,11 +146,33 @@ app.include_router(accounting_router)
 app.include_router(approval_router)
 app.include_router(stock_count_router)
 app.include_router(order_router)
+app.include_router(public_order_router)
 app.include_router(purchase_return_router)
 app.include_router(reference_router)
 app.include_router(integration_router)
 app.include_router(loyalty_router)
 app.include_router(platform_router)
+app.include_router(admin_platform_router)
+app.include_router(shift_router)
+app.include_router(ticket_router)
+app.include_router(lead_router)
+app.include_router(feedback_router)
+app.include_router(notification_router)
+app.include_router(attendance_router)
+app.include_router(leave_router)
+app.include_router(roster_router)
+app.include_router(commission_router)
+app.include_router(target_router)
+app.include_router(delivery_router)
+app.include_router(advance_router)
+app.include_router(payroll_router)
+app.include_router(health_score_router)
+app.include_router(mission_queue_router)
+app.include_router(reservation_router)
+app.include_router(store_router)
+app.include_router(public_store_router)
+app.include_router(team_chat_router)
+app.include_router(assistant_router)
 
 
 @app.on_event("startup")

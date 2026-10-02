@@ -1,58 +1,65 @@
-import { useEffect, useState } from "react";
-import { Navigate, NavLink, Route, HashRouter as Router, Routes, useLocation } from "react-router-dom";
+import { lazy, Suspense, useEffect, useState } from "react";
+import { Link, Navigate, NavLink, Route, HashRouter as Router, Routes, useLocation } from "react-router-dom";
 import { api } from "./api";
 import { AuthProvider, useAuth } from "./AuthContext";
 import { PermissionProvider, ROLE_LABELS, usePermissions } from "./PermissionContext";
-import Actions from "./pages/Actions";
-import Customers from "./pages/Customers";
-import Forecast from "./pages/Forecast";
-import Landing from "./pages/Landing";
-import Login from "./pages/Login";
-import ModelReport from "./pages/ModelReport";
-import Overview from "./pages/Overview";
-import Segments from "./pages/Segments";
-import Upload from "./pages/Upload";
-import WhatIf from "./pages/WhatIf";
 import { UiProvider, useUi } from "./UiContext";
 import { WorkspaceProvider } from "./WorkspaceContext";
 import { BusinessProvider, useBusiness } from "./BusinessContext";
-import BusinessSetup from "./pages/Settings";
-import AccountsPage from "./pages/Accounts";
-import DirectoryPage from "./pages/Directory";
-import ReturnsPage from "./pages/Returns";
-import StrategyPage from "./pages/Strategy";
-import SalesPage from "./pages/Pos";
-import ProductsPage from "./pages/Products";
-import InventoryPage from "./pages/Inventory";
-import ExpiryPage from "./pages/Expiry";
-import PurchasesPage from "./pages/Purchases";
-import PurchaseReturnsPage from "./pages/PurchaseReturns";
-import OperationalDashboard from "./pages/Dashboard";
-import RealDataValidation from "./pages/RealDataValidation";
-import BSmartAlgorithm from "./pages/BSmartAlgorithm";
-import BSmartActions from "./pages/Recommendations";
-import StaffPage from "./pages/Staff";
-import AccountPage from "./pages/Account";
-import AuditPage from "./pages/Audit";
-import CashPage from "./pages/Cash";
-import SalesHistoryPage from "./pages/SalesHistory";
-import ReportsPage from "./pages/Reports";
-import ImportDataPage from "./pages/ImportData";
-import InsightsPage from "./pages/Insights";
-import ApprovalsPage from "./pages/Approvals";
-import AccountingPage from "./pages/Accounting";
-import StockCountPage from "./pages/StockCount";
-import OrdersPage from "./pages/Orders";
-import ReorderPlanPage from "./pages/ReorderPlan";
-import GuidePage from "./pages/Guide";
-import PlatformPage from "./pages/Platform";
 import NotificationBell from "./components/NotificationBell";
-import AcceptInvite from "./pages/AcceptInvite";
-import Onboarding from "./pages/Onboarding";
 import Icon from "./ui/Icon";
 import { Avatar, Button, EmptyState, PageHeader } from "./ui/kit";
 import { BranchProvider } from "./useBranch";
 import WorkspaceBar from "./components/WorkspaceBar";
+
+const Actions = lazy(() => import("./pages/Actions"));
+const Customers = lazy(() => import("./pages/Customers"));
+const Forecast = lazy(() => import("./pages/Forecast"));
+const PublicSite = lazy(() => import("./pages/PublicSite"));
+const Login = lazy(() => import("./pages/Login"));
+const ModelReport = lazy(() => import("./pages/ModelReport"));
+const Overview = lazy(() => import("./pages/Overview"));
+const Segments = lazy(() => import("./pages/Segments"));
+const Upload = lazy(() => import("./pages/Upload"));
+const WhatIf = lazy(() => import("./pages/WhatIf"));
+const BusinessSetup = lazy(() => import("./pages/Settings"));
+const AccountsPage = lazy(() => import("./pages/Accounts"));
+const DirectoryPage = lazy(() => import("./pages/Directory"));
+const ReturnsPage = lazy(() => import("./pages/Returns"));
+const StrategyPage = lazy(() => import("./pages/Strategy"));
+const SalesPage = lazy(() => import("./pages/Pos"));
+const ProductsPage = lazy(() => import("./pages/Products"));
+const InventoryPage = lazy(() => import("./pages/Inventory"));
+const ExpiryPage = lazy(() => import("./pages/Expiry"));
+const PurchasesPage = lazy(() => import("./pages/Purchases"));
+const PurchaseReturnsPage = lazy(() => import("./pages/PurchaseReturns"));
+const OperationalDashboard = lazy(() => import("./pages/Dashboard"));
+const RealDataValidation = lazy(() => import("./pages/RealDataValidation"));
+const BSmartAlgorithm = lazy(() => import("./pages/BSmartAlgorithm"));
+const BSmartActions = lazy(() => import("./pages/Recommendations"));
+const StaffPage = lazy(() => import("./pages/Staff"));
+const WorkforcePage = lazy(() => import("./pages/Workforce"));
+const CrmPage = lazy(() => import("./pages/Crm"));
+const FulfilmentPage = lazy(() => import("./pages/Fulfilment"));
+const AccountPage = lazy(() => import("./pages/Account"));
+const AuditPage = lazy(() => import("./pages/Audit"));
+const CashPage = lazy(() => import("./pages/Cash"));
+const SalesHistoryPage = lazy(() => import("./pages/SalesHistory"));
+const ReportsPage = lazy(() => import("./pages/Reports"));
+const ImportDataPage = lazy(() => import("./pages/ImportData"));
+const InsightsPage = lazy(() => import("./pages/Insights"));
+const ApprovalsPage = lazy(() => import("./pages/Approvals"));
+const AccountingPage = lazy(() => import("./pages/Accounting"));
+const StockCountPage = lazy(() => import("./pages/StockCount"));
+const OrdersPage = lazy(() => import("./pages/Orders"));
+const ReorderPlanPage = lazy(() => import("./pages/ReorderPlan"));
+const GuidePage = lazy(() => import("./pages/Guide"));
+const PlatformPage = lazy(() => import("./pages/Platform"));
+const AcceptInvite = lazy(() => import("./pages/AcceptInvite"));
+const Onboarding = lazy(() => import("./pages/Onboarding"));
+const StorePage = lazy(() => import("./pages/Store"));
+const OrderStatusPage = lazy(() => import("./pages/OrderStatus"));
+const StoreAdminPage = lazy(() => import("./pages/StoreAdmin"));
 
 // HashRouter rather than BrowserRouter: the production build is served as
 // static files by FastAPI, and hash routing needs no server-side rewrite
@@ -70,7 +77,7 @@ const BUSINESS_NAV = [
   {
     heading: "দৈনিক কাজ",
     items: [
-      { to: "/", label: "ড্যাশবোর্ড", icon: "home", end: true, perm: "dashboard:read" },
+      { to: "/app", label: "ড্যাশবোর্ড", icon: "home", end: true, perm: "dashboard:read" },
     ],
   },
   {
@@ -81,6 +88,9 @@ const BUSINESS_NAV = [
       { to: "/orders", label: "কোটেশন ও অর্ডার", icon: "fileText", perm: "orders:read" },
       { to: "/returns", label: "রিটার্ন", icon: "undo", perm: "returns:read" },
       { to: "/directory", label: "কাস্টমার ও সাপ্লায়ার", icon: "users", perm: "customers:read" },
+      { to: "/crm", label: "টিকেট, লিড ও ফিডব্যাক", icon: "userCheck", perm: "tickets:read", featureFlag: "crm" },
+      { to: "/fulfilment", label: "রিজার্ভেশন ও ডেলিভারি", icon: "truck", perm: "orders:read", featureFlag: "fulfilment" },
+      { to: "/store-admin", label: "অনলাইন স্টোর", icon: "globe", perm: "catalog:read" },
     ],
   },
   {
@@ -109,10 +119,10 @@ const BUSINESS_NAV = [
     heading: "AI সুপারিশ",
     items: [
       { to: "/strategy", label: "আজকের করণীয়", icon: "zap", perm: "recommendations:read" },
-      { to: "/bsmart-actions", label: "সুপারিশ", icon: "target", perm: "bsmart:read" },
+      { to: "/bsmart-actions", label: "সুপারিশ", icon: "target", perm: "bsmart:read", featureFlag: "bsmart" },
       { to: "/forecast", label: "বিক্রির পূর্বাভাস", icon: "trend" },
       { to: "/segments", label: "কাস্টমার গ্রুপ", icon: "pie" },
-      { to: "/upload", label: "নিজের ফাইল আপলোড করুন", icon: "upload" },
+      { to: "/upload", label: "নিজের ফাইল আপলোড করুন", icon: "upload", featureFlag: "upload" },
     ],
   },
   {
@@ -123,6 +133,7 @@ const BUSINESS_NAV = [
       { to: "/import", label: "তথ্য আমদানি", icon: "upload", perm: "imports:write" },
       { to: "/approvals", label: "অনুমোদন", icon: "check", badgeKey: "approvals", perm: "approvals:read" },
       { to: "/staff", label: "কর্মী ও ভূমিকা", icon: "userCheck", perm: "staff:read" },
+      { to: "/workforce", label: "উপস্থিতি, ছুটি ও পে-রোল", icon: "clock", featureFlag: "workforce" },
       { to: "/audit", label: "কার্যকলাপের ইতিহাস", icon: "clock", perm: "audit:read" },
     ],
   },
@@ -143,7 +154,9 @@ const RESEARCH_NAV = [
 ];
 
 // Phone bottom bar: the first four of these the person may use, then "আরও".
-const BOTTOM_ORDER = ["/", "/sales", "/inventory", "/strategy", "/purchases", "/directory", "/products"];
+const BOTTOM_ORDER = ["/app", "/sales", "/inventory", "/strategy", "/purchases", "/directory", "/products"];
+
+const PUBLIC_PATHS = new Set(["/", "/features", "/solutions", "/pricing", "/security", "/about", "/help", "/guidelines", "/contact", "/privacy", "/terms", "/status"]);
 
 export default function App() {
   return (
@@ -154,7 +167,9 @@ export default function App() {
             <BranchProvider>
               <PermissionProvider>
                 <Router>
-                  <Shell />
+                  <Suspense fallback={<RouteLoading />}>
+                    <Shell />
+                  </Suspense>
                 </Router>
               </PermissionProvider>
             </BranchProvider>
@@ -162,6 +177,15 @@ export default function App() {
         </WorkspaceProvider>
       </AuthProvider>
     </UiProvider>
+  );
+}
+
+function RouteLoading() {
+  return (
+    <div className="route-loading" role="status" aria-live="polite">
+      <img src="/bsmart-mark.svg" alt="" />
+      <div><strong>B-SMART</strong><span>আপনার workspace প্রস্তুত হচ্ছে…</span></div>
+    </div>
   );
 }
 
@@ -173,17 +197,59 @@ function Shell() {
   const { pathname } = useLocation();
   const { loading, organizations, error, wizardActive } = useBusiness();
   if (pathname === "/accept-invite") return <AcceptInvite />;
-  if (pathname === "/login") return <Login />;
-  // A fresh, never-authenticated visit to the root sees the landing page
-  // first. A session that expires deeper in the app (any other path) goes
-  // straight to the login form instead -- that visitor already knows the
-  // product and just needs to re-authenticate, not be sold it again.
-  if (requiresLogin) return pathname === "/" ? <Landing /> : <Login />;
+  if (pathname === "/reset-password") return <AcceptInvite mode="reset" />;
+  if (pathname === "/login") return <Login initialMode="login" />;
+  if (pathname === "/signup") return <Login initialMode="register" />;
+  // The public storefront and order-status lookup need no account at all —
+  // a visitor opens these from a link the shop shares, not through the app.
+  if (pathname.startsWith("/store/") || pathname.startsWith("/order-status/")) {
+    return (
+      <Routes>
+        <Route path="/store/:orgId" element={<StorePage />} />
+        <Route path="/order-status/:orgId/:token" element={<OrderStatusPage />} />
+      </Routes>
+    );
+  }
+  if (PUBLIC_PATHS.has(pathname) || pathname.startsWith("/solutions/")) return <PublicSite />;
+  // Public marketing pages are always reachable. Protected work pages send an
+  // expired or anonymous session straight to the business login form.
+  if (requiresLogin) return <Login initialMode="login" />;
+  // Platform admin is a completely separate shell -- no business sidebar, no
+  // business switcher, distinct visual theme -- so there is never a moment of
+  // confusion about which "mode" is on screen. It doesn't care whether this
+  // account has zero, one or many business memberships.
+  if (pathname.startsWith("/platform")) return <PlatformShell />;
   // Signed in but no business yet (right after signing up): create one first.
   // wizardActive keeps the setup wizard open through its later steps even after
   // the organization itself already exists (see BusinessContext.jsx).
   if (!loading && !error && (organizations.length === 0 || wizardActive)) return <Onboarding />;
   return <AppFrame />;
+}
+
+function PlatformShell() {
+  const { user, signOut } = useAuth();
+  if (!user?.is_platform_admin) {
+    return (
+      <div className="platform-denied">
+        <Icon name="lock" size={32} />
+        <h2>এই পাতাটা আপনার জন্য না</h2>
+        <p>শুধু প্ল্যাটফর্ম অ্যাডমিন অ্যাকাউন্ট দিয়ে লগইন করলে এটা দেখা যাবে।</p>
+        <Link className="public-cta" to="/app">নিজের ব্যবসায় ফিরে যান</Link>
+      </div>
+    );
+  }
+  return (
+    <div className="platform-shell">
+      <header className="platform-topbar">
+        <div className="platform-brand"><img src="/bsmart-mark.svg" alt="" /><div><strong>B-SMART প্ল্যাটফর্ম অ্যাডমিন</strong><small>{user.email}</small></div></div>
+        <div className="platform-topbar-actions">
+          <Link className="platform-exit" to="/app"><Icon name="chevronRight" size={14} style={{ transform: "rotate(180deg)" }} /> নিজের ব্যবসায় ফিরে যান</Link>
+          <button type="button" className="platform-exit" onClick={signOut}><Icon name="logout" size={14} />লগআউট</button>
+        </div>
+      </header>
+      <main className="platform-main"><PlatformPage /></main>
+    </div>
+  );
 }
 
 function AppFrame() {
@@ -219,10 +285,10 @@ function AppFrame() {
 
       <main className="main">
         <Routes>
-          <Route path="/" element={<Home />} />
+          <Route path="/app" element={<Home />} />
           <Route path="/research-actions" element={<Actions />} />
           <Route path="/overview" element={<Overview />} />
-          <Route path="/upload" element={<Upload />} />
+          <Route path="/upload" element={<Guard featureFlag="upload"><Upload /></Guard>} />
           <Route path="/whatif" element={<WhatIf />} />
           <Route path="/segments" element={<Segments />} />
           <Route path="/customers" element={<Customers />} />
@@ -231,11 +297,14 @@ function AppFrame() {
           <Route path="/models" element={<ModelReport />} />
           <Route path="/real-data-validation" element={<RealDataValidation />} />
           <Route path="/bsmart" element={<BSmartAlgorithm />} />
-          <Route path="/bsmart-actions" element={<Guard perm="bsmart:read"><BSmartActions /></Guard>} />
+          <Route path="/bsmart-actions" element={<Guard perm="bsmart:read" featureFlag="bsmart"><BSmartActions /></Guard>} />
           <Route path="/setup" element={<BusinessSetup />} />
           <Route path="/guide" element={<GuidePage />} />
           <Route path="/platform" element={<PlatformPage />} />
           <Route path="/staff" element={<Guard perm="staff:read"><StaffPage /></Guard>} />
+          <Route path="/workforce" element={<Guard featureFlag="workforce"><WorkforcePage /></Guard>} />
+          <Route path="/crm" element={<Guard perm="tickets:read" featureFlag="crm"><CrmPage /></Guard>} />
+          <Route path="/fulfilment" element={<Guard perm="orders:read" featureFlag="fulfilment"><FulfilmentPage /></Guard>} />
           <Route path="/audit" element={<Guard perm="audit:read"><AuditPage /></Guard>} />
           <Route path="/account" element={<AccountPage />} />
           <Route path="/sales-history" element={<Guard perm="sales:read"><SalesHistoryPage /></Guard>} />
@@ -258,6 +327,7 @@ function AppFrame() {
           <Route path="/returns" element={<Guard perm="returns:read"><ReturnsPage /></Guard>} />
           <Route path="/directory" element={<Guard perm="customers:read"><DirectoryPage /></Guard>} />
           <Route path="/strategy" element={<Guard perm="recommendations:read"><StrategyPage /></Guard>} />
+          <Route path="/store-admin" element={<Guard perm="catalog:read"><StoreAdminPage /></Guard>} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </main>
@@ -281,9 +351,17 @@ function AppFrame() {
 
 // A page the caller's role cannot use is replaced by an explanation, not an
 // error from the API. The server still enforces the same permission.
-function Guard({ perm, children }) {
+function Guard({ perm, featureFlag, children }) {
   const { can, ready } = usePermissions();
+  const business = useBusiness();
   if (!ready) return null;
+  if (featureFlag && business.active?.feature_flags?.[featureFlag] === false) {
+    return (
+      <div className="page">
+        <EmptyState icon="lock" title="এই মডিউলটি এই ব্যবসার জন্য বন্ধ" hint="প্রয়োজনে সাপোর্টের সাথে যোগাযোগ করুন।" />
+      </div>
+    );
+  }
   return can(perm) ? children : <NotAllowed />;
 }
 
@@ -294,6 +372,7 @@ function Home() {
   if (can("dashboard:read")) return <OperationalDashboard />;
   if (can("sales:read")) return <Navigate to="/sales" replace />;
   if (can("inventory:read")) return <Navigate to="/inventory" replace />;
+  if (can("orders:read")) return <Navigate to="/fulfilment" replace />;
   return <NotAllowed />;
 }
 
@@ -316,14 +395,20 @@ function SidebarBody({ mode, setMode, badges }) {
   const { can, role } = usePermissions();
 
   const groups = (mode === "business" ? BUSINESS_NAV : RESEARCH_NAV)
-    .map((group) => ({ ...group, items: group.items.filter((item) => can(item.perm) && (!item.feature || business.features[item.feature])) }))
+    .map((group) => ({
+      ...group,
+      items: group.items.filter((item) =>
+        can(item.perm)
+        && (!item.feature || business.features[item.feature])
+        && (!item.featureFlag || business.active?.feature_flags?.[item.featureFlag] !== false)),
+    }))
     .filter((group) => group.items.length > 0);
 
   return (
     <>
       <div className="brand">
-        <div className="brand-row"><h1>AI Powered Business Analytics System</h1><NotificationBell /></div>
-        <p className="subtitle">বাংলাদেশি SME ব্যবসা বিশ্লেষণ</p>
+        <div className="brand-row"><div className="app-brandlockup"><img src="/bsmart-mark.svg" alt="" /><div><h1>B-SMART</h1><p className="subtitle">Business OS</p></div></div><NotificationBell /></div>
+        <p className="subtitle app-brandtag">বাংলাদেশি SME ব্যবসা পরিচালনা</p>
         {business.organizations.length > 1 ? (
           <select className="business-switch" value={business.active?.id || ""} aria-label="ব্যবসা বদলান"
                   onChange={(e) => business.select(e.target.value)}>
@@ -401,7 +486,7 @@ function SidebarBody({ mode, setMode, badges }) {
         {mode === "business" ? (
           <>দৈনন্দিন ব্যবহারের বাইরে? <button type="button" className="link-btn" onClick={() => setMode("research")}>গবেষণা ও মডেল বিস্তারিত →</button></>
         ) : (
-          <>থিসিস মূল্যায়নের জন্য — দৈনিক ব্যবহারের অংশ নয়।</>
+          <>থিসিস মূল্যায়নের জন্য। এটি দৈনিক ব্যবহারের অংশ নয়।</>
         )}
       </div>
     </>
