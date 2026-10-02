@@ -5,9 +5,12 @@ import { explain } from "../errors";
 import { Button, Card, Field, Notice } from "../ui/kit";
 import { AuthLayout } from "./Login";
 
-// Opened from the link an owner sends a new team member: #/accept-invite?token=…
-// The person has no account yet, so this page works without signing in.
-export default function AcceptInvite() {
+// Opened from the link an owner sends a new team member (#/accept-invite?token=…)
+// or from a self-service "forgot password" email (#/reset-password?token=…).
+// Both land on the same token-for-a-new-password exchange on the backend, so
+// one page serves both -- only the copy differs.
+export default function AcceptInvite({ mode = "invite" }) {
+  const isReset = mode === "reset";
   const [params] = useSearchParams();
   const token = params.get("token") || "";
   const [password, setPassword] = useState("");
@@ -35,7 +38,10 @@ export default function AcceptInvite() {
   }
 
   return (
-    <AuthLayout title="পাসওয়ার্ড তৈরি করুন" subtitle="আপনাকে ব্যবসায় যোগ করা হয়েছে। নিজের পাসওয়ার্ড দিয়ে শুরু করুন।">
+    <AuthLayout
+      title={isReset ? "নতুন পাসওয়ার্ড দিন" : "পাসওয়ার্ড তৈরি করুন"}
+      subtitle={isReset ? "আপনার অ্যাকাউন্টের জন্য একটি নতুন পাসওয়ার্ড দিন।" : "আপনাকে ব্যবসায় যোগ করা হয়েছে। নিজের পাসওয়ার্ড দিয়ে শুরু করুন।"}
+    >
       {!token ? (
         <Notice tone="danger" title="লিংকটি অসম্পূর্ণ">
           মালিকের পাঠানো পুরো লিংকটি খুলুন, অথবা নতুন লিংক চেয়ে নিন।

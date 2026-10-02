@@ -15,15 +15,25 @@ from sqlalchemy.orm import Session
 from .accounting import seed_default_accounts
 from .approvals import seed_default_rules
 from .loyalty import seed_default_rule as seed_default_loyalty_rule
+from .commission import seed_default_rule as seed_default_commission_rule
 from .app_schemas import OrganizationCreate, OrganizationOperations, OrganizationProfile, OrganizationView, UserView
 from .audit import record_audit
 from .auth import CurrentMembership, CurrentUser
 from .permissions import require_permission
 from .database import get_db
-from .domain_models import AuditLog, Branch, Membership, Organization, OrganizationSetting, Product
+from .domain_models import AuditLog, Branch, Membership, Organization, OrganizationSetting, Product, SiteContent
 
 router = APIRouter(prefix="/api/app")
 Db = Annotated[Session, Depends(get_db)]
+
+
+@router.get("/site-content", tags=["app-auth"])
+def site_content(db: Db):
+    """Public, unauthenticated: full site content — DB values merged over defaults."""
+    from .site_defaults import SITE_DEFAULTS
+    rows = list(db.scalars(select(SiteContent)))
+    db_vals = {r.key: json.loads(r.value_json) for r in rows}
+    return {"content": {**SITE_DEFAULTS, **db_vals}}
 
 
 def _setting_values(setting: OrganizationSetting | None) -> dict:
@@ -54,6 +64,7 @@ def create_organization(payload: OrganizationCreate, current_user: CurrentUser, 
         seed_default_accounts(db, organization.id)
         seed_default_rules(db, organization.id)
         seed_default_loyalty_rule(db, organization.id)
+        seed_default_commission_rule(db, organization.id)
         db.add_all([
             Membership(organization_id=organization.id, user_id=current_user.id, role="owner"),
             OrganizationSetting(organization_id=organization.id),
@@ -105,6 +116,7 @@ def list_organizations(current_user: CurrentUser, db: Db):
             uses_expiry=org.id in expiry_orgs,
             address=org.address, phone=org.phone, vat_reg_no=org.vat_reg_no,
             receipt_footer=org.receipt_footer,
+            feature_flags=json.loads(org.feature_flags_json or "{}"),
             **_setting_values(settings.get(org.id)),
         )
         for org, role in rows

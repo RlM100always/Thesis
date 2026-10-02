@@ -100,6 +100,21 @@ export const api = {
   modelMetrics: () => request("/api/models/metrics"),
   realDataValidation: () => request("/api/research/real-data-validation"),
 
+  // Research Portal
+  portalDatasets:    () => request("/api/research/portal/datasets"),
+  portalSchema:      () => request("/api/research/portal/vertical-schema"),
+  portalExperiments: () => request("/api/research/portal/experiments"),
+  portalGetExp:      (id) => request(`/api/research/portal/experiments/${encodeURIComponent(id)}`),
+  portalStatus:      (id) => request(`/api/research/portal/experiments/${encodeURIComponent(id)}/status`),
+  portalCreateExp:   (body) => post("/api/research/portal/experiments", body),
+  portalRunExp:      (id) => post(`/api/research/portal/experiments/${encodeURIComponent(id)}/run`, {}),
+  portalDeleteExp:   (id) => fetch(`${BASE}/api/research/portal/experiments/${encodeURIComponent(id)}`, { method: "DELETE" }).then(r => r.json()),
+  portalCompare:     (ids) => post("/api/research/portal/compare", { experiment_ids: ids }),
+  portalUpload: (file) => {
+    const fd = new FormData(); fd.append("file", file);
+    return fetch(`${BASE}/api/research/portal/upload-dataset`, { method: "POST", body: fd }).then(r => r.json());
+  },
+
   // B-SMART Algorithm 1 (docs/BSMART_ARCHITECTURE.md).
   // Layer 5 is read-only research evidence; layers 9-10 write the owner's
   // decision and the observed outcome against a tenant's own recommendations.

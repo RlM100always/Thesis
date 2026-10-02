@@ -21,6 +21,7 @@ from .audit import record_audit
 from .auth import CurrentMembership
 from .database import get_db
 from .domain_models import ApprovalRequest, ApprovalRule, User, utcnow
+from .approvals import RANK, needs_approval
 from .permissions import require_permission
 
 router = APIRouter(prefix="/api/app/approvals")
@@ -154,3 +155,29 @@ def update_rule(kind: str, body: RuleUpdate, membership: CurrentMembership, db: 
     record_audit(db, membership, "approval_rule.updated", "approval_rule", rule.id, kind=kind, **changes)
     db.commit()
     return {"kind": rule.kind, "threshold": rule.threshold, "approver_role": rule.approver_role, "active": rule.active}
+
+
+class RuleSimulateIn(BaseModel):
+    kind: str = Field(max_length=40)
+    amount: Decimal = Field(ge=0, max_digits=14, decimal_places=2)
+    requester_role: str | None = Field(default=None, max_length=20)
+
+
+@router.post("/rules/simulate", tags=["approvals"])
+def simulate_rule(payload: RuleSimulateIn, membership: CurrentMembership, db: Db):
+    """Panel W02's rule simulator: would this action need approval, and from whom?
+
+    Defaults ``requester_role`` to the caller's own role, so "would my own
+    action need sign-off" is the zero-argument case.
+    """
+    require_permission(membership, "approvals:read")
+    requester_role = payload.requester_role or membership.role
+    if requester_role not in RANK:
+        raise HTTPException(status_code=422, detail=f"Unknown role: {requester_role}")
+    rule = needs_approval(db, membership.organization_id, payload.kind, payload.amount, requester_role)
+    if rule is None:
+        return {"requires_approval": False, "kind": payload.kind, "amount": payload.amount}
+    return {
+        "requires_approval": True, "kind": payload.kind, "amount": payload.amount,
+        "threshold": rule.threshold, "approver_role": rule.approver_role,
+    }

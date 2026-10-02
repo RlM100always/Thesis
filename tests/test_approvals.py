@@ -136,6 +136,31 @@ def test_the_owner_can_change_the_threshold_and_who_must_approve(client_for):
     assert result["status"] == "approved"
 
 
+def test_simulate_reports_whether_a_rule_would_fire(client_for):
+    owner, oheaders = client_for("owner")
+    below = owner.post("/api/app/approvals/rules/simulate", headers=oheaders,
+                       json={"kind": "expense_amount", "amount": "100", "requester_role": "cashier"}).json()
+    assert below["requires_approval"] is False
+
+    above = owner.post("/api/app/approvals/rules/simulate", headers=oheaders,
+                       json={"kind": "expense_amount", "amount": "6000", "requester_role": "cashier"}).json()
+    assert above["requires_approval"] is True and above["approver_role"] == "owner"
+
+
+def test_simulate_defaults_to_the_callers_own_role(client_for):
+    accountant, aheaders = client_for("accountant")
+    result = accountant.post("/api/app/approvals/rules/simulate", headers=aheaders,
+                             json={"kind": "expense_amount", "amount": "6000"}).json()
+    assert result["requires_approval"] is True  # accountant ranks below owner
+
+
+def test_simulate_rejects_an_unknown_role(client_for):
+    owner, oheaders = client_for("owner")
+    response = owner.post("/api/app/approvals/rules/simulate", headers=oheaders,
+                          json={"kind": "expense_amount", "amount": "100", "requester_role": "ghost"})
+    assert response.status_code == 422
+
+
 def test_turning_a_rule_off_lets_everything_through(client_for):
     owner_client, oheaders = client_for("owner")
     manager, mheaders = client_for("manager")

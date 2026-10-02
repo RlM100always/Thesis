@@ -6,7 +6,7 @@
 // for what it can and cannot support, rather than overclaiming either one.
 
 import { api } from "../api";
-import { ErrorBox, Loading, useApi } from "../useApi";
+import { Loading, useApi } from "../useApi";
 
 export default function RealDataValidation() {
   const { data, error, loading } = useApi(() => api.realDataValidation());

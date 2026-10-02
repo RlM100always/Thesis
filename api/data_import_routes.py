@@ -175,16 +175,19 @@ def export_anonymized_sales(membership: CurrentMembership, db: Db):
 
 @router.post("/train-demand-model", tags=["real-data"])
 def train_demand_model(membership: CurrentMembership, db: Db):
-    """One click: train a real demand model on this organization's own sales
-    history and make it immediately available to /api/app/recommendations.
+    """One click: train all four real models (demand forecast, future-repeat
+    churn, RFM segmentation, return-risk) on this organization's own sales
+    history and make each immediately available to /api/app/recommendations
+    and /api/app/segments.
 
-    Previously this was a manual CLI step (export the CSV, then run
-    `python -m ml.real_pipeline`) — the only way an owner's own data flow was
-    dynamic end-to-end. This closes that gap without changing what the CLI
-    path does: same validation, same training code, same output path.
+    Previously this trained only the demand model, leaving /api/app/recommendations
+    to score retention with a fixed baseline forever. Each stage is independent:
+    one failing (not enough data yet) does not block the others, matching the
+    CLI's `ml.real_pipeline` behaviour — never a fabricated result, only an
+    honest `available: false` with the reason.
     """
     require_permission(membership, "model:train")
-    from ml.real_pipeline import train_forecast, validate_sales
+    from ml.real_pipeline import train_churn, train_forecast, train_returns, train_segments, validate_sales
 
     frame = canonical_sales_frame(db, membership.organization_id)
     if frame.empty:
@@ -196,10 +199,17 @@ def train_demand_model(membership: CurrentMembership, db: Db):
 
     output_dir = Path("artifacts/real") / membership.organization_id
     output_dir.mkdir(parents=True, exist_ok=True)
-    try:
-        result = train_forecast(sales, output_dir)
-    except ValueError as exc:
-        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    report = {}
+    for name, trainer in [
+        ("forecast", train_forecast), ("churn", train_churn),
+        ("segments", train_segments), ("return_risk", train_returns),
+    ]:
+        try:
+            report[name] = trainer(sales, output_dir)
+        except ValueError as exc:
+            report[name] = {"available": False, "reason": str(exc)}
+    if "available" in report["forecast"]:
+        raise HTTPException(status_code=422, detail=report["forecast"]["reason"])
     record_audit(db, membership, "model.trained", "demand_model", None)
     db.commit()
-    return {"status": "trained", "forecast": result}
+    return {"status": "trained", **report}

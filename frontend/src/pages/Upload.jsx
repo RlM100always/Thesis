@@ -107,6 +107,8 @@ export default function Upload() {
         </div>
       )}
 
+      {!parsed && <FormatGuide />}
+
       <StepDropzone
         parsed={parsed}
         busy={busy}
@@ -140,6 +142,64 @@ export default function Upload() {
         />
       )}
     </div>
+  );
+}
+
+const SAMPLE_CSV_TEXT =
+  "customer_id,date,amount,quantity,product\n" +
+  "C001,2025-01-05,1200,3,Napa Extra\n" +
+  "C001,2025-02-10,800,2,Seclo 20\n" +
+  "C002,2025-01-20,500,1,Fexo 120\n" +
+  "C002,2025-03-11,1450,4,Napa Extra\n";
+
+function downloadSampleTemplate() {
+  const blob = new Blob(["﻿" + SAMPLE_CSV_TEXT], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "sample_sales_template.csv";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+// ── ফরম্যাট গাইড ─────────────────────────────────────────
+function FormatGuide() {
+  return (
+    <section className="card format-guide">
+      <h3>ফাইলের ফরম্যাট কেমন হতে হবে</h3>
+      <p className="hint">
+        প্রতিটি সারি (row) হবে একটি বিক্রি-লেনদেন। কলামের নাম যা-ই হোক না কেন,
+        আপনি নিজে বেছে দিতে পারবেন কোনটা কী বোঝায় — তাই নাম হুবহু মেলা জরুরি না,
+        কিন্তু নিচের তথ্যগুলো থাকতেই হবে।
+      </p>
+
+      <table className="format-table">
+        <thead>
+          <tr><th>কলাম</th><th>আবশ্যক?</th><th>কী থাকবে</th><th>উদাহরণ</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>কাস্টমার আইডি</td><td>আবশ্যক</td><td>নাম, ফোন নম্বর বা যেকোনো ইউনিক কোড — একই কাস্টমারের প্রতিটি কেনাকাটায় একই মান থাকতে হবে</td><td>C001, 01711xxxxxx</td></tr>
+          <tr><td>তারিখ</td><td>আবশ্যক</td><td>YYYY-MM-DD ভালো কাজ করে (DD/MM/YYYY, MM/DD/YYYY ও চলবে, কিন্তু একই ফাইলে ফরম্যাট মিশ্রিত করবেন না)</td><td>2025-03-15</td></tr>
+          <tr><td>টাকার পরিমাণ</td><td>আবশ্যক</td><td>সেই একটি বিক্রির মোট টাকা, শুধু সংখ্যা (৳ চিহ্ন বা কমা ছাড়া)</td><td>1200.50</td></tr>
+          <tr><td>পরিমাণ (quantity)</td><td>ঐচ্ছিক</td><td>কতগুলো আইটেম বিক্রি হয়েছে</td><td>3</td></tr>
+          <tr><td>পণ্যের নাম</td><td>ঐচ্ছিক</td><td>থাকলে সেরা-বিক্রিত পণ্যের তালিকা দেখানো যাবে</td><td>Napa Extra</td></tr>
+        </tbody>
+      </table>
+
+      <ul className="format-rules">
+        <li>ফাইল টাইপ: <strong>.csv, .xlsx বা .xls</strong> — আকার সর্বোচ্চ ৫০ MB</li>
+        <li>CSV হলে <strong>UTF-8</strong> এনকোডিং-এ সেভ করুন (Excel-এ "CSV UTF-8" অপশন বেছে নিন), নইলে বাংলা লেখা ভেঙে যেতে পারে</li>
+        <li>কমপক্ষে <strong>২০ জন ভিন্ন কাস্টমার</strong> দরকার — এর কম হলে সিস্টেম ঝুঁকি/সেগমেন্ট হিসাব না করে স্পষ্ট কারণ জানিয়ে দেবে, ভুল সংখ্যা দেখাবে না</li>
+        <li>পূর্বাভাস (forecast) পেতে কমপক্ষে <strong>১৩ মাসের</strong> লেনদেন-ইতিহাস লাগবে (গত বছরের একই মাসের সাথে তুলনা করতে)</li>
+        <li>অতিরিক্ত যেকোনো কলাম (ব্রাঞ্চ, পেমেন্ট মেথড ইত্যাদি) থাকলে সমস্যা নেই — সেগুলো শুধু উপেক্ষা করা হবে</li>
+      </ul>
+
+      <button type="button" className="btn-secondary" onClick={downloadSampleTemplate}>
+        নমুনা CSV টেমপ্লেট ডাউনলোড করুন
+      </button>
+    </section>
   );
 }
 
@@ -276,7 +336,7 @@ function Results({ result, showAll, setShowAll, onDownload, busy, token, mapping
         <strong>আপনার ড্যাশবোর্ড প্রস্তুত</strong>
         <p>
           এখন থেকে সব পাতা নমুনা তথ্যের বদলে এই ফাইল দেখাবে।{" "}
-          <Link to="/">এই সপ্তাহের করণীয় দেখুন</Link>, অথবা{" "}
+          <Link to="/app">এই সপ্তাহের করণীয় দেখুন</Link>, অথবা{" "}
           <Link to="/forecast">বিক্রির পূর্বাভাস</Link> ও{" "}
           <Link to="/segments">কাস্টমার গ্রুপ</Link> দেখুন।
         </p>

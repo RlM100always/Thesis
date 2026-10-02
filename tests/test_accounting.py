@@ -218,6 +218,26 @@ def test_an_expense_debits_operating_expenses_and_credits_the_payment_account(sh
     assert Decimal(tb["5900"]["balance"]) == 500 and Decimal(tb["1000"]["balance"]) == -500
 
 
+def test_payables_ageing_buckets_by_receipt_age(shop):
+    product = shop.product("C-4", stock=0, cost="10")
+    supplier = shop.post("/suppliers", {"code": "S4", "name": "Sup4"})
+    old_order = shop.post("/purchases", {
+        "branch_id": shop.w["branch_a"], "supplier_id": supplier["id"], "order_number": "PO-OLD",
+        "ordered_at": (NOW - timedelta(days=100)).isoformat(),
+        "items": [{"product_id": product["id"], "quantity": "10", "unit_cost": "10"}],
+    })
+    old_line = next(o for o in shop.get("/purchases") if o["order_number"] == "PO-OLD")["items"][0]["id"]
+    shop.post(f"/purchases/{old_order['id']}/receive", {
+        "received_at": (NOW - timedelta(days=100)).isoformat(),
+        "items": [{"purchase_order_item_id": old_line, "quantity": "10"}],
+    })
+    report = shop.get("/payables/ageing")
+    row = next(r for r in report["suppliers"] if r["code"] == "S4")
+    assert Decimal(row["balance"]) == 100
+    assert Decimal(row["d90_plus"]) == 100
+    assert row["oldest_days"] >= 99
+
+
 def test_paying_a_supplier_clears_payable_and_reduces_the_payment_account(shop):
     product = shop.product("C-3", stock=0, cost="10")
     supplier = shop.post("/suppliers", {"code": "S3", "name": "Sup3"})

@@ -165,3 +165,51 @@ def test_permissions_endpoint_reports_the_callers_role(client_for):
     assert body["role"] == "cashier"
     assert "sales:create" in body["permissions"]
     assert "dashboard:read" not in body["permissions"]
+
+
+# ── branch-scoping (ABAC) ────────────────────────────────────────────────────
+
+def test_unscoped_membership_sees_every_branch(client_for, world):
+    owner, headers = client_for("owner")
+    second = owner.post("/api/app/branches", headers=headers, json={"code": "SECOND", "name": "Second"})
+    assert second.status_code == 200
+    cashier, cashier_headers = client_for("cashier")
+    codes = {b["code"] for b in cashier.get("/api/app/branches", headers=cashier_headers).json()}
+    assert codes == {"MAIN", "SECOND"}
+
+
+def test_scoping_a_membership_to_one_branch_hides_the_others(client_for, world):
+    owner, headers = client_for("owner")
+    second = owner.post("/api/app/branches", headers=headers, json={"code": "SECOND", "name": "Second"}).json()
+    staff_list = owner.get("/api/app/staff", headers=headers).json()
+    cashier_membership_id = next(s["membership_id"] for s in staff_list if s["role"] == "cashier")
+
+    scoped = owner.put(
+        f"/api/app/staff/{cashier_membership_id}/branches", headers=headers,
+        json={"branch_ids": [second["id"]]},
+    )
+    assert scoped.status_code == 200
+    assert scoped.json()["assigned_branch_ids"] == [second["id"]]
+
+    cashier, cashier_headers = client_for("cashier")
+    codes = {b["code"] for b in cashier.get("/api/app/branches", headers=cashier_headers).json()}
+    assert codes == {"SECOND"}
+
+    # Clearing the list restores org-wide access.
+    cleared = owner.put(
+        f"/api/app/staff/{cashier_membership_id}/branches", headers=headers, json={"branch_ids": []},
+    )
+    assert cleared.json()["assigned_branch_ids"] == []
+    codes_after = {b["code"] for b in cashier.get("/api/app/branches", headers=cashier_headers).json()}
+    assert codes_after == {"MAIN", "SECOND"}
+
+
+def test_unknown_branch_id_is_rejected(client_for):
+    owner, headers = client_for("owner")
+    staff_list = owner.get("/api/app/staff", headers=headers).json()
+    cashier_membership_id = next(s["membership_id"] for s in staff_list if s["role"] == "cashier")
+    response = owner.put(
+        f"/api/app/staff/{cashier_membership_id}/branches", headers=headers,
+        json={"branch_ids": ["not-a-real-branch"]},
+    )
+    assert response.status_code == 422

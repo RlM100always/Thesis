@@ -1,7 +1,18 @@
-"""Quotation → order → delivery → invoice workflow for SME sales."""
+"""Quotation → order → delivery → invoice workflow for SME sales.
+
+Also hosts the public online-storefront checkout (``public_router``): an
+unauthenticated buyer places an order against ``SalesDocument`` the same way
+a staff-created order does, just entering at ``status="placed"`` instead of
+``"confirmed"`` so an owner has to look at it before it is treated as a real
+commitment. It reuses the existing quotation/order/invoice machinery rather
+than a parallel cart table, because an online order IS a sales document —
+the only genuinely new thing it needs is a way for an anonymous buyer to
+create one and check on it without a login.
+"""
 
 from __future__ import annotations
 
+import secrets
 from datetime import datetime
 from decimal import Decimal, ROUND_HALF_UP
 from typing import Annotated
@@ -12,20 +23,27 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 
-from .app_schemas import SaleCreate, SalesDocumentCreate, SalesDocumentInvoice
+from .app_schemas import PublicOrderCreate, SaleCreate, SalesDocumentCreate, SalesDocumentInvoice
 from .audit import record_audit
 from .auth import CurrentMembership, CurrentUser
 from .commerce_routes import create_sale
 from .database import get_db
-from .domain_models import Branch, Customer, Product, SalesDocument, SalesDocumentLine
+from .domain_models import Branch, Customer, Organization, Product, Reservation, SalesDocument, SalesDocumentLine
 from .permissions import require_permission
 
 router = APIRouter(prefix="/api/app/sales-documents")
+public_router = APIRouter(prefix="/api/public/orders")
 Db = Annotated[Session, Depends(get_db)]
 MONEY = Decimal("0.01")
 
 QUOTE_TRANSITIONS = {"draft": {"sent", "accepted", "rejected"}, "sent": {"accepted", "rejected"}}
+# "placed" is the entry status for an order a customer placed themselves
+# through the public storefront — it needs an owner/manager to look at it
+# before it becomes "confirmed", unlike a staff-created order which starts
+# life already confirmed (see ``create_document``). From "confirmed" on, an
+# online order and a staff-created one follow the same lifecycle.
 ORDER_TRANSITIONS = {
+    "placed": {"confirmed", "cancelled"},
     "confirmed": {"ready", "cancelled"}, "ready": {"dispatched", "cancelled"},
     "dispatched": {"delivered"}, "delivered": set(),
 }
@@ -42,6 +60,9 @@ def _view(document: SalesDocument, products: dict[str, Product], customer_name: 
         "subtotal": document.subtotal, "discount_amount": document.discount_amount,
         "tax_amount": document.tax_amount, "total": document.total,
         "invoice_id": document.invoice_id,
+        "shipping_name": document.shipping_name, "shipping_phone": document.shipping_phone,
+        "shipping_address": document.shipping_address,
+        "is_online_order": document.access_token is not None,
         "items": [{
             "id": line.id, "product_id": line.product_id,
             "product_name": products[line.product_id].name,
@@ -61,12 +82,15 @@ def _load(db: Session, org_id: str, document_id: str) -> SalesDocument:
 
 
 @router.get("", tags=["sales-documents"])
-def list_documents(membership: CurrentMembership, db: Db, document_type: str | None = Query(default=None)):
+def list_documents(membership: CurrentMembership, db: Db, document_type: str | None = Query(default=None),
+                   channel: str | None = Query(default=None)):
     require_permission(membership, "orders:read")
     statement = select(SalesDocument).options(selectinload(SalesDocument.lines)).where(
         SalesDocument.organization_id == membership.organization_id)
     if document_type:
         statement = statement.where(SalesDocument.document_type == document_type)
+    if channel:
+        statement = statement.where(SalesDocument.channel == channel)
     documents = list(db.scalars(statement.order_by(SalesDocument.issued_at.desc()).limit(300)))
     product_ids = {line.product_id for document in documents for line in document.lines}
     products = {p.id: p for p in db.scalars(select(Product).where(Product.id.in_(product_ids or {""})))}
@@ -144,6 +168,11 @@ def change_status(document_id: str, body: StatusIn, membership: CurrentMembershi
     previous = document.status; document.status = body.status
     record_audit(db, membership, f"{document.document_type}.status_changed", "sales_document", document.id,
                  before=previous, after=body.status)
+    if body.status == "cancelled":
+        for reservation in db.scalars(select(Reservation).where(
+            Reservation.sales_document_id == document.id, Reservation.status == "active",
+        )):
+            reservation.status = "released"
     db.commit()
     return {"id": document.id, "status": document.status}
 
@@ -180,6 +209,16 @@ def invoice_order(document_id: str, body: SalesDocumentInvoice, membership: Curr
     document = _load(db, membership.organization_id, document_id)
     if document.document_type != "order" or document.status in {"cancelled", "invoiced"}:
         raise HTTPException(status_code=409, detail="This order cannot be invoiced")
+    # Release this order's own reservations first -- otherwise create_sale's
+    # availability check would count them against the very sale meant to
+    # consume them. On-hand stock is untouched either way; only the hold moves.
+    active_reservations = db.scalars(select(Reservation).where(
+        Reservation.sales_document_id == document.id, Reservation.status == "active",
+    )).all()
+    for reservation in active_reservations:
+        reservation.status = "fulfilled"
+    if active_reservations:
+        db.commit()
     sale = create_sale(SaleCreate(
         branch_id=document.branch_id, customer_id=document.customer_id,
         invoice_number=body.invoice_number, sold_at=body.sold_at, channel=document.channel,
@@ -192,3 +231,118 @@ def invoice_order(document_id: str, body: SalesDocumentInvoice, membership: Curr
     record_audit(db, membership, "order.invoiced", "sales_document", document.id, invoice_id=sale.id)
     db.commit()
     return sale
+
+
+# --------------------------------------------------------------------------
+# Public online-storefront checkout. No membership, no X-Organization-ID — the
+# organization is named in the URL and the buyer has no account. Only ever
+# touches orders that already belong to ``organization_id``; this is the same
+# unauthenticated-by-design trust boundary as ``/api/upload/{token}`` in
+# ``api/routes.py``, not an oversight.
+# --------------------------------------------------------------------------
+
+def _public_view(document: SalesDocument, products: dict[str, Product]) -> dict:
+    return {
+        "order_number": document.document_number,
+        "access_token": document.access_token,
+        "status": document.status,
+        "placed_at": document.issued_at,
+        "shipping_name": document.shipping_name,
+        "shipping_phone": document.shipping_phone,
+        "shipping_address": document.shipping_address,
+        "subtotal": document.subtotal, "tax_amount": document.tax_amount, "total": document.total,
+        "items": [{
+            "product_name": products[line.product_id].name,
+            "quantity": line.quantity, "unit_price": line.unit_price, "line_total": line.line_total,
+        } for line in document.lines],
+    }
+
+
+@public_router.get("/{organization_id}/products", tags=["public-orders"])
+def public_catalog(organization_id: str, db: Db):
+    """The minimal, honest product list a public storefront can show: id,
+    name, SKU, unit and the current selling price. No stock-level claim is
+    made here — this endpoint has no branch context, and a wrong "in stock"
+    promise is worse than none; out-of-stock lines are instead caught at
+    checkout when the order is confirmed against a specific branch."""
+    if db.scalar(select(Organization.id).where(Organization.id == organization_id)) is None:
+        raise HTTPException(status_code=404, detail="Store not found")
+    products = db.scalars(select(Product).where(
+        Product.organization_id == organization_id, Product.active.is_(True)).order_by(Product.name))
+    return [{
+        "id": p.id, "name": p.name, "sku": p.sku, "unit": p.unit, "selling_price": p.selling_price,
+    } for p in products]
+
+
+@public_router.post("/{organization_id}", tags=["public-orders"])
+def place_public_order(organization_id: str, payload: PublicOrderCreate, db: Db):
+    if db.scalar(select(Organization.id).where(Organization.id == organization_id)) is None:
+        raise HTTPException(status_code=404, detail="Store not found")
+    if payload.branch_id:
+        branch = db.scalar(select(Branch).where(
+            Branch.id == payload.branch_id, Branch.organization_id == organization_id, Branch.active.is_(True)))
+        if branch is None:
+            raise HTTPException(status_code=404, detail="Branch not found")
+    else:
+        branch = db.scalar(select(Branch).where(
+            Branch.organization_id == organization_id, Branch.active.is_(True)).order_by(Branch.code).limit(1))
+        if branch is None:
+            raise HTTPException(status_code=409, detail="This store has no active branch to deliver from")
+
+    product_ids = [item.product_id for item in payload.items]
+    if len(product_ids) != len(set(product_ids)):
+        raise HTTPException(status_code=422, detail="Duplicate product lines must be combined")
+    products = {p.id: p for p in db.scalars(select(Product).where(
+        Product.organization_id == organization_id, Product.id.in_(product_ids), Product.active.is_(True)))}
+    if len(products) != len(product_ids):
+        raise HTTPException(status_code=404, detail="One or more products were not found")
+
+    subtotal = Decimal("0"); lines = []
+    for item in payload.items:
+        product = products[item.product_id]
+        gross = (product.selling_price * item.quantity).quantize(MONEY, rounding=ROUND_HALF_UP)
+        subtotal += gross
+        lines.append((item, product.selling_price, gross))
+    total = subtotal.quantize(MONEY)
+
+    # Both the order number and the lookup token are generated server-side and
+    # retried on collision, since an anonymous buyer supplies neither.
+    for _ in range(5):
+        document = SalesDocument(
+            organization_id=organization_id, branch_id=branch.id, customer_id=None,
+            document_type="order", document_number=f"WEB-{secrets.token_hex(5).upper()}",
+            status="placed", channel="online", issued_at=datetime.now(),
+            notes=payload.notes, subtotal=subtotal, discount_amount=Decimal("0"),
+            tax_amount=Decimal("0"), total=total,
+            shipping_name=payload.shipping_name, shipping_phone=payload.shipping_phone,
+            shipping_address=payload.shipping_address, access_token=secrets.token_urlsafe(24),
+        )
+        db.add(document)
+        try:
+            db.flush()
+        except IntegrityError:
+            db.rollback()
+            continue
+        for item, price, line_total in lines:
+            db.add(SalesDocumentLine(
+                organization_id=organization_id, document_id=document.id, product_id=item.product_id,
+                quantity=item.quantity, unit_price=price, discount_amount=Decimal("0"), line_total=line_total,
+            ))
+        db.commit(); db.refresh(document)
+        break
+    else:
+        raise HTTPException(status_code=500, detail="Could not allocate an order number, try again")
+
+    document = _load(db, organization_id, document.id)
+    return _public_view(document, products)
+
+
+@public_router.get("/{organization_id}/status/{access_token}", tags=["public-orders"])
+def public_order_status(organization_id: str, access_token: str, db: Db):
+    document = db.scalar(select(SalesDocument).options(selectinload(SalesDocument.lines)).where(
+        SalesDocument.organization_id == organization_id, SalesDocument.access_token == access_token))
+    if document is None:
+        raise HTTPException(status_code=404, detail="Order not found")
+    products = {p.id: p for p in db.scalars(select(Product).where(
+        Product.id.in_({l.product_id for l in document.lines} or {""})))}
+    return _public_view(document, products)

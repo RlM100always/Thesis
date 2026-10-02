@@ -18,6 +18,7 @@ from sqlalchemy.pool import StaticPool
 from api.accounting import seed_default_accounts
 from api.approvals import seed_default_rules
 from api.loyalty import seed_default_rule as seed_default_loyalty_rule
+from api.commission import seed_default_rule as seed_default_commission_rule
 from api.analytics_routes import router as analytics_router
 from api.app_routes import router as app_router
 from api.auth import get_current_user
@@ -32,12 +33,30 @@ from api.insights_advanced_routes import router as insights_advanced_router
 from api.accounting_routes import router as accounting_router
 from api.approval_routes import router as approval_router
 from api.stock_count_routes import router as stock_count_router
-from api.order_routes import router as order_router
+from api.order_routes import router as order_router, public_router as public_order_router
 from api.purchase_return_routes import router as purchase_return_router
 from api.reference_routes import router as reference_router
 from api.integration_routes import router as integration_router
 from api.loyalty_routes import router as loyalty_router
 from api.platform_routes import router as platform_router
+from api.shift_routes import router as shift_router
+from api.ticket_routes import router as ticket_router
+from api.lead_routes import router as lead_router
+from api.feedback_routes import router as feedback_router
+from api.notification_routes import router as notification_router
+from api.attendance_routes import router as attendance_router
+from api.leave_routes import router as leave_router
+from api.roster_routes import router as roster_router
+from api.commission_routes import router as commission_router
+from api.target_routes import router as target_router
+from api.delivery_routes import router as delivery_router
+from api.advance_routes import router as advance_router
+from api.payroll_routes import router as payroll_router
+from api.health_score_routes import router as health_score_router
+from api.mission_queue_routes import router as mission_queue_router
+from api.reservation_routes import router as reservation_router
+from api.team_chat_routes import router as team_chat_router
+from api.assistant_routes import router as assistant_router
 from api.bsmart_routes import router as bsmart_router
 from api.commerce_routes import router as commerce_router
 from api.data_import_routes import router as data_import_router
@@ -49,7 +68,7 @@ from api.permissions import ROLES
 
 ROUTERS = (
     auth_router, app_router, commerce_router, directory_router, finance_router,
-    data_import_router, analytics_router, bsmart_router, audit_router, batch_router, insights_router, bulk_import_router, planning_router, receivables_router, insights_advanced_router, accounting_router, approval_router, stock_count_router, order_router, purchase_return_router, reference_router, integration_router, loyalty_router, platform_router,
+    data_import_router, analytics_router, bsmart_router, audit_router, batch_router, insights_router, bulk_import_router, planning_router, receivables_router, insights_advanced_router, accounting_router, approval_router, stock_count_router, order_router, public_order_router, purchase_return_router, reference_router, integration_router, loyalty_router, platform_router, shift_router, ticket_router, lead_router, feedback_router, notification_router, attendance_router, leave_router, roster_router, commission_router, target_router, delivery_router, advance_router, payroll_router, health_score_router, mission_queue_router, reservation_router, team_chat_router, assistant_router,
 )
 
 
@@ -103,6 +122,8 @@ def world(engine):
         seed_default_rules(db, org_b.id)
         seed_default_loyalty_rule(db, org_a.id)
         seed_default_loyalty_rule(db, org_b.id)
+        seed_default_commission_rule(db, org_a.id)
+        seed_default_commission_rule(db, org_b.id)
         users = {}
         for role in ROLES:
             user = User(email=f"{role}@a.example", display_name=f"{role} A")

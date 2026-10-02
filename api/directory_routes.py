@@ -13,15 +13,17 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from .app_schemas import (
-    BranchCreate, BranchView, CustomerCreate, CustomerUpdate, CustomerView, StaffInvite, StaffInvited,
-    StaffUpdate, StaffView, SupplierCreate, SupplierView,
+    BranchCreate, BranchView, CustomerCreate, CustomerUpdate, CustomerView, StaffBranchesIn, StaffInvite,
+    StaffInvited, StaffUpdate, StaffView, SupplierCreate, SupplierView, WarehouseCreate, WarehouseView,
 )
 from .auth import CurrentMembership, CurrentUser
 from .config import get_settings
 from .database import get_db
-from .domain_models import AuditLog, Branch, Customer, LedgerEntry, Membership, Supplier, User, utcnow
+from .domain_models import (
+    AuditLog, Branch, Customer, LedgerEntry, Membership, MembershipBranch, Supplier, User, Warehouse, utcnow,
+)
 from .audit import record_audit
-from .permissions import require_permission
+from .permissions import assigned_branch_ids, require_permission
 from .security import new_setup_token
 
 SETUP_LINK_DAYS = 7
@@ -57,16 +59,28 @@ def create_branch(payload: BranchCreate, membership: CurrentMembership, user: Cu
 
 @router.get("/branches", response_model=list[BranchView], tags=["branches"])
 def list_branches(membership: CurrentMembership, db: Db):
-    return list(db.scalars(select(Branch).where(
+    """Branches this membership may work in -- the Branch Selector's data source.
+
+    A branch-scoped membership (``MembershipBranch`` rows present) sees only
+    its assigned branches; an unscoped one (the pre-ABAC default) still sees
+    every branch, unchanged from before.
+    """
+    query = select(Branch).where(
         Branch.organization_id == membership.organization_id, Branch.active.is_(True)
-    ).order_by(Branch.name)))
+    )
+    allowed = assigned_branch_ids(db, membership)
+    if allowed is not None:
+        query = query.where(Branch.id.in_(allowed))
+    return list(db.scalars(query.order_by(Branch.name)))
 
 
-def _staff_view(member: Membership, user: User) -> StaffView:
+def _staff_view(db: Session, member: Membership, user: User) -> StaffView:
+    branches = assigned_branch_ids(db, member)
     return StaffView(
         membership_id=member.id, user_id=user.id, email=user.email,
         display_name=user.display_name, role=member.role, active=member.active,
         pending_setup=user.password_hash is None,
+        assigned_branch_ids=sorted(branches) if branches else [],
     )
 
 
@@ -128,7 +142,7 @@ def invite_staff(payload: StaffInvite, membership: CurrentMembership, actor: Cur
         db.rollback()
         raise HTTPException(status_code=409, detail="User is already a member") from exc
     return StaffInvited(
-        **_staff_view(member, user).model_dump(), setup_token=raw, setup_expires_at=expires,
+        **_staff_view(db, member, user).model_dump(), setup_token=raw, setup_expires_at=expires,
     )
 
 
@@ -138,7 +152,7 @@ def list_staff(membership: CurrentMembership, db: Db):
     rows = db.execute(select(Membership, User).join(User).where(
         Membership.organization_id == membership.organization_id
     ).order_by(User.display_name)).all()
-    return [_staff_view(m, u) for m, u in rows]
+    return [_staff_view(db, m, u) for m, u in rows]
 
 
 @router.patch("/staff/{membership_id}", response_model=StaffView, tags=["staff"])
@@ -176,7 +190,7 @@ def update_staff(
             "staff.reactivated" if new_active else "staff.deactivated")
         _audit(db, membership, actor, action, target.id, **changes)
     db.commit()
-    return _staff_view(target, user)
+    return _staff_view(db, target, user)
 
 
 @router.post("/staff/{membership_id}/setup-link", response_model=StaffInvited, tags=["staff"])
@@ -208,8 +222,67 @@ def issue_setup_link(
     _audit(db, membership, actor, "staff.setup_link_issued", target.id)
     db.commit()
     return StaffInvited(
-        **_staff_view(target, user).model_dump(), setup_token=raw, setup_expires_at=expires,
+        **_staff_view(db, target, user).model_dump(), setup_token=raw, setup_expires_at=expires,
     )
+
+
+@router.put("/staff/{membership_id}/branches", response_model=StaffView, tags=["staff"])
+def set_staff_branches(
+    membership_id: str, payload: StaffBranchesIn, membership: CurrentMembership,
+    actor: CurrentUser, db: Db,
+):
+    """Restrict (or un-restrict) a staff member to specific branches (SRD 2.3 ABAC).
+
+    An empty list removes every restriction, which means org-wide access --
+    the same as a membership that was never scoped at all.
+    """
+    require_permission(membership, "staff:manage")
+    target, user = _target_membership(db, membership, membership_id)
+    valid_branch_ids = set(db.scalars(
+        select(Branch.id).where(Branch.organization_id == membership.organization_id)
+    ))
+    unknown = set(payload.branch_ids) - valid_branch_ids
+    if unknown:
+        raise HTTPException(status_code=422, detail=f"Unknown branch id(s): {sorted(unknown)}")
+    db.execute(
+        MembershipBranch.__table__.delete().where(MembershipBranch.membership_id == target.id)
+    )
+    for branch_id in set(payload.branch_ids):
+        db.add(MembershipBranch(membership_id=target.id, branch_id=branch_id))
+    _audit(db, membership, actor, "staff.branches_set", target.id, branch_ids=sorted(payload.branch_ids))
+    db.commit()
+    return _staff_view(db, target, user)
+
+
+@router.post("/warehouses", response_model=WarehouseView, tags=["branches"])
+def create_warehouse(payload: WarehouseCreate, membership: CurrentMembership, user: CurrentUser, db: Db):
+    require_permission(membership, "branches:write")
+    branch = db.get(Branch, payload.branch_id)
+    if branch is None or branch.organization_id != membership.organization_id:
+        raise HTTPException(status_code=404, detail="Branch not found")
+    warehouse = Warehouse(organization_id=membership.organization_id, **payload.model_dump())
+    db.add(warehouse)
+    try:
+        db.flush()
+        db.add(AuditLog(
+            organization_id=membership.organization_id, actor_user_id=user.id,
+            action="warehouse.created", entity_type="warehouse", entity_id=warehouse.id,
+        ))
+        db.commit()
+    except IntegrityError as exc:
+        db.rollback()
+        raise HTTPException(status_code=409, detail="Warehouse code already exists for this branch") from exc
+    return warehouse
+
+
+@router.get("/warehouses", response_model=list[WarehouseView], tags=["branches"])
+def list_warehouses(membership: CurrentMembership, db: Db, branch_id: str | None = Query(default=None)):
+    query = select(Warehouse).where(
+        Warehouse.organization_id == membership.organization_id, Warehouse.active.is_(True)
+    )
+    if branch_id:
+        query = query.where(Warehouse.branch_id == branch_id)
+    return list(db.scalars(query.order_by(Warehouse.name)))
 
 
 @router.post("/customers", response_model=CustomerView, tags=["customers-app"])
@@ -285,6 +358,63 @@ def update_customer(customer_id: str, payload: CustomerUpdate, membership: Curre
         LedgerEntry.organization_id == membership.organization_id, LedgerEntry.ledger_type == "receivable",
         LedgerEntry.party_type == "customer", LedgerEntry.party_id == customer.id))
     return CustomerView.model_validate(customer).model_copy(update={"balance": Decimal(str(owed or 0))})
+
+
+@router.get("/customers/{customer_id}/360", tags=["customers-app"])
+def customer_360(customer_id: str, membership: CurrentMembership, db: Db):
+    """Customer 360 (SRD Panel C02): one read model over everything the rest of
+    this file, loyalty, tickets, leads and feedback already track separately.
+    Pulls together existing data; nothing here is a new source of truth."""
+    require_permission(membership, "customers:read")
+    from .domain_models import Feedback, Lead, SalesOrder, SupportTicket
+    from .loyalty import balance as loyalty_balance
+
+    customer = db.scalar(select(Customer).where(
+        Customer.id == customer_id, Customer.organization_id == membership.organization_id))
+    if customer is None:
+        raise HTTPException(status_code=404, detail="Customer not found")
+
+    org_id = membership.organization_id
+    owed = db.scalar(select(func.coalesce(func.sum(LedgerEntry.amount_delta), 0)).where(
+        LedgerEntry.organization_id == org_id, LedgerEntry.ledger_type == "receivable",
+        LedgerEntry.party_type == "customer", LedgerEntry.party_id == customer_id))
+    recent_orders = db.scalars(
+        select(SalesOrder).where(SalesOrder.organization_id == org_id, SalesOrder.customer_id == customer_id)
+        .order_by(SalesOrder.sold_at.desc()).limit(10)
+    ).all()
+    lifetime_total = db.scalar(select(func.coalesce(func.sum(SalesOrder.total), 0)).where(
+        SalesOrder.organization_id == org_id, SalesOrder.customer_id == customer_id))
+    open_tickets = db.scalars(
+        select(SupportTicket).where(
+            SupportTicket.organization_id == org_id, SupportTicket.customer_id == customer_id,
+            SupportTicket.status.in_(("open", "pending")),
+        ).order_by(SupportTicket.created_at.desc())
+    ).all()
+    feedback_entries = db.scalars(
+        select(Feedback).where(Feedback.organization_id == org_id, Feedback.customer_id == customer_id)
+        .order_by(Feedback.created_at.desc()).limit(10)
+    ).all()
+    originating_lead = db.scalar(select(Lead).where(
+        Lead.organization_id == org_id, Lead.converted_customer_id == customer_id))
+
+    return {
+        "customer": CustomerView.model_validate(customer).model_copy(update={"balance": Decimal(str(owed or 0))}),
+        "lifetime_sales_total": Decimal(str(lifetime_total or 0)),
+        "recent_orders": [
+            {"id": o.id, "invoice_number": o.invoice_number, "sold_at": o.sold_at.isoformat(), "total": o.total}
+            for o in recent_orders
+        ],
+        "loyalty_balance": loyalty_balance(db, org_id, customer_id),
+        "open_tickets": [
+            {"id": t.id, "subject": t.subject, "status": t.status, "priority": t.priority}
+            for t in open_tickets
+        ],
+        "feedback": [
+            {"id": f.id, "score": f.score, "comment": f.comment, "created_at": f.created_at.isoformat()}
+            for f in feedback_entries
+        ],
+        "originated_from_lead_id": originating_lead.id if originating_lead else None,
+    }
 
 
 @router.post("/suppliers", response_model=SupplierView, tags=["suppliers"])

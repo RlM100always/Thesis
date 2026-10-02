@@ -20,7 +20,17 @@ export default function NotificationBell({ className = "" }) {
 
   const load = useCallback(() => {
     if (!orgId) return;
-    api.alerts(orgId).then(setData).catch(() => { /* the bell is a convenience; stay quiet if it fails */ });
+    Promise.all([
+      api.alerts(orgId).catch(() => ({ count: 0, alerts: [] })),
+      api.notifications(orgId, true).catch(() => []),
+    ]).then(([operational, notes]) => {
+      const fromNotes = notes.map((n) => ({
+        kind: `note-${n.id}`, href: "#/workforce",
+        severity: n.severity === "critical" ? "danger" : n.severity === "warning" ? "warn" : "info",
+        title: n.title,
+      }));
+      setData({ count: operational.count + notes.length, alerts: [...fromNotes, ...operational.alerts] });
+    }).catch(() => { /* the bell is a convenience; stay quiet if it fails */ });
   }, [orgId]);
 
   useEffect(() => {

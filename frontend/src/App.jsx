@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useState } from "react";
-import { Link, Navigate, NavLink, Route, HashRouter as Router, Routes, useLocation } from "react-router-dom";
+import { Link, Navigate, NavLink, Route, HashRouter as Router, Routes, useLocation, useSearchParams } from "react-router-dom";
 import { api } from "./api";
 import { AuthProvider, useAuth } from "./AuthContext";
 import { PermissionProvider, ROLE_LABELS, usePermissions } from "./PermissionContext";
@@ -60,16 +60,15 @@ const Onboarding = lazy(() => import("./pages/Onboarding"));
 const StorePage = lazy(() => import("./pages/Store"));
 const OrderStatusPage = lazy(() => import("./pages/OrderStatus"));
 const StoreAdminPage = lazy(() => import("./pages/StoreAdmin"));
+const ResearchPortal = lazy(() => import("./pages/ResearchPortal"));
 
 // HashRouter rather than BrowserRouter: the production build is served as
 // static files by FastAPI, and hash routing needs no server-side rewrite
 // rule for deep links to work.
 //
-// Navigation is split into two modes, not three flat groups. A shop owner
-// never needs to see "Model report" or "Research dataset" in the same list
-// as "বিক্রি" — those exist to show how the system was validated, not to run
-// a business. গবেষণা মোড keeps them one click away instead of hidden or
-// mixed in.
+// Navigation is one mode: the business sidebar. Research / thesis evaluation
+// lives at /research — a separate shell accessible to logged-in evaluator
+// accounts. Business owners never see the research nav.
 //
 // Each item names the permission needed to see it; the API enforces the same
 // permission, so hiding an item here is a convenience, not the control.
@@ -139,20 +138,6 @@ const BUSINESS_NAV = [
   },
 ];
 
-const RESEARCH_NAV = [
-  {
-    heading: "থিসিস মূল্যায়ন",
-    items: [
-      { to: "/bsmart", label: "B-SMART অ্যালগরিদম (R_t)", icon: "target" },
-      { to: "/models", label: "মডেল রিপোর্ট", icon: "fileText" },
-      { to: "/real-data-validation", label: "Real-data validation", icon: "shield" },
-      { to: "/customers", label: "গবেষণা ডেটাসেট", icon: "users" },
-      { to: "/whatif", label: "ঝুঁকি ক্যালকুলেটর", icon: "zap" },
-      { to: "/overview", label: "বিক্রি ওভারভিউ (synthetic)", icon: "pie" },
-    ],
-  },
-];
-
 // Phone bottom bar: the first four of these the person may use, then "আরও".
 const BOTTOM_ORDER = ["/app", "/sales", "/inventory", "/strategy", "/purchases", "/directory", "/products"];
 
@@ -193,7 +178,7 @@ function RouteLoading() {
 // session); until then the local prototype owner works without logging in.
 // The invite page must work for someone who has no account yet.
 function Shell() {
-  const { requiresLogin } = useAuth();
+  const { requiresLogin, user } = useAuth();
   const { pathname } = useLocation();
   const { loading, organizations, error, wizardActive } = useBusiness();
   if (pathname === "/accept-invite") return <AcceptInvite />;
@@ -211,6 +196,12 @@ function Shell() {
     );
   }
   if (PUBLIC_PATHS.has(pathname) || pathname.startsWith("/solutions/")) return <PublicSite />;
+  // The research portal is a separate shell for thesis evaluators. It requires
+  // a login but no org membership.
+  if (pathname.startsWith("/research")) {
+    if (requiresLogin) return <Login initialMode="login" />;
+    return <ResearchShell />;
+  }
   // Public marketing pages are always reachable. Protected work pages send an
   // expired or anonymous session straight to the business login form.
   if (requiresLogin) return <Login initialMode="login" />;
@@ -218,7 +209,13 @@ function Shell() {
   // business switcher, distinct visual theme -- so there is never a moment of
   // confusion about which "mode" is on screen. It doesn't care whether this
   // account has zero, one or many business memberships.
+  // Also auto-redirect platform admins away from /app to /platform so they
+  // never land on the Onboarding wizard (they have no business of their own).
   if (pathname.startsWith("/platform")) return <PlatformShell />;
+  // Platform admins with no business membership should go to /platform, not Onboarding.
+  if (!loading && user?.is_platform_admin && organizations.length === 0) {
+    return <Navigate to="/platform" replace />;
+  }
   // Signed in but no business yet (right after signing up): create one first.
   // wizardActive keeps the setup wizard open through its later steps even after
   // the organization itself already exists (see BusinessContext.jsx).
@@ -228,26 +225,82 @@ function Shell() {
 
 function PlatformShell() {
   const { user, signOut } = useAuth();
+  const [dark, setDark] = useState(false);
+
   if (!user?.is_platform_admin) {
     return (
-      <div className="platform-denied">
-        <Icon name="lock" size={32} />
-        <h2>এই পাতাটা আপনার জন্য না</h2>
-        <p>শুধু প্ল্যাটফর্ম অ্যাডমিন অ্যাকাউন্ট দিয়ে লগইন করলে এটা দেখা যাবে।</p>
-        <Link className="public-cta" to="/app">নিজের ব্যবসায় ফিরে যান</Link>
+      <div className="pa-denied">
+        <div className="pa-denied-card">
+          <div className="pa-denied-icon"><Icon name="lock" size={28} /></div>
+          <h2>অ্যাক্সেস নেই</h2>
+          <p>শুধু প্ল্যাটফর্ম অ্যাডমিন অ্যাকাউন্ট দিয়ে এই পাতা দেখা যায়।</p>
+          <Link className="pa-btn pa-btn-primary" to="/app">← ব্যবসায় ফিরুন</Link>
+        </div>
       </div>
     );
   }
+
+  return (
+    <div className={`pa-shell${dark ? " pa-dark" : ""}`}>
+      <header className="pa-topbar">
+        <div className="pa-topbar-brand">
+          <span className="pa-brand-mark"><img src="/bsmart-mark.svg" alt="B-SMART" /></span>
+          <div>
+            <span className="pa-brand-name">B-SMART</span>
+            <span className="pa-brand-sub">Platform command center</span>
+          </div>
+        </div>
+        <div className="pa-topbar-center">
+          <span className="pa-live-dot" />
+          <span className="pa-topbar-badge">Admin Console</span>
+          <span className="pa-topbar-user">{user.email}</span>
+        </div>
+        <div className="pa-topbar-right">
+          <button className="pa-topbar-btn" onClick={() => setDark(d => !d)} title={dark ? "লাইট মোড" : "ডার্ক মোড"}>
+            <Icon name={dark ? "sun" : "moon"} size={15} />
+          </button>
+          <Link className="pa-topbar-btn" to="/app">
+            <Icon name="home" size={15} /><span>ব্যবসায় ফিরুন</span>
+          </Link>
+          <button className="pa-topbar-btn pa-topbar-logout" onClick={signOut}>
+            <Icon name="logout" size={15} /><span>লগআউট</span>
+          </button>
+        </div>
+      </header>
+
+      <main className="pa-main">
+        <PlatformPage />
+      </main>
+    </div>
+  );
+}
+
+function ResearchShell() {
+  const { user, signOut } = useAuth();
   return (
     <div className="platform-shell">
       <header className="platform-topbar">
-        <div className="platform-brand"><img src="/bsmart-mark.svg" alt="" /><div><strong>B-SMART প্ল্যাটফর্ম অ্যাডমিন</strong><small>{user.email}</small></div></div>
+        <div className="platform-brand">
+          <img src="/bsmart-mark.svg" alt="" />
+          <div><strong>B-SMART গবেষণা পোর্টাল</strong><small>থিসিস মূল্যায়ন ও যাচাই</small></div>
+        </div>
         <div className="platform-topbar-actions">
-          <Link className="platform-exit" to="/app"><Icon name="chevronRight" size={14} style={{ transform: "rotate(180deg)" }} /> নিজের ব্যবসায় ফিরে যান</Link>
-          <button type="button" className="platform-exit" onClick={signOut}><Icon name="logout" size={14} />লগআউট</button>
+          <Link className="platform-exit" to="/app">
+            <Icon name="chevronRight" size={14} style={{ transform: "rotate(180deg)" }} /> মূল অ্যাপে ফিরুন
+          </Link>
+          {user && (
+            <button type="button" className="platform-exit" onClick={signOut}>
+              <Icon name="logout" size={14} />লগআউট
+            </button>
+          )}
         </div>
       </header>
-      <main className="platform-main"><PlatformPage /></main>
+      <main className="platform-main">
+        <Routes>
+          <Route path="/research" element={<ResearchPortal />} />
+          <Route path="/research/*" element={<ResearchPortal />} />
+        </Routes>
+      </main>
     </div>
   );
 }
@@ -256,7 +309,6 @@ function AppFrame() {
   const { pathname } = useLocation();
   const business = useBusiness();
   const { can, ready } = usePermissions();
-  const [mode, setMode] = useState("business");
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [lowStock, setLowStock] = useState(0);
   const [pendingApprovals, setPendingApprovals] = useState(0);
@@ -275,7 +327,7 @@ function AppFrame() {
     api.approvals(activeId).then((rows) => setPendingApprovals(rows.length)).catch(() => {});
   }, [activeId, can]);
 
-  const body = { mode, setMode, badges: { lowStock: lowStock > 0, approvals: pendingApprovals > 0 } };
+  const body = { badges: { lowStock: lowStock > 0, approvals: pendingApprovals > 0 } };
 
   return (
     <div className="app">
@@ -300,7 +352,6 @@ function AppFrame() {
           <Route path="/bsmart-actions" element={<Guard perm="bsmart:read" featureFlag="bsmart"><BSmartActions /></Guard>} />
           <Route path="/setup" element={<BusinessSetup />} />
           <Route path="/guide" element={<GuidePage />} />
-          <Route path="/platform" element={<PlatformPage />} />
           <Route path="/staff" element={<Guard perm="staff:read"><StaffPage /></Guard>} />
           <Route path="/workforce" element={<Guard featureFlag="workforce"><WorkforcePage /></Guard>} />
           <Route path="/crm" element={<Guard perm="tickets:read" featureFlag="crm"><CrmPage /></Guard>} />
@@ -345,6 +396,7 @@ function AppFrame() {
           </aside>
         </>
       )}
+
     </div>
   );
 }
@@ -388,13 +440,13 @@ function NotAllowed() {
   );
 }
 
-function SidebarBody({ mode, setMode, badges }) {
+function SidebarBody({ badges }) {
   const { simple, theme, toggleMode, toggleTheme } = useUi();
   const business = useBusiness();
   const { user, signOut } = useAuth();
   const { can, role } = usePermissions();
 
-  const groups = (mode === "business" ? BUSINESS_NAV : RESEARCH_NAV)
+  const groups = BUSINESS_NAV
     .map((group) => ({
       ...group,
       items: group.items.filter((item) =>
@@ -419,15 +471,6 @@ function SidebarBody({ mode, setMode, badges }) {
         )}
       </div>
 
-      <div className="mode-switch" role="tablist" aria-label="নেভিগেশন মোড">
-        <button type="button" className={mode === "business" ? "on" : ""} onClick={() => setMode("business")} role="tab" aria-selected={mode === "business"}>
-          ব্যবসা মোড
-        </button>
-        <button type="button" className={mode === "research" ? "on" : ""} onClick={() => setMode("research")} role="tab" aria-selected={mode === "research"}>
-          গবেষণা মোড
-        </button>
-      </div>
-
       <nav>
         {groups.map((group) => (
           <div key={group.heading} className="nav-group">
@@ -447,12 +490,6 @@ function SidebarBody({ mode, setMode, badges }) {
       </nav>
 
       <div className="toggles">
-        {mode === "research" && (
-          <button type="button" className="toggle" onClick={toggleMode} aria-pressed={!simple}>
-            {simple ? "সহজ ভাষা" : "প্রযুক্তিগত বিবরণ"}
-            <span className="toggle-hint">{simple ? "বিস্তারিত দেখুন" : "সহজ ভাষায় দেখুন"}</span>
-          </button>
-        )}
         <button type="button" className="toggle" onClick={toggleTheme}
                 aria-label="থিম পরিবর্তন করুন">
           {theme === "dark" ? "🌙 ডার্ক" : "☀️ লাইট"}
@@ -483,10 +520,8 @@ function SidebarBody({ mode, setMode, badges }) {
             <NavLink to="/login"><Icon name="key" size={14} />লগইন / নতুন অ্যাকাউন্ট</NavLink>
           </div>
         )}
-        {mode === "business" ? (
-          <>দৈনন্দিন ব্যবহারের বাইরে? <button type="button" className="link-btn" onClick={() => setMode("research")}>গবেষণা ও মডেল বিস্তারিত →</button></>
-        ) : (
-          <>থিসিস মূল্যায়নের জন্য। এটি দৈনিক ব্যবহারের অংশ নয়।</>
+        {role === "evaluator" && (
+          <Link to="/research" className="link-btn">গবেষণা পোর্টাল →</Link>
         )}
       </div>
     </>

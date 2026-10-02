@@ -128,8 +128,8 @@ export default function PurchaseReturnsPage() {
     { key: "total", label: "দাবি", align: "right", render: (c) => money(c.total) },
     { key: "status", label: "অবস্থা", render: (c) => <Badge tone={STATUS[c.status]?.[1]}>{STATUS[c.status]?.[0] || c.status}</Badge> },
     { key: "action", label: "কাজ", align: "right", render: (c) => <>
-      {c.status === "submitted" && can("purchase_returns:dispatch") && <Button size="sm" icon="truck" loading={busy} onClick={() => dispatch(c)}>Dispatch</Button>}
-      {c.status === "dispatched" && can("purchase_returns:settle") && <Button size="sm" icon="check" onClick={() => startCredit(c)}>Credit note</Button>}
+      {c.status === "submitted" && can("purchase_returns:dispatch") && <Button size="sm" icon="truck" loading={busy} onClick={() => dispatch(c)}>পাঠানো হয়েছে লিখুন</Button>}
+      {c.status === "dispatched" && can("purchase_returns:settle") && <Button size="sm" icon="check" onClick={() => startCredit(c)}>ক্রেডিট নোট নিন</Button>}
       {c.status === "settled" && <span className="muted">{c.credit_note_number}</span>}
     </> },
   ];
@@ -173,7 +173,7 @@ export default function PurchaseReturnsPage() {
               </Card>;
             })}
           </div>
-          <Notice tone="info">Claim তৈরি করলে stock কমবে না। মাল সত্যিই পাঠানোর পরে <strong>Dispatch</strong> চাপলে stock কমবে।</Notice>
+          <Notice tone="info">ক্লেইম তৈরি করলে স্টক কমবে না। মাল সত্যিই পাঠানোর পরে <strong>পাঠানো হয়েছে লিখুন</strong> চাপলে স্টক কমবে।</Notice>
           {formError && <Notice tone="danger">{formError}</Notice>}
         </form>
       </Modal>

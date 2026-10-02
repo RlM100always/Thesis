@@ -3,14 +3,12 @@ import { api } from "../api";
 import { useBusiness } from "../BusinessContext";
 import { useConfirm } from "../components/ConfirmDialog";
 import { explain } from "../errors";
-import { dateTimeBn, money, num } from "../format";
+import { dateTimeBn, num } from "../format";
 import { usePermissions } from "../PermissionContext";
 import DataTable from "../ui/DataTable";
-import { Badge, Button, Card, EmptyState, Field, Notice, PageHeader, Segmented } from "../ui/kit";
+import { Badge, Button, Card, EmptyState, Field, Notice, PageHeader } from "../ui/kit";
 import { useToast } from "../ui/Toast";
 import useBranch from "../useBranch";
-
-const STATUS_LABEL = { open: "চলছে", completed: "শেষ" };
 
 // Snapshot what the system thinks is on the shelf, enter what's actually there,
 // apply the difference as one reviewed batch — not silent one-off corrections.

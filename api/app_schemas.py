@@ -11,6 +11,9 @@ class UserView(BaseModel):
     id: str
     email: str
     display_name: str
+    phone: str | None = None
+    avatar_data_url: str | None = None
+    mfa_enabled: bool = False
     is_platform_admin: bool = False
 
 
@@ -37,6 +40,9 @@ class OrganizationView(BaseModel):
     uses_expiry: bool = False
     address: str | None = None
     phone: str | None = None
+    # Platform-admin module toggles (api/platform_routes.py FEATURE_FLAGS).
+    # A key absent from this dict means "enabled" -- see Organization model.
+    feature_flags: dict[str, bool] = {}
     vat_reg_no: str | None = None
     receipt_footer: str | None = None
     business_mode: str = "products"
@@ -224,6 +230,28 @@ class SalesDocumentInvoice(BaseModel):
     payments: list[SalePaymentCreate] = Field(default_factory=list, max_length=10)
 
 
+class PublicOrderItem(BaseModel):
+    product_id: str
+    quantity: Decimal = Field(gt=0, max_digits=14, decimal_places=3)
+
+
+class PublicOrderCreate(BaseModel):
+    """What an anonymous online buyer submits at checkout.
+
+    No price, discount, or customer tier is accepted from the client — every
+    line is priced server-side off the product's current selling price, the
+    same way a walk-in sale is, so a tampered request body can never change
+    what the shop is paid.
+    """
+
+    branch_id: str | None = None
+    shipping_name: str = Field(min_length=1, max_length=160)
+    shipping_phone: str = Field(min_length=4, max_length=32)
+    shipping_address: str = Field(min_length=1, max_length=1000)
+    notes: str | None = Field(default=None, max_length=1000)
+    items: list[PublicOrderItem] = Field(min_length=1, max_length=50)
+
+
 class BranchCreate(BaseModel):
     code: str = Field(min_length=1, max_length=30)
     name: str = Field(min_length=2, max_length=120)
@@ -236,6 +264,24 @@ class BranchView(BranchCreate):
     model_config = ConfigDict(from_attributes=True)
     id: str
     active: bool
+
+
+class WarehouseCreate(BaseModel):
+    branch_id: str
+    code: str = Field(min_length=1, max_length=30)
+    name: str = Field(min_length=2, max_length=120)
+    is_default: bool = False
+
+
+class WarehouseView(WarehouseCreate):
+    model_config = ConfigDict(from_attributes=True)
+    id: str
+    organization_id: str
+    active: bool
+
+
+class StaffBranchesIn(BaseModel):
+    branch_ids: list[str] = Field(default_factory=list)
 
 
 class StaffInvite(BaseModel):
@@ -255,6 +301,9 @@ class StaffView(BaseModel):
     active: bool
     # True until the person has set a password from their invite link.
     pending_setup: bool = False
+    # Empty means org-wide access (SRD 2.3 ABAC default); non-empty narrows
+    # this membership to only these branches.
+    assigned_branch_ids: list[str] = Field(default_factory=list)
 
 
 class StaffInvited(StaffView):
@@ -309,6 +358,373 @@ class SupplierCreate(BaseModel):
 class SupplierView(SupplierCreate):
     model_config = ConfigDict(from_attributes=True)
     id: str
+
+
+class TicketCreate(BaseModel):
+    subject: str = Field(min_length=2, max_length=200)
+    category: str = Field(default="general", max_length=40)
+    priority: str = Field(default="normal", pattern=r"^(low|normal|high|urgent)$")
+    branch_id: str | None = None
+    customer_id: str | None = None
+
+
+class TicketUpdate(BaseModel):
+    status: str | None = Field(default=None, pattern=r"^(open|pending|resolved|closed)$")
+    priority: str | None = Field(default=None, pattern=r"^(low|normal|high|urgent)$")
+    assigned_to_user_id: str | None = None
+
+
+class TicketMessageCreate(BaseModel):
+    body: str = Field(min_length=1, max_length=4000)
+    internal: bool = False
+
+
+class TicketMessageView(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: str
+    author_user_id: str
+    body: str
+    internal: bool
+    created_at: datetime
+
+
+class TeamMessageCreate(BaseModel):
+    body: str = Field(min_length=1, max_length=2000)
+    branch_id: str | None = None
+
+
+class TeamMessageView(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: str
+    user_id: str
+    author_name: str
+    branch_id: str | None
+    body: str
+    created_at: datetime
+
+
+class TicketView(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: str
+    subject: str
+    category: str
+    priority: str
+    status: str
+    branch_id: str | None
+    customer_id: str | None
+    created_by_user_id: str
+    assigned_to_user_id: str | None
+    created_at: datetime
+    resolved_at: datetime | None
+
+
+class LeadCreate(BaseModel):
+    name: str = Field(min_length=2, max_length=160)
+    phone: str | None = Field(default=None, max_length=30)
+    source: str | None = Field(default=None, max_length=60)
+    estimated_value: Decimal | None = Field(default=None, ge=0, max_digits=14, decimal_places=2)
+    owner_user_id: str | None = None
+
+
+class LeadUpdate(BaseModel):
+    stage: str | None = Field(default=None, pattern=r"^(new|qualified|quoted|won|lost)$")
+    estimated_value: Decimal | None = Field(default=None, ge=0, max_digits=14, decimal_places=2)
+    owner_user_id: str | None = None
+    lost_reason: str | None = Field(default=None, max_length=200)
+
+
+class LeadActivityCreate(BaseModel):
+    note: str = Field(min_length=1, max_length=2000)
+
+
+class LeadActivityView(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: str
+    author_user_id: str
+    note: str
+    created_at: datetime
+
+
+class LeadView(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: str
+    name: str
+    source: str | None
+    stage: str
+    estimated_value: Decimal | None
+    owner_user_id: str | None
+    lost_reason: str | None
+    converted_customer_id: str | None
+    created_at: datetime
+    closed_at: datetime | None
+
+
+class FeedbackCreate(BaseModel):
+    score: int = Field(ge=0, le=10)
+    comment: str | None = Field(default=None, max_length=2000)
+    customer_id: str | None = None
+    sales_order_id: str | None = None
+
+
+class FeedbackView(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: str
+    score: int
+    comment: str | None
+    customer_id: str | None
+    sales_order_id: str | None
+    follow_up_ticket_id: str | None
+    created_at: datetime
+
+
+class NotificationView(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: str
+    category: str
+    severity: str
+    title: str
+    body: str | None
+    link_type: str | None
+    link_id: str | None
+    read_at: datetime | None
+    snoozed_until: datetime | None
+    created_at: datetime
+
+
+class AttendanceCheckIn(BaseModel):
+    branch_id: str | None = None
+    note: str | None = Field(default=None, max_length=300)
+
+
+class AttendanceCorrection(BaseModel):
+    user_id: str
+    branch_id: str | None = None
+    check_in_at: datetime
+    check_out_at: datetime | None = None
+    note: str = Field(min_length=1, max_length=300)
+
+
+class AttendanceView(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: str
+    user_id: str
+    branch_id: str | None
+    check_in_at: datetime
+    check_out_at: datetime | None
+    source: str
+    corrects_record_id: str | None
+    note: str | None
+
+
+class LeaveRequestCreate(BaseModel):
+    leave_type: str = Field(default="casual", max_length=30)
+    start_date: date
+    end_date: date
+    reason: str | None = Field(default=None, max_length=300)
+
+    @model_validator(mode="after")
+    def _dates_make_sense(self):
+        if self.end_date < self.start_date:
+            raise ValueError("end_date must be on or after start_date")
+        return self
+
+
+class LeaveDecision(BaseModel):
+    status: str = Field(pattern=r"^(approved|rejected)$")
+    reason: str | None = Field(default=None, max_length=300)
+
+
+class LeaveRequestView(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: str
+    user_id: str
+    leave_type: str
+    start_date: date
+    end_date: date
+    reason: str | None
+    status: str
+    decided_by_user_id: str | None
+    decided_at: datetime | None
+    decision_reason: str | None
+
+
+class RosterShiftCreate(BaseModel):
+    user_id: str
+    branch_id: str
+    shift_date: date
+    start_time: str = Field(pattern=r"^([01]\d|2[0-3]):[0-5]\d$")
+    end_time: str = Field(pattern=r"^([01]\d|2[0-3]):[0-5]\d$")
+    station: str | None = Field(default=None, max_length=60)
+
+    @model_validator(mode="after")
+    def _end_after_start(self):
+        if self.end_time <= self.start_time:
+            raise ValueError("end_time must be after start_time")
+        return self
+
+
+class RosterShiftView(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: str
+    user_id: str
+    branch_id: str
+    shift_date: date
+    start_time: str
+    end_time: str
+    station: str | None
+
+
+class CommissionRuleUpdate(BaseModel):
+    rate_percent: Decimal | None = Field(default=None, ge=0, le=100, max_digits=5, decimal_places=2)
+    active: bool | None = None
+
+
+class CommissionEntryView(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: str
+    sales_order_id: str
+    amount: Decimal
+    reason: str
+    occurred_at: datetime
+
+
+class SalesTargetCreate(BaseModel):
+    user_id: str
+    period_start: date
+    period_end: date
+    target_amount: Decimal = Field(gt=0, max_digits=14, decimal_places=2)
+
+    @model_validator(mode="after")
+    def _period_makes_sense(self):
+        if self.period_end < self.period_start:
+            raise ValueError("period_end must be on or after period_start")
+        return self
+
+
+class SalesTargetUpdate(BaseModel):
+    target_amount: Decimal = Field(gt=0, max_digits=14, decimal_places=2)
+
+
+class SalesTargetView(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: str
+    user_id: str
+    period_start: date
+    period_end: date
+    target_amount: Decimal
+
+
+class DeliveryCreate(BaseModel):
+    sales_order_id: str
+    rider_user_id: str
+    cod_amount_expected: Decimal = Field(default=Decimal("0"), ge=0, max_digits=14, decimal_places=2)
+
+
+class DeliveryComplete(BaseModel):
+    status: str = Field(pattern=r"^(delivered|failed)$")
+    cod_collected: Decimal | None = Field(default=None, ge=0, max_digits=14, decimal_places=2)
+    proof_note: str | None = Field(default=None, max_length=300)
+    failure_reason: str | None = Field(default=None, max_length=300)
+
+
+class DeliveryView(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: str
+    branch_id: str
+    sales_order_id: str
+    rider_user_id: str
+    status: str
+    cod_amount_expected: Decimal
+    cod_amount_collected: Decimal | None
+    proof_note: str | None
+    failure_reason: str | None
+    delivered_at: datetime | None
+
+
+class CODHandoverCreate(BaseModel):
+    shift_id: str
+    handed_over_amount: Decimal = Field(ge=0, max_digits=14, decimal_places=2)
+
+
+class CODHandoverView(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: str
+    delivery_id: str
+    shift_id: str
+    handed_over_amount: Decimal
+    shortage_amount: Decimal
+    received_by_user_id: str
+
+
+class StaffAdvanceCreate(BaseModel):
+    user_id: str
+    amount: Decimal = Field(gt=0, max_digits=14, decimal_places=2)
+    reason: str | None = Field(default=None, max_length=300)
+
+
+class StaffAdvanceRepay(BaseModel):
+    amount: Decimal = Field(gt=0, max_digits=14, decimal_places=2)
+
+
+class StaffAdvanceView(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: str
+    user_id: str
+    amount: Decimal
+    reason: str | None
+    status: str
+    issued_at: datetime
+
+
+class PayrollRunCreate(BaseModel):
+    period_start: date
+    period_end: date
+
+    @model_validator(mode="after")
+    def _period_makes_sense(self):
+        if self.period_end < self.period_start:
+            raise ValueError("period_end must be on or after period_start")
+        return self
+
+
+class PayrollLineView(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: str
+    user_id: str
+    base_salary: Decimal
+    commission_amount: Decimal
+    advance_deduction: Decimal
+    net_pay: Decimal
+
+
+class PayrollRunView(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: str
+    period_start: date
+    period_end: date
+    status: str
+    approved_at: datetime | None
+    paid_at: datetime | None
+
+
+class MembershipSalaryUpdate(BaseModel):
+    base_salary: Decimal | None = Field(default=None, ge=0, max_digits=14, decimal_places=2)
+
+
+class ReservationCreate(BaseModel):
+    sales_document_id: str
+    hold_hours: int = Field(default=24, ge=1, le=720)
+
+
+class ReservationView(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: str
+    branch_id: str
+    product_id: str
+    sales_document_id: str
+    quantity: Decimal
+    status: str
+    expires_at: datetime
 
 
 class PurchaseItemCreate(BaseModel):

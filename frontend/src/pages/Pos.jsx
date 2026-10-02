@@ -439,7 +439,7 @@ export default function SalesPage() {
                       <label className="grow" style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13 }}>
                         ছাড় ৳
                         <input type="number" min="0" step="0.01" value={l.discount || ""} placeholder="০"
-                               onChange={(e) => updateLine(l.product_id, { discount: e.target.value })} style={{ minHeight: 40, width: 90 }}
+                               onChange={(e) => updateLine(l.product_id, { discount: e.target.value })} style={{ minHeight: 48, width: 90 }}
                                aria-label={`${l.name}-এর ছাড়`} />
                       </label>
                       <Button variant="ghost" size="sm" icon="trash" onClick={() => removeLine(l.product_id)} aria-label={`${l.name} বাদ দিন`} />

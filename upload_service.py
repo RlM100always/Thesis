@@ -468,6 +468,62 @@ def train_dynamic_churn(token: str, mapping: dict, horizon_days: int = 90) -> di
     return result
 
 
+def recommendations_for(token: str, mapping: dict) -> dict:
+    """B-SMART-style retention recommendations, computed on this upload's own
+    customers -- same utility formula the live multi-tenant app uses
+    (api/analytics_routes.py: U(a) = expected_recovery - contact_cost), not a
+    separate invented one.
+
+    Reorder-type recommendations are deliberately NOT produced here: they need
+    per-product stock, reorder level, lead time and cost data this upload's
+    four-column transaction schema has no place for. Promising a reorder list
+    from data that cannot support one would be exactly the kind of fabricated
+    completion this project refuses to do.
+    """
+    scored = score_upload(token, mapping)
+    contact_cost = 5.0
+    retention_uplift = 0.12  # matches analytics_routes.py's live constant
+
+    actions = []
+    for row in scored["rows"]:
+        if not row["already_lapsed"] or row["monetary"] <= 0:
+            continue
+        expected_recovery = row["avg_order_value"] * retention_uplift
+        utility = expected_recovery - contact_cost
+        actions.append({
+            "type": "retention",
+            "customer_id": row["customer_id"],
+            "inactive_days": row["inactive_days"],
+            "lifetime_value": round(row["monetary"], 2),
+            "expected_recovery_bdt": round(expected_recovery, 2),
+            "contact_cost_bdt": contact_cost,
+            "utility_bdt": round(utility, 2),
+            "reason": (
+                f"{row['inactive_days']} days inactive, lifetime value ৳{row['monetary']:.0f}. "
+                f"Expected recovery ৳{expected_recovery:.0f} minus ৳{contact_cost:.0f} contact cost."
+            ),
+            "confidence": "baseline",
+        })
+    actions.sort(key=lambda a: a["utility_bdt"], reverse=True)
+    worthwhile = [a for a in actions if a["utility_bdt"] > 0]
+
+    return {
+        "token": token,
+        "summary": {
+            "lapsed_customers": len(actions),
+            "worthwhile_actions": len(worthwhile),
+            "total_expected_recovery_bdt": round(sum(a["expected_recovery_bdt"] for a in worthwhile), 2),
+        },
+        "note": (
+            "This file has no marketing-consent column, so every action here is "
+            "advisory only -- check the customer actually agreed to be contacted "
+            "before reaching out. A live B-SMART business account tracks consent "
+            "per customer and excludes anyone who hasn't opted in automatically."
+        ),
+        "actions": actions,
+    }
+
+
 def export_csv(token: str, mapping: dict) -> str:
     """Scored rows as CSV text. utf-8-sig is applied by the HTTP layer."""
     result = score_upload(token, mapping)

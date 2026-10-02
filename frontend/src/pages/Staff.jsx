@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "../api";
 import { useAuth } from "../AuthContext";
 import { useBusiness } from "../BusinessContext";
@@ -10,8 +10,96 @@ import Icon from "../ui/Icon";
 import { Avatar, Badge, Button, Card, CopyField, EmptyState, Field, Notice, PageHeader } from "../ui/kit";
 import { useToast } from "../ui/Toast";
 
-const ROLE_ORDER = ["manager", "cashier", "accountant", "stock_keeper", "viewer", "evaluator", "owner"];
+const ROLE_ORDER = ["manager", "cashier", "accountant", "stock_keeper", "rider", "viewer", "evaluator", "owner"];
 const EMPTY = { display_name: "", email: "", role: "cashier" };
+const CHAT_POLL_MS = 5000;
+
+function TeamChatCard({ orgId, currentUserId }) {
+  const toast = useToast();
+  const [messages, setMessages] = useState(null);
+  const [draft, setDraft] = useState("");
+  const [sending, setSending] = useState(false);
+  const listRef = useRef(null);
+  const lastIdRef = useRef(null);
+
+  const poll = useCallback(async () => {
+    if (!orgId) return;
+    try {
+      const fresh = await api.teamMessages(orgId, lastIdRef.current);
+      if (fresh.length === 0) return;
+      setMessages((prev) => [...(prev || []), ...fresh]);
+      lastIdRef.current = fresh[fresh.length - 1].id;
+    } catch {
+      // silent -- a missed poll tick isn't worth interrupting the page with
+    }
+  }, [orgId]);
+
+  useEffect(() => {
+    if (!orgId) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const initial = await api.teamMessages(orgId);
+        if (cancelled) return;
+        setMessages(initial);
+        if (initial.length) lastIdRef.current = initial[initial.length - 1].id;
+      } catch (e) {
+        if (!cancelled) { toast.error(explain(e)); setMessages([]); }
+      }
+    })();
+    const timer = setInterval(poll, CHAT_POLL_MS);
+    return () => { cancelled = true; clearInterval(timer); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [orgId]);
+
+  useEffect(() => {
+    if (listRef.current) listRef.current.scrollTop = listRef.current.scrollHeight;
+  }, [messages]);
+
+  async function send(e) {
+    e.preventDefault();
+    const body = draft.trim();
+    if (!body) return;
+    setSending(true);
+    try {
+      const sent = await api.postTeamMessage(orgId, body);
+      setMessages((prev) => [...(prev || []), sent]);
+      lastIdRef.current = sent.id;
+      setDraft("");
+    } catch (err) {
+      toast.error(explain(err));
+    } finally {
+      setSending(false);
+    }
+  }
+
+  return (
+    <Card title="টিম চ্যাট" subtitle="এই ব্যবসার সব সক্রিয় কর্মী একসাথে এখানে কথা বলতে পারবেন।">
+      <div ref={listRef} className="team-chat-list" role="log" aria-live="polite">
+        {messages === null && <p className="hint">লোড হচ্ছে...</p>}
+        {messages !== null && messages.length === 0 && (
+          <EmptyState icon="mail" title="এখনো কোনো বার্তা নেই" hint="টিমকে প্রথম বার্তা পাঠান।" />
+        )}
+        {messages?.map((m) => (
+          <div key={m.id} className={`team-chat-bubble ${m.user_id === currentUserId ? "me" : ""}`}>
+            <div className="team-chat-meta">
+              <strong>{m.author_name}</strong>
+              <small>{new Date(m.created_at).toLocaleString("bn-BD", { hour: "2-digit", minute: "2-digit", day: "numeric", month: "short" })}</small>
+            </div>
+            <div className="team-chat-body">{m.body}</div>
+          </div>
+        ))}
+      </div>
+      <form className="team-chat-input" onSubmit={send}>
+        <input
+          value={draft} onChange={(e) => setDraft(e.target.value)}
+          placeholder="বার্তা লিখুন..." maxLength={2000} autoComplete="off"
+        />
+        <Button type="submit" icon="chevronRight" loading={sending} disabled={!draft.trim()}>পাঠান</Button>
+      </form>
+    </Card>
+  );
+}
 
 // The link a new person opens. Built from the current page so it works on any host.
 function inviteLink(token) {
@@ -197,6 +285,8 @@ export default function StaffPage() {
           </form>
         </Card>
       )}
+
+      {active?.feature_flags?.team_chat !== false && <TeamChatCard orgId={orgId} currentUserId={user?.id} />}
 
       <Card pad={false} title={`সদস্য${staff ? ` (${staff.length})` : ""}`}>
         <DataTable

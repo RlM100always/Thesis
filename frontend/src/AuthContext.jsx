@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { api } from "./api";
-import { AUTH_REQUIRED_EVENT, getTokens } from "./auth";
+import { AUTH_REQUIRED_EVENT } from "./auth";
 
 const AuthContext = createContext(null);
 
@@ -19,16 +19,36 @@ export function AuthProvider({ children }) {
   }, []);
 
   useEffect(() => {
-    if (getTokens()) api.me().then(setUser).catch(() => {});
+    // Always ask, not just when a token is saved: the backend's dev-mode
+    // bypass (AUTH_MODE=development) answers /auth/me for an anonymous
+    // request too, as the local prototype owner -- including that owner's
+    // real is_platform_admin flag. Without this, someone who never explicitly
+    // logged in would never see the platform-admin nav link, even though the
+    // server has been granting them that access all along. In production
+    // mode (a real deployment) this simply 401s and leaves user as null,
+    // same as before.
+    api.me().then(setUser).catch(() => {});
   }, []);
 
-  const finish = useCallback((hash = "#/") => {
+  const finish = useCallback((hash = "#/app") => {
     window.location.hash = hash;
     window.location.reload();
   }, []);
 
+  // On success: signs in and navigates away (returns nothing meaningful).
+  // On MFA challenge: returns { mfa_required: true, mfa_token } and does NOT
+  // sign in yet — the caller (Login.jsx) collects the code and calls
+  // completeMfa with it.
   const signIn = useCallback(async (email, password) => {
-    setUser(await api.login(email, password));
+    const result = await api.login(email, password);
+    if (result?.mfa_required) return result;
+    setUser(result);
+    finish();
+    return undefined;
+  }, [finish]);
+
+  const completeMfa = useCallback(async (mfaToken, code) => {
+    setUser(await api.verifyMfa(mfaToken, code));
     finish();
   }, [finish]);
 
@@ -46,9 +66,11 @@ export function AuthProvider({ children }) {
     finish("#/login");
   }, [finish]);
 
+  const updateUser = useCallback((patch) => setUser((prev) => (prev ? { ...prev, ...patch } : prev)), []);
+
   const value = useMemo(
-    () => ({ user, requiresLogin, signIn, signUp, signOut }),
-    [user, requiresLogin, signIn, signUp, signOut],
+    () => ({ user, requiresLogin, signIn, completeMfa, signUp, signOut, updateUser }),
+    [user, requiresLogin, signIn, completeMfa, signUp, signOut, updateUser],
   );
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

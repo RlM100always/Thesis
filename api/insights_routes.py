@@ -163,8 +163,11 @@ def alerts(membership: CurrentMembership, db: Db):
 
 # ── daily cash count ─────────────────────────────────────────────────────────
 
-def _cash_day(db: Session, org_id: str, branch_id: str, day: date) -> dict[str, Decimal]:
-    start, end = _day_bounds(day)
+def cash_window(db: Session, org_id: str, branch_id: str, start: datetime, end: datetime) -> dict[str, Decimal]:
+    """The same five lines ``_cash_day`` counts, but over an arbitrary
+    [start, end) window rather than a calendar day -- shared with
+    ``api/shift_routes.py`` so a cashier shift's expected cash is computed
+    the same honest way as the branch's whole-day close."""
     cash_sales = db.scalar(select(func.coalesce(func.sum(Payment.amount), 0)).join(
         SalesOrder, SalesOrder.id == Payment.order_id).where(
         Payment.organization_id == org_id, Payment.method == "cash", Payment.status == "completed",
@@ -191,7 +194,12 @@ def _cash_day(db: Session, org_id: str, branch_id: str, day: date) -> dict[str, 
     }
 
 
-def _expected(opening: Decimal, parts: dict[str, Decimal]) -> Decimal:
+def _cash_day(db: Session, org_id: str, branch_id: str, day: date) -> dict[str, Decimal]:
+    start, end = _day_bounds(day)
+    return cash_window(db, org_id, branch_id, start, end)
+
+
+def expected_cash(opening: Decimal, parts: dict[str, Decimal]) -> Decimal:
     return opening + parts["cash_sales"] + parts["baki_collected"] - parts["expenses"] - parts["supplier_payments"] - parts["refunds"]
 
 
@@ -219,7 +227,7 @@ def cash_day(membership: CurrentMembership, db: Db, branch_id: str, day: date | 
     opening = closed.opening_cash if closed else suggested_opening
     return {
         "date": day.isoformat(), "branch_id": branch_id, **parts,
-        "opening_cash": opening, "suggested_opening": suggested_opening, "expected_cash": _expected(opening, parts),
+        "opening_cash": opening, "suggested_opening": suggested_opening, "expected_cash": expected_cash(opening, parts),
         "closed": None if closed is None else {
             "id": closed.id, "counted_cash": closed.counted_cash, "variance": closed.variance,
             "note": closed.note, "closed_at": closed.created_at.isoformat(),
@@ -244,7 +252,7 @@ def cash_close(body: CashCloseIn, membership: CurrentMembership, db: Db):
     if body.business_date > _dhaka_today():
         raise HTTPException(status_code=422, detail="Cannot close a day in the future")
     parts = _cash_day(db, org_id, body.branch_id, body.business_date)
-    expected = _expected(body.opening_cash, parts)
+    expected = expected_cash(body.opening_cash, parts)
     variance = body.counted_cash - expected
     if variance != 0 and not (body.note and body.note.strip()):
         raise HTTPException(status_code=422, detail="A note is required when the count does not match the books")

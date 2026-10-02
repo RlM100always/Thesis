@@ -1,0 +1,302 @@
+{
+  "id": "EXP-D093B701",
+  "name": "Grocery Test — ML Training",
+  "description": "Test full ML pipeline on grocery dataset",
+  "vertical": "grocery",
+  "dataset_source": "built-in",
+  "dataset_path": "normalized_data\\verticals\\grocery\\grocery_dataset.csv",
+  "config": {
+    "train_ratio": 0.7,
+    "val_ratio": 0.15,
+    "test_ratio": 0.15,
+    "cv_folds": 5,
+    "random_seed": 42,
+    "churn_threshold_days": 90,
+    "stratified": true
+  },
+  "locked": false,
+  "status": "completed",
+  "results": {
+    "detected_vertical": "grocery",
+    "universal": {
+      "dataset_summary": {
+        "rows": 30000,
+        "customers": 4496,
+        "products": 25,
+        "date_range": [
+          "2022-01-01",
+          "2024-12-31"
+        ],
+        "vertical": "grocery"
+      },
+      "rfm": {
+        "recency_mean": 167.3808,
+        "frequency_mean": 6.6726,
+        "monetary_mean": 2139.4132,
+        "recency_median": 117.0
+      },
+      "churn": {
+        "threshold_days": 90,
+        "churn_rate": 0.5794,
+        "churned_count": 2605,
+        "active_count": 1891
+      },
+      "forecast": {
+        "monthly_points": 36,
+        "seasonal_naive_wape": 0.0553,
+        "monthly_revenue": [
+          {
+            "month": "2022-01",
+            "revenue": 263359.0
+          },
+          {
+            "month": "2022-02",
+            "revenue": 210228.46
+          },
+          {
+            "month": "2022-03",
+            "revenue": 271748.43
+          },
+          {
+            "month": "2022-04",
+            "revenue": 273563.77
+          },
+          {
+            "month": "2022-05",
+            "revenue": 272892.29
+          },
+          {
+            "month": "2022-06",
+            "revenue": 277649.09
+          },
+          {
+            "month": "2022-07",
+            "revenue": 299476.44
+          },
+          {
+            "month": "2022-08",
+            "revenue": 270935.47
+          },
+          {
+            "month": "2022-09",
+            "revenue": 268868.97
+          },
+          {
+            "month": "2022-10",
+            "revenue": 284461.01
+          },
+          {
+            "month": "2022-11",
+            "revenue": 249240.69
+          },
+          {
+            "month": "2022-12",
+            "revenue": 251057.21
+          },
+          {
+            "month": "2023-01",
+            "revenue": 279323.98
+          },
+          {
+            "month": "2023-02",
+            "revenue": 249016.97
+          },
+          {
+            "month": "2023-03",
+            "revenue": 263753.76
+          },
+          {
+            "month": "2023-04",
+            "revenue": 303858.2
+          },
+          {
+            "month": "2023-05",
+            "revenue": 266119.28
+          },
+          {
+            "month": "2023-06",
+            "revenue": 253800.19
+          },
+          {
+            "month": "2023-07",
+            "revenue": 262122.75
+          },
+          {
+            "month": "2023-08",
+            "revenue": 272688.25
+          },
+          {
+            "month": "2023-09",
+            "revenue": 260118.33
+          },
+          {
+            "month": "2023-10",
+            "revenue": 291605.18
+          },
+          {
+            "month": "2023-11",
+            "revenue": 273378.43
+          },
+          {
+            "month": "2023-12",
+            "revenue": 257563.93
+          },
+          {
+            "month": "2024-01",
+            "revenue": 284634.77
+          },
+          {
+            "month": "2024-02",
+            "revenue": 257399.14
+          },
+          {
+            "month": "2024-03",
+            "revenue": 267029.58
+          },
+          {
+            "month": "2024-04",
+            "revenue": 244610.84
+          },
+          {
+            "month": "2024-05",
+            "revenue": 255889.67
+          },
+          {
+            "month": "2024-06",
+            "revenue": 263403.14
+          },
+          {
+            "month": "2024-07",
+            "revenue": 273491.72
+          },
+          {
+            "month": "2024-08",
+            "revenue": 272128.45
+          },
+          {
+            "month": "2024-09",
+            "revenue": 261283.2
+          },
+          {
+            "month": "2024-10",
+            "revenue": 268090.62
+          },
+          {
+            "month": "2024-11",
+            "revenue": 285098.71
+          },
+          {
+            "month": "2024-12",
+            "revenue": 258912.0
+          }
+        ]
+      },
+      "segmentation": {
+        "method": "spend_quartile",
+        "segments": {
+          "Low": 1574,
+          "Moderate": 1348,
+          "High": 899,
+          "VIP": 675
+        },
+        "thresholds": {
+          "low_max": 1643.1325,
+          "moderate_max": 2453.6625,
+          "high_max": 3212.315
+        }
+      },
+      "abc_analysis": {
+        "A_products": 13,
+        "B_products": 8,
+        "C_products": 4,
+        "A_revenue_pct": 80.0,
+        "top_5": [
+          {
+            "name": "আলু (1kg)",
+            "revenue": 977879.03
+          },
+          {
+            "name": "সরিষার তেল (1L)",
+            "revenue": 963082.78
+          },
+          {
+            "name": "ব্রি-২৮ চাল (5kg)",
+            "revenue": 820908.98
+          },
+          {
+            "name": "মসুর ডাল (1kg)",
+            "revenue": 772194.71
+          },
+          {
+            "name": "সয়াবিন তেল (1L)",
+            "revenue": 747920.92
+          }
+        ]
+      }
+    },
+    "vertical_specific": {
+      "perishable_ratio": 5.11,
+      "avg_shelf_life_days": 316.2161
+    },
+    "ml_models": {
+      "churn_model": {
+        "test_start": "2024-04-20T00:00:00+00:00",
+        "purge_days": 90,
+        "train_rows": 56983,
+        "test_rows": 17727,
+        "positive_rate": 0.42088339820612625,
+        "models": {
+          "logistic": {
+            "pr_auc": 0.42010264633853606,
+            "roc_auc": 0.4947407929115027,
+            "brier": 0.25017017845935796,
+            "lift_at_10": 0.9983567115271267
+          },
+          "random_forest": {
+            "pr_auc": 0.41456768400988786,
+            "roc_auc": 0.4957390613801026,
+            "brier": 0.25082421872238575,
+            "lift_at_10": 0.9568143517186153
+          }
+        },
+        "winner_by_brier": "logistic"
+      },
+      "segments_model": {
+        "customers": 4496,
+        "k": 4,
+        "silhouette": 0.28598697668762524,
+        "profile": {
+          "Moderate value": {
+            "count": 1725,
+            "avg_monetary": 1509.9107942028986,
+            "avg_recency_days": 115.61449275362318,
+            "avg_transactions": 5.9971014492753625
+          },
+          "VIP": {
+            "count": 1363,
+            "avg_monetary": 3191.529207630228,
+            "avg_recency_days": 104.63096111518709,
+            "avg_transactions": 9.606749816581072
+          },
+          "High value": {
+            "count": 842,
+            "avg_monetary": 2509.955748218528,
+            "avg_recency_days": 171.4144893111639,
+            "avg_transactions": 5.402612826603326
+          },
+          "Low value": {
+            "count": 566,
+            "avg_monetary": 973.089664310954,
+            "avg_recency_days": 470.2579505300353,
+            "avg_transactions": 3.5547703180212014
+          }
+        }
+      },
+      "forecast_model": {
+        "error": "Forecasting needs at least 90 days and 500 prepared branch-SKU-day rows"
+      }
+    }
+  },
+  "created_at": 1790937002.063554,
+  "run_at": 1790937160.6916645
+}

@@ -9,7 +9,7 @@
 // artifact and are never recomputed in the browser.
 
 import { api } from "../api";
-import { ErrorBox, Loading, useApi } from "../useApi";
+import { Loading, useApi } from "../useApi";
 
 const TYPE_LABEL = {
   reorder: "Reorder",

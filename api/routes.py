@@ -248,6 +248,20 @@ def upload_products(token: str, mapping: ColumnMapping):
         raise HTTPException(status_code=400, detail=str(exc))
 
 
+@router.post("/upload/{token}/recommendations", tags=["upload"])
+def upload_recommendations(token: str, mapping: ColumnMapping):
+    """
+    Retention recommendations (ranked by the same U(a) = expected_recovery -
+    contact_cost formula the live multi-tenant app uses), computed on this
+    upload's own customers. No reorder recommendations here -- this schema
+    has no stock/supplier columns for that to honestly run on.
+    """
+    try:
+        return upload_service.recommendations_for(token, mapping.model_dump())
+    except upload_service.UploadError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+
 # ─────────────────────────────────────────────
 # Feature discovery — what does each model expect?
 # ─────────────────────────────────────────────

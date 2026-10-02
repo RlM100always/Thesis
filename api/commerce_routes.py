@@ -16,6 +16,9 @@ from .approvals import needs_approval, verify_override
 from .loyalty import balance as loyalty_balance
 from .loyalty import get_rule as get_loyalty_rule
 from .loyalty import plan_redemption, points_earned
+from .commission import commission_for
+from .commission import get_rule as get_commission_rule
+from .reservations import reserved_quantity
 from .app_schemas import (
     InventoryView, ProductCreate, ProductUpdate, ProductView, SaleCreate, SaleDetailView,
     SaleLineView, SaleView, StockAdjustment,
@@ -27,8 +30,8 @@ from .batches import (
     get_or_create_batch, remove_from_batch,
 )
 from .domain_models import (
-    AuditLog, Batch, Branch, Customer, InventoryBalance, LedgerEntry, LoyaltyEntry, Payment, Product,
-    SaleItemBatch, SalesOrder, SalesOrderItem, StockMovement, SyncOperation, utcnow,
+    AuditLog, Batch, Branch, CashierShift, CommissionEntry, Customer, InventoryBalance, LedgerEntry, LoyaltyEntry,
+    Payment, Product, SaleItemBatch, SalesOrder, SalesOrderItem, StockMovement, SyncOperation, utcnow,
 )
 from .audit import record_audit
 from .permissions import require_permission
@@ -333,8 +336,13 @@ def create_sale(payload: SaleCreate, membership: CurrentMembership, user: Curren
     for item, product, _, _ in line_values:
         wanted[product.id] = wanted.get(product.id, Decimal("0")) + item.quantity
     for product_id, quantity in wanted.items():
-        if balances[product_id].quantity < quantity:
-            raise HTTPException(status_code=409, detail=f"Insufficient stock for {products[product_id].sku}")
+        reserved = reserved_quantity(db, org_id, branch.id, product_id)
+        available = balances[product_id].quantity - reserved
+        if available < quantity:
+            detail = f"Insufficient stock for {products[product_id].sku}"
+            if reserved > 0:
+                detail += f" ({reserved} reserved for other orders)"
+            raise HTTPException(status_code=409, detail=detail)
 
     order = SalesOrder(
         organization_id=org_id, branch_id=branch.id, customer_id=payload.customer_id,
@@ -343,6 +351,9 @@ def create_sale(payload: SaleCreate, membership: CurrentMembership, user: Curren
         discount_amount=discount_total, tax_amount=payload.tax_amount, total=total,
     )
     db.add(order)
+    open_shift = db.scalar(select(CashierShift).where(
+        CashierShift.organization_id == org_id, CashierShift.branch_id == branch.id,
+        CashierShift.user_id == user.id, CashierShift.status == "open"))
     try:
         db.flush()
         sale_day = payload.sold_at.date()
@@ -395,7 +406,11 @@ def create_sale(payload: SaleCreate, membership: CurrentMembership, user: Curren
                 ])
             db.flush()  # later lines of the same product must see these units gone
         for payment in payload.payments:
-            db.add(Payment(organization_id=org_id, order_id=order.id, **payment.model_dump()))
+            db.add(Payment(
+                organization_id=org_id, order_id=order.id,
+                shift_id=open_shift.id if open_shift else None,
+                **payment.model_dump(),
+            ))
         if total > paid:
             if not payload.customer_id:
                 raise HTTPException(status_code=422, detail="A customer is required for a due sale")
@@ -431,6 +446,12 @@ def create_sale(payload: SaleCreate, membership: CurrentMembership, user: Curren
                     organization_id=org_id, customer_id=customer.id, points_delta=earned,
                     reason="earned", reference_type="sales_order", reference_id=order.id, occurred_at=payload.sold_at,
                 ))
+        commission_amount = commission_for(get_commission_rule(db, org_id), net_revenue)
+        if commission_amount > 0:
+            db.add(CommissionEntry(
+                organization_id=org_id, user_id=user.id, sales_order_id=order.id,
+                amount=commission_amount, reason="earned", occurred_at=payload.sold_at,
+            ))
         journal_lines = [
             Line(account_for_method(p.method), p.amount, ZERO) for p in payload.payments
         ]

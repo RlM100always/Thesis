@@ -23,10 +23,12 @@ from .audit import record_audit
 from .batches import add_to_batch, get_or_create_batch, restock_return
 from .permissions import require_permission
 from .domain_models import (
-    ApprovalRequest, AuditLog, Branch, Customer, Expense, InventoryBalance, LedgerEntry, Payment, Product, PurchaseOrder,
-    PurchaseOrderItem, Refund, SalesOrder, SalesOrderItem, SalesReturn,
+    ApprovalRequest, AuditLog, Branch, CommissionEntry, Customer, Expense, InventoryBalance, LedgerEntry, Payment,
+    Product, PurchaseOrder, PurchaseOrderItem, Refund, SalesOrder, SalesOrderItem, SalesReturn,
     SalesReturnItem, StockMovement, Supplier, utcnow,
 )
+from .commission import clawed_back_for_sale, commission_for, earned_for_sale
+from .commission import get_rule as get_commission_rule
 
 router = APIRouter(prefix="/api/app")
 Db = Annotated[Session, Depends(get_db)]
@@ -428,6 +430,17 @@ def apply_return(db: Session, membership, actor, sale_id: str, payload: ReturnCr
         if refund_override_used:
             record_audit(db, membership, "refund.override", "sales_return", return_doc.id,
                          refund_amount=refund_amount, approver_email=payload.override_email)
+        earned_entry = earned_for_sale(db, org_id, sale.id)
+        if earned_entry is not None and total > 0:
+            wanted_clawback = commission_for(get_commission_rule(db, org_id), total)
+            already_clawed = clawed_back_for_sale(db, org_id, sale.id)
+            remaining = earned_entry.amount - already_clawed
+            clawback_amount = min(wanted_clawback, remaining) if remaining > 0 else Decimal("0")
+            if clawback_amount > 0:
+                db.add(CommissionEntry(
+                    organization_id=org_id, user_id=earned_entry.user_id, sales_order_id=sale.id,
+                    amount=-clawback_amount, reason="clawback", occurred_at=payload.returned_at,
+                ))
         journal_lines = []
         if total > 0:
             journal_lines.append(Line("4100", total, ZERO))

@@ -11,10 +11,10 @@ import { useToast } from "../ui/Toast";
 
 const LABEL = {
   draft: ["খসড়া", "neutral"], sent: ["পাঠানো", "info"], accepted: ["গৃহীত", "success"], rejected: ["বাতিল", "danger"], converted: ["অর্ডার হয়েছে", "success"],
-  confirmed: ["নিশ্চিত", "info"], ready: ["প্রস্তুত", "warn"], dispatched: ["পাঠানো হয়েছে", "info"], delivered: ["ডেলিভারি", "success"], invoiced: ["ইনভয়েস হয়েছে", "success"], cancelled: ["বাতিল", "danger"],
+  placed: ["নতুন অনলাইন অর্ডার", "warn"], confirmed: ["নিশ্চিত", "info"], ready: ["প্রস্তুত", "warn"], dispatched: ["পাঠানো হয়েছে", "info"], delivered: ["ডেলিভারি", "success"], invoiced: ["ইনভয়েস হয়েছে", "success"], cancelled: ["বাতিল", "danger"],
 };
-const NEXT = { confirmed: "ready", ready: "dispatched", dispatched: "delivered" };
-const NEXT_LABEL = { ready: "প্রস্তুত করুন", dispatched: "পাঠিয়ে দিন", delivered: "ডেলিভারি হয়েছে" };
+const NEXT = { placed: "confirmed", confirmed: "ready", ready: "dispatched", dispatched: "delivered" };
+const NEXT_LABEL = { confirmed: "অর্ডার নিশ্চিত করুন", ready: "প্রস্তুত করুন", dispatched: "পাঠিয়ে দিন", delivered: "ডেলিভারি হয়েছে" };
 const number = (prefix) => `${prefix}-${new Date().toISOString().slice(0, 10).replaceAll("-", "")}-${Date.now().toString(36).toUpperCase()}`;
 const line = () => ({ key: Math.random().toString(36).slice(2), product_id: "", quantity: "1", unit_price: "", discount_amount: "0" });
 
@@ -54,7 +54,7 @@ export default function OrdersPage() {
     catch (err) { setError(explain(err, { 409: "স্টক যথেষ্ট নেই অথবা অর্ডারটি আর ইনভয়েস করা যাবে না।" })); } finally { setBusy(false); }
   }
   const columns = [
-    { key: "document_number", label: type === "quotation" ? "কোটেশন" : "অর্ডার", primary: true, render: (r) => <div><strong>{r.document_number}</strong><div className="muted">{r.customer_name || "সাধারণ ক্রেতা"}</div></div> },
+    { key: "document_number", label: type === "quotation" ? "কোটেশন" : "অর্ডার", primary: true, render: (r) => <div><strong>{r.document_number}</strong>{r.is_online_order && <span style={{ marginLeft: 6 }}><Badge tone="info">অনলাইন</Badge></span>}<div className="muted">{r.customer_name || r.shipping_name || "সাধারণ ক্রেতা"}{r.shipping_phone ? ` · ${r.shipping_phone}` : ""}</div>{r.shipping_address && <div className="muted">{r.shipping_address}</div>}</div> },
     { key: "issued_at", label: "তারিখ", render: (r) => dateBn(r.issued_at) },
     { key: "items", label: "পণ্য", render: (r) => r.items.map((i) => `${i.product_name} × ${num(i.quantity)}`).join(", ") },
     { key: "total", label: "মোট", align: "right", render: (r) => money(r.total) },
@@ -62,11 +62,13 @@ export default function OrdersPage() {
     { key: "action", label: "কাজ", align: "right", render: (r) => <div className="row-actions">
       {type === "quotation" && canCreate && !["converted", "rejected"].includes(r.status) && <Button size="sm" onClick={() => convert(r)}>অর্ডার করুন</Button>}
       {type === "order" && canFulfill && NEXT[r.status] && <Button size="sm" variant="secondary" onClick={() => status(r, NEXT[r.status])}>{NEXT_LABEL[NEXT[r.status]]}</Button>}
-      {type === "order" && canFulfill && !["cancelled", "invoiced"].includes(r.status) && <Button size="sm" onClick={() => { setError(""); setInvoicing({ ...r, method: "cash", paid: Number(r.total) }); }}>ইনভয়েস</Button>}
+      {type === "order" && canFulfill && !["cancelled", "invoiced", "placed"].includes(r.status) && <Button size="sm" onClick={() => { setError(""); setInvoicing({ ...r, method: r.is_online_order ? "cod" : "cash", paid: Number(r.total) }); }}>ইনভয়েস</Button>}
     </div> },
   ];
+  const storeLink = orgId ? `${window.location.origin}${window.location.pathname}#/store/${orgId}` : "";
   return <div className="page stack">
     <PageHeader title="কোটেশন ও অর্ডার" subtitle="কোটেশন থেকে অর্ডার, ডেলিভারি এবং একবারে হিসাব-স্টকসহ ইনভয়েস।" actions={canCreate && <Button icon="plus" onClick={openCreate}>{type === "quotation" ? "নতুন কোটেশন" : "নতুন অর্ডার"}</Button>} />
+    {type === "order" && orgId && <Notice tone="info">কাস্টমাররা নিজে অর্ডার করতে পারবেন এই লিংক থেকে: <a href={storeLink} target="_blank" rel="noreferrer">{storeLink}</a></Notice>}
     {error && !creating && !invoicing && <Notice tone="danger">{error}</Notice>}
     <Segmented label="নথির ধরন" value={type} onChange={setType} options={[{ value: "quotation", label: "কোটেশন", count: (rows || []).filter((r) => r.document_type === "quotation").length }, { value: "order", label: "অর্ডার ও ডেলিভারি", count: (rows || []).filter((r) => r.document_type === "order").length }]} />
     <Card pad={false}><DataTable rows={shown} columns={columns} loading={rows === null} caption="কোটেশন ও অর্ডারের তালিকা" empty={<EmptyState icon="fileText" title="এখনো কিছু নেই" hint="প্রথম কোটেশন বা অর্ডার তৈরি করুন।" />} /></Card>

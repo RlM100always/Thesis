@@ -7,6 +7,7 @@ import api.auth
 import api.auth_routes
 from api.config import Settings
 from api.security import DUMMY_HASH, hash_password, verify_password
+from api.totp import totp_now
 
 CREDENTIALS = {"email": "Owner@Shop.example", "password": "correct horse battery", "display_name": "Shop Owner"}
 
@@ -147,6 +148,44 @@ def test_garbage_token_is_rejected(client):
     assert client.get("/api/app/auth/me", headers=bearer("not.a.jwt")).status_code == 401
 
 
+# ── session registry, rotation and reuse detection ──────────────────────────
+
+def test_refresh_rotates_the_token_and_old_one_stops_working(client):
+    tokens = client.post("/api/app/auth/register", json=CREDENTIALS).json()
+    rotated = client.post("/api/app/auth/refresh", json={"refresh_token": tokens["refresh_token"]}).json()
+    assert rotated["refresh_token"] != tokens["refresh_token"]
+    # The old refresh token was already rotated away: replaying it is reuse.
+    replay = client.post("/api/app/auth/refresh", json={"refresh_token": tokens["refresh_token"]})
+    assert replay.status_code == 401
+    # Reuse revokes the whole family, so even the freshly-rotated token is now dead.
+    assert client.post("/api/app/auth/refresh", json={"refresh_token": rotated["refresh_token"]}).status_code == 401
+
+
+def test_sessions_are_listed_and_individually_revocable(client):
+    tokens = client.post("/api/app/auth/register", json=CREDENTIALS).json()
+    listed = client.get("/api/app/auth/sessions", headers=bearer(tokens["access_token"]))
+    assert listed.status_code == 200 and len(listed.json()) == 1
+    session_id = listed.json()[0]["id"]
+    revoke = client.post(f"/api/app/auth/sessions/{session_id}/revoke", headers=bearer(tokens["access_token"]))
+    assert revoke.status_code == 200
+    # That session's refresh token is dead, even though the access token is unaffected
+    # (it is only checked against token_version, which a single-session revoke never bumps).
+    assert client.post("/api/app/auth/refresh", json={"refresh_token": tokens["refresh_token"]}).status_code == 401
+
+
+def test_two_logins_are_two_independent_sessions(client):
+    client.post("/api/app/auth/register", json=CREDENTIALS)
+    first = client.post("/api/app/auth/login", json={"email": "owner@shop.example", "password": CREDENTIALS["password"]}).json()
+    second = client.post("/api/app/auth/login", json={"email": "owner@shop.example", "password": CREDENTIALS["password"]}).json()
+    listed = client.get("/api/app/auth/sessions", headers=bearer(first["access_token"])).json()
+    assert len(listed) == 3  # register + two logins
+    first_sid = api.auth.decode_token_claims(first["refresh_token"], "refresh")["sid"]
+    client.post(f"/api/app/auth/sessions/{first_sid}/revoke", headers=bearer(first["access_token"]))
+    assert client.post("/api/app/auth/refresh", json={"refresh_token": first["refresh_token"]}).status_code == 401
+    # The other device's session is untouched.
+    assert client.post("/api/app/auth/refresh", json={"refresh_token": second["refresh_token"]}).status_code == 200
+
+
 # ── modes ────────────────────────────────────────────────────────────────────
 
 def test_jwt_mode_refuses_anonymous_requests(client, monkeypatch):
@@ -157,3 +196,97 @@ def test_jwt_mode_refuses_anonymous_requests(client, monkeypatch):
 def test_development_mode_still_allows_the_local_prototype_owner(client):
     response = client.get("/api/app/auth/me")
     assert response.status_code == 200 and response.json()["email"] == "developer@bsmart.local"
+
+
+# ── TOTP MFA ─────────────────────────────────────────────────────────────────
+
+def test_mfa_enrollment_and_login_challenge(client):
+    tokens = client.post("/api/app/auth/register", json=CREDENTIALS).json()
+    auth = bearer(tokens["access_token"])
+
+    setup = client.post("/api/app/auth/mfa/setup", headers=auth)
+    assert setup.status_code == 200 and setup.json()["secret"]
+    secret = setup.json()["secret"]
+
+    bad_code = client.post("/api/app/auth/mfa/enable", json={"code": "000000"}, headers=auth)
+    assert bad_code.status_code == 400
+
+    enabled = client.post("/api/app/auth/mfa/enable", json={"code": totp_now(secret)}, headers=auth)
+    assert enabled.status_code == 200
+    recovery_codes = enabled.json()["recovery_codes"]
+    assert len(recovery_codes) == 8
+
+    # Plain login no longer returns tokens -- it returns an MFA challenge.
+    login = client.post("/api/app/auth/login", json={"email": "owner@shop.example", "password": CREDENTIALS["password"]})
+    assert login.status_code == 200
+    body = login.json()
+    assert body["mfa_required"] is True and "access_token" not in body
+
+    wrong = client.post("/api/app/auth/mfa/verify", json={"mfa_token": body["mfa_token"], "code": "000000"})
+    assert wrong.status_code == 401
+
+    ok = client.post("/api/app/auth/mfa/verify", json={"mfa_token": body["mfa_token"], "code": totp_now(secret)})
+    assert ok.status_code == 200 and ok.json()["access_token"]
+
+
+def test_mfa_recovery_code_is_single_use(client):
+    tokens = client.post("/api/app/auth/register", json=CREDENTIALS).json()
+    auth = bearer(tokens["access_token"])
+    secret = client.post("/api/app/auth/mfa/setup", headers=auth).json()["secret"]
+    recovery_codes = client.post(
+        "/api/app/auth/mfa/enable", json={"code": totp_now(secret)}, headers=auth
+    ).json()["recovery_codes"]
+
+    login = client.post("/api/app/auth/login", json={"email": "owner@shop.example", "password": CREDENTIALS["password"]}).json()
+    first_use = client.post(
+        "/api/app/auth/mfa/verify", json={"mfa_token": login["mfa_token"], "code": recovery_codes[0]}
+    )
+    assert first_use.status_code == 200
+
+    login2 = client.post("/api/app/auth/login", json={"email": "owner@shop.example", "password": CREDENTIALS["password"]}).json()
+    second_use = client.post(
+        "/api/app/auth/mfa/verify", json={"mfa_token": login2["mfa_token"], "code": recovery_codes[0]}
+    )
+    assert second_use.status_code == 401
+
+
+# ── password recovery ───────────────────────────────────────────────────────
+
+def test_forgot_password_never_reveals_account_existence(client):
+    client.post("/api/app/auth/register", json=CREDENTIALS)
+    known = client.post("/api/app/auth/forgot-password", json={"email": "owner@shop.example"})
+    unknown = client.post("/api/app/auth/forgot-password", json={"email": "ghost@shop.example"})
+    assert known.status_code == unknown.status_code == 200
+    assert known.json() == unknown.json()
+
+
+def test_forgot_password_link_completes_a_reset(client, monkeypatch):
+    client.post("/api/app/auth/register", json=CREDENTIALS)
+    captured = {}
+    monkeypatch.setattr(api.auth_routes, "_deliver_reset_link", lambda user, raw: captured.update(token=raw))
+    client.post("/api/app/auth/forgot-password", json={"email": "owner@shop.example"})
+    assert captured["token"]
+
+    reset = client.post("/api/app/auth/set-password", json={"token": captured["token"], "password": "new password 123"})
+    assert reset.status_code == 200
+    # Old password no longer works; new one does.
+    assert client.post("/api/app/auth/login", json={"email": "owner@shop.example", "password": CREDENTIALS["password"]}).status_code == 401
+    assert client.post("/api/app/auth/login", json={"email": "owner@shop.example", "password": "new password 123"}).status_code == 200
+    # The token is single-use.
+    assert client.post("/api/app/auth/set-password", json={"token": captured["token"], "password": "another one 456"}).status_code == 400
+
+
+def test_mfa_disable_requires_current_password(client):
+    tokens = client.post("/api/app/auth/register", json=CREDENTIALS).json()
+    auth = bearer(tokens["access_token"])
+    secret = client.post("/api/app/auth/mfa/setup", headers=auth).json()["secret"]
+    client.post("/api/app/auth/mfa/enable", json={"code": totp_now(secret)}, headers=auth)
+
+    wrong = client.post("/api/app/auth/mfa/disable", json={"password": "nope"}, headers=auth)
+    assert wrong.status_code == 400
+
+    right = client.post("/api/app/auth/mfa/disable", json={"password": CREDENTIALS["password"]}, headers=auth)
+    assert right.status_code == 200
+    # Login no longer challenges for MFA.
+    login = client.post("/api/app/auth/login", json={"email": "owner@shop.example", "password": CREDENTIALS["password"]})
+    assert login.json().get("access_token")

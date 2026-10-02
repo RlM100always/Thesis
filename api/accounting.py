@@ -15,7 +15,7 @@ silently posted.** Money never simply appears or disappears in the books.
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 from typing import NamedTuple
 
@@ -23,7 +23,7 @@ from fastapi import HTTPException
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from .domain_models import Account, JournalEntry, JournalLine
+from .domain_models import Account, FiscalPeriod, JournalEntry, JournalLine
 
 ZERO = Decimal("0")
 MONEY = Decimal("0.01")
@@ -77,13 +77,33 @@ class Line(NamedTuple):
     party_id: str | None = None
 
 
+def period_month_of(occurred_at: datetime) -> date:
+    return date(occurred_at.year, occurred_at.month, 1)
+
+
+def is_period_closed(db: Session, org_id: str, occurred_at: datetime) -> bool:
+    row = db.scalar(select(FiscalPeriod.status).where(
+        FiscalPeriod.organization_id == org_id, FiscalPeriod.period_month == period_month_of(occurred_at)))
+    return row == "closed"
+
+
 def post_journal(
     db: Session, org_id: str, branch_id: str | None, occurred_at: datetime,
     reference_type: str, reference_id: str, lines: list[Line], memo: str | None = None,
 ) -> JournalEntry:
     """Post one balanced journal entry. Raises if debits and credits do not match,
     if any line is zero, or if an account code does not exist for this org — a
-    typo in a code must fail loudly, not post to the wrong account."""
+    typo in a code must fail loudly, not post to the wrong account.
+
+    Also refuses to post into a closed fiscal period (SRD F09) — a 409, not a
+    generic error, since an operator backdating into a closed month is an
+    expected, recoverable situation, not a bug.
+    """
+    if is_period_closed(db, org_id, occurred_at):
+        raise HTTPException(
+            status_code=409,
+            detail=f"The accounting period for {period_month_of(occurred_at).isoformat()} is closed",
+        )
     lines = [ln for ln in lines if ln.debit != 0 or ln.credit != 0]
     if not lines:
         raise ValueError("A journal entry needs at least one non-zero line")

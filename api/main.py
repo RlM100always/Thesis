@@ -93,7 +93,8 @@ from .health_score_routes import router as health_score_router  # noqa: E402
 from .mission_queue_routes import router as mission_queue_router  # noqa: E402
 from .reservation_routes import router as reservation_router  # noqa: E402
 from .store_routes import router as store_router, public_router as public_store_router  # noqa: E402
-from .database import create_schema  # noqa: E402
+from .research_portal_routes import router as research_portal_router  # noqa: E402
+from .database import create_schema, SessionLocal  # noqa: E402
 from .schemas import Health  # noqa: E402
 
 app = FastAPI(
@@ -173,12 +174,33 @@ app.include_router(store_router)
 app.include_router(public_store_router)
 app.include_router(team_chat_router)
 app.include_router(assistant_router)
+app.include_router(research_portal_router)
 
 
 @app.on_event("startup")
 def initialize_application_database():
     """Create the development schema; Alembic will own production upgrades."""
     create_schema()
+    _seed_site_defaults()
+
+
+def _seed_site_defaults():
+    """Insert any missing SiteContent rows from SITE_DEFAULTS on first boot."""
+    import json
+    from sqlalchemy import select
+    from .domain_models import SiteContent
+    from .site_defaults import SITE_DEFAULTS
+    db = SessionLocal()
+    try:
+        existing = {r.key for r in db.scalars(select(SiteContent))}
+        for key, value in SITE_DEFAULTS.items():
+            if key not in existing:
+                db.add(SiteContent(key=key, value_json=json.dumps(value, ensure_ascii=False)))
+        db.commit()
+    except Exception:
+        db.rollback()
+    finally:
+        db.close()
 
 
 @app.get("/health", response_model=Health, tags=["system"])

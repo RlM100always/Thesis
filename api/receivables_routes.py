@@ -18,7 +18,7 @@ from sqlalchemy.orm import Session
 
 from .auth import CurrentMembership
 from .database import get_db
-from .domain_models import Customer, LedgerEntry
+from .domain_models import Customer, LedgerEntry, Supplier
 from .permissions import require_permission
 from .timeutil import DHAKA, dhaka_today
 
@@ -95,3 +95,36 @@ def receivables_ageing(membership: CurrentMembership, db: Db):
             totals[name] += buckets[name]
     rows.sort(key=lambda r: (r["oldest_days"] or 0, r["balance"]), reverse=True)
     return {"as_of": today, "total": sum((r["balance"] for r in rows), ZERO), "buckets": totals, "customers": rows}
+
+
+@router.get("/payables/ageing", tags=["ledger"])
+def payables_ageing(membership: CurrentMembership, db: Db):
+    """Supplier Payable (SRD Panel P08): the mirror of receivables ageing, on the money we owe."""
+    require_permission(membership, "ledger:read")
+    org_id = membership.organization_id
+    today = dhaka_today()
+    per_supplier: dict[str, list[tuple[datetime, Decimal]]] = {}
+    for party_id, moment, delta in db.execute(
+        select(LedgerEntry.party_id, LedgerEntry.occurred_at, LedgerEntry.amount_delta).where(
+            LedgerEntry.organization_id == org_id, LedgerEntry.ledger_type == "payable",
+            LedgerEntry.party_type == "supplier", LedgerEntry.party_id.is_not(None))
+    ).all():
+        per_supplier.setdefault(party_id, []).append((moment, delta))
+    suppliers = {s.id: s for s in db.scalars(select(Supplier).where(
+        Supplier.organization_id == org_id, Supplier.id.in_(list(per_supplier))))}
+
+    rows, totals = [], {name: ZERO for name, _ in BUCKETS}
+    for supplier_id, entries in per_supplier.items():
+        balance = sum((d for _, d in entries), ZERO)
+        if balance <= 0 or supplier_id not in suppliers:
+            continue
+        buckets, oldest = age_debts(entries, today)
+        supplier = suppliers[supplier_id]
+        rows.append({
+            "supplier_id": supplier_id, "code": supplier.code, "name": supplier.name,
+            "balance": balance, "oldest_days": oldest, **buckets,
+        })
+        for name in totals:
+            totals[name] += buckets[name]
+    rows.sort(key=lambda r: (r["oldest_days"] or 0, r["balance"]), reverse=True)
+    return {"as_of": today, "total": sum((r["balance"] for r in rows), ZERO), "buckets": totals, "suppliers": rows}

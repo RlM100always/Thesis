@@ -1,0 +1,336 @@
+{
+  "id": "EXP-001",
+  "name": "Synthetic Pharmacy Baseline (Thesis)",
+  "description": "BD_Pharmacy_Dataset.csv — fixed thesis reference, locked",
+  "vertical": "pharmacy",
+  "dataset_source": "built-in",
+  "dataset_path": "normalized_data/verticals/pharmacy/pharmacy_dataset.csv",
+  "config": {
+    "train_ratio": 0.7,
+    "val_ratio": 0.15,
+    "test_ratio": 0.15,
+    "cv_folds": 5,
+    "random_seed": 42,
+    "churn_threshold_days": 90,
+    "stratified": true
+  },
+  "locked": true,
+  "status": "completed",
+  "results": {
+    "detected_vertical": "pharmacy",
+    "universal": {
+      "dataset_summary": {
+        "rows": 30000,
+        "customers": 4494,
+        "products": 25,
+        "date_range": [
+          "2022-01-01",
+          "2024-12-31"
+        ],
+        "vertical": "pharmacy"
+      },
+      "rfm": {
+        "recency_mean": 162.6231,
+        "frequency_mean": 6.6756,
+        "monetary_mean": 3620.4092,
+        "recency_median": 113.0,
+        "n_customers": 4494
+      },
+      "churn": {
+        "threshold_days": 90,
+        "churn_rate": 0.5683,
+        "churned_count": 2554,
+        "active_count": 1940
+      },
+      "forecast": {
+        "monthly_points": 36,
+        "seasonal_naive_wape": 0.063,
+        "monthly_revenue": [
+          {
+            "month": "2022-01",
+            "revenue": 476816.23
+          },
+          {
+            "month": "2022-02",
+            "revenue": 431587.11
+          },
+          {
+            "month": "2022-03",
+            "revenue": 473411.39
+          },
+          {
+            "month": "2022-04",
+            "revenue": 437042.68
+          },
+          {
+            "month": "2022-05",
+            "revenue": 479476.91
+          },
+          {
+            "month": "2022-06",
+            "revenue": 469277.53
+          },
+          {
+            "month": "2022-07",
+            "revenue": 444551.79
+          },
+          {
+            "month": "2022-08",
+            "revenue": 485941.64
+          },
+          {
+            "month": "2022-09",
+            "revenue": 446706.31
+          },
+          {
+            "month": "2022-10",
+            "revenue": 447127.46
+          },
+          {
+            "month": "2022-11",
+            "revenue": 447652.1
+          },
+          {
+            "month": "2022-12",
+            "revenue": 467453.8
+          },
+          {
+            "month": "2023-01",
+            "revenue": 500480.53
+          },
+          {
+            "month": "2023-02",
+            "revenue": 402856.83
+          },
+          {
+            "month": "2023-03",
+            "revenue": 495782.03
+          },
+          {
+            "month": "2023-04",
+            "revenue": 469948.8
+          },
+          {
+            "month": "2023-05",
+            "revenue": 450294.4
+          },
+          {
+            "month": "2023-06",
+            "revenue": 401658.38
+          },
+          {
+            "month": "2023-07",
+            "revenue": 452936.27
+          },
+          {
+            "month": "2023-08",
+            "revenue": 418522.66
+          },
+          {
+            "month": "2023-09",
+            "revenue": 417357.04
+          },
+          {
+            "month": "2023-10",
+            "revenue": 478882.59
+          },
+          {
+            "month": "2023-11",
+            "revenue": 446933.52
+          },
+          {
+            "month": "2023-12",
+            "revenue": 489369.06
+          },
+          {
+            "month": "2024-01",
+            "revenue": 491456.97
+          },
+          {
+            "month": "2024-02",
+            "revenue": 462129.31
+          },
+          {
+            "month": "2024-03",
+            "revenue": 430372.29
+          },
+          {
+            "month": "2024-04",
+            "revenue": 436615.45
+          },
+          {
+            "month": "2024-05",
+            "revenue": 482672.02
+          },
+          {
+            "month": "2024-06",
+            "revenue": 394401.24
+          },
+          {
+            "month": "2024-07",
+            "revenue": 457234.24
+          },
+          {
+            "month": "2024-08",
+            "revenue": 435854.33
+          },
+          {
+            "month": "2024-09",
+            "revenue": 416097.8
+          },
+          {
+            "month": "2024-10",
+            "revenue": 427363.26
+          },
+          {
+            "month": "2024-11",
+            "revenue": 446106.16
+          },
+          {
+            "month": "2024-12",
+            "revenue": 457748.75
+          }
+        ]
+      },
+      "segmentation": {
+        "method": "spend_quartile",
+        "segments": {
+          "Low": 1573,
+          "Moderate": 1348,
+          "High": 899,
+          "VIP": 674
+        },
+        "thresholds": {
+          "low_max": 2524.047,
+          "moderate_max": 4151.372,
+          "high_max": 5886.9025
+        }
+      },
+      "abc_analysis": {
+        "A_products": 10,
+        "B_products": 7,
+        "C_products": 8,
+        "top_5": [
+          {
+            "name": "Insulin 10ml vial",
+            "revenue": 1761629.21
+          },
+          {
+            "name": "Calcium 500mg",
+            "revenue": 1631075.89
+          },
+          {
+            "name": "B-Complex",
+            "revenue": 1499419.53
+          },
+          {
+            "name": "Metformin 500mg",
+            "revenue": 1363898.31
+          },
+          {
+            "name": "Vitamin C 500mg",
+            "revenue": 1299212.3
+          }
+        ]
+      }
+    },
+    "vertical_specific": {
+      "near_expiry": {
+        "count_within_90_days": 30000,
+        "pct_of_stock": 100.0
+      },
+      "drug_class_distribution": {
+        "supplement": 5708,
+        "otc": 5653,
+        "analgesic": 5465,
+        "antibiotic": 4478,
+        "antihistamine": 2355,
+        "antihypertensive": 2223,
+        "antidiabetic": 2214,
+        "antacid": 1904
+      },
+      "prescription_ratio": 29.72
+    },
+    "ml_models": {
+      "churn_model": {
+        "method": "customer_level_stratified_cv",
+        "customers": 4494,
+        "churn_rate": 0.5683,
+        "threshold_days": 90,
+        "cv_folds": 5,
+        "features_used": [
+          "frequency",
+          "monetary",
+          "avg_order_value",
+          "unique_prods",
+          "tenure_days",
+          "purchase_frequency_monthly"
+        ],
+        "models": {
+          "random_forest": {
+            "roc_auc": 0.6454,
+            "pr_auc": 0.709,
+            "lift_at_10": 1.423
+          },
+          "xgboost": {
+            "roc_auc": 0.6437,
+            "pr_auc": 0.7095,
+            "lift_at_10": 1.431
+          }
+        },
+        "winner_by_roc_auc": "random_forest"
+      },
+      "segments_model": {
+        "method": "kmeans_rfm",
+        "customers": 4494,
+        "k": 4,
+        "silhouette": 0.2792,
+        "profile": {
+          "VIP": {
+            "count": 743,
+            "avg_monetary": 7058.52,
+            "avg_recency_days": 107.5,
+            "avg_frequency": 10.11
+          },
+          "Low value": {
+            "count": 1415,
+            "avg_monetary": 1948.51,
+            "avg_recency_days": 125.6,
+            "avg_frequency": 4.77
+          },
+          "Moderate value": {
+            "count": 625,
+            "avg_monetary": 2292.56,
+            "avg_recency_days": 471.7,
+            "avg_frequency": 4.27
+          },
+          "High value": {
+            "count": 1711,
+            "avg_monetary": 3995.12,
+            "avg_recency_days": 104.3,
+            "avg_frequency": 7.64
+          }
+        }
+      }
+    }
+  },
+  "created_at": 1790935968.5218117,
+  "run_at": 1790938641.5392814,
+  "progress": [
+    {
+      "step": "universal_pipeline",
+      "status": "done",
+      "ts": 1790938616.9842358
+    },
+    {
+      "step": "churn",
+      "status": "done",
+      "ts": 1790938635.8985336
+    },
+    {
+      "step": "segmentation",
+      "status": "done",
+      "ts": 1790938641.5120158
+    }
+  ]
+}

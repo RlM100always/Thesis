@@ -4,17 +4,19 @@ already posted by the route that caused it (see `api/accounting.py`)."""
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from .accounting import balance_sheet, profit_and_loss, trial_balance
-from .auth import CurrentMembership
+from .accounting import balance_sheet, period_month_of, profit_and_loss, trial_balance
+from .audit import record_audit
+from .auth import CurrentMembership, CurrentUser
 from .database import get_db
-from .domain_models import Account, JournalEntry, JournalLine
+from .domain_models import Account, FiscalPeriod, JournalEntry, JournalLine
 from .permissions import require_permission
 from .timeutil import DHAKA, dhaka_today
 
@@ -94,3 +96,70 @@ def journal(
             } for line in lines],
         })
     return result
+
+
+class PeriodCloseIn(BaseModel):
+    period_month: date  # any date in the target month; normalized to the 1st
+
+
+class PeriodReopenIn(BaseModel):
+    reason: str = Field(min_length=2, max_length=300)
+
+
+@router.get("/periods", tags=["accounting"])
+def list_periods(membership: CurrentMembership, db: Db):
+    require_permission(membership, "ledger:read")
+    rows = db.scalars(
+        select(FiscalPeriod).where(FiscalPeriod.organization_id == membership.organization_id)
+        .order_by(FiscalPeriod.period_month.desc())
+    )
+    return [{
+        "id": p.id, "period_month": p.period_month, "status": p.status,
+        "closed_at": p.closed_at, "reopened_at": p.reopened_at, "reopen_reason": p.reopen_reason,
+    } for p in rows]
+
+
+@router.post("/periods/close", tags=["accounting"])
+def close_period(payload: PeriodCloseIn, membership: CurrentMembership, user: CurrentUser, db: Db):
+    """Lock a calendar month: no journal entry may post into it afterwards (SRD F09)."""
+    require_permission(membership, "period:close")
+    org_id = membership.organization_id
+    month = period_month_of(datetime(payload.period_month.year, payload.period_month.month, 1, tzinfo=timezone.utc))
+    existing = db.scalar(select(FiscalPeriod).where(
+        FiscalPeriod.organization_id == org_id, FiscalPeriod.period_month == month))
+    if existing is not None and existing.status == "closed":
+        raise HTTPException(status_code=409, detail="This period is already closed")
+    if existing is not None:
+        existing.status = "closed"
+        existing.closed_by_user_id = user.id
+        existing.closed_at = datetime.now(timezone.utc)
+        period = existing
+    else:
+        period = FiscalPeriod(
+            organization_id=org_id, period_month=month, status="closed",
+            closed_by_user_id=user.id, closed_at=datetime.now(timezone.utc),
+        )
+        db.add(period)
+    db.flush()
+    record_audit(db, membership, "accounting.period_closed", "fiscal_period", period.id, period_month=str(month))
+    db.commit()
+    return {"period_month": month, "status": "closed"}
+
+
+@router.post("/periods/{period_id}/reopen", tags=["accounting"])
+def reopen_period(period_id: str, payload: PeriodReopenIn, membership: CurrentMembership, user: CurrentUser, db: Db):
+    """Owner-only, reasoned, audited -- never implicit (SRD F09)."""
+    require_permission(membership, "period:close")
+    period = db.scalar(select(FiscalPeriod).where(
+        FiscalPeriod.id == period_id, FiscalPeriod.organization_id == membership.organization_id))
+    if period is None:
+        raise HTTPException(status_code=404, detail="Period not found")
+    if period.status != "closed":
+        raise HTTPException(status_code=409, detail="This period is not closed")
+    period.status = "reopened"
+    period.reopened_by_user_id = user.id
+    period.reopened_at = datetime.now(timezone.utc)
+    period.reopen_reason = payload.reason
+    record_audit(db, membership, "accounting.period_reopened", "fiscal_period", period.id, reason=payload.reason)
+    db.commit()
+    return {"period_month": period.period_month, "status": "reopened"}

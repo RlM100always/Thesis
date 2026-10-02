@@ -6,6 +6,9 @@ import { explain } from "../errors";
 import { money, num } from "../format";
 import { usePermissions } from "../PermissionContext";
 import MorningBrief from "../components/MorningBrief";
+import HealthScore from "../components/HealthScore";
+import MissionQueue from "../components/MissionQueue";
+import BusinessAssistant from "../components/BusinessAssistant";
 import Icon from "../ui/Icon";
 import { Button, Card, EmptyState, Field, Notice, PageHeader, Skeleton, Stat } from "../ui/kit";
 import useBranch from "../useBranch";
@@ -82,6 +85,13 @@ export default function Dashboard() {
       ) : (
         <>
           {!isNew && <MorningBrief />}
+          {!isNew && (
+            <div className="ui-stats" style={{ gridTemplateColumns: "1.3fr 1fr" }}>
+              <MissionQueue />
+              <HealthScore />
+            </div>
+          )}
+          {!isNew && <BusinessAssistant />}
 
           {!isNew && locked && Number(locked.total) > 0 && (
             <Card className="cash-locked" title="আটকে থাকা টাকা" subtitle="যা এখন কাজে লাগছে না — অবিক্রীত পুরোনো স্টক, মেয়াদ শেষের পথে থাকা মাল, আর অনেক দিনের বাকি।">

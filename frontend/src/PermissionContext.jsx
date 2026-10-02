@@ -13,6 +13,7 @@ export const ROLE_LABELS = {
   stock_keeper: "স্টোরকিপার",
   viewer: "দর্শক",
   evaluator: "মূল্যায়নকারী",
+  rider: "ডেলিভারি রাইডার",
 };
 
 // One line per role, in plain Bangla, shown where an owner chooses a role.
@@ -24,6 +25,7 @@ export const ROLE_DESCRIPTIONS = {
   stock_keeper: "স্টক গ্রহণ, সমন্বয় ও ক্রয়ের মাল রিসিভ করেন। টাকার হিসাব দেখেন না।",
   viewer: "শুধু দেখতে পারেন, কিছু বদলাতে পারেন না।",
   evaluator: "গবেষণা ও মনিটরিংয়ের তথ্য শুধু পড়তে পারেন (সুপারভাইজার বা পরীক্ষকের জন্য)।",
+  rider: "শুধু নিজের ডেলিভারি দেখেন ও আপডেট করেন -- রুট, ডেলিভারি প্রমাণ ও COD সংগ্রহ।",
 };
 
 // What the signed-in user may do in the active business.

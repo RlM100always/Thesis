@@ -137,7 +137,7 @@ export default function RecommendationsPage() {
   async function measureOutcome(item) {
     setBusy(true);
     try {
-      const res = await api.bsmartMeasure(orgId, item.id);
+      await api.bsmartMeasure(orgId, item.id);
       toast.success("লেজার থেকে ফলাফল স্বয়ংক্রিয়ভাবে মাপা হয়েছে।");
       await load();
     } catch (e) {

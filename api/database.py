@@ -39,5 +39,6 @@ def get_db() -> Generator[Session, None, None]:
 def create_schema() -> None:
     # Import registers every mapped class with Base.metadata.
     from . import domain_models  # noqa: F401
+    from . import admin_models  # noqa: F401
 
     Base.metadata.create_all(bind=engine)

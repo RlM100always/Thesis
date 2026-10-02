@@ -143,6 +143,41 @@ def test_there_is_no_way_to_edit_or_delete_audit_rows(owner):
         assert client.request(method, f"/api/app/audit/{entry}", headers=headers).status_code in (404, 405)
 
 
+def test_risk_summary_counts_control_bypass_actions_by_type_and_actor(owner, world):
+    client, headers = owner
+    client.post("/api/app/inventory/adjust", headers=headers, json={
+        "branch_id": world["branch_a"], "product_id": world["product_a"],
+        "quantity_delta": "5", "reason": "recount",
+    })
+    client.post("/api/app/inventory/adjust", headers=headers, json={
+        "branch_id": world["branch_a"], "product_id": world["product_a"],
+        "quantity_delta": "-2", "reason": "damage",
+    })
+    body = client.get("/api/app/risk/exceptions", headers=headers).json()
+    assert body["by_action"]["inventory.adjusted"] == 2
+    assert body["total"] == 2
+    actor = body["by_actor"][0]
+    assert actor["actor_name"] == "owner A"
+    assert actor["by_action"]["inventory.adjusted"] == 2
+    assert actor["total"] == 2
+
+
+def test_risk_summary_window_excludes_old_events(owner, world, engine):
+    from datetime import datetime, timedelta, timezone
+    from sqlalchemy.orm import Session as OrmSession
+    from api.domain_models import AuditLog as AL
+
+    client, headers = owner
+    with OrmSession(engine) as db:
+        db.add(AL(
+            organization_id=world["org_a"], action="sale.voided",
+            entity_type="sales_order", created_at=datetime.now(timezone.utc) - timedelta(days=90),
+        ))
+        db.commit()
+    body = client.get("/api/app/risk/exceptions", headers=headers, params={"days": 30}).json()
+    assert body.get("by_action", {}).get("sale.voided", 0) == 0
+
+
 def test_a_failed_action_leaves_no_audit_row(owner):
     """The audit entry commits with the change: a rejected duplicate writes nothing."""
     client, headers = owner

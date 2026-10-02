@@ -14,28 +14,45 @@ from pathlib import Path
 import joblib
 import pandas as pd
 
-from .real_pipeline import demand_features
+from .real_pipeline import churn_snapshots, customer_rfm, demand_features, return_features
 
 ARTIFACTS_ROOT = Path("artifacts/real")
 
 _cache: dict[str, tuple[float, dict]] = {}
 
 
-def _artifact_path(organization_id: str) -> Path:
-    return ARTIFACTS_ROOT / organization_id / "demand_model.joblib"
+def _artifact_path(organization_id: str, name: str) -> Path:
+    return ARTIFACTS_ROOT / organization_id / name
 
 
-def load_demand_model(organization_id: str) -> dict | None:
-    path = _artifact_path(organization_id)
+def _load(organization_id: str, name: str) -> dict | None:
+    path = _artifact_path(organization_id, name)
     if not path.is_file():
         return None
     mtime = path.stat().st_mtime
-    cached = _cache.get(organization_id)
+    key = f"{organization_id}/{name}"
+    cached = _cache.get(key)
     if cached is not None and cached[0] == mtime:
         return cached[1]
     artifact = joblib.load(path)
-    _cache[organization_id] = (mtime, artifact)
+    _cache[key] = (mtime, artifact)
     return artifact
+
+
+def load_demand_model(organization_id: str) -> dict | None:
+    return _load(organization_id, "demand_model.joblib")
+
+
+def load_churn_model(organization_id: str) -> dict | None:
+    return _load(organization_id, "future_repeat_model.joblib")
+
+
+def load_segment_model(organization_id: str) -> dict | None:
+    return _load(organization_id, "segment_model.joblib")
+
+
+def load_return_risk_model(organization_id: str) -> dict | None:
+    return _load(organization_id, "return_risk_model.joblib")
 
 
 def predict_daily_rates(
@@ -64,3 +81,52 @@ def predict_daily_rates(
         (row.branch_id, row.sku): max(0.0, float(rate))
         for row, rate in zip(latest.itertuples(), predictions)
     }
+
+
+def predict_churn_proba(organization_id: str, sales: pd.DataFrame) -> dict[str, float]:
+    """Probability each real customer WILL return within the trained horizon
+    (so churn risk = 1 - this). Empty dict when no model or no real customers."""
+    artifact = load_churn_model(organization_id)
+    if artifact is None or sales.empty:
+        return {}
+    horizon = artifact.get("horizon_days", 90)
+    snapshot = churn_snapshots(sales, horizon_days=horizon, history_days=180)
+    if snapshot.empty:
+        return {}
+    latest = snapshot.sort_values("cutoff").groupby("customer", as_index=False).last()
+    probability = artifact["pipeline"].predict_proba(latest[artifact["features"]])[:, 1]
+    return {row.customer: float(p) for row, p in zip(latest.itertuples(), probability)}
+
+
+def predict_segments(organization_id: str, sales: pd.DataFrame) -> dict | None:
+    """Live K-Means tier per customer plus the cluster profile. None when no
+    trained segment model exists for this organization yet."""
+    artifact = load_segment_model(organization_id)
+    if artifact is None or sales.empty:
+        return None
+    rfm = customer_rfm(sales)
+    if rfm.empty:
+        return None
+    X = artifact["scaler"].transform(rfm[artifact["features"]])
+    labels = artifact["model"].predict(X)
+    rfm["tier"] = [artifact["tier_map"].get(c, "Unclassified") for c in labels]
+    return {
+        "customer_tier": dict(zip(rfm.customer_pseudo_id, rfm.tier)),
+        "k": artifact["k"],
+    }
+
+
+def predict_return_risk(organization_id: str, sales: pd.DataFrame) -> dict[tuple[str, str], float]:
+    """Mean predicted return probability per (branch, sku), from the most
+    recent sold lines. Empty dict when no model is trained for this org."""
+    artifact = load_return_risk_model(organization_id)
+    if artifact is None or sales.empty:
+        return {}
+    data = return_features(sales)
+    if data.empty:
+        return {}
+    recent = data.sort_values("sold_at").groupby(["branch_id", "sku"]).tail(20)
+    probability = artifact["pipeline"].predict_proba(recent[artifact["features"]])[:, 1]
+    recent = recent.assign(_p=probability)
+    grouped = recent.groupby(["branch_id", "sku"])._p.mean()
+    return {(branch, sku): float(p) for (branch, sku), p in grouped.items()}

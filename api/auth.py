@@ -17,12 +17,15 @@ from sqlalchemy.orm import Session
 
 from .config import get_settings
 from .database import get_db
-from .domain_models import Membership, User
+from .domain_models import Membership, Organization, User
 
 bearer = HTTPBearer(auto_error=False)
 
 
-def _issue_token(user_id: str, token_type: str, lifetime: timedelta, token_version: int) -> str:
+def _issue_token(
+    user_id: str, token_type: str, lifetime: timedelta, token_version: int,
+    sid: str | None = None, jti: str | None = None,
+) -> str:
     settings = get_settings()
     now = datetime.now(timezone.utc)
     payload = {
@@ -34,19 +37,33 @@ def _issue_token(user_id: str, token_type: str, lifetime: timedelta, token_versi
         "iat": now,
         "exp": now + lifetime,
     }
+    if sid is not None:
+        payload["sid"] = sid
+    if jti is not None:
+        payload["jti"] = jti
     return jwt.encode(payload, settings.jwt_secret, algorithm=settings.jwt_algorithm)
 
 
-def create_access_token(user_id: str, token_version: int = 0) -> str:
+def create_access_token(user_id: str, token_version: int = 0, sid: str | None = None) -> str:
     return _issue_token(
-        user_id, "access", timedelta(minutes=get_settings().access_token_minutes), token_version,
+        user_id, "access", timedelta(minutes=get_settings().access_token_minutes), token_version, sid=sid,
     )
 
 
-def create_refresh_token(user_id: str, token_version: int = 0) -> str:
+def create_refresh_token(user_id: str, token_version: int = 0, sid: str | None = None, jti: str | None = None) -> str:
     return _issue_token(
-        user_id, "refresh", timedelta(days=get_settings().refresh_token_days), token_version,
+        user_id, "refresh", timedelta(days=get_settings().refresh_token_days), token_version, sid=sid, jti=jti,
     )
+
+
+def create_mfa_challenge_token(user_id: str, token_version: int = 0) -> str:
+    """Short-lived ticket proving "password already verified, MFA code still owed".
+
+    Never accepted by ``get_current_user`` (wrong ``typ``) and never usable to
+    mint a refresh token either -- it is good for exactly one call to
+    ``/auth/mfa/verify`` within 5 minutes.
+    """
+    return _issue_token(user_id, "mfa", timedelta(minutes=5), token_version)
 
 
 def decode_token_claims(token: str, expected_type: str = "access") -> dict:
@@ -91,10 +108,13 @@ def get_current_user(
         if settings.auth_mode == "development" and not settings.is_production:
             user = db.scalar(select(User).where(User.email == "developer@bsmart.local"))
             if user is None:
-                user = User(email="developer@bsmart.local", display_name="Development Owner")
+                user = User(email="developer@bsmart.local", display_name="Development Owner", is_platform_admin=True)
                 db.add(user)
                 db.commit()
                 db.refresh(user)
+            elif not user.is_platform_admin:
+                user.is_platform_admin = True
+                db.commit()
             return user
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -131,6 +151,12 @@ def get_org_membership(
     if membership is None:
         # Do not reveal whether another tenant exists.
         raise HTTPException(status_code=404, detail="Organization not found")
+    org = db.get(Organization, organization_id)
+    if org is not None and org.suspended_at is not None:
+        raise HTTPException(
+            status_code=403,
+            detail=org.suspended_reason or "This business has been suspended. Contact support.",
+        )
     return membership
 
 

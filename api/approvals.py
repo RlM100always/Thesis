@@ -12,7 +12,7 @@ Two patterns, by how urgent the action is:
   sale or a return cannot sit in a queue, so a qualifying manager/owner types
   their own email and password inline instead (``verify_override``).
 
-Four kinds exist today. The blueprint names more (void, stock adjustment,
+Five kinds exist today. The blueprint names more (void, stock adjustment,
 credit-limit increase, price change) — add one at a time, each fully wired
 into its own route, never several half-done. A rule that silently does
 nothing is worse than an honest gap.
@@ -35,6 +35,7 @@ DEFAULT_RULES: list[tuple[str, Decimal, str]] = [
     ("discount_percent", Decimal("10"), "manager"),
     ("refund_amount", Decimal("1000"), "manager"),
     ("purchase_amount", Decimal("20000"), "owner"),
+    ("cash_shortage", Decimal("500"), "manager"),
 ]
 
 # A role's standing to approve, highest first. Someone at or above the rule's

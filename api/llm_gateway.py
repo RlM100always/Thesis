@@ -23,6 +23,7 @@ exercised end to end against the real API here.
 from __future__ import annotations
 
 import re
+from decimal import Decimal
 from typing import Any
 
 from .config import get_settings
@@ -103,3 +104,60 @@ def explain(item: dict[str, Any]) -> dict[str, Any]:
     if not _numbers_in(text) <= _source_numbers(item):
         return {"text": template, "source": "template", "verified": False}
     return {"text": text, "source": "llm", "verified": True}
+
+
+def _data_numbers(data: dict[str, Any]) -> set[str]:
+    """Every numeral legitimately present anywhere in an already-computed
+    answer payload (flat values and nested lists of dicts alike)."""
+    numbers: set[str] = set()
+
+    def walk(value: Any) -> None:
+        if isinstance(value, (int, float, Decimal)):
+            numbers.add(str(abs(round(float(value)))))
+        elif isinstance(value, dict):
+            for v in value.values():
+                walk(v)
+        elif isinstance(value, list):
+            for v in value:
+                walk(v)
+        elif isinstance(value, str):
+            numbers.update(_numbers_in(value))
+
+    walk(data)
+    return numbers
+
+
+def narrate_answer(question: str, template: str, data: dict[str, Any]) -> dict[str, Any]:
+    """Rephrase an already-computed, real-data ``template`` answer to a plain-
+    Bangla business question in fuller natural language. Same anti-
+    hallucination contract as ``explain()``: the template is the always-
+    available default, a real key only ever rephrases numbers that are
+    already in ``data``, and any narration introducing a number that isn't
+    falls back to the template rather than ever reaching the owner."""
+    settings = get_settings()
+    if settings.integration_mode != "production" or not settings.anthropic_api_key:
+        return {"text": template, "source": "template"}
+
+    try:
+        import anthropic
+
+        client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
+        prompt = (
+            "তুমি একজন বাংলাদেশি দোকান মালিকের সহকারী। মালিক জিজ্ঞেস করেছেন: "
+            f"\"{question}\"। নিচের তথ্য থেকে স্বাভাবিক কথোপকথনের ভাষায় ২-৩ বাক্যে "
+            "উত্তর দাও। শুধু এই তথ্যে থাকা সংখ্যা ব্যবহার করবে, নতুন কোনো সংখ্যা "
+            f"বানাবে না।\n\nতথ্য: {data}\n\nইতিমধ্যে একটা সহজ উত্তর আছে এটা: {template}"
+        )
+        response = client.messages.create(
+            model=MODEL, max_tokens=250,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        text = "".join(
+            block.text for block in response.content if getattr(block, "type", None) == "text"
+        ).strip()
+    except Exception:
+        return {"text": template, "source": "template"}
+
+    if not text or not _numbers_in(text) <= _data_numbers(data):
+        return {"text": template, "source": "template"}
+    return {"text": text, "source": "llm"}

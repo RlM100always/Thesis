@@ -31,4 +31,5 @@ def canonical_sales_frame(db: Session, organization_id: str) -> pd.DataFrame:
         "unit_price": float(line.unit_price), "unit_cost_at_sale": float(line.unit_cost_at_sale),
         "discount_amount": float(line.discount_amount), "line_total": float(line.line_total),
         "channel": order.channel, "status": order.status,
+        "returned_quantity": float(line.returned_quantity),
     } for order, line, product in rows])

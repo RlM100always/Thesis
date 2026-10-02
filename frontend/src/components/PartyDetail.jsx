@@ -31,6 +31,7 @@ export function CustomerDetail({ customerId, onClose, onCollect }) {
   const toast = useToast();
   const { data, error } = useDetail((id) => api.customerSummary(active.id, id), customerId);
   const { data: loyalty } = useDetail((id) => api.customerLoyalty(active.id, id), customerId);
+  const { data: full } = useDetail((id) => api.customer360(active.id, id), customerId);
 
   const reminder = data && Number(data.due) > 0
     ? `আসসালামু আলাইকুম ${data.name}, ${active.name} থেকে জানাচ্ছি — আপনার ${money(data.due)} বাকি আছে। সুবিধামতো পরিশোধ করলে ভালো হয়। ধন্যবাদ।`
@@ -82,6 +83,19 @@ export function CustomerDetail({ customerId, onClose, onCollect }) {
             { key: "invoice", label: "চালান", primary: true }, { key: "sold_at", label: "সময়", render: (r) => dateTimeBn(r.sold_at) },
             { key: "total", label: "মোট", align: "right", render: (r) => money(r.total) },
           ]} />
+          {full?.open_tickets?.length > 0 && (
+            <div>
+              <strong>খোলা সাপোর্ট টিকেট</strong>
+              <div className="row" style={{ marginTop: 8 }}>{full.open_tickets.map((t) => <Badge key={t.id} tone={t.priority === "urgent" || t.priority === "high" ? "danger" : "warn"}>{t.subject}</Badge>)}</div>
+            </div>
+          )}
+          {full?.feedback?.length > 0 && (
+            <div>
+              <strong>সাম্প্রতিক ফিডব্যাক</strong>
+              <div className="row" style={{ marginTop: 8 }}>{full.feedback.slice(0, 5).map((f) => <Badge key={f.id} tone={f.score >= 9 ? "success" : f.score <= 6 ? "danger" : "neutral"}>{f.score}/10</Badge>)}</div>
+            </div>
+          )}
+          {full?.originated_from_lead_id && <Badge tone="info">এই কাস্টমার একটি লিড থেকে এসেছেন</Badge>}
         </div>
       )}
     </Modal>

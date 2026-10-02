@@ -153,7 +153,18 @@ export function CopyField({ value, label = "কপি করুন" }) {
 
 const AVATAR_TONES = ["#0a8754", "#2563eb", "#b45309", "#7c3aed", "#0e7490", "#be185d", "#4d7c0f"];
 
-export function Avatar({ name = "?", size = 36 }) {
+export function Avatar({ name = "?", size = 36, src = null }) {
+  if (src) {
+    return (
+      <img
+        className="ui-avatar ui-avatar-photo"
+        src={src}
+        alt=""
+        style={{ width: size, height: size }}
+        aria-hidden="true"
+      />
+    );
+  }
   const initials = name.trim().split(/\s+/).slice(0, 2).map((part) => Array.from(part)[0] || "").join("") || "?";
   let hash = 0;
   for (const ch of name) hash = (hash * 31 + ch.codePointAt(0)) >>> 0;
@@ -208,11 +219,18 @@ export function Stat({ label, value, sub, tone = "neutral", onClick, active = fa
 
 // Pill tabs (filters). Keyboard and screen-reader friendly.
 export function Segmented({ options, value, onChange, label }) {
+  const move = (event, index) => {
+    if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+    event.preventDefault();
+    const next = event.key === 'Home' ? 0 : event.key === 'End' ? options.length - 1 : (index + (event.key === 'ArrowRight' ? 1 : -1) + options.length) % options.length;
+    onChange(options[next].value);
+    window.requestAnimationFrame(() => event.currentTarget.parentElement?.querySelectorAll('[role="tab"]')?.[next]?.focus());
+  };
   return (
     <div className="ui-seg" role="tablist" aria-label={label}>
       {options.map((o) => (
         <button key={o.value} type="button" role="tab" aria-selected={value === o.value}
-                className={value === o.value ? "on" : ""} onClick={() => onChange(o.value)}>
+                className={value === o.value ? "on" : ""} onClick={() => onChange(o.value)} onKeyDown={(event) => move(event, options.indexOf(o))}>
           {o.label}{o.count !== undefined && <span className="ui-seg__count">{o.count}</span>}
         </button>
       ))}

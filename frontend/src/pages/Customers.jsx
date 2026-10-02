@@ -25,7 +25,7 @@ export default function Customers() {
 
   return (
     <>
-      <h2 className="page-title">Customers</h2>
+      <h2 className="page-title">কাস্টমার</h2>
       <p className="page-sub">
         Search a customer to see its predicted segment, churn risk, and the
         features that drove the prediction
@@ -57,13 +57,13 @@ export default function Customers() {
               <table>
                 <thead>
                   <tr>
-                    <th>Customer ID</th>
-                    <th>Segment</th>
+                    <th>কাস্টমার আইডি</th>
+                    <th>গ্রুপ</th>
                     <th className="num"><TermLabel termKey="recency" /></th>
                     <th className="num"><TermLabel termKey="frequency" /></th>
-                    <th className="num">Total Spend</th>
-                    <th className="num">Orders</th>
-                    <th>Status</th>
+                    <th className="num">মোট কেনাকাটা</th>
+                    <th className="num">অর্ডার</th>
+                    <th>অবস্থা</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -130,12 +130,12 @@ function CustomerDetail({ customerId, onClose }) {
     <div className="card">
       <div className="row" style={{ justifyContent: "space-between", marginBottom: 14 }}>
         <h3 style={{ margin: 0 }}>{data.customer_id}</h3>
-        <button onClick={onClose}>Close</button>
+        <button onClick={onClose}>বন্ধ করুন</button>
       </div>
 
       <div className="kpi-grid">
         <div className="kpi">
-          <div className="label">Predicted Segment</div>
+          <div className="label">অনুমান করা গ্রুপ</div>
           <div className="value" style={{ fontSize: 18, color: SEGMENT_COLORS[pred.segment] }}>
             {pred.segment}
           </div>
@@ -144,7 +144,7 @@ function CustomerDetail({ customerId, onClose }) {
           </div>
         </div>
         <div className="kpi">
-          <div className="label">Actual Segment</div>
+          <div className="label">বর্তমান গ্রুপ</div>
           <div className="value" style={{ fontSize: 18 }}>{data.actual_segment}</div>
           <div style={{ fontSize: 12, marginTop: 3 }}>
             <span className={`badge ${agrees ? "low" : "high"}`}>
@@ -153,7 +153,7 @@ function CustomerDetail({ customerId, onClose }) {
           </div>
         </div>
         <div className="kpi">
-          <div className="label">Churn Risk</div>
+          <div className="label">চলে যাওয়ার ঝুঁকি</div>
           <div className="value" style={{ fontSize: 18 }}>
             <span className={`badge ${churn.risk_band.toLowerCase()}`}>{churn.risk_band}</span>
           </div>
@@ -162,14 +162,14 @@ function CustomerDetail({ customerId, onClose }) {
           </div>
         </div>
         <div className="kpi">
-          <div className="label">Total Spend</div>
+          <div className="label">মোট কেনাকাটা</div>
           <div className="value" style={{ fontSize: 18 }}>{formatBDT(data.profile.monetary)}</div>
         </div>
       </div>
 
       <div className="grid-2">
         <div>
-          <h3>Profile</h3>
+          <h3>প্রোফাইল</h3>
           <div className="table-wrap">
             <table>
               <tbody>

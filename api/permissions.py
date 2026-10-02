@@ -21,7 +21,7 @@ from __future__ import annotations
 from fastapi import HTTPException
 
 ROLES: tuple[str, ...] = (
-    "owner", "manager", "cashier", "accountant", "stock_keeper", "viewer", "evaluator",
+    "owner", "manager", "cashier", "accountant", "stock_keeper", "viewer", "evaluator", "rider",
 )
 
 ALL_PERMISSIONS: frozenset[str] = frozenset({
@@ -49,11 +49,27 @@ ALL_PERMISSIONS: frozenset[str] = frozenset({
     "settings:write",
     "notifications:read", "notifications:send",
     "approvals:read", "approvals:decide",
+    "tickets:read", "tickets:write",
+    "leads:read", "leads:write",
+    "feedback:read", "feedback:write",
+    "attendance:read", "attendance:correct",
+    "leave:read", "leave:decide",
+    "roster:write",
+    "commission:read",
+    "targets:write",
+    "deliveries:read", "deliveries:write",
+    "advances:read", "advances:write",
+    "payroll:read", "payroll:write", "payroll:approve", "payroll:pay",
+    "period:close",
 })
 
 ROLE_PERMISSIONS: dict[str, frozenset[str]] = {
     "owner": ALL_PERMISSIONS,
-    "manager": ALL_PERMISSIONS - {"staff:manage", "payments:supplier", "settings:write"},  # keeps approvals:decide
+    "manager": ALL_PERMISSIONS - {
+        "staff:manage", "payments:supplier", "settings:write",
+        "payroll:approve", "payroll:pay",  # maker-checker: manager drafts, owner approves, accountant pays
+        "period:close",  # owner-only: closing/reopening the books
+    },
     "accountant": frozenset({
         "catalog:read", "inventory:read", "sales:read", "returns:read",
         "orders:read", "orders:create",
@@ -66,6 +82,12 @@ ROLE_PERMISSIONS: dict[str, frozenset[str]] = {
         "dashboard:read", "recommendations:read", "bsmart:read", "monitoring:read",
         "imports:write", "dataset:export", "model:train",
         "approvals:read",
+        "tickets:read", "tickets:write",
+        "leads:read", "leads:write",
+        "feedback:read", "feedback:write",
+        "commission:read",
+        "advances:read",
+        "payroll:read", "payroll:pay",
     }),
     "cashier": frozenset({
         "catalog:read", "inventory:read", "sales:read", "sales:create",
@@ -73,6 +95,9 @@ ROLE_PERMISSIONS: dict[str, frozenset[str]] = {
         "customers:read", "customers:write", "payments:customer",
         "notifications:send",
         "cash:read", "cash:close",
+        "tickets:read", "tickets:write",
+        "leads:read", "leads:write",
+        "feedback:read", "feedback:write",
     }),
     "stock_keeper": frozenset({
         "catalog:read", "inventory:read", "inventory:adjust", "inventory:transfer",
@@ -87,9 +112,19 @@ ROLE_PERMISSIONS: dict[str, frozenset[str]] = {
         "dashboard:read", "recommendations:read", "bsmart:read", "monitoring:read",
         "approvals:read",
         "notifications:read",
+        "tickets:read",
+        "leads:read",
+        "feedback:read",
     }),
     "evaluator": frozenset({
         "dashboard:read", "recommendations:read", "bsmart:read", "monitoring:read",
+    }),
+    # Deliberately minimal: delivery_routes.py's start/complete/handover actions
+    # are gated by "is this delivery assigned to me" (ownership), not a broad
+    # permission, so a rider needs almost nothing from this matrix to do their
+    # job -- just enough to see the Fulfilment page and their own assignments.
+    "rider": frozenset({
+        "orders:read", "notifications:read",
     }),
 }
 
@@ -118,3 +153,33 @@ def require_permission(membership, permission: str) -> None:
         raise RuntimeError(f"Unknown permission requested: {permission}")
     if not has_permission(membership.role, permission):
         raise HTTPException(status_code=403, detail="Your role cannot perform this action")
+
+
+def assigned_branch_ids(db, membership) -> set[str] | None:
+    """Branches this membership is restricted to, or ``None`` for org-wide access.
+
+    SRD 2.3 ABAC: ``branch_id in assigned_branches (unless org-wide permission)``.
+    A membership with no ``MembershipBranch`` rows has never been scoped, so it
+    keeps today's org-wide behaviour -- this is additive, not a breaking change.
+    """
+    from sqlalchemy import select
+
+    from .domain_models import MembershipBranch
+
+    rows = db.scalars(
+        select(MembershipBranch.branch_id).where(MembershipBranch.membership_id == membership.id)
+    ).all()
+    return set(rows) if rows else None
+
+
+def require_branch_access(db, membership, branch_id: str | None) -> None:
+    """Raise 403 if this membership is branch-scoped and ``branch_id`` isn't in it.
+
+    A ``None`` branch_id (an org-wide record/report) is always allowed through;
+    callers that operate on one specific branch's data must pass it.
+    """
+    if branch_id is None:
+        return
+    allowed = assigned_branch_ids(db, membership)
+    if allowed is not None and branch_id not in allowed:
+        raise HTTPException(status_code=403, detail="Your account is not assigned to this branch")
