@@ -2100,9 +2100,13 @@ const SITE_SCHEMA = [
     { key: "trust_items",      label: "ট্রাস্ট JSON", type: "json",   rows: 6 },
   ]},
   { group: "About পেজ", keys: [
-    { key: "about.eyebrow", label: "Eyebrow",    type: "string", rows: 1 },
-    { key: "about.title",   label: "শিরোনাম",   type: "string", rows: 2 },
-    { key: "about.text",    label: "সাবটেক্সট", type: "string", rows: 2 },
+    { key: "about.eyebrow",      label: "Eyebrow",           type: "string", rows: 1 },
+    { key: "about.title",        label: "শিরোনাম",          type: "string", rows: 2 },
+    { key: "about.text",         label: "সাবটেক্সট",        type: "string", rows: 2 },
+    { key: "about.image_src",    label: "ছবির URL",          type: "string", rows: 1 },
+    { key: "about.image_alt",    label: "ছবির বিবরণ (alt)",  type: "string", rows: 1 },
+    { key: "about.image_credit", label: "ছবির কৃতিত্ব",     type: "string", rows: 1 },
+    { key: "about.image_link",   label: "ছবির সূত্র লিঙ্ক", type: "string", rows: 1 },
   ]},
   { group: "Help পেজ", keys: [
     { key: "help.eyebrow", label: "Eyebrow",    type: "string", rows: 1 },
@@ -2135,6 +2139,49 @@ const SITE_SCHEMA = [
     { key: "status.eyebrow", label: "Eyebrow",    type: "string", rows: 1 },
     { key: "status.title",   label: "শিরোনাম",   type: "string", rows: 2 },
     { key: "status.text",    label: "সাবটেক্সট", type: "string", rows: 2 },
+  ]},
+  // ── হোম পেজ — অতিরিক্ত সেকশন ──────────────────────────────────────────
+  { group: "স্টোরি সেকশন", keys: [
+    { key: "story.eyebrow",      label: "Eyebrow",           type: "string", rows: 1 },
+    { key: "story.title",        label: "শিরোনাম",          type: "string", rows: 2 },
+    { key: "story.text",         label: "সাবটেক্সট",        type: "string", rows: 3 },
+    { key: "story.image_src",    label: "ছবির URL",          type: "string", rows: 1 },
+    { key: "story.image_alt",    label: "ছবির বিবরণ (alt)",  type: "string", rows: 1 },
+    { key: "story.image_credit", label: "ছবির কৃতিত্ব",     type: "string", rows: 1 },
+    { key: "story.image_link",   label: "ছবির সূত্র লিঙ্ক", type: "string", rows: 1 },
+    { key: "story.cta",          label: "CTA লিঙ্ক টেক্সট", type: "string", rows: 1 },
+  ]},
+  { group: "AI সেকশন (হোম)", keys: [
+    { key: "ai_decisions.eyebrow",      label: "Eyebrow",              type: "string", rows: 1 },
+    { key: "ai_decisions.title",        label: "শিরোনাম",             type: "string", rows: 2 },
+    { key: "ai_decisions.text",         label: "সাবটেক্সট",           type: "string", rows: 2 },
+    { key: "ai_decisions.signal_title", label: "সিগন্যাল শিরোনাম",    type: "string", rows: 1 },
+    { key: "ai_decisions.signal_text",  label: "সিগন্যাল টেক্সট",     type: "string", rows: 2 },
+    { key: "ai_decisions.col_input",    label: "ইনপুট কলাম লেবেল",   type: "string", rows: 1 },
+    { key: "ai_decisions.col_output",   label: "আউটপুট কলাম লেবেল",  type: "string", rows: 1 },
+    { key: "ai_decisions.items",        label: "AI সিদ্ধান্ত JSON",   type: "json",   rows: 8 },
+  ]},
+  { group: "ডার্ক কলআউট", keys: [
+    { key: "dark_callout.kicker", label: "Kicker",    type: "string", rows: 1 },
+    { key: "dark_callout.title",  label: "শিরোনাম",  type: "string", rows: 2 },
+    { key: "dark_callout.text",   label: "বিবরণ",    type: "string", rows: 3 },
+    { key: "dark_callout.cta",    label: "CTA বোতাম",type: "string", rows: 1 },
+  ]},
+  // ── মিডিয়া ও ডেটা ────────────────────────────────────────────────────────
+  { group: "বাস্তব চিত্র গ্যালারি", keys: [
+    { key: "real_work", label: "বাস্তব ব্যবসার ছবি JSON (object: retail/restaurant/manufacturing/craft/service/electronics)", type: "json", rows: 14 },
+  ]},
+  { group: "প্রোডাক্ট ট্যুর", keys: [
+    { key: "product_tour", label: "ট্যুর আইটেম JSON — id/icon/tab/kicker/title/text/metric/points/accent", type: "json", rows: 10 },
+  ]},
+  { group: "ব্যবসার ধরন তালিকা", keys: [
+    { key: "solutions_list", label: "সলিউশন JSON object (keyed by slug: pharmacy/grocery/…)", type: "json", rows: 14 },
+  ]},
+  { group: "Before / After তুলনা", keys: [
+    { key: "before_after.items", label: "তুলনা আইটেম JSON — array of [before, after]", type: "json", rows: 6 },
+  ]},
+  { group: "নেভিগেশন লিঙ্ক", keys: [
+    { key: "nav_links", label: "নেভিগেশন JSON — array of [path, label]", type: "json", rows: 4 },
   ]},
   { group: "Meta / SEO", keys: [
     { key: "meta.title",       label: "Site Title",  type: "string", rows: 1 },

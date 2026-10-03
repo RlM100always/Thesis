@@ -269,6 +269,8 @@ function PublicHeader() {
   const [open, setOpen] = useState(false);
   const { user } = useAuth();
   const { pathname } = useLocation();
+  const site = useSiteContent();
+  const nav = site.getJson("nav_links", NAV);
   useEffect(() => { setOpen(false); window.scrollTo(0, 0); }, [pathname]);
   return (
     <header className="public-header">
@@ -278,7 +280,7 @@ function PublicHeader() {
           <Icon name={open ? "x" : "menu"} />
         </button>
         <nav id="public-navigation" className={`public-nav${open ? " is-open" : ""}`} aria-label="প্রধান নেভিগেশন">
-          {NAV.map(([to, label]) => <NavLink key={to} to={to} className={({ isActive }) => isActive ? "active" : ""}>{label}</NavLink>)}
+          {nav.map(([to, label]) => <NavLink key={to} to={to} className={({ isActive }) => isActive ? "active" : ""}>{label}</NavLink>)}
           <NavLink to="/help" className={({ isActive }) => isActive ? "active" : ""}>সহায়তা</NavLink>
         </nav>
         <div className="public-actions">
@@ -319,7 +321,9 @@ function PhotoCredit({ media }) {
 }
 
 function RealWorkGallery() {
-  const items = [REAL_WORK.retail, REAL_WORK.restaurant, REAL_WORK.manufacturing, REAL_WORK.craft, REAL_WORK.service];
+  const site = useSiteContent();
+  const rw = site.getJson("real_work", REAL_WORK);
+  const items = [rw.retail, rw.restaurant, rw.manufacturing, rw.craft, rw.service].filter(Boolean);
   return (
     <div className="real-work-gallery">
       {items.map((media, index) => (
@@ -350,13 +354,15 @@ function ProductPreview() {
 }
 
 function ProductTour() {
+  const site = useSiteContent();
+  const tourItems = site.getJson("product_tour", PRODUCT_TOUR);
   const [activeId, setActiveId] = useState("pos");
-  const active = PRODUCT_TOUR.find((item) => item.id === activeId) || PRODUCT_TOUR[0];
+  const active = tourItems.find((item) => item.id === activeId) || tourItems[0];
   return (
     <section className="public-section product-tour-section">
       <SectionHead eyebrow="বাস্তবে কাজ করে দেখুন" title="আপনার টিম কাজ করবে, সিস্টেম নিজে সব মিলিয়ে রাখবে" text="একটা অংশ বেছে নিন। দেখুন একই বিক্রি কীভাবে কাউন্টার থেকে মালিকের হিসাব পর্যন্ত যায়।" />
       <div className="product-tour-tabs" role="tablist" aria-label="Product workflow">
-        {PRODUCT_TOUR.map((item) => <button type="button" role="tab" aria-selected={item.id === activeId} className={item.id === activeId ? "active" : ""} onClick={() => setActiveId(item.id)} key={item.id}><Icon name={item.icon} /><span>{item.tab}</span></button>)}
+        {tourItems.map((item) => <button type="button" role="tab" aria-selected={item.id === activeId} className={item.id === activeId ? "active" : ""} onClick={() => setActiveId(item.id)} key={item.id}><Icon name={item.icon} /><span>{item.tab}</span></button>)}
       </div>
       <div className={`product-tour-stage tone-${active.accent}`}>
         <div className="product-tour-copy"><small>{active.kicker}</small><h2>{active.title}</h2><p>{active.text}</p><strong><Icon name="check" /> {active.metric}</strong><ul>{active.points.map((point) => <li key={point}><Icon name="chevronRight" />{point}</li>)}</ul><Link className="public-textlink" to="/features">সব capability দেখুন <Icon name="chevronRight" /></Link></div>
@@ -393,10 +399,10 @@ function HomePage() {
 
       <section className="public-section public-story">
         <div className="public-story-image">
-          <img src="https://asiapacific.unwomen.org/sites/default/files/Field%20Office%20ESEAsia/Images/2018/02/Sita-Rani-675px.jpg" alt="বাংলাদেশের একটি মুদি দোকানে উদ্যোক্তা" loading="lazy" referrerPolicy="no-referrer" />
-          <a href="https://asiapacific.unwomen.org/en/news-and-events/stories/2018/02/sita-rani-gour" target="_blank" rel="noreferrer">ছবি: UN Women Asia-Pacific</a>
+          <img src={site.get("story.image_src", "https://asiapacific.unwomen.org/sites/default/files/Field%20Office%20ESEAsia/Images/2018/02/Sita-Rani-675px.jpg")} alt={site.get("story.image_alt", "বাংলাদেশের একটি মুদি দোকানে উদ্যোক্তা")} loading="lazy" referrerPolicy="no-referrer" />
+          <a href={site.get("story.image_link", "https://asiapacific.unwomen.org/en/news-and-events/stories/2018/02/sita-rani-gour")} target="_blank" rel="noreferrer">ছবি: {site.get("story.image_credit", "UN Women Asia-Pacific")}</a>
         </div>
-        <div><SectionHead align="left" eyebrow="বাস্তব কাজের কথা ভেবে তৈরি" title="কাউন্টারের ব্যস্ততা থেকে মালিকের সিদ্ধান্ত পর্যন্ত" text="বাংলাদেশে একজন মানুষ একই দিনে ক্যাশিয়ার, মাল কেনার লোক আর মালিক — সব ভূমিকায় কাজ করেন। তাই এটা জটিল মেনু দিয়ে শুরু হয় না, বরং আপনি কে এবং আজ আপনার কী কাজ সেটা দিয়ে শুরু হয়।" /><div className="story-points"><div><b>শেখা সহজ</b><span>পুরোটা বাংলায়, ধাপে ধাপে দেখানো</span></div><div><b>ইন্টারনেট দুর্বল হলেও চলে</b><span>কাজ আটকায় না, পরে নিজে থেকে মিলে যায়</span></div><div><b>সব হিসাবের প্রমাণ থাকে</b><span>রসিদ থেকে স্টক ও হিসাবের খাতা পর্যন্ত</span></div></div><Link className="public-textlink" to="/guidelines">কে কীভাবে ব্যবহার করবেন দেখুন <Icon name="chevronRight" /></Link></div>
+        <div><SectionHead align="left" eyebrow={site.get("story.eyebrow", "বাস্তব কাজের কথা ভেবে তৈরি")} title={site.get("story.title", "কাউন্টারের ব্যস্ততা থেকে মালিকের সিদ্ধান্ত পর্যন্ত")} text={site.get("story.text", "বাংলাদেশে একজন মানুষ একই দিনে ক্যাশিয়ার, মাল কেনার লোক আর মালিক — সব ভূমিকায় কাজ করেন। তাই এটা জটিল মেনু দিয়ে শুরু হয় না, বরং আপনি কে এবং আজ আপনার কী কাজ সেটা দিয়ে শুরু হয়।")} /><div className="story-points"><div><b>শেখা সহজ</b><span>পুরোটা বাংলায়, ধাপে ধাপে দেখানো</span></div><div><b>ইন্টারনেট দুর্বল হলেও চলে</b><span>কাজ আটকায় না, পরে নিজে থেকে মিলে যায়</span></div><div><b>সব হিসাবের প্রমাণ থাকে</b><span>রসিদ থেকে স্টক ও হিসাবের খাতা পর্যন্ত</span></div></div><Link className="public-textlink" to="/guidelines">{site.get("story.cta", "কে কীভাবে ব্যবহার করবেন দেখুন")} <Icon name="chevronRight" /></Link></div>
       </section>
 
       <section className="public-section owner-problem-section">
@@ -473,7 +479,7 @@ function HomePage() {
         <div className="ai-decision-grid">{site.getJson("ai_decisions.items", AI_DECISIONS).map((item) => <article key={item.title}><span><Icon name={item.icon} /></span><h3>{item.title}</h3><small>{site.get("ai_decisions.col_input", "যা দেখে")}</small><p>{item.data}</p><small>{site.get("ai_decisions.col_output", "আপনি যা পাবেন")}</small><b>{item.output}</b></article>)}</div>
       </section>
 
-      <section className="public-section public-darkcallout"><div><span className="public-kicker light"><i /> যাদুর মতো না, বোঝা যায় এমন</span><h2>AI কারণ বলবে, সিদ্ধান্ত থাকবে আপনার হাতে</h2><p>পরামর্শের পেছনের সংখ্যা, শর্ত, কতটা নিশ্চিত আর কী ফল হতে পারে — সব দেখুন। গ্রহণ, বদলানো, আটকে রাখা বা বাতিল করার সিদ্ধান্ত সবসময় মানুষের।</p><Link className="public-cta light" to="/features">পরামর্শ কীভাবে আসে দেখুন <Icon name="chevronRight" /></Link></div><div className="decision-card"><small>আজকের সুপারিশ · স্টক</small><b>Paracetamol 500mg-এর ২৪ বক্স নতুন অর্ডার</b><p>বর্তমান মজুত ৫ দিন চলবে · সাপ্লায়ারের মাল দিতে ৭ দিন লাগে</p><div><span>ফুরিয়ে যাওয়ার ঝুঁকি</span><strong>উচ্চ থেকে কম হবে</strong></div><footer><span>কারণ দেখুন</span><span>খসড়া অর্ডার</span></footer></div></section>
+      <section className="public-section public-darkcallout"><div><span className="public-kicker light"><i /> {site.get("dark_callout.kicker", "যাদুর মতো না, বোঝা যায় এমন")}</span><h2>{site.get("dark_callout.title", "AI কারণ বলবে, সিদ্ধান্ত থাকবে আপনার হাতে")}</h2><p>{site.get("dark_callout.text", "পরামর্শের পেছনের সংখ্যা, শর্ত, কতটা নিশ্চিত আর কী ফল হতে পারে — সব দেখুন। গ্রহণ, বদলানো, আটকে রাখা বা বাতিল করার সিদ্ধান্ত সবসময় মানুষের।")}</p><Link className="public-cta light" to="/features">{site.get("dark_callout.cta", "পরামর্শ কীভাবে আসে দেখুন")} <Icon name="chevronRight" /></Link></div><div className="decision-card"><small>আজকের সুপারিশ · স্টক</small><b>Paracetamol 500mg-এর ২৪ বক্স নতুন অর্ডার</b><p>বর্তমান মজুত ৫ দিন চলবে · সাপ্লায়ারের মাল দিতে ৭ দিন লাগে</p><div><span>ফুরিয়ে যাওয়ার ঝুঁকি</span><strong>উচ্চ থেকে কম হবে</strong></div><footer><span>কারণ দেখুন</span><span>খসড়া অর্ডার</span></footer></div></section>
 
       <CtaBand />
     </>
@@ -483,13 +489,14 @@ function HomePage() {
 function FeaturesPage() {
   const site = useSiteContent();
   const features = site.getJson("core_features", CORE_FEATURES);
+  const rw = site.getJson("real_work", REAL_WORK);
   return (
     <>
       <PageHero eyebrow={site.get("features.eyebrow", "সব ফিচার")} title={site.get("features.title", "দৈনিক কাজ থেকে মালিকের সিদ্ধান্ত, সব একটা সিস্টেমে")} text={site.get("features.text", "একই core সব ধরনের ব্যবসার জন্য কাজ করে, আর ব্যবসার ধরন অনুযায়ী বিশেষ অংশগুলো যোগ হয়।")} />
       <section className="public-section"><div className="feature-grid">{features.map((f) => <article key={f.title}><span><Icon name={f.icon} /></span><h3>{f.title}</h3><p>{f.text}</p></article>)}</div></section>
       <section className="public-section feature-photo-story">
         <div className="feature-photo-copy"><SectionHead align="left" eyebrow="একই নিয়ম সব জায়গায়" title="দোকানের কাউন্টার, রান্নাঘর বা কারখানা — সব জায়গায় একই নিয়ম" text="কাজ কে শুরু করলো, কী হলো, টাকায় কী প্রভাব পড়লো আর তার প্রমাণ — এসব একসাথে যুক্ত থাকলেই মালিক আসল নিয়ন্ত্রণ পান।" /><Link className="public-textlink" to="/guidelines">কে কীভাবে ব্যবহার করবেন <Icon name="chevronRight" /></Link></div>
-        {[REAL_WORK.restaurant, REAL_WORK.service, REAL_WORK.electronics].map((media) => <figure key={media.label}><img src={media.src} alt={media.alt} loading="lazy" referrerPolicy="no-referrer" /><figcaption><b>{media.label}</b><span>{media.detail}</span></figcaption><PhotoCredit media={media} /></figure>)}
+        {[rw.restaurant, rw.service, rw.electronics].filter(Boolean).map((media) => <figure key={media.label}><img src={media.src} alt={media.alt} loading="lazy" referrerPolicy="no-referrer" /><figcaption><b>{media.label}</b><span>{media.detail}</span></figcaption><PhotoCredit media={media} /></figure>)}
       </section>
       <section className="public-section public-tint"><div className="split-feature"><div><SectionHead align="left" eyebrow="তথ্য থেকে সরাসরি কাজে" title="শুধু রিপোর্ট দেখে বসে না থেকে, সরাসরি কাজে নামুন" text="স্টক কমে গেলে সেখান থেকেই নতুন অর্ডার, বাকি পুরোনো হলে কালেকশনের কাজ, মেয়াদ ফুরালে সাপ্লায়ারের দাবি — এক ক্লিকে তৈরি করুন।" /><ul className="check-list"><li><Icon name="check" /> যেকোনো সংখ্যার আসল উৎস পর্যন্ত দেখা যায়</li><li><Icon name="check" /> কাকে কাজ দেওয়া হলো ও কবের মধ্যে</li><li><Icon name="check" /> অনুমোদনের পর আবার যাচাই হয়</li><li><Icon name="check" /> ফলাফল পরে মাপা হয়</li></ul></div><div className="public-stack">{["আজকের করণীয়", "ক্যাশ মেলানো", "স্টকের সত্য হিসাব", "বাকি আদায়ের পরিকল্পনা"].map((x, i) => <div key={x}><i>{String(i + 1).padStart(2, "0")}</i><b>{x}</b><span>{["ঠিক মানুষের সামনে জরুরি কাজ", "ক্যাশ, bKash, কার্ড ও COD-র গরমিল", "গণনা থেকে ভুলের ঝুঁকি", "প্রতিশ্রুতি ও বয়স দেখে আদায়ের কাজ"][i]}</span></div>)}</div></div></section>
       <section className="public-section"><SectionHead eyebrow="পরিষ্কার অবস্থা" title="কোনটা চালু, কোনটা এখনো বাকি — স্পষ্ট করে বলি" text="একটা পূর্ণ সমাধানের সব অংশ সবসময় সব ব্যবসায় একসাথে চালু নাও থাকতে পারে। আপনার নিজের workspace-এ ঠিক কী চালু আছে তা স্পষ্ট দেখা যাবে।" /><div className="status-row"><div><i className="status-live" /><b>চালু আছে</b><span>আপনার workspace-এ এখনই ব্যবহার করা যায়</span></div><div><i className="status-pilot" /><b>সীমিত আকারে চালু</b><span>নির্দিষ্ট শাখা বা ভূমিকার জন্য</span></div><div><i className="status-roadmap" /><b>সেট করা লাগবে</b><span>প্রয়োজনীয় তথ্য বা অনুমতি এখনো দেওয়া হয়নি</span></div></div></section>
@@ -500,21 +507,23 @@ function FeaturesPage() {
 
 function SolutionsPage({ slug }) {
   const site = useSiteContent();
-  const selected = slug && SOLUTIONS[slug];
-  if (selected) return <SolutionDetail slug={slug} solution={selected} />;
+  const solutions = site.getJson("solutions_list", SOLUTIONS);
+  const rw = site.getJson("real_work", REAL_WORK);
+  const selected = slug && solutions[slug];
+  if (selected) return <SolutionDetail slug={slug} solution={selected} rw={rw} />;
   return (
     <>
       <PageHero eyebrow={site.get("solutions.eyebrow", "ব্যবসার ধরন")} title={site.get("solutions.title", "আপনার ব্যবসার মতো করেই সাজানো")} text={site.get("solutions.text", "যেকোনো একটা ধরন বেছে দ্রুত শুরু করুন। পরে আরও প্রয়োজন হলে নতুন সুবিধা যোগ করতে পারবেন।")} />
-      <section className="public-section solution-visual-intro"><div><SectionHead align="left" eyebrow="আপনার ব্যবসা বুঝে সাজানো" title="প্রতিটা ব্যবসার কাজ আলাদা, তাই স্ক্রিনও আলাদা" text="মুদি দোকানের স্ক্রিন, রেস্টুরেন্টের রান্নাঘর, আর ওয়ার্কশপের কাজের কার্ড — একরকম না। ভেতরের হিসাব একই থাকলেও, আপনার সামনে যা দেখাবে তা আপনার ব্যবসার মতো করেই সাজানো থাকবে।" /></div><div className="solution-visual-stack">{[REAL_WORK.retail, REAL_WORK.manufacturing, REAL_WORK.craft].map((media, index) => <figure key={media.label} style={{ "--stack-index": index }}><img src={media.src} alt={media.alt} loading="lazy" referrerPolicy="no-referrer" /><figcaption>{media.label}</figcaption></figure>)}</div></section>
-      <section className="public-section"><div className="solution-grid full">{Object.entries(SOLUTIONS).map(([key, s]) => <Link to={`/solutions/${key}`} key={key}><span><Icon name={s.icon} /></span><div><b>{s.title}</b><p>{s.tagline}</p>{s.status && <small>{s.status}</small>}</div><Icon name="chevronRight" /></Link>)}</div></section>
+      <section className="public-section solution-visual-intro"><div><SectionHead align="left" eyebrow="আপনার ব্যবসা বুঝে সাজানো" title="প্রতিটা ব্যবসার কাজ আলাদা, তাই স্ক্রিনও আলাদা" text="মুদি দোকানের স্ক্রিন, রেস্টুরেন্টের রান্নাঘর, আর ওয়ার্কশপের কাজের কার্ড — একরকম না। ভেতরের হিসাব একই থাকলেও, আপনার সামনে যা দেখাবে তা আপনার ব্যবসার মতো করেই সাজানো থাকবে।" /></div><div className="solution-visual-stack">{[rw.retail, rw.manufacturing, rw.craft].filter(Boolean).map((media, index) => <figure key={media.label} style={{ "--stack-index": index }}><img src={media.src} alt={media.alt} loading="lazy" referrerPolicy="no-referrer" /><figcaption>{media.label}</figcaption></figure>)}</div></section>
+      <section className="public-section"><div className="solution-grid full">{Object.entries(solutions).map(([key, s]) => <Link to={`/solutions/${key}`} key={key}><span><Icon name={s.icon} /></span><div><b>{s.title}</b><p>{s.tagline}</p>{s.status && <small>{s.status}</small>}</div><Icon name="chevronRight" /></Link>)}</div></section>
       <section className="public-section public-tint"><SectionHead eyebrow="একসাথে একাধিক কাজ" title="এক ব্যবসায় দুই ধরনের কাজ করলেও সমস্যা নেই" text="যেমন ইলেকট্রনিক্স বিক্রির সাথে সার্ভিসিংও করেন, বা রেস্টুরেন্টের সাথে ডেলিভারিও দেন — কাস্টমার, টাকা, স্টক ও হিসাব সব একই জায়গায় থাকবে, আলাদা করে দুইবার লিখতে হবে না।" /><div className="hybrid-map"><div><b>রহিম ইলেকট্রনিক্স</b><span>একটাই ব্যবসা হিসেবে</span></div>{["দোকানে বিক্রি", "অনলাইন অর্ডার", "সার্ভিসিং সেন্টার", "গুদাম", "হিসাব"].map((x) => <article key={x}><Icon name="chevronRight" /><b>{x}</b></article>)}</div></section>
       <CtaBand />
     </>
   );
 }
 
-function SolutionDetail({ slug, solution }) {
-  const media = REAL_WORK[SOLUTION_MEDIA[slug]] || REAL_WORK.retail;
+function SolutionDetail({ slug, solution, rw = REAL_WORK }) {
+  const media = rw[SOLUTION_MEDIA[slug]] || rw.retail || REAL_WORK.retail;
   return (
     <>
       <section className="solution-hero"><div><Link to="/solutions" className="public-back">← সব ধরন দেখুন</Link><span className="solution-icon"><Icon name={solution.icon} size={28} /></span><small>{solution.status || "ব্যবসার ধরন"}</small><h1>{solution.title}</h1><p>{solution.tagline}। বিক্রি, টাকা, হিসাব, অনুমতি ও প্রমাণ — সব একসাথে যুক্ত।</p><div className="public-hero-actions"><Link className="public-cta large" to={`/signup?solution=${slug}`}>এই ধরনের ব্যবসা দিয়ে শুরু করুন <Icon name="chevronRight" /></Link><Link className="public-ghost large" to="/contact">আমাদের সাথে কথা বলুন</Link></div></div><div className="solution-hero-visual"><img src={media.src} alt={media.alt} loading="eager" referrerPolicy="no-referrer" /><div><small>বাস্তব কাজের জন্য তৈরি</small><b>{media.label}</b><span>{media.detail}</span></div><PhotoCredit media={media} /></div></section>
@@ -562,7 +571,7 @@ function AboutPage() {
     <>
       <PageHero eyebrow={site.get("about.eyebrow", "আমরা কেন এটা বানাচ্ছি")} title={site.get("about.title", "বাংলাদেশের ব্যবসার বাস্তব কাজ দেখে তৈরি")} text={site.get("about.text", "ছোট্ট একটা দোকান থেকে শুরু করে একাধিক শাখার ব্যবসা পর্যন্ত — দৈনিক কাজ, মানুষ, টাকা আর বুদ্ধিমান পরামর্শ, সব একটা বিশ্বস্ত জায়গায় রাখাই আমাদের লক্ষ্য।")} />
       <section className="public-section"><div className="about-grid"><div><span>01</span><h3>সত্যি কথা বলি, বাড়িয়ে না</h3><p>ভুয়া কাস্টমার সংখ্যা, মিথ্যা সাফল্যের গল্প বা এখনো তৈরি না হওয়া ফিচারকে "চালু আছে" বলে দেখাই না।</p></div><div><span>02</span><h3>মানুষ আগে, মেনু পরে</h3><p>মালিক, ক্যাশিয়ার, স্টোরকিপার, হিসাবরক্ষক ও রাইডার — প্রত্যেকের কাজ আলাদা করে ভেবে সাজানো।</p></div><div><span>03</span><h3>পুরো হিসাব এক জায়গায়</h3><p>শুধু ফিচারের সংখ্যা বাড়ানো না। স্টক, টাকা, খাতা, অনুমোদন — সব একসাথে মিলে কাজ করাই আসল।</p></div></div></section>
-      <section className="public-section public-people-story"><div><img src="https://www.undp.org/sites/g/files/zskgke326/files/migration/bd/swapno1.jpg" alt="বাংলাদেশের একজন ক্ষুদ্র উদ্যোক্তা দোকানের হিসাব করছেন" loading="lazy" referrerPolicy="no-referrer" /><a href="https://www.undp.org/bangladesh/blog/mitu-hasina-and-jamila-champions-womens-empowerment" target="_blank" rel="noreferrer">ছবি: UNDP Bangladesh</a></div><div><SectionHead align="left" eyebrow="আমরা যাদের জন্য বানাচ্ছি" title="যারা খাতা, ফোন আর ক্যাশ বাক্সের উপর ভরসা করে ব্যবসা চালান" text="আপনাকে নতুন ভাষা শিখতে হবে না। আমরা আপনার কাজের প্রমাণ এক জায়গায় এনে ভুল আর অপেক্ষা কমাই। ব্যবসা বাড়লে একই জায়গায় আরও নিয়ন্ত্রণ যোগ হবে।" /><ul className="check-list"><li><Icon name="check" /> একটা দোকান থেকে একাধিক শাখা পর্যন্ত</li><li><Icon name="check" /> পণ্য বিক্রি, সেবা বা দুটোই একসাথে</li><li><Icon name="check" /> একই ডিভাইস কয়েকজন ব্যবহার করলেও কে কী করলো বোঝা যায়</li><li><Icon name="check" /> ইন্টারনেট দুর্বল হলেও সত্যি অবস্থা দেখায়, লুকায় না</li></ul></div></section>
+      <section className="public-section public-people-story"><div><img src={site.get("about.image_src", "https://www.undp.org/sites/g/files/zskgke326/files/migration/bd/swapno1.jpg")} alt={site.get("about.image_alt", "বাংলাদেশের একজন ক্ষুদ্র উদ্যোক্তা দোকানের হিসাব করছেন")} loading="lazy" referrerPolicy="no-referrer" /><a href={site.get("about.image_link", "https://www.undp.org/bangladesh/blog/mitu-hasina-and-jamila-champions-womens-empowerment")} target="_blank" rel="noreferrer">ছবি: {site.get("about.image_credit", "UNDP Bangladesh")}</a></div><div><SectionHead align="left" eyebrow="আমরা যাদের জন্য বানাচ্ছি" title="যারা খাতা, ফোন আর ক্যাশ বাক্সের উপর ভরসা করে ব্যবসা চালান" text="আপনাকে নতুন ভাষা শিখতে হবে না। আমরা আপনার কাজের প্রমাণ এক জায়গায় এনে ভুল আর অপেক্ষা কমাই। ব্যবসা বাড়লে একই জায়গায় আরও নিয়ন্ত্রণ যোগ হবে।" /><ul className="check-list"><li><Icon name="check" /> একটা দোকান থেকে একাধিক শাখা পর্যন্ত</li><li><Icon name="check" /> পণ্য বিক্রি, সেবা বা দুটোই একসাথে</li><li><Icon name="check" /> একই ডিভাইস কয়েকজন ব্যবহার করলেও কে কী করলো বোঝা যায়</li><li><Icon name="check" /> ইন্টারনেট দুর্বল হলেও সত্যি অবস্থা দেখায়, লুকায় না</li></ul></div></section>
       <section className="public-section public-tint"><div className="split-feature"><div><SectionHead align="left" eyebrow="দায়িত্বশীল AI" title="যে পরামর্শ বোঝা যায়, সেটাই দেই" text="সহজ হিসাব যথেষ্ট হলে জটিল মডেল ব্যবহার করি না। প্রতিটা পরামর্শের সাথে কতটা নিশ্চিত আর কীসের ভিত্তিতে বলা হচ্ছে তা দেখানো হয়।" /></div><div className="research-card"><Icon name="target" size={30} /><b>পরামর্শ থেকে শেখা পর্যন্ত চক্র</b><p>পরামর্শ দেওয়া হয় → মালিক সিদ্ধান্ত নেন → কাজ হয় → ফলাফল মাপা হয় → মডেল আরও ভালো হয়</p></div></div></section>
       <CtaBand />
     </>
