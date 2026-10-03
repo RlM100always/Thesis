@@ -114,6 +114,233 @@ function orgState(org) {
   return "active";
 }
 
+// ─── DARK MODE ────────────────────────────────────────────────────────────────
+const _themeSubs = [];
+let _darkMode = localStorage.getItem("pa-theme") === "dark";
+function applyTheme(dark) {
+  document.documentElement.setAttribute("data-theme", dark ? "dark" : "light");
+}
+applyTheme(_darkMode);
+function useDarkMode() {
+  const [dark, setDark] = useState(_darkMode);
+  useEffect(() => {
+    _themeSubs.push(setDark);
+    return () => { const i = _themeSubs.indexOf(setDark); if (i >= 0) _themeSubs.splice(i, 1); };
+  }, []);
+  const toggle = () => {
+    _darkMode = !_darkMode;
+    localStorage.setItem("pa-theme", _darkMode ? "dark" : "light");
+    applyTheme(_darkMode);
+    _themeSubs.forEach(fn => fn(_darkMode));
+  };
+  return { dark, toggle };
+}
+
+// ─── COUNTDOWN HOOK ───────────────────────────────────────────────────────────
+function useCountdown(targetIso) {
+  const [label, setLabel] = useState("");
+  const [urgent, setUrgent] = useState(false);
+  useEffect(() => {
+    if (!targetIso) return;
+    function tick() {
+      const ms = new Date(targetIso) - Date.now();
+      if (ms <= 0) { setLabel("মেয়াদ শেষ"); setUrgent(true); return; }
+      const h = Math.floor(ms / 3600000);
+      const m = Math.floor((ms % 3600000) / 60000);
+      setLabel(h > 0 ? `${h}ঘ ${m}মি` : `${m}মি`);
+      setUrgent(ms < 3600000);
+    }
+    tick();
+    const id = setInterval(tick, 60000);
+    return () => clearInterval(id);
+  }, [targetIso]);
+  return { label, urgent };
+}
+
+// ─── ANOMALY DETECTION ────────────────────────────────────────────────────────
+function useAnomalyDetect(series = []) {
+  return useMemo(() => {
+    if (series.length < 14) return [];
+    const half = Math.floor(series.length / 2);
+    const prev = series.slice(-half * 2, -half);
+    const curr = series.slice(-half);
+    const sumSales = arr => arr.reduce((s, d) => s + (d.sales_bdt || 0), 0);
+    const prevTotal = sumSales(prev);
+    const currTotal = sumSales(curr);
+    const anomalies = [];
+    if (prevTotal > 0) {
+      const pct = ((currTotal - prevTotal) / prevTotal) * 100;
+      if (pct < -25) anomalies.push({ metric: "বিক্রয়", pct: pct.toFixed(0), dir: "down" });
+      if (pct > 50)  anomalies.push({ metric: "বিক্রয়", pct: `+${pct.toFixed(0)}`, dir: "up" });
+    }
+    return anomalies;
+  }, [series]);
+}
+function useMemo(fn, deps) {
+  const ref = useRef({ val: undefined, deps: null });
+  const changed = !ref.current.deps || deps.some((d, i) => d !== ref.current.deps[i]);
+  if (changed) { ref.current.val = fn(); ref.current.deps = deps; }
+  return ref.current.val;
+}
+
+// ─── COMMAND PALETTE ──────────────────────────────────────────────────────────
+function CommandPalette({ setParams, onClose }) {
+  const [q, setQ] = useState("");
+  const [idx, setIdx] = useState(0);
+  const { data: orgsData } = useData(() => api.platformOrganizations());
+  const toast = useToast();
+  const confirm = useConfirm();
+  const orgs = orgsData?.organizations || orgsData || [];
+
+  const STATIC_CMDS = [
+    { label: "কমান্ড সেন্টারে যান",     icon: "zap",     action: () => { setParams({ tab: "command" }); onClose(); } },
+    { label: "ব্যবসা তালিকায় যান",      icon: "users",   action: () => { setParams({ tab: "tenants" }); onClose(); } },
+    { label: "সিকিউরিটি অ্যালার্ট",    icon: "shield",  action: () => { setParams({ tab: "security-audit" }); onClose(); } },
+    { label: "সিস্টেম অপারেশন",         icon: "refresh", action: () => { setParams({ tab: "system-ops" }); onClose(); } },
+    { label: "সাপোর্ট কেস",             icon: "bell",    action: () => { setParams({ tab: "support" }); onClose(); } },
+    { label: "অ্যানাউন্সমেন্ট পাঠান",  icon: "bell",    action: () => { setParams({ tab: "announcements" }); onClose(); } },
+    { label: "AI পরিচালনা",             icon: "zap",     action: () => { setParams({ tab: "ai-governance" }); onClose(); } },
+    { label: "প্ল্যান ও এনটাইটেলমেন্ট",icon: "sliders", action: () => { setParams({ tab: "plans" }); onClose(); } },
+    { label: "পাবলিক সাইট কন্টেন্ট",   icon: "globe",   action: () => { setParams({ tab: "site" }); onClose(); } },
+    { label: "রেকমেন্ডেশন অপারেশন",    icon: "trend",   action: () => { setParams({ tab: "recom-ops" }); onClose(); } },
+  ];
+
+  const tenantCmds = q.length >= 2 ? orgs
+    .filter(o => o.name?.toLowerCase().includes(q.toLowerCase()) || o.slug?.includes(q))
+    .slice(0, 4)
+    .map(o => ({
+      label: `${orgState(o) === "suspended" ? "✓ সক্রিয়" : "⊘ স্থগিত"} করুন — ${o.name}`,
+      icon: "users",
+      action: async () => {
+        onClose();
+        if (orgState(o) === "suspended") {
+          if (!await confirm(`"${o.name}" পুনরায় সক্রিয় করবেন?`)) return;
+          try { await api.platformUnsuspend(o.id); toast.success("সক্রিয় হয়েছে"); pushNotif({ kind: "action", title: `"${o.name}" সক্রিয় হয়েছে` }); }
+          catch (e) { toast.error(e.message); }
+        } else {
+          const reason = window.prompt("স্থগিতের কারণ:");
+          if (!reason) return;
+          try { await api.platformSuspend(o.id, reason); toast.success("স্থগিত হয়েছে"); pushNotif({ kind: "action", title: `"${o.name}" স্থগিত হয়েছে` }); }
+          catch (e) { toast.error(e.message); }
+        }
+      },
+    })) : [];
+
+  const all = q.length >= 1
+    ? [...STATIC_CMDS.filter(c => c.label.toLowerCase().includes(q.toLowerCase())), ...tenantCmds]
+    : STATIC_CMDS;
+
+  useEffect(() => { setIdx(0); }, [q]);
+
+  useEffect(() => {
+    function handler(e) {
+      if (e.key === "Escape") { onClose(); return; }
+      if (e.key === "ArrowDown") { e.preventDefault(); setIdx(i => Math.min(i + 1, all.length - 1)); }
+      if (e.key === "ArrowUp") { e.preventDefault(); setIdx(i => Math.max(i - 1, 0)); }
+      if (e.key === "Enter") { e.preventDefault(); if (all[idx]) all[idx].action(); }
+    }
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [all, idx, onClose]);
+
+  return (
+    <div className="pa-gsearch-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="pa-gsearch-box">
+        <div className="pa-gsearch-input-wrap">
+          <Icon name="zap" size={16} />
+          <input autoFocus className="pa-gsearch-input" placeholder="কমান্ড টাইপ করুন বা tenant নাম… (↑↓ নেভিগেট, Enter চালু করুন)" value={q} onChange={e => setQ(e.target.value)} />
+          <kbd style={{ fontSize: 10, padding: "2px 5px", background: "var(--surface-2)", borderRadius: 4, color: "var(--pa-muted)", border: "1px solid var(--pa-border)" }}>Esc</kbd>
+        </div>
+        <div className="pa-gsearch-results">
+          {all.map((cmd, i) => (
+            <button key={i} className={`pa-gsearch-item${i === idx ? " pa-gsearch-focused" : ""}`}
+              onClick={cmd.action} onMouseEnter={() => setIdx(i)}>
+              <Icon name={cmd.icon} size={14} />
+              <span className="pa-gsearch-label">{cmd.label}</span>
+            </button>
+          ))}
+          {all.length === 0 && <div className="pa-gsearch-empty">কোনো কমান্ড পাওয়া যায়নি</div>}
+        </div>
+      </div>
+      {confirm.dialog}
+    </div>
+  );
+}
+
+// ─── HOTKEY SHEET ─────────────────────────────────────────────────────────────
+function HotkeySheet({ onClose }) {
+  return (
+    <div className="pa-gsearch-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="pa-gsearch-box" style={{ maxWidth: 480 }}>
+        <div style={{ padding: "14px 16px", borderBottom: "1px solid var(--pa-border)", display: "flex", justifyContent: "space-between" }}>
+          <strong>কীবোর্ড শর্টকাট</strong>
+          <button className="pa-link-btn" onClick={onClose}>✕</button>
+        </div>
+        <div style={{ padding: "12px 16px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+          {[
+            ["Ctrl+K", "গ্লোবাল সার্চ"],
+            ["Ctrl+P", "কমান্ড প্যালেট"],
+            ["G then C", "কমান্ড সেন্টার"],
+            ["G then T", "ব্যবসা তালিকা"],
+            ["G then S", "সাপোর্ট"],
+            ["G then E", "সিকিউরিটি"],
+            ["G then O", "সিস্টেম অপস"],
+            ["G then A", "AI পরিচালনা"],
+            ["G then P", "প্ল্যান"],
+            ["G then N", "অ্যানাউন্সমেন্ট"],
+            ["?", "এই শর্টকাট তালিকা"],
+            ["Esc", "বন্ধ করুন"],
+          ].map(([key, desc]) => (
+            <div key={key} style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 13 }}>
+              <kbd style={{ padding: "2px 7px", background: "var(--surface-2)", borderRadius: 4, fontSize: 11, border: "1px solid var(--pa-border)", fontFamily: "monospace", flexShrink: 0 }}>{key}</kbd>
+              <span>{desc}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── PLATFORM HEALTH SCORE ────────────────────────────────────────────────────
+function PlatformHealthScore({ overview }) {
+  const o = overview || {};
+  let score = 100;
+  if ((o.incidents?.open || 0) > 0)     score -= Math.min(30, o.incidents.open * 10);
+  if ((o.security?.open_alerts || 0) > 0) score -= Math.min(20, o.security.open_alerts * 4);
+  if ((o.jobs?.failed || 0) > 0)         score -= Math.min(15, o.jobs.failed * 5);
+  if ((o.churn_risk?.high || 0) > 0)     score -= Math.min(10, o.churn_risk.high * 2);
+  score = Math.max(0, score);
+  const tone = score >= 80 ? "success" : score >= 50 ? "warn" : "danger";
+  const color = tone === "success" ? "#0a8754" : tone === "warn" ? "#b45309" : "#e63946";
+  return (
+    <div title={`প্ল্যাটফর্ম স্বাস্থ্য স্কোর: ${score}/100`}
+      style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 12, fontWeight: 700, color }}>
+      <span style={{ fontSize: 10 }}>●</span>{score}
+    </div>
+  );
+}
+
+// ─── ACTIVITY FEED ────────────────────────────────────────────────────────────
+function ActivityFeed({ entries = [], loading }) {
+  if (loading) return <Skeleton lines={4} />;
+  if (!entries.length) return <div className="pa-muted" style={{ fontSize: 12, padding: "12px 0" }}>কোনো সাম্প্রতিক কার্যকলাপ নেই</div>;
+  return (
+    <div className="pa-activity-feed">
+      {entries.slice(0, 12).map((e, i) => (
+        <div key={i} className="pa-activity-item">
+          <span className="pa-activity-dot" />
+          <div>
+            <div style={{ fontSize: 12, fontWeight: 500 }}>{e.action?.replace(/\./g, " › ")}</div>
+            <div style={{ fontSize: 11, color: "var(--pa-muted)" }}>{e.actor_email || "system"} · {dateTimeBn(e.created_at)}</div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // ─── SSE HOOK ─────────────────────────────────────────────────────────────────
 function useSSEAlerts(onAlert) {
   useEffect(() => {
@@ -192,6 +419,7 @@ function GlobalSearch({ setParams, onClose }) {
   const [q, setQ] = useState("");
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [focusIdx, setFocusIdx] = useState(0);
   const debounceRef = useRef(null);
 
   useEffect(() => {
@@ -226,24 +454,34 @@ function GlobalSearch({ setParams, onClose }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [q]);
 
+  useEffect(() => { setFocusIdx(0); }, [results]);
+
   useEffect(() => {
-    function handler(e) { if (e.key === "Escape") onClose(); }
+    function handler(e) {
+      if (e.key === "Escape") { onClose(); return; }
+      if (e.key === "ArrowDown") { e.preventDefault(); setFocusIdx(i => Math.min(i + 1, results.length - 1)); }
+      if (e.key === "ArrowUp") { e.preventDefault(); setFocusIdx(i => Math.max(i - 1, 0)); }
+      if (e.key === "Enter" && results[focusIdx]) { setParams({ tab: results[focusIdx].tab }); onClose(); }
+    }
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [onClose]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [onClose, results, focusIdx]);
 
   return (
     <div className="pa-gsearch-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
       <div className="pa-gsearch-box">
         <div className="pa-gsearch-input-wrap">
           <Icon name="search" size={16} />
-          <input autoFocus className="pa-gsearch-input" placeholder="Tenant, case, alert, incident খুঁজুন… (Esc বন্ধ করুন)" value={q} onChange={e => setQ(e.target.value)} />
+          <input autoFocus className="pa-gsearch-input" placeholder="Tenant, case, alert খুঁজুন… (↑↓ নেভিগেট, Enter যান, Esc বন্ধ)" value={q} onChange={e => setQ(e.target.value)} />
           {loading && <span className="pa-gsearch-spin">⟳</span>}
         </div>
         {results.length > 0 && (
           <div className="pa-gsearch-results">
             {results.map((r, i) => (
-              <button key={i} className="pa-gsearch-item" onClick={() => { setParams({ tab: r.tab }); onClose(); }}>
+              <button key={i} className={`pa-gsearch-item${i === focusIdx ? " pa-gsearch-focused" : ""}`}
+                onClick={() => { setParams({ tab: r.tab }); onClose(); }}
+                onMouseEnter={() => setFocusIdx(i)}>
                 <Icon name={r.icon} size={14} />
                 <div>
                   <div className="pa-gsearch-label">{r.label}</div>
@@ -363,6 +601,7 @@ function CommandCenterPanel({ onNavigate }) {
   const { data: tenantGrowth } = useData(() => api.platformOrganizations());
   const { data: churnData } = useData(() => api.adminChurnRisk("high"));
   const { data: slaData } = useData(() => api.adminSlaSummary());
+  const { data: auditData, loading: auditL } = useData(() => api.platformAudit());
   const toast = useToast();
   const o = overview || {};
 
@@ -382,6 +621,8 @@ function CommandCenterPanel({ onNavigate }) {
   const series = trends?.series || [];
   const items = mq?.items || mq || [];
   const alertList = alerts?.alerts || alerts || [];
+  const auditEntries = auditData?.entries || [];
+  const anomalies = useAnomalyDetect(series);
 
   // Build alert severity distribution for bar chart
   const severityCounts = alertList.reduce((acc, a) => {
@@ -406,6 +647,18 @@ function CommandCenterPanel({ onNavigate }) {
       <Head title="কমান্ড সেন্টার" sub="আজকের সবচেয়ে গুরুত্বপূর্ণ ইস্যু এবং প্ল্যাটফর্মের সামগ্রিক অবস্থা" />
 
       <AiRiskSummary overview={o} churn={churnData} sla={slaData} />
+
+      {/* Anomaly detection */}
+      {anomalies.length > 0 && (
+        <div className="pa-anomaly-banner">
+          <Icon name="zap" size={14} /> <strong>অস্বাভাবিক পরিবর্তন সনাক্ত:</strong>
+          {anomalies.map((a, i) => (
+            <span key={i} className={`pa-anomaly-chip ${a.dir === "down" ? "pa-anomaly-down" : "pa-anomaly-up"}`}>
+              {a.metric} {a.pct}%
+            </span>
+          ))}
+        </div>
+      )}
 
       {/* KPI row — clickable, jumps to relevant panel */}
       {ol ? <Skeleton lines={2} /> : oe ? <Notice tone="danger">{oe}</Notice> : (
@@ -531,11 +784,35 @@ function CommandCenterPanel({ onNavigate }) {
           ) : <div className="pa-muted" style={{ fontSize: 12, padding: "20px 0" }}>কোনো অ্যালার্ট নেই</div>}
         </div>
       </div>
+
+      {/* Activity feed */}
+      <div style={{ marginTop: 24 }}>
+        <div className="pa-section-title" style={{ marginBottom: 8 }}>সাম্প্রতিক কার্যকলাপ</div>
+        <ActivityFeed entries={auditEntries} loading={auditL} />
+      </div>
     </>
   );
 }
 
 // ─── 2. TENANTS ───────────────────────────────────────────────────────────────
+// Lazy-loaded per-row health badge — fetches only when rendered
+const _healthCache = {};
+function TenantHealthBadge({ orgId }) {
+  const [score, setScore] = useState(_healthCache[orgId] ?? null);
+  const [loading, setLoading] = useState(score === null);
+  useEffect(() => {
+    if (score !== null) return;
+    api.adminTenantHealthScore(orgId)
+      .then(d => { const s = d?.score ?? null; _healthCache[orgId] = s; setScore(s); setLoading(false); })
+      .catch(() => { setLoading(false); });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [orgId]);
+  if (loading) return <span className="pa-muted" style={{ fontSize: 11 }}>…</span>;
+  if (score === null) return <span className="pa-muted" style={{ fontSize: 11 }}>—</span>;
+  const tone = score >= 70 ? "success" : score >= 40 ? "warn" : "danger";
+  return <Badge tone={tone}>{score}</Badge>;
+}
+
 function Tenant360Drawer({ org, onClose }) {
   const { data: health } = useData(() => api.adminTenantHealthScore(org.id), [org.id]);
   const { data: sub }    = useData(() => api.adminOrgSubscription(org.id), [org.id]);
@@ -801,7 +1078,7 @@ function TenantsPanel() {
             <table className="pa-table">
               <thead><tr>
                 <th style={{ width: 32 }}><input type="checkbox" checked={checked.size === paged.slice.length && paged.slice.length > 0} onChange={toggleAll} /></th>
-                <th>নাম</th><th>Slug</th><th>অবস্থা</th><th>সেক্টর</th><th>তৈরি</th><th>অ্যাকশন</th>
+                <th>নাম</th><th>Slug</th><th>অবস্থা</th><th>স্বাস্থ্য</th><th>সেক্টর</th><th>তৈরি</th><th>অ্যাকশন</th>
               </tr></thead>
               <tbody>{paged.slice.map(o => (
                 <tr key={o.id} className={checked.has(o.id) ? "pa-row-checked" : ""}>
@@ -809,6 +1086,7 @@ function TenantsPanel() {
                   <td><button className="pa-link-btn" onClick={() => setSelected(o)}>{o.name}</button></td>
                   <td className="pa-muted" style={{ fontFamily: "monospace", fontSize: 12 }}>{o.slug}</td>
                   <td><Badge tone={STATE_TONE[orgState(o)] || "neutral"}>{orgState(o)}</Badge></td>
+                  <td><TenantHealthBadge orgId={o.id} /></td>
                   <td className="pa-muted" style={{ fontSize: 12 }}>{o.sector || "—"}</td>
                   <td className="pa-muted" style={{ fontSize: 12 }}>{dateBn(o.created_at)}</td>
                   <td>
@@ -1171,6 +1449,27 @@ function PlansPanel() {
   );
 }
 
+// ─── SLA COUNTDOWN ROW ────────────────────────────────────────────────────────
+function CaseRow({ c }) {
+  // SLA: urgent = 4h, high = 8h, normal = 24h, low = 72h from created_at
+  const SLA_HOURS = { urgent: 4, high: 8, normal: 24, low: 72 };
+  const deadline = c.created_at
+    ? new Date(new Date(c.created_at).getTime() + (SLA_HOURS[c.priority] || 24) * 3600000).toISOString()
+    : null;
+  const { label, urgent } = useCountdown(deadline);
+  return (
+    <tr>
+      <td style={{ fontSize: 13 }}>{c.title || c.subject}</td>
+      <td><Badge tone={TONE_MAP[c.priority] || "neutral"}>{c.priority}</Badge></td>
+      <td><Badge tone={c.status === "resolved" ? "success" : "warn"}>{c.status}</Badge></td>
+      <td style={{ fontSize: 12, fontWeight: urgent ? 700 : 400, color: urgent ? "var(--danger)" : "var(--pa-muted)" }}>
+        {c.status === "resolved" ? <span style={{ color: "var(--green)" }}>✓ সমাধান</span> : (label || "—")}
+      </td>
+      <td className="pa-muted" style={{ fontSize: 12 }}>{dateBn(c.created_at)}</td>
+    </tr>
+  );
+}
+
 // ─── 7. SUPPORT & SUCCESS ─────────────────────────────────────────────────────
 function SupportSuccessPanel() {
   const { data: casesData, loading: cl, error: ce, reload: cReload } = useData(() => api.adminSupportCases("open"));
@@ -1211,15 +1510,8 @@ function SupportSuccessPanel() {
           {cl ? <Skeleton lines={5} /> : ce ? <Notice tone="danger">{ce}</Notice> : (
             <div className="pa-table-wrap">
               <table className="pa-table">
-                <thead><tr><th>বিষয়</th><th>প্রাধান্য</th><th>অবস্থা</th><th>তৈরি</th></tr></thead>
-                <tbody>{cases.map(c => (
-                  <tr key={c.id}>
-                    <td style={{ fontSize: 13 }}>{c.title || c.subject}</td>
-                    <td><Badge tone={TONE_MAP[c.priority] || "neutral"}>{c.priority}</Badge></td>
-                    <td><Badge tone={c.status === "resolved" ? "success" : "warn"}>{c.status}</Badge></td>
-                    <td className="pa-muted" style={{ fontSize: 12 }}>{dateBn(c.created_at)}</td>
-                  </tr>
-                ))}</tbody>
+                <thead><tr><th>বিষয়</th><th>প্রাধান্য</th><th>অবস্থা</th><th>SLA বাকি</th><th>তৈরি</th></tr></thead>
+                <tbody>{cases.map(c => <CaseRow key={c.id} c={c} />)}</tbody>
               </table>
               {cases.length === 0 && <EmptyState title="কোনো খোলা কেস নেই" />}
             </div>
@@ -2107,22 +2399,23 @@ export default function Platform() {
   const tab = ALL_TABS.some(t => t.value === params.get("tab")) ? params.get("tab") : "command";
   const Panel = PANELS[tab] || CommandCenterPanel;
   const { data: alertsData } = useData(() => api.adminSecurityAlerts("open"));
+  const { data: overviewData } = useData(() => api.adminOverview());
   const openAlerts = (alertsData?.alerts || alertsData || []).length;
   const [gPressed, setGPressed] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [cmdOpen, setCmdOpen] = useState(false);
+  const [hotkeyOpen, setHotkeyOpen] = useState(false);
+  const { dark, toggle: toggleDark } = useDarkMode();
 
   const navigate = useCallback((t) => setParams({ tab: t }), [setParams]);
 
   useEffect(() => {
     let gTimer;
     function handler(e) {
-      // Ctrl+K or Cmd+K → global search
-      if ((e.ctrlKey || e.metaKey) && e.key === "k") {
-        e.preventDefault();
-        setSearchOpen(true);
-        return;
-      }
+      if ((e.ctrlKey || e.metaKey) && e.key === "k") { e.preventDefault(); setSearchOpen(true); return; }
+      if ((e.ctrlKey || e.metaKey) && e.key === "p") { e.preventDefault(); setCmdOpen(true); return; }
       if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA" || e.target.tagName === "SELECT") return;
+      if (e.key === "?") { setHotkeyOpen(true); return; }
       if (e.key === "g" || e.key === "G") {
         setGPressed(true);
         clearTimeout(gTimer);
@@ -2140,23 +2433,31 @@ export default function Platform() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gPressed]);
 
-  // Pass onNavigate only to CommandCenterPanel which uses it
   const panelProps = tab === "command" ? { onNavigate: navigate } : {};
 
   return (
     <div className="platform-layout">
       <nav className="platform-sidenav">
         <div className="platform-nav-header">
-          <span style={{ fontWeight: 700, fontSize: 13 }}>Admin Panel</span>
-          <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <span style={{ fontWeight: 700, fontSize: 13 }}>Admin</span>
+            <PlatformHealthScore overview={overviewData} />
+          </div>
+          <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
+            <button className="pa-alert-bell" onClick={() => setCmdOpen(true)} title="কমান্ড প্যালেট (Ctrl+P)">
+              <Icon name="zap" size={13} />
+            </button>
             <button className="pa-alert-bell" onClick={() => setSearchOpen(true)} title="সার্চ (Ctrl+K)">
-              <Icon name="search" size={14} />
+              <Icon name="search" size={13} />
+            </button>
+            <button className="pa-alert-bell" onClick={toggleDark} title={dark ? "লাইট মোড" : "ডার্ক মোড"}>
+              <span style={{ fontSize: 12 }}>{dark ? "☀" : "☾"}</span>
             </button>
             <NotificationCenter />
             {openAlerts > 0 && (
               <button className="pa-alert-bell" onClick={() => setParams({ tab: "security-audit" })}
                 title={`${openAlerts}টি খোলা অ্যালার্ট`}>
-                <Icon name="bell" size={14} />
+                <Icon name="bell" size={13} />
                 <span className="pa-alert-count">{openAlerts}</span>
               </button>
             )}
@@ -2180,6 +2481,11 @@ export default function Platform() {
             ))}
           </div>
         ))}
+        <div style={{ padding: "8px 10px 4px" }}>
+          <button className="pa-alert-bell" style={{ fontSize: 11 }} onClick={() => setHotkeyOpen(true)} title="কীবোর্ড শর্টকাট (?)">
+            <span>⌨ শর্টকাট</span>
+          </button>
+        </div>
         {gPressed && <div className="pa-shortcut-hint">G + কী চাপুন…</div>}
       </nav>
       <div className="platform-content">
@@ -2188,6 +2494,8 @@ export default function Platform() {
         </PanelBoundary>
       </div>
       {searchOpen && <GlobalSearch setParams={p => setParams(p)} onClose={() => setSearchOpen(false)} />}
+      {cmdOpen && <CommandPalette setParams={p => setParams(p)} onClose={() => setCmdOpen(false)} />}
+      {hotkeyOpen && <HotkeySheet onClose={() => setHotkeyOpen(false)} />}
     </div>
   );
 }

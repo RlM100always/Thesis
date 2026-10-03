@@ -657,3 +657,31 @@ tr.pa-row-checked td { background: color-mix(in srgb, var(--pa-accent) 8%, trans
 
 /* ── Phase 4: Notification dropdown ───────────────────────────────────── */
 .pa-notif-dropdown { position: absolute; right: 0; top: calc(100% + 6px); width: 280px; background: var(--surface); border: 1px solid var(--pa-border); border-radius: 12px; box-shadow: var(--shadow-3); z-index: 300; }
+
+/* ── Phase 5: GlobalSearch / CommandPalette focus state ────────────────── */
+.pa-gsearch-focused { background: var(--pa-panel-soft) !important; }
+
+/* ── Phase 5: Anomaly banner ───────────────────────────────────────────── */
+.pa-anomaly-banner { display: flex; align-items: center; gap: 10px; padding: 9px 14px; border-radius: 10px; background: var(--warn-soft, #fffbeb); border: 1px solid var(--warn, #f59e0b); font-size: 13px; margin-bottom: 14px; flex-wrap: wrap; }
+.pa-anomaly-chip { padding: 2px 8px; border-radius: 99px; font-size: 12px; font-weight: 700; }
+.pa-anomaly-down { background: #fee2e2; color: #dc2626; }
+.pa-anomaly-up   { background: #dcfce7; color: #16a34a; }
+
+/* ── Phase 5: Activity feed ────────────────────────────────────────────── */
+.pa-activity-feed { display: flex; flex-direction: column; gap: 0; border-left: 2px solid var(--pa-border); padding-left: 12px; }
+.pa-activity-item { display: flex; align-items: flex-start; gap: 10px; padding: 6px 0; position: relative; }
+.pa-activity-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); flex-shrink: 0; margin-top: 3px; position: absolute; left: -17px; }
+
+/* ── Phase 5: Dark mode overrides via data-theme ───────────────────────── */
+:root[data-theme="dark"] {
+  --surface:   #0f172a;
+  --surface-2: #1e293b;
+  --text:      #e2e8f0;
+  --text-muted:#94a3b8;
+  --border:    #334155;
+  --pa-panel:  #1e293b;
+  --pa-panel-soft: #0f172a;
+  --pa-border: #334155;
+  --pa-ink:    #e2e8f0;
+  --pa-muted:  #64748b;
+}
