@@ -36,6 +36,9 @@ const NAV_GROUPS = [
     { value: "site",          label: "পাবলিক সাইট",         icon: "globe" },
     { value: "announcements", label: "অ্যানাউন্সমেন্ট",    icon: "bell" },
   ]},
+  { label: "যোগাযোগ", items: [
+    { value: "messages",      label: "ব্যবসার সাথে চ্যাট",  icon: "messageSquare" },
+  ]},
 ];
 const ALL_TABS = NAV_GROUPS.flatMap(g => g.items);
 
@@ -2503,6 +2506,142 @@ function AnnouncementsPanel() {
   );
 }
 
+// ─── MESSAGES PANEL ───────────────────────────────────────────────────────────
+function MessagesPanel() {
+  const [convs, setConvs] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [selectedOrg, setSelectedOrg] = useState(null);
+  const [thread, setThread] = useState(null);
+  const [threadLoading, setThreadLoading] = useState(false);
+  const [text, setText] = useState("");
+  const [sending, setSending] = useState(false);
+  const toast = useToast();
+  const bottomRef = useRef(null);
+
+  async function loadConvs() {
+    try {
+      const d = await api.platformConversations();
+      setConvs(d.conversations || []);
+    } catch (e) { setError(e.message); }
+    setLoading(false);
+  }
+
+  async function openConv(orgId) {
+    setSelectedOrg(orgId);
+    setThreadLoading(true);
+    try {
+      const d = await api.platformGetConversation(orgId);
+      setThread(d);
+      // Refresh unread count in list
+      setConvs(prev => prev?.map(c => c.organization_id === orgId ? { ...c, unread_by_admin: 0 } : c));
+    } catch (e) { toast.error(e.message); }
+    setThreadLoading(false);
+  }
+
+  async function send() {
+    if (!text.trim() || !selectedOrg) return;
+    setSending(true);
+    try {
+      const msg = await api.platformSendMessage(selectedOrg, text.trim());
+      setThread(prev => prev ? { ...prev, messages: [...(prev.messages || []), msg] } : prev);
+      setText("");
+      setConvs(prev => prev?.map(c => c.organization_id === selectedOrg
+        ? { ...c, last_message_preview: msg.content.slice(0, 60), last_message_at: msg.created_at }
+        : c));
+    } catch (e) { toast.error(e.message); }
+    setSending(false);
+  }
+
+  useEffect(() => { loadConvs(); }, []);
+  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [thread?.messages?.length]);
+
+  const selectedConv = convs?.find(c => c.organization_id === selectedOrg);
+
+  return (
+    <>
+      <Head title="ব্যবসার সাথে চ্যাট" sub="প্রতিটি ব্যবসার সাথে সরাসরি কথা বলুন" />
+      <div style={{ display: "flex", gap: 16, height: "calc(100vh - 160px)", minHeight: 400 }}>
+        {/* Conversation list */}
+        <div className="pa-card" style={{ width: 260, flexShrink: 0, overflowY: "auto", padding: 0 }}>
+          <div style={{ padding: "10px 14px", borderBottom: "1px solid var(--border)", fontWeight: 600, fontSize: 13 }}>ব্যবসা তালিকা</div>
+          {loading ? <Skeleton lines={4} /> : error ? <Notice tone="danger">{error}</Notice> : (
+            convs?.map(c => (
+              <button key={c.organization_id}
+                onClick={() => openConv(c.organization_id)}
+                style={{
+                  display: "block", width: "100%", textAlign: "left",
+                  padding: "10px 14px", background: selectedOrg === c.organization_id ? "var(--accent-faint, #e8f5e9)" : "transparent",
+                  border: "none", borderBottom: "1px solid var(--border)", cursor: "pointer",
+                }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <span style={{ fontWeight: 600, fontSize: 13 }}>{c.organization_name}</span>
+                  {c.unread_by_admin > 0 && <span className="pa-nav-badge">{c.unread_by_admin}</span>}
+                </div>
+                {c.last_message_preview && (
+                  <div className="pa-muted" style={{ fontSize: 11, marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {c.last_message_preview}
+                  </div>
+                )}
+              </button>
+            ))
+          )}
+        </div>
+
+        {/* Thread */}
+        <div className="pa-card" style={{ flex: 1, display: "flex", flexDirection: "column", padding: 0, overflow: "hidden" }}>
+          {!selectedOrg ? (
+            <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <EmptyState title="বাঁ দিক থেকে একটি ব্যবসা বেছে নিন" />
+            </div>
+          ) : (
+            <>
+              <div style={{ padding: "10px 16px", borderBottom: "1px solid var(--border)", fontWeight: 600, fontSize: 13 }}>
+                {selectedConv?.organization_name || selectedOrg}
+              </div>
+              <div style={{ flex: 1, overflowY: "auto", padding: 16, display: "flex", flexDirection: "column", gap: 10 }}>
+                {threadLoading ? <Skeleton lines={3} /> : thread?.messages?.length === 0 ? (
+                  <EmptyState title="এখনো কোনো বার্তা নেই" />
+                ) : thread?.messages?.map(m => (
+                  <div key={m.id} style={{
+                    alignSelf: m.sender_type === "admin" ? "flex-end" : "flex-start",
+                    maxWidth: "70%",
+                  }}>
+                    <div style={{
+                      background: m.sender_type === "admin" ? "var(--accent, #0a8754)" : "var(--bg-card2, #f1f5f9)",
+                      color: m.sender_type === "admin" ? "#fff" : "inherit",
+                      borderRadius: 12,
+                      padding: "8px 14px",
+                      fontSize: 13,
+                      lineHeight: 1.5,
+                    }}>{m.content}</div>
+                    <div className="pa-muted" style={{ fontSize: 11, marginTop: 2, textAlign: m.sender_type === "admin" ? "right" : "left" }}>
+                      {m.sender_name} · {new Date(m.created_at).toLocaleTimeString("bn-BD", { hour: "2-digit", minute: "2-digit" })}
+                    </div>
+                  </div>
+                ))}
+                <div ref={bottomRef} />
+              </div>
+              <div style={{ padding: 12, borderTop: "1px solid var(--border)", display: "flex", gap: 8 }}>
+                <textarea
+                  className="pa-textarea"
+                  rows={2}
+                  style={{ flex: 1, resize: "none" }}
+                  value={text}
+                  onChange={e => setText(e.target.value)}
+                  onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }}
+                  placeholder="বার্তা লিখুন… (Enter পাঠান, Shift+Enter নতুন লাইন)"
+                />
+                <Button loading={sending} onClick={send} style={{ alignSelf: "flex-end" }}>পাঠান</Button>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    </>
+  );
+}
+
 // ─── ROOT ─────────────────────────────────────────────────────────────────────
 const PANELS = {
   "command":       CommandCenterPanel,
@@ -2516,13 +2655,14 @@ const PANELS = {
   "system-ops":    SystemOpsPanel,
   "site":          SitePanel,
   "announcements": AnnouncementsPanel,
+  "messages":      MessagesPanel,
 };
 
 const SHORTCUT_MAP = {
   "c": "command", "t": "tenants", "d": "data-readiness",
   "a": "ai-governance", "r": "recom-ops", "p": "plans",
   "s": "support", "e": "security-audit", "o": "system-ops",
-  "w": "site", "n": "announcements",
+  "w": "site", "n": "announcements", "m": "messages",
 };
 
 // ─── NOTIFICATION CENTER ──────────────────────────────────────────────────────

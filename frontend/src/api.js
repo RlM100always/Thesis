@@ -188,6 +188,13 @@ export const api = {
   platformDownloadBackup: (filename) => appDownload(`/api/platform/backups/${encodeURIComponent(filename)}/download`, filename),
   platformDeleteBackup: (filename) => appRequest(`/api/platform/backups/${encodeURIComponent(filename)}`, { method: "DELETE" }),
   platformRestoreDrill: (filename) => appRequest(`/api/platform/backups/${encodeURIComponent(filename)}/restore-drill`, { method: "POST" }),
+  platformConversations: () => appRequest("/api/platform/conversations"),
+  platformGetConversation: (orgId) => appRequest(`/api/platform/conversations/${orgId}/messages`),
+  platformSendMessage: (orgId, content) => appRequest(`/api/platform/conversations/${orgId}/messages`, { method: "POST", body: { content } }),
+  // Business side
+  getAdminMessages: () => appRequest("/api/app/messages"),
+  getAdminMessagesUnread: () => appRequest("/api/app/messages/unread-count"),
+  replyToAdmin: (content) => appRequest("/api/app/messages", { method: "POST", body: { content } }),
 
   // ── Admin platform — all 50 capabilities ──────────────────────────────
   adminOverview: () => appRequest("/api/admin/overview"),

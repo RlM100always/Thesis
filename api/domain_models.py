@@ -1582,6 +1582,43 @@ class TeamMessage(Base, TimestampMixin):
     body: Mapped[str] = mapped_column(Text)
 
 
+class AdminConversation(Base, TimestampMixin):
+    """One thread per organization between platform admin and the business."""
+
+    __tablename__ = "admin_conversations"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    organization_id: Mapped[str] = mapped_column(ForeignKey("organizations.id"), unique=True, index=True)
+    # Counts for badge display
+    unread_by_admin: Mapped[int] = mapped_column(Integer, default=0)
+    unread_by_business: Mapped[int] = mapped_column(Integer, default=0)
+    last_message_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    last_message_preview: Mapped[str | None] = mapped_column(String(120))
+
+    organization: Mapped["Organization"] = relationship("Organization", lazy="joined")
+    messages: Mapped[list["AdminMessage"]] = relationship(
+        "AdminMessage", back_populates="conversation", order_by="AdminMessage.created_at"
+    )
+
+
+class AdminMessage(Base):
+    """A single message in an admin↔business conversation."""
+
+    __tablename__ = "admin_messages"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    conversation_id: Mapped[str] = mapped_column(ForeignKey("admin_conversations.id"), index=True)
+    # "admin" = platform admin side, "business" = org user side
+    sender_type: Mapped[str] = mapped_column(String(10))
+    sender_user_id: Mapped[str | None] = mapped_column(ForeignKey("users.id"))
+    content: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
+    read_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    conversation: Mapped["AdminConversation"] = relationship("AdminConversation", back_populates="messages")
+    sender: Mapped["User | None"] = relationship("User", foreign_keys=[sender_user_id], lazy="joined")
+
+
 class SiteContent(Base, TimestampMixin):
     """Generic key/value store for public-site copy a platform admin can edit
     without a redeploy. Not a full CMS -- a small, deliberately generic table

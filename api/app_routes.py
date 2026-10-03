@@ -8,6 +8,7 @@ import json
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -21,7 +22,7 @@ from .audit import record_audit
 from .auth import CurrentMembership, CurrentUser
 from .permissions import require_permission
 from .database import get_db
-from .domain_models import AuditLog, Branch, Membership, Organization, OrganizationSetting, Product, SiteContent
+from .domain_models import AdminConversation, AdminMessage, AuditLog, Branch, Membership, Organization, OrganizationSetting, Product, SiteContent, utcnow
 
 router = APIRouter(prefix="/api/app")
 Db = Annotated[Session, Depends(get_db)]
@@ -178,3 +179,88 @@ def update_organization_operations(payload: OrganizationOperations, membership: 
         address=org.address, phone=org.phone, vat_reg_no=org.vat_reg_no,
         receipt_footer=org.receipt_footer, **_setting_values(setting),
     )
+
+
+# ── Business ↔ Admin Messaging ─────────────────────────────────────────────
+
+class BusinessMsgIn(BaseModel):
+    content: str = Field(min_length=1, max_length=4000)
+
+
+def _msg_row(msg: AdminMessage) -> dict:
+    return {
+        "id": msg.id,
+        "sender_type": msg.sender_type,
+        "sender_name": (msg.sender.display_name or msg.sender.email) if msg.sender else "Platform Admin",
+        "content": msg.content,
+        "created_at": msg.created_at.isoformat(),
+        "read_at": msg.read_at.isoformat() if msg.read_at else None,
+    }
+
+
+@router.get("/messages")
+def get_admin_messages(membership: CurrentMembership, db: Annotated[Session, Depends(get_db)]):
+    """Business fetches their conversation thread with platform admin."""
+    require_permission(membership, "organization:view")
+    org_id = membership.organization_id
+    conv = db.scalars(
+        select(AdminConversation).where(AdminConversation.organization_id == org_id)
+    ).first()
+    if not conv:
+        return {"conversation_id": None, "unread_by_business": 0, "messages": []}
+    # Mark admin→business messages as read
+    now = utcnow()
+    for m in conv.messages:
+        if m.sender_type == "admin" and m.read_at is None:
+            m.read_at = now
+    conv.unread_by_business = 0
+    db.commit()
+    return {
+        "conversation_id": conv.id,
+        "unread_by_business": 0,
+        "messages": [_msg_row(m) for m in conv.messages],
+    }
+
+
+@router.get("/messages/unread-count")
+def messages_unread_count(membership: CurrentMembership, db: Annotated[Session, Depends(get_db)]):
+    """Lightweight poll endpoint for badge — no read marking."""
+    require_permission(membership, "organization:view")
+    conv = db.scalars(
+        select(AdminConversation).where(AdminConversation.organization_id == membership.organization_id)
+    ).first()
+    return {"unread": conv.unread_by_business if conv else 0}
+
+
+@router.post("/messages")
+def reply_to_admin(
+    body: BusinessMsgIn,
+    membership: CurrentMembership,
+    db: Annotated[Session, Depends(get_db)],
+):
+    """Business user replies to the platform admin."""
+    require_permission(membership, "organization:view")
+    org_id = membership.organization_id
+    conv = db.scalars(
+        select(AdminConversation).where(AdminConversation.organization_id == org_id)
+    ).first()
+    if not conv:
+        # Auto-create conversation when business initiates
+        conv = AdminConversation(organization_id=org_id)
+        db.add(conv)
+        db.flush()
+    now = utcnow()
+    msg = AdminMessage(
+        conversation_id=conv.id,
+        sender_type="business",
+        sender_user_id=membership.user_id,
+        content=body.content,
+        created_at=now,
+    )
+    db.add(msg)
+    conv.unread_by_admin += 1
+    conv.last_message_at = now
+    conv.last_message_preview = body.content[:120]
+    db.commit()
+    db.refresh(msg)
+    return _msg_row(msg)

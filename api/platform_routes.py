@@ -26,6 +26,9 @@ from .auth_routes import TokenOut, _token_response
 from .config import get_settings
 from .database import get_db
 from .domain_models import (
+    AdminConversation,
+    AdminMessage,
+    utcnow,
     AuditLog,
     Branch,
     Membership,
@@ -1169,3 +1172,115 @@ def restore_drill(filename: str, admin: Admin, db: Db):
         "mismatches": mismatches,
         "reconciled": not mismatches,
     }
+
+
+# ── Admin ↔ Business Messaging ─────────────────────────────────────────────
+
+def _conv_row(conv: AdminConversation) -> dict:
+    return {
+        "id": conv.id,
+        "organization_id": conv.organization_id,
+        "organization_name": conv.organization.name if conv.organization else conv.organization_id,
+        "unread_by_admin": conv.unread_by_admin,
+        "unread_by_business": conv.unread_by_business,
+        "last_message_at": conv.last_message_at.isoformat() if conv.last_message_at else None,
+        "last_message_preview": conv.last_message_preview,
+    }
+
+
+def _msg_row(msg: AdminMessage) -> dict:
+    return {
+        "id": msg.id,
+        "sender_type": msg.sender_type,
+        "sender_name": (msg.sender.display_name or msg.sender.email) if msg.sender else "Platform Admin",
+        "content": msg.content,
+        "created_at": msg.created_at.isoformat(),
+        "read_at": msg.read_at.isoformat() if msg.read_at else None,
+    }
+
+
+def _get_or_create_conv(db: Session, org_id: str) -> AdminConversation:
+    conv = db.scalars(
+        select(AdminConversation).where(AdminConversation.organization_id == org_id)
+    ).first()
+    if not conv:
+        conv = AdminConversation(organization_id=org_id)
+        db.add(conv)
+        db.flush()
+    return conv
+
+
+class AdminMsgIn(BaseModel):
+    content: str = Field(min_length=1, max_length=4000)
+
+
+@router.get("/conversations")
+def list_conversations(admin: Admin, db: Db):
+    """List all org conversations, most recently active first."""
+    convs = db.scalars(
+        select(AdminConversation).order_by(AdminConversation.last_message_at.desc().nullslast())
+    ).all()
+    # Also include orgs with no conversation yet so admin can start one
+    all_orgs = db.scalars(select(Organization).order_by(Organization.name)).all()
+    conv_org_ids = {c.organization_id for c in convs}
+    result = [_conv_row(c) for c in convs]
+    for org in all_orgs:
+        if org.id not in conv_org_ids:
+            result.append({
+                "id": None,
+                "organization_id": org.id,
+                "organization_name": org.name,
+                "unread_by_admin": 0,
+                "unread_by_business": 0,
+                "last_message_at": None,
+                "last_message_preview": None,
+            })
+    return {"conversations": result}
+
+
+@router.get("/conversations/{org_id}/messages")
+def get_conversation(org_id: str, admin: Admin, db: Db):
+    """Fetch full thread for an org; marks admin's unread count as 0."""
+    db.query(Organization).filter(Organization.id == org_id).first() or (_ for _ in ()).throw(
+        HTTPException(status_code=404, detail="Organization not found")
+    )
+    org = db.get(Organization, org_id)
+    if not org:
+        raise HTTPException(status_code=404, detail="Organization not found")
+    conv = db.scalars(
+        select(AdminConversation).where(AdminConversation.organization_id == org_id)
+    ).first()
+    if not conv:
+        return {"conversation_id": None, "messages": []}
+    # Mark all business→admin messages as read
+    now = utcnow()
+    for m in conv.messages:
+        if m.sender_type == "business" and m.read_at is None:
+            m.read_at = now
+    conv.unread_by_admin = 0
+    db.commit()
+    return {"conversation_id": conv.id, "messages": [_msg_row(m) for m in conv.messages]}
+
+
+@router.post("/conversations/{org_id}/messages")
+def send_message_to_org(org_id: str, body: AdminMsgIn, admin: Admin, db: Db):
+    """Admin sends a message to an org."""
+    org = db.get(Organization, org_id)
+    if not org:
+        raise HTTPException(status_code=404, detail="Organization not found")
+    conv = _get_or_create_conv(db, org_id)
+    now = utcnow()
+    msg = AdminMessage(
+        conversation_id=conv.id,
+        sender_type="admin",
+        sender_user_id=admin.id,
+        content=body.content,
+        created_at=now,
+    )
+    db.add(msg)
+    conv.unread_by_business += 1
+    conv.last_message_at = now
+    conv.last_message_preview = body.content[:120]
+    db.commit()
+    db.refresh(msg)
+    return _msg_row(msg)
