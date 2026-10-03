@@ -281,7 +281,7 @@ function HotkeySheet({ onClose }) {
           <strong>কীবোর্ড শর্টকাট</strong>
           <button className="pa-link-btn" onClick={onClose}>✕</button>
         </div>
-        <div style={{ padding: "12px 16px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+        <div style={{ padding: "12px 16px" }} className="pa-two-col">
           {[
             ["Ctrl+K", "গ্লোবাল সার্চ"],
             ["Ctrl+P", "কমান্ড প্যালেট"],
@@ -575,7 +575,7 @@ function TenantCompareModal({ orgs, onClose }) {
 
   return (
     <Modal title="ব্যবসা তুলনা করুন" onClose={onClose}>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
+      <div className="pa-two-col" style={{ marginBottom: 16 }}>
         <Field label="ব্যবসা A">
           <select className="pa-input" value={selA} onChange={e => setSelA(e.target.value)}>
             <option value="">বেছে নিন…</option>
@@ -589,7 +589,7 @@ function TenantCompareModal({ orgs, onClose }) {
           </select>
         </Field>
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+      <div className="pa-two-col">
         <CompareCol org={orgA} health={hA} />
         <CompareCol org={orgB} health={hB} />
       </div>
@@ -687,7 +687,7 @@ function CommandCenterPanel({ onNavigate }) {
         </div>
       )}
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, marginBottom: 24 }}>
+      <div className="pa-two-col" style={{ marginBottom: 24 }}>
         {/* Mission queue */}
         <div>
           <div className="pa-section-title" style={{ marginBottom: 8, display: "flex", alignItems: "center", gap: 8 }}>
@@ -735,7 +735,7 @@ function CommandCenterPanel({ onNavigate }) {
       </div>
 
       {/* Charts row */}
-      <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr", gap: 20, marginBottom: 8 }}>
+      <div className="pa-three-col" style={{ marginBottom: 8 }}>
         <div>
           <div className="pa-section-title" style={{ marginBottom: 6 }}>গত ৩০ দিনের বিক্রয় ট্রেন্ড (৳)</div>
           {!tl && (
@@ -1318,7 +1318,7 @@ function RecommendationOpsPanel() {
 
           {decisions.length > 0 && (
             <>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, marginBottom: 20 }}>
+              <div className="pa-two-col" style={{ marginBottom: 20 }}>
                 <div>
                   <div className="pa-section-title" style={{ marginBottom: 6 }}>সিদ্ধান্ত বিভাজন</div>
                   <div className="pa-chart-box">
