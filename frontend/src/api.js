@@ -30,12 +30,16 @@ async function post(path, body) {
   return res.json();
 }
 
-async function appRequest(path, { method = "GET", body, organizationId } = {}) {
+async function appRequest(path, { method = "GET", body, organizationId, formData } = {}) {
   const headers = {};
   if (body !== undefined) headers["Content-Type"] = "application/json";
   if (organizationId) headers["X-Organization-ID"] = organizationId;
+  // formData: pass a FormData object directly (browser sets multipart boundary)
+  const fetchBody = formData !== undefined ? formData
+    : body !== undefined ? JSON.stringify(body)
+    : undefined;
   const res = await authedFetch(BASE, path, {
-    method, headers, body: body === undefined ? undefined : JSON.stringify(body),
+    method, headers, body: fetchBody,
   });
   // The status rides on the error so screens can show the right Bangla message
   // (see errors.js) instead of the server's English text.
@@ -190,11 +194,15 @@ export const api = {
   platformRestoreDrill: (filename) => appRequest(`/api/platform/backups/${encodeURIComponent(filename)}/restore-drill`, { method: "POST" }),
   platformConversations: () => appRequest("/api/platform/conversations"),
   platformGetConversation: (orgId) => appRequest(`/api/platform/conversations/${orgId}/messages`),
-  platformSendMessage: (orgId, content) => appRequest(`/api/platform/conversations/${orgId}/messages`, { method: "POST", body: { content } }),
+  platformSendMessage: (orgId, content, attachment_url, attachment_name, attachment_size) =>
+    appRequest(`/api/platform/conversations/${orgId}/messages`, { method: "POST", body: { content: content || "", attachment_url, attachment_name, attachment_size } }),
   // Business side
   getAdminMessages: () => appRequest("/api/app/messages"),
   getAdminMessagesUnread: () => appRequest("/api/app/messages/unread-count"),
-  replyToAdmin: (content) => appRequest("/api/app/messages", { method: "POST", body: { content } }),
+  replyToAdmin: (content, attachment_url, attachment_name, attachment_size) =>
+    appRequest("/api/app/messages", { method: "POST", body: { content: content || "", attachment_url, attachment_name, attachment_size } }),
+  uploadChatFile: (formData) => appRequest("/api/app/messages/upload", { method: "POST", formData }),
+  platformUploadChatFile: (formData) => appRequest("/api/platform/messages/upload", { method: "POST", formData }),
 
   // ── Admin platform — all 50 capabilities ──────────────────────────────
   adminOverview: () => appRequest("/api/admin/overview"),

@@ -15,7 +15,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Annotated, Literal
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select
@@ -1194,6 +1194,9 @@ def _msg_row(msg: AdminMessage) -> dict:
         "sender_type": msg.sender_type,
         "sender_name": (msg.sender.display_name or msg.sender.email) if msg.sender else "Platform Admin",
         "content": msg.content,
+        "attachment_url": msg.attachment_url,
+        "attachment_name": msg.attachment_name,
+        "attachment_size": msg.attachment_size,
         "created_at": msg.created_at.isoformat(),
         "read_at": msg.read_at.isoformat() if msg.read_at else None,
     }
@@ -1211,7 +1214,14 @@ def _get_or_create_conv(db: Session, org_id: str) -> AdminConversation:
 
 
 class AdminMsgIn(BaseModel):
-    content: str = Field(min_length=1, max_length=4000)
+    content: str = Field(default="", max_length=4000)
+    attachment_url: str | None = Field(default=None, max_length=512)
+    attachment_name: str | None = Field(default=None, max_length=260)
+    attachment_size: int | None = None
+
+    def validate_has_content(self):
+        if not self.content.strip() and not self.attachment_url:
+            raise ValueError("content or attachment required")
 
 
 @router.get("/conversations")
@@ -1270,17 +1280,51 @@ def send_message_to_org(org_id: str, body: AdminMsgIn, admin: Admin, db: Db):
         raise HTTPException(status_code=404, detail="Organization not found")
     conv = _get_or_create_conv(db, org_id)
     now = utcnow()
+    body.validate_has_content()
     msg = AdminMessage(
         conversation_id=conv.id,
         sender_type="admin",
         sender_user_id=admin.id,
         content=body.content,
+        attachment_url=body.attachment_url,
+        attachment_name=body.attachment_name,
+        attachment_size=body.attachment_size,
         created_at=now,
     )
     db.add(msg)
     conv.unread_by_business += 1
     conv.last_message_at = now
-    conv.last_message_preview = body.content[:120]
+    conv.last_message_preview = (body.attachment_name or body.content)[:120]
     db.commit()
     db.refresh(msg)
     return _msg_row(msg)
+
+
+_CHAT_UPLOAD_DIR = Path(__file__).parent.parent / "uploads" / "chat"
+_ALLOWED_MIME = {
+    "image/png", "image/jpeg", "image/gif", "image/webp", "image/svg+xml",
+    "application/pdf",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    "application/vnd.ms-excel", "text/csv", "text/plain",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "application/zip",
+}
+_MAX_BYTES = 10 * 1024 * 1024
+
+
+@router.post("/messages/upload")
+async def upload_chat_file_admin(file: UploadFile = File(...), admin: Admin = None):
+    """Admin uploads a file attachment."""
+    if file.content_type not in _ALLOWED_MIME:
+        raise HTTPException(status_code=415, detail=f"ফাইলের ধরন সমর্থিত নয়: {file.content_type}")
+    data = await file.read()
+    if len(data) > _MAX_BYTES:
+        raise HTTPException(status_code=413, detail="ফাইল সর্বোচ্চ ১০ MB হতে পারবে")
+    _CHAT_UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+    import uuid, os
+    ext = os.path.splitext(file.filename or "")[1][:10]
+    filename = f"{uuid.uuid4().hex}{ext}"
+    dest = _CHAT_UPLOAD_DIR / filename
+    dest.write_bytes(data)
+    url = f"/api/app/messages/uploads/{filename}"
+    return {"url": url, "filename": file.filename or filename, "size": len(data)}

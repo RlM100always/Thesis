@@ -176,6 +176,13 @@ app.include_router(team_chat_router)
 app.include_router(assistant_router)
 app.include_router(research_portal_router)
 
+# Serve chat file uploads as static files
+from pathlib import Path as _Path
+from fastapi.staticfiles import StaticFiles as _StaticFiles
+_chat_upload_dir = _Path(__file__).parent.parent / "uploads" / "chat"
+_chat_upload_dir.mkdir(parents=True, exist_ok=True)
+app.mount("/api/app/messages/uploads", _StaticFiles(directory=str(_chat_upload_dir)), name="chat_uploads")
+
 
 @app.on_event("startup")
 def initialize_application_database():

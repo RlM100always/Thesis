@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { Link, Navigate, NavLink, Route, HashRouter as Router, Routes, useLocation, useSearchParams } from "react-router-dom";
 import { api } from "./api";
 import { AuthProvider, useAuth } from "./AuthContext";
@@ -11,6 +11,7 @@ import Icon from "./ui/Icon";
 import { Avatar, Button, EmptyState, PageHeader } from "./ui/kit";
 import { BranchProvider } from "./useBranch";
 import WorkspaceBar from "./components/WorkspaceBar";
+import AdminChatBubble from "./components/AdminChat";
 
 const Actions = lazy(() => import("./pages/Actions"));
 const Customers = lazy(() => import("./pages/Customers"));
@@ -393,6 +394,9 @@ function AppFrame() {
       </main>
 
       <BottomNav onMore={() => setDrawerOpen(true)} badges={body.badges} />
+
+      {/* Global admin↔business chat bubble — floats over every panel */}
+      <AdminChatBubble />
 
       {drawerOpen && (
         <>

@@ -1611,7 +1611,10 @@ class AdminMessage(Base):
     # "admin" = platform admin side, "business" = org user side
     sender_type: Mapped[str] = mapped_column(String(10))
     sender_user_id: Mapped[str | None] = mapped_column(ForeignKey("users.id"))
-    content: Mapped[str] = mapped_column(Text)
+    content: Mapped[str] = mapped_column(Text, default="")
+    attachment_url: Mapped[str | None] = mapped_column(String(512))
+    attachment_name: Mapped[str | None] = mapped_column(String(260))
+    attachment_size: Mapped[int | None] = mapped_column(Integer)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
     read_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 

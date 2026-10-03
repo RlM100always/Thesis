@@ -2507,6 +2507,52 @@ function AnnouncementsPanel() {
 }
 
 // ─── MESSAGES PANEL ───────────────────────────────────────────────────────────
+function MsgBubble({ m, myType }) {
+  const mine = m.sender_type === myType;
+  const seen = !!m.read_at;
+  function AttachPreview() {
+    if (!m.attachment_url) return null;
+    const isImg = /\.(png|jpe?g|gif|webp|svg)$/i.test(m.attachment_name || "");
+    if (isImg) return (
+      <a href={m.attachment_url} target="_blank" rel="noreferrer" style={{ display: "block", marginTop: 6 }}>
+        <img src={m.attachment_url} alt={m.attachment_name} style={{ maxWidth: 220, maxHeight: 180, borderRadius: 8 }} />
+      </a>
+    );
+    return (
+      <a href={m.attachment_url} target="_blank" rel="noreferrer"
+        style={{ display: "inline-flex", alignItems: "center", gap: 5, marginTop: 6,
+          background: "rgba(0,0,0,0.1)", borderRadius: 8, padding: "4px 10px", fontSize: 12, color: "inherit", textDecoration: "none" }}>
+        📎 {m.attachment_name}
+      </a>
+    );
+  }
+  return (
+    <div style={{ alignSelf: mine ? "flex-end" : "flex-start", maxWidth: "72%", display: "flex", flexDirection: "column" }}>
+      <div style={{
+        background: mine ? "var(--accent, #0a8754)" : "var(--bg-card2, #f1f5f9)",
+        color: mine ? "#fff" : "inherit",
+        borderRadius: mine ? "14px 14px 4px 14px" : "14px 14px 14px 4px",
+        padding: "8px 13px", fontSize: 13, lineHeight: 1.55,
+      }}>
+        {m.content && <span>{m.content}</span>}
+        <AttachPreview />
+        <div style={{ display: "flex", justifyContent: "flex-end", gap: 4, alignItems: "center", marginTop: 2 }}>
+          <span style={{ fontSize: 10, opacity: 0.7 }}>
+            {new Date(m.created_at).toLocaleTimeString("bn-BD", { hour: "2-digit", minute: "2-digit" })}
+          </span>
+          {mine && (
+            <span title={seen ? `পড়া হয়েছে ${new Date(m.read_at).toLocaleTimeString("bn-BD", { hour: "2-digit", minute: "2-digit" })}` : "পাঠানো হয়েছে"}
+              style={{ fontSize: 11, color: seen ? "#a5d6a7" : "rgba(255,255,255,0.55)" }}>
+              {seen ? "✓✓" : "✓"}
+            </span>
+          )}
+        </div>
+      </div>
+      {!mine && <span className="pa-muted" style={{ fontSize: 11, marginTop: 2, marginLeft: 2 }}>{m.sender_name}</span>}
+    </div>
+  );
+}
+
 function MessagesPanel() {
   const [convs, setConvs] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -2516,8 +2562,10 @@ function MessagesPanel() {
   const [threadLoading, setThreadLoading] = useState(false);
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const toast = useToast();
   const bottomRef = useRef(null);
+  const fileRef = useRef(null);
 
   async function loadConvs() {
     try {
@@ -2533,11 +2581,23 @@ function MessagesPanel() {
     try {
       const d = await api.platformGetConversation(orgId);
       setThread(d);
-      // Refresh unread count in list
       setConvs(prev => prev?.map(c => c.organization_id === orgId ? { ...c, unread_by_admin: 0 } : c));
     } catch (e) { toast.error(e.message); }
     setThreadLoading(false);
   }
+
+  // Auto-refresh thread every 15s when a conversation is open
+  useEffect(() => {
+    if (!selectedOrg) return;
+    const t = setInterval(async () => {
+      try {
+        const d = await api.platformGetConversation(selectedOrg);
+        setThread(d);
+        setConvs(prev => prev?.map(c => c.organization_id === selectedOrg ? { ...c, unread_by_admin: 0 } : c));
+      } catch (_) {}
+    }, 15000);
+    return () => clearInterval(t);
+  }, [selectedOrg]);
 
   async function send() {
     if (!text.trim() || !selectedOrg) return;
@@ -2547,10 +2607,34 @@ function MessagesPanel() {
       setThread(prev => prev ? { ...prev, messages: [...(prev.messages || []), msg] } : prev);
       setText("");
       setConvs(prev => prev?.map(c => c.organization_id === selectedOrg
-        ? { ...c, last_message_preview: msg.content.slice(0, 60), last_message_at: msg.created_at }
+        ? { ...c, last_message_preview: (msg.attachment_name || msg.content).slice(0, 60), last_message_at: msg.created_at }
         : c));
     } catch (e) { toast.error(e.message); }
     setSending(false);
+  }
+
+  async function uploadFile(file) {
+    if (!file || !selectedOrg) return;
+    setUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const result = await api.platformUploadChatFile(fd);
+      const msg = await api.platformSendMessage(selectedOrg, "", result.url, result.filename, result.size);
+      setThread(prev => prev ? { ...prev, messages: [...(prev.messages || []), msg] } : prev);
+    } catch (e) { toast.error(e.message); }
+    setUploading(false);
+  }
+
+  function onPaste(e) {
+    const item = [...(e.clipboardData?.items || [])].find(i => i.type.startsWith("image/"));
+    if (item) { e.preventDefault(); uploadFile(item.getAsFile()); }
+  }
+
+  function onDrop(e) {
+    e.preventDefault();
+    const file = e.dataTransfer?.files?.[0];
+    if (file) uploadFile(file);
   }
 
   useEffect(() => { loadConvs(); }, []);
@@ -2560,28 +2644,34 @@ function MessagesPanel() {
 
   return (
     <>
-      <Head title="ব্যবসার সাথে চ্যাট" sub="প্রতিটি ব্যবসার সাথে সরাসরি কথা বলুন" />
+      <Head title="ব্যবসার সাথে চ্যাট" sub="প্রতিটি ব্যবসার সাথে সরাসরি কথা বলুন — ফাইল শেয়ার ও seen receipt সহ" />
       <div style={{ display: "flex", gap: 16, height: "calc(100vh - 160px)", minHeight: 400 }}>
         {/* Conversation list */}
         <div className="pa-card" style={{ width: 260, flexShrink: 0, overflowY: "auto", padding: 0 }}>
-          <div style={{ padding: "10px 14px", borderBottom: "1px solid var(--border)", fontWeight: 600, fontSize: 13 }}>ব্যবসা তালিকা</div>
+          <div style={{ padding: "10px 14px", borderBottom: "1px solid var(--border)", fontWeight: 600, fontSize: 13 }}>
+            ব্যবসা তালিকা
+            <span className="pa-muted" style={{ fontSize: 11, fontWeight: 400, marginLeft: 6 }}>({convs?.length || 0})</span>
+          </div>
           {loading ? <Skeleton lines={4} /> : error ? <Notice tone="danger">{error}</Notice> : (
             convs?.map(c => (
               <button key={c.organization_id}
                 onClick={() => openConv(c.organization_id)}
                 style={{
                   display: "block", width: "100%", textAlign: "left",
-                  padding: "10px 14px", background: selectedOrg === c.organization_id ? "var(--accent-faint, #e8f5e9)" : "transparent",
+                  padding: "10px 14px",
+                  background: selectedOrg === c.organization_id ? "var(--accent-faint, #e8f5e9)" : "transparent",
                   border: "none", borderBottom: "1px solid var(--border)", cursor: "pointer",
                 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                   <span style={{ fontWeight: 600, fontSize: 13 }}>{c.organization_name}</span>
                   {c.unread_by_admin > 0 && <span className="pa-nav-badge">{c.unread_by_admin}</span>}
                 </div>
-                {c.last_message_preview && (
+                {c.last_message_preview ? (
                   <div className="pa-muted" style={{ fontSize: 11, marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                     {c.last_message_preview}
                   </div>
+                ) : (
+                  <div className="pa-muted" style={{ fontSize: 11, marginTop: 2 }}>বার্তা শুরু করুন</div>
                 )}
               </button>
             ))
@@ -2589,40 +2679,40 @@ function MessagesPanel() {
         </div>
 
         {/* Thread */}
-        <div className="pa-card" style={{ flex: 1, display: "flex", flexDirection: "column", padding: 0, overflow: "hidden" }}>
+        <div className="pa-card"
+          onDrop={onDrop} onDragOver={e => e.preventDefault()}
+          style={{ flex: 1, display: "flex", flexDirection: "column", padding: 0, overflow: "hidden" }}>
           {!selectedOrg ? (
             <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
               <EmptyState title="বাঁ দিক থেকে একটি ব্যবসা বেছে নিন" />
             </div>
           ) : (
             <>
-              <div style={{ padding: "10px 16px", borderBottom: "1px solid var(--border)", fontWeight: 600, fontSize: 13 }}>
-                {selectedConv?.organization_name || selectedOrg}
+              <div style={{ padding: "10px 16px", borderBottom: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span style={{ fontWeight: 600, fontSize: 13 }}>{selectedConv?.organization_name || selectedOrg}</span>
+                <span className="pa-muted" style={{ fontSize: 11 }}>ফাইল drag করুন বা paste করুন</span>
               </div>
               <div style={{ flex: 1, overflowY: "auto", padding: 16, display: "flex", flexDirection: "column", gap: 10 }}>
-                {threadLoading ? <Skeleton lines={3} /> : thread?.messages?.length === 0 ? (
-                  <EmptyState title="এখনো কোনো বার্তা নেই" />
-                ) : thread?.messages?.map(m => (
-                  <div key={m.id} style={{
-                    alignSelf: m.sender_type === "admin" ? "flex-end" : "flex-start",
-                    maxWidth: "70%",
-                  }}>
-                    <div style={{
-                      background: m.sender_type === "admin" ? "var(--accent, #0a8754)" : "var(--bg-card2, #f1f5f9)",
-                      color: m.sender_type === "admin" ? "#fff" : "inherit",
-                      borderRadius: 12,
-                      padding: "8px 14px",
-                      fontSize: 13,
-                      lineHeight: 1.5,
-                    }}>{m.content}</div>
-                    <div className="pa-muted" style={{ fontSize: 11, marginTop: 2, textAlign: m.sender_type === "admin" ? "right" : "left" }}>
-                      {m.sender_name} · {new Date(m.created_at).toLocaleTimeString("bn-BD", { hour: "2-digit", minute: "2-digit" })}
-                    </div>
-                  </div>
-                ))}
+                {threadLoading ? <Skeleton lines={3} />
+                  : thread?.messages?.length === 0 ? <EmptyState title="এখনো কোনো বার্তা নেই" />
+                  : thread?.messages?.map(m => <MsgBubble key={m.id} m={m} myType="admin" />)
+                }
                 <div ref={bottomRef} />
               </div>
-              <div style={{ padding: 12, borderTop: "1px solid var(--border)", display: "flex", gap: 8 }}>
+              {uploading && (
+                <div style={{ padding: "4px 14px", fontSize: 12, color: "var(--muted)", background: "var(--bg-subtle,#f8fafc)" }}>
+                  ফাইল আপলোড হচ্ছে…
+                </div>
+              )}
+              <div style={{ padding: 10, borderTop: "1px solid var(--border)", display: "flex", gap: 8, alignItems: "flex-end" }}>
+                <input ref={fileRef} type="file" style={{ display: "none" }}
+                  accept="image/*,.pdf,.xlsx,.xls,.csv,.docx,.doc,.txt,.zip"
+                  onChange={e => { uploadFile(e.target.files?.[0]); e.target.value = ""; }} />
+                <button
+                  onClick={() => fileRef.current?.click()}
+                  disabled={uploading}
+                  title="ফাইল সংযুক্ত করুন"
+                  style={{ background: "none", border: "1px solid var(--border)", borderRadius: 8, padding: "0 8px", height: 36, cursor: "pointer", color: "var(--muted)", fontSize: 16, flexShrink: 0 }}>📎</button>
                 <textarea
                   className="pa-textarea"
                   rows={2}
@@ -2630,6 +2720,7 @@ function MessagesPanel() {
                   value={text}
                   onChange={e => setText(e.target.value)}
                   onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }}
+                  onPaste={onPaste}
                   placeholder="বার্তা লিখুন… (Enter পাঠান, Shift+Enter নতুন লাইন)"
                 />
                 <Button loading={sending} onClick={send} style={{ alignSelf: "flex-end" }}>পাঠান</Button>
