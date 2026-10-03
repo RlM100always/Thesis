@@ -212,8 +212,9 @@ function Shell() {
   // Also auto-redirect platform admins away from /app to /platform so they
   // never land on the Onboarding wizard (they have no business of their own).
   if (pathname.startsWith("/platform")) return <PlatformShell />;
-  // Platform admins with no business membership should go to /platform, not Onboarding.
-  if (!loading && user?.is_platform_admin && organizations.length === 0) {
+  // Platform admins always go to /platform — they have a separate shell.
+  // The only exception is if they explicitly navigate to /app themselves.
+  if (!loading && user?.is_platform_admin && !pathname.startsWith("/app")) {
     return <Navigate to="/platform" replace />;
   }
   // Signed in but no business yet (right after signing up): create one first.
@@ -223,9 +224,20 @@ function Shell() {
   return <AppFrame />;
 }
 
+const PA_DARK_EVENT = "pa-dark-toggle";
 function PlatformShell() {
   const { user, signOut } = useAuth();
-  const [dark, setDark] = useState(false);
+  const [dark, setDark] = useState(() => localStorage.getItem("pa-theme") === "dark");
+
+  useEffect(() => {
+    // Apply saved preference on mount
+    if (dark) {}  // state already initialised from localStorage above
+    // Listen for toggles from Platform.jsx's nav button
+    function handler(e) { setDark(e.detail.dark); }
+    window.addEventListener(PA_DARK_EVENT, handler);
+    return () => window.removeEventListener(PA_DARK_EVENT, handler);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   if (!user?.is_platform_admin) {
     return (
@@ -259,9 +271,6 @@ function PlatformShell() {
           <button className="pa-topbar-btn" onClick={() => setDark(d => !d)} title={dark ? "লাইট মোড" : "ডার্ক মোড"}>
             <Icon name={dark ? "sun" : "moon"} size={15} />
           </button>
-          <Link className="pa-topbar-btn" to="/app">
-            <Icon name="home" size={15} /><span>ব্যবসায় ফিরুন</span>
-          </Link>
           <button className="pa-topbar-btn pa-topbar-logout" onClick={signOut}>
             <Icon name="logout" size={15} /><span>লগআউট</span>
           </button>

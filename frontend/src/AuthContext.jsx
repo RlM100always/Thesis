@@ -43,18 +43,20 @@ export function AuthProvider({ children }) {
     const result = await api.login(email, password);
     if (result?.mfa_required) return result;
     setUser(result);
-    finish();
+    finish(result?.is_platform_admin ? "#/platform" : "#/app");
     return undefined;
   }, [finish]);
 
   const completeMfa = useCallback(async (mfaToken, code) => {
-    setUser(await api.verifyMfa(mfaToken, code));
-    finish();
+    const u = await api.verifyMfa(mfaToken, code);
+    setUser(u);
+    finish(u?.is_platform_admin ? "#/platform" : "#/app");
   }, [finish]);
 
   const signUp = useCallback(async (payload) => {
-    setUser(await api.register(payload));
-    finish();
+    const u = await api.register(payload);
+    setUser(u);
+    finish(u?.is_platform_admin ? "#/platform" : "#/app");
   }, [finish]);
 
   // Straight back to the login form, not the marketing landing page --

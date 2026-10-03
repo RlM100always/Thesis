@@ -244,18 +244,30 @@
   --pa-ink: #101828;
   --pa-muted: #667085;
   --pa-border: #d9e2ef;
+  --pa-accent: #245bdb;
   --pa-blue: #245bdb;
   --pa-cyan: #0e7490;
   --pa-green: #07845c;
   --pa-amber: #b76e00;
   --pa-red: #c83245;
   --pa-violet: #6d3fd3;
+  /* standard token aliases so ui kit components work inside pa-shell */
   --surface: var(--pa-panel);
-  --surface-2: #eef4fb;
+  --surface-2: var(--pa-panel-soft);
   --border: var(--pa-border);
   --text: var(--pa-ink);
   --text-muted: var(--pa-muted);
+  --text-2: var(--pa-muted);
+  --c-border: var(--pa-border);
   --green: var(--pa-green);
+  --danger: var(--pa-red);
+  --danger-soft: rgba(200, 50, 69, 0.08);
+  --warn: var(--pa-amber);
+  --warn-soft: rgba(183, 110, 0, 0.10);
+  --success-soft: rgba(7, 132, 92, 0.08);
+  --shadow-1: 0 1px 3px rgba(0,0,0,.06);
+  --shadow-2: 0 4px 12px rgba(0,0,0,.10);
+  --shadow-3: 0 12px 32px rgba(0,0,0,.15);
   min-height: 100vh;
   color: var(--pa-ink);
   background:
@@ -271,12 +283,27 @@
   --pa-ink: #eaf0f8;
   --pa-muted: #98a7bc;
   --pa-border: #263347;
+  --pa-accent: #8db2ff;
   --pa-blue: #8db2ff;
   --pa-cyan: #67d5ef;
   --pa-green: #44d99b;
   --pa-amber: #fac461;
   --pa-red: #ff7182;
   --pa-violet: #b7a0ff;
+  /* dark mode aliases */
+  --surface: var(--pa-panel);
+  --surface-2: var(--pa-panel-soft);
+  --border: var(--pa-border);
+  --text: var(--pa-ink);
+  --text-muted: var(--pa-muted);
+  --text-2: var(--pa-muted);
+  --c-border: var(--pa-border);
+  --green: var(--pa-green);
+  --danger: var(--pa-red);
+  --danger-soft: rgba(255, 113, 130, 0.12);
+  --warn: var(--pa-amber);
+  --warn-soft: rgba(250, 196, 97, 0.12);
+  --success-soft: rgba(68, 217, 155, 0.10);
   color-scheme: dark;
 }
 .pa-topbar {
@@ -570,6 +597,22 @@
 /* Simple card */
 .pa-card { background: var(--pa-panel); border: 1px solid var(--pa-border); border-radius: 14px; padding: 20px; }
 
+/* Inputs and textareas */
+.pa-input {
+  width: 100%; padding: 8px 12px; border: 1px solid var(--pa-border); border-radius: 8px;
+  background: var(--pa-panel); color: var(--pa-ink); font-size: 13px; font: inherit;
+  transition: border-color 0.15s;
+}
+.pa-input:focus { outline: none; border-color: var(--pa-accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--pa-accent) 15%, transparent); }
+.pa-input::placeholder { color: var(--pa-muted); }
+.pa-textarea {
+  width: 100%; padding: 9px 12px; border: 1px solid var(--pa-border); border-radius: 8px;
+  background: var(--pa-panel); color: var(--pa-ink); font-size: 13px; font: inherit;
+  resize: vertical; min-height: 80px;
+}
+.pa-textarea:focus { outline: none; border-color: var(--pa-accent); }
+.pa-textarea::placeholder { color: var(--pa-muted); }
+
 /* Search input */
 .pa-search { width: 100%; max-width: 320px; padding: 8px 14px; border: 1px solid var(--pa-border); border-radius: 8px; background: var(--pa-panel); color: var(--pa-ink); font-size: 13px; }
 .pa-search:focus { outline: none; border-color: var(--pa-accent); }
@@ -672,16 +715,4 @@ tr.pa-row-checked td { background: color-mix(in srgb, var(--pa-accent) 8%, trans
 .pa-activity-item { display: flex; align-items: flex-start; gap: 10px; padding: 6px 0; position: relative; }
 .pa-activity-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); flex-shrink: 0; margin-top: 3px; position: absolute; left: -17px; }
 
-/* ── Phase 5: Dark mode overrides via data-theme ───────────────────────── */
-:root[data-theme="dark"] {
-  --surface:   #0f172a;
-  --surface-2: #1e293b;
-  --text:      #e2e8f0;
-  --text-muted:#94a3b8;
-  --border:    #334155;
-  --pa-panel:  #1e293b;
-  --pa-panel-soft: #0f172a;
-  --pa-border: #334155;
-  --pa-ink:    #e2e8f0;
-  --pa-muted:  #64748b;
-}
+/* Dark mode is handled by pa-shell.pa-dark in index.css — no data-theme override needed */

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { Component, useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import {
   Area, AreaChart, Bar, BarChart, CartesianGrid,
@@ -115,23 +115,27 @@ function orgState(org) {
 }
 
 // ─── DARK MODE ────────────────────────────────────────────────────────────────
-const _themeSubs = [];
-let _darkMode = localStorage.getItem("pa-theme") === "dark";
-function applyTheme(dark) {
-  document.documentElement.setAttribute("data-theme", dark ? "dark" : "light");
-}
-applyTheme(_darkMode);
+// Delegates to the pa-shell element's pa-dark class (owned by App.jsx's PlatformShell).
+// Platform.jsx's toggle syncs with it via a custom event so both toggles stay in sync.
+const PA_DARK_EVENT = "pa-dark-toggle";
 function useDarkMode() {
-  const [dark, setDark] = useState(_darkMode);
+  const [dark, setDark] = useState(() => {
+    const shell = document.querySelector(".pa-shell");
+    return shell ? shell.classList.contains("pa-dark") : localStorage.getItem("pa-theme") === "dark";
+  });
   useEffect(() => {
-    _themeSubs.push(setDark);
-    return () => { const i = _themeSubs.indexOf(setDark); if (i >= 0) _themeSubs.splice(i, 1); };
+    function handler(e) { setDark(e.detail.dark); }
+    window.addEventListener(PA_DARK_EVENT, handler);
+    return () => window.removeEventListener(PA_DARK_EVENT, handler);
   }, []);
   const toggle = () => {
-    _darkMode = !_darkMode;
-    localStorage.setItem("pa-theme", _darkMode ? "dark" : "light");
-    applyTheme(_darkMode);
-    _themeSubs.forEach(fn => fn(_darkMode));
+    const shell = document.querySelector(".pa-shell");
+    if (shell) {
+      const next = !shell.classList.contains("pa-dark");
+      shell.classList.toggle("pa-dark", next);
+      localStorage.setItem("pa-theme", next ? "dark" : "light");
+      window.dispatchEvent(new CustomEvent(PA_DARK_EVENT, { detail: { dark: next } }));
+    }
   };
   return { dark, toggle };
 }
@@ -500,7 +504,8 @@ function GlobalSearch({ setParams, onClose }) {
 }
 
 // ─── ERROR BOUNDARY ───────────────────────────────────────────────────────────
-class PanelBoundary extends (class { constructor(p){this.props=p; this.state={err:null};} }) {
+class PanelBoundary extends Component {
+  constructor(p) { super(p); this.state = { err: null }; }
   static getDerivedStateFromError(e) { return { err: e }; }
   render() {
     if (this.state.err) return (

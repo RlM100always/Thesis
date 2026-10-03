@@ -843,14 +843,28 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
   --pa-red: #c93445;
   --pa-topbar-bg: #0b1220;
   --pa-topbar-border: rgba(255, 255, 255, 0.08);
+  /* aliases used by ui-pages.css platform admin components */
+  --pa-panel: var(--pa-surface);
+  --pa-panel-soft: var(--pa-surface-2);
+  --pa-border: var(--pa-line);
   --bg: var(--pa-canvas);
   --surface: var(--pa-surface);
   --surface-2: var(--pa-surface-2);
   --border: var(--pa-line);
   --text: var(--pa-ink);
   --text-muted: var(--pa-muted);
+  --text-2: var(--pa-muted);
+  --c-border: var(--pa-line);
   --green: var(--pa-green);
   --red: var(--pa-red);
+  --danger: var(--pa-red);
+  --danger-soft: rgba(201, 52, 69, 0.08);
+  --warn: #b45309;
+  --warn-soft: #fffbeb;
+  --success-soft: #ecfdf5;
+  --shadow-1: 0 1px 3px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.04);
+  --shadow-2: 0 4px 12px rgba(0,0,0,.10);
+  --shadow-3: 0 12px 32px rgba(0,0,0,.15);
   min-height: 100vh;
   color: var(--pa-ink);
   background:
@@ -873,6 +887,13 @@ button:disabled { opacity: 0.45; cursor: not-allowed; }
   --pa-red: #ff6b7a;
   --pa-topbar-bg: #080d16;
   --pa-topbar-border: rgba(255, 255, 255, 0.10);
+  /* dark mode aliases */
+  --pa-panel: #111a28;
+  --pa-panel-soft: #172234;
+  --pa-border: #253247;
+  --danger-soft: rgba(255, 107, 122, 0.12);
+  --warn-soft: rgba(180, 83, 9, 0.15);
+  --success-soft: rgba(53, 212, 142, 0.10);
 }
 .pa-topbar {
   height: 68px;
