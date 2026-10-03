@@ -53,6 +53,43 @@ function useData(fn, deps = []) {
   return { data, loading, error, reload: load };
 }
 
+function useAutoRefresh(reloadFn, intervalMs = 30000) {
+  useEffect(() => {
+    const id = setInterval(reloadFn, intervalMs);
+    return () => clearInterval(id);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [intervalMs]);
+}
+
+const PAGE_SIZE = 20;
+function usePaged(items) {
+  const [page, setPage] = useState(0);
+  const total = items.length;
+  const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const slice = items.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
+  const reset = () => setPage(0);
+  const pager = pages <= 1 ? null : (
+    <div className="pa-pager">
+      <button className="pa-pager-btn" disabled={page === 0} onClick={() => setPage(p => p - 1)}>‹</button>
+      <span className="pa-pager-info">{page + 1} / {pages} ({total} টি)</span>
+      <button className="pa-pager-btn" disabled={page >= pages - 1} onClick={() => setPage(p => p + 1)}>›</button>
+    </div>
+  );
+  return { slice, page, pages, total, setPage, reset, pager };
+}
+
+function exportCsv(filename, rows, cols) {
+  const hdr = cols.map(c => c.label).join(",");
+  const body = rows.map(r => cols.map(c => {
+    const v = c.get(r) ?? "";
+    return `"${String(v).replace(/"/g, '""')}"`;
+  }).join(",")).join("\n");
+  const blob = new Blob(["﻿" + hdr + "\n" + body], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a"); a.href = url; a.download = filename; a.click();
+  URL.revokeObjectURL(url);
+}
+
 function Head({ title, sub, action }) {
   return (
     <div className="pa-page-head" style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
@@ -78,21 +115,42 @@ function orgState(org) {
 
 // ─── 1. COMMAND CENTER ────────────────────────────────────────────────────────
 function CommandCenterPanel() {
-  const { data: overview, loading: ol, error: oe } = useData(() => api.adminOverview());
-  const { data: mq, loading: ml, error: me } = useData(() => api.adminMissionQueue("open"));
-  const { data: alerts, loading: al, error: ae } = useData(() => api.adminSecurityAlerts("open"));
+  const { data: overview, loading: ol, error: oe, reload: oReload } = useData(() => api.adminOverview());
+  const { data: mq, loading: ml, error: me, reload: mqReload } = useData(() => api.adminMissionQueue("open"));
+  const { data: alerts, loading: al, error: ae, reload: aReload } = useData(() => api.adminSecurityAlerts("open"));
   const { data: trends, loading: tl } = useData(() => api.platformTrends(30));
+  const { data: tenantGrowth } = useData(() => api.platformOrganizations());
   const toast = useToast();
   const o = overview || {};
 
+  useAutoRefresh(() => { oReload(); aReload(); }, 30000);
+
   async function generateQueue() {
-    try { await api.adminGenerateMissionQueue(); toast.success("Queue রিফ্রেশ হয়েছে"); }
+    try { await api.adminGenerateMissionQueue(); toast.success("Queue রিফ্রেশ হয়েছে"); mqReload(); }
     catch (e) { toast.error(e.message); }
   }
 
   const series = trends?.series || [];
   const items = mq?.items || mq || [];
   const alertList = alerts?.alerts || alerts || [];
+
+  // Build alert severity distribution for bar chart
+  const severityCounts = alertList.reduce((acc, a) => {
+    acc[a.severity] = (acc[a.severity] || 0) + 1;
+    return acc;
+  }, {});
+  const alertChartData = Object.entries(severityCounts).map(([name, value]) => ({ name, value }));
+
+  // Build monthly tenant growth from org created_at
+  const orgs = tenantGrowth?.organizations || tenantGrowth || [];
+  const growthMap = {};
+  orgs.forEach(org => {
+    if (!org.created_at) return;
+    const m = org.created_at.slice(0, 7);
+    growthMap[m] = (growthMap[m] || 0) + 1;
+  });
+  const growthData = Object.entries(growthMap).sort(([a],[b]) => a.localeCompare(b))
+    .slice(-6).map(([month, count]) => ({ month: month.slice(5), count }));
 
   return (
     <>
@@ -157,25 +215,61 @@ function CommandCenterPanel() {
         </div>
       </div>
 
-      {/* Sales trend */}
-      <div className="pa-section-title">গত ৩০ দিনের বিক্রয় ট্রেন্ড (৳)</div>
-      {!tl && (
-        <div className="pa-chart-box">
-          <ResponsiveContainer width="100%" height={160}>
-            <AreaChart data={series} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-              <defs><linearGradient id="ccg" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#0a8754" stopOpacity={0.25} />
-                <stop offset="95%" stopColor="#0a8754" stopOpacity={0} />
-              </linearGradient></defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-              <XAxis dataKey="date" tick={{ fontSize: 10 }} tickLine={false} />
-              <YAxis tick={{ fontSize: 10 }} tickLine={false} axisLine={false} />
-              <Tooltip formatter={v => `৳${Number(v).toLocaleString()}`} />
-              <Area type="monotone" dataKey="sales_bdt" stroke="#0a8754" fill="url(#ccg)" strokeWidth={2} dot={false} name="বিক্রয়" />
-            </AreaChart>
-          </ResponsiveContainer>
+      {/* Charts row */}
+      <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr", gap: 20, marginBottom: 8 }}>
+        <div>
+          <div className="pa-section-title" style={{ marginBottom: 6 }}>গত ৩০ দিনের বিক্রয় ট্রেন্ড (৳)</div>
+          {!tl && (
+            <div className="pa-chart-box">
+              <ResponsiveContainer width="100%" height={140}>
+                <AreaChart data={series} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
+                  <defs><linearGradient id="ccg" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#0a8754" stopOpacity={0.25} />
+                    <stop offset="95%" stopColor="#0a8754" stopOpacity={0} />
+                  </linearGradient></defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                  <XAxis dataKey="date" tick={{ fontSize: 10 }} tickLine={false} />
+                  <YAxis tick={{ fontSize: 10 }} tickLine={false} axisLine={false} />
+                  <Tooltip formatter={v => `৳${Number(v).toLocaleString()}`} />
+                  <Area type="monotone" dataKey="sales_bdt" stroke="#0a8754" fill="url(#ccg)" strokeWidth={2} dot={false} name="বিক্রয়" />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          )}
         </div>
-      )}
+        <div>
+          <div className="pa-section-title" style={{ marginBottom: 6 }}>নতুন ব্যবসা (মাসিক)</div>
+          {growthData.length > 0 && (
+            <div className="pa-chart-box">
+              <ResponsiveContainer width="100%" height={140}>
+                <BarChart data={growthData} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                  <XAxis dataKey="month" tick={{ fontSize: 10 }} tickLine={false} />
+                  <YAxis tick={{ fontSize: 10 }} tickLine={false} axisLine={false} allowDecimals={false} />
+                  <Tooltip />
+                  <Bar dataKey="count" fill="#0d1b2a" name="ব্যবসা" radius={[3,3,0,0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+        </div>
+        <div>
+          <div className="pa-section-title" style={{ marginBottom: 6 }}>অ্যালার্ট বিভাজন</div>
+          {alertChartData.length > 0 ? (
+            <div className="pa-chart-box">
+              <ResponsiveContainer width="100%" height={140}>
+                <BarChart data={alertChartData} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                  <XAxis dataKey="name" tick={{ fontSize: 10 }} tickLine={false} />
+                  <YAxis tick={{ fontSize: 10 }} tickLine={false} axisLine={false} allowDecimals={false} />
+                  <Tooltip />
+                  <Bar dataKey="value" fill="#e63946" name="অ্যালার্ট" radius={[3,3,0,0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          ) : <div className="pa-muted" style={{ fontSize: 12, padding: "20px 0" }}>কোনো অ্যালার্ট নেই</div>}
+        </div>
+      </div>
     </>
   );
 }
@@ -185,7 +279,37 @@ function Tenant360Drawer({ org, onClose }) {
   const { data: health } = useData(() => api.adminTenantHealthScore(org.id), [org.id]);
   const { data: sub }    = useData(() => api.adminOrgSubscription(org.id), [org.id]);
   const { data: cases }  = useData(() => api.adminSupportCases("open"), []);
+  const [caseForm, setCaseForm] = useState(false);
+  const [newCase, setNewCase]   = useState({ subject: "", priority: "normal" });
+  const [annForm, setAnnForm]   = useState(false);
+  const [annMsg, setAnnMsg]     = useState("");
+  const toast = useToast();
+  const confirm = useConfirm();
   const tenantCases = (cases?.cases || cases || []).filter(c => c.organization_id === org.id);
+
+  async function suspendOrg() {
+    const reason = window.prompt("স্থগিতের কারণ:");
+    if (!reason) return;
+    if (!await confirm(`"${org.name}" স্থগিত করবেন?`)) return;
+    try { await api.platformSuspend(org.id, reason); toast.success("স্থগিত হয়েছে"); onClose(); }
+    catch (e) { toast.error(e.message); }
+  }
+  async function unsuspendOrg() {
+    if (!await confirm(`"${org.name}" সক্রিয় করবেন?`)) return;
+    try { await api.platformUnsuspend(org.id); toast.success("সক্রিয় হয়েছে"); onClose(); }
+    catch (e) { toast.error(e.message); }
+  }
+  async function createCase() {
+    try { await api.adminCreateSupportCase({ ...newCase, organization_id: org.id }); toast.success("কেস তৈরি হয়েছে"); setCaseForm(false); }
+    catch (e) { toast.error(e.message); }
+  }
+  async function sendAnn() {
+    if (!annMsg.trim()) return;
+    try {
+      await api.platformSendAnnouncement({ title: annMsg.slice(0, 200), body: annMsg, type: "info", organization_ids: [org.id] });
+      toast.success("বার্তা পাঠানো হয়েছে"); setAnnForm(false); setAnnMsg("");
+    } catch (e) { toast.error(e.message); }
+  }
 
   return (
     <div className="pa-drawer-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
@@ -193,10 +317,44 @@ function Tenant360Drawer({ org, onClose }) {
         <div className="pa-drawer-head">
           <div>
             <div style={{ fontWeight: 700, fontSize: 16 }}>{org.name}</div>
-            <div className="pa-muted" style={{ fontSize: 13 }}>{org.slug} · {org.id}</div>
+            <div className="pa-muted" style={{ fontSize: 13 }}>{org.slug} · {org.id?.slice(0, 12)}</div>
           </div>
           <button className="pa-drawer-close" onClick={onClose}><Icon name="x" size={18} /></button>
         </div>
+
+        {/* Quick actions */}
+        <div style={{ display: "flex", gap: 8, marginTop: 14, flexWrap: "wrap" }}>
+          {orgState(org) === "suspended"
+            ? <Button size="sm" onClick={unsuspendOrg}>সক্রিয় করুন</Button>
+            : <Button size="sm" variant="danger" onClick={suspendOrg}>স্থগিত করুন</Button>}
+          <Button size="sm" variant="secondary" onClick={() => setCaseForm(true)}>সাপোর্ট কেস খুলুন</Button>
+          <Button size="sm" variant="secondary" onClick={() => setAnnForm(true)}>বার্তা পাঠান</Button>
+        </div>
+
+        {caseForm && (
+          <div className="pa-inline-form" style={{ marginTop: 12 }}>
+            <Field label="বিষয়"><input className="pa-input" value={newCase.subject} onChange={e => setNewCase(p => ({ ...p, subject: e.target.value }))} /></Field>
+            <Field label="প্রাধান্য">
+              <select className="pa-input" value={newCase.priority} onChange={e => setNewCase(p => ({ ...p, priority: e.target.value }))}>
+                <option value="low">Low</option><option value="normal">Normal</option><option value="high">High</option><option value="urgent">Urgent</option>
+              </select>
+            </Field>
+            <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+              <Button size="sm" onClick={createCase}>তৈরি করুন</Button>
+              <Button size="sm" variant="secondary" onClick={() => setCaseForm(false)}>বাতিল</Button>
+            </div>
+          </div>
+        )}
+
+        {annForm && (
+          <div className="pa-inline-form" style={{ marginTop: 12 }}>
+            <Field label="বার্তা"><textarea className="pa-textarea" rows={2} value={annMsg} onChange={e => setAnnMsg(e.target.value)} /></Field>
+            <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+              <Button size="sm" onClick={sendAnn}>পাঠান</Button>
+              <Button size="sm" variant="secondary" onClick={() => setAnnForm(false)}>বাতিল</Button>
+            </div>
+          </div>
+        )}
 
         <div className="pa-section-title" style={{ marginTop: 16 }}>স্বাস্থ্য স্কোর</div>
         {health ? (
@@ -247,6 +405,7 @@ function Tenant360Drawer({ org, onClose }) {
           <div className="pa-kv-row"><span>সদস্য</span><span>{org.member_count ?? "—"}</span></div>
           <div className="pa-kv-row"><span>পণ্য</span><span>{org.product_count ?? "—"}</span></div>
         </div>
+        {confirm.dialog}
       </div>
     </div>
   );
@@ -256,12 +415,25 @@ function TenantsPanel() {
   const { data, loading, error, reload } = useData(() => api.platformOrganizations());
   const [selected, setSelected] = useState(null);
   const [q, setQ] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [checked, setChecked] = useState(new Set());
   const toast = useToast();
   const confirm = useConfirm();
 
-  const orgs = (data?.organizations || data || []).filter(o =>
-    !q || o.name?.toLowerCase().includes(q.toLowerCase()) || o.slug?.includes(q)
-  );
+  const allOrgs = data?.organizations || data || [];
+  const orgs = allOrgs.filter(o => {
+    const matchQ = !q || o.name?.toLowerCase().includes(q.toLowerCase()) || o.slug?.includes(q);
+    const matchS = statusFilter === "all" || orgState(o) === statusFilter;
+    return matchQ && matchS;
+  });
+  const paged = usePaged(orgs);
+
+  function toggleCheck(id) {
+    setChecked(s => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  }
+  function toggleAll() {
+    setChecked(s => s.size === paged.slice.length ? new Set() : new Set(paged.slice.map(o => o.id)));
+  }
 
   async function suspend(org) {
     const reason = window.prompt("স্থগিতের কারণ লিখুন:");
@@ -277,37 +449,99 @@ function TenantsPanel() {
     catch (e) { toast.error(e.message); }
   }
 
+  async function bulkSuspend() {
+    const targets = orgs.filter(o => checked.has(o.id) && orgState(o) !== "suspended");
+    if (!targets.length) return;
+    const reason = window.prompt(`${targets.length}টি ব্যবসা স্থগিত করার কারণ:`);
+    if (!reason) return;
+    if (!await confirm(`${targets.length}টি ব্যবসা স্থগিত করবেন?`)) return;
+    let ok = 0;
+    for (const o of targets) {
+      try { await api.platformSuspend(o.id, reason); ok++; } catch {}
+    }
+    toast.success(`${ok}টি স্থগিত হয়েছে`); setChecked(new Set()); reload();
+  }
+
+  async function bulkUnsuspend() {
+    const targets = orgs.filter(o => checked.has(o.id) && orgState(o) === "suspended");
+    if (!targets.length) return;
+    if (!await confirm(`${targets.length}টি ব্যবসা সক্রিয় করবেন?`)) return;
+    let ok = 0;
+    for (const o of targets) {
+      try { await api.platformUnsuspend(o.id); ok++; } catch {}
+    }
+    toast.success(`${ok}টি সক্রিয় হয়েছে`); setChecked(new Set()); reload();
+  }
+
+  function doExport() {
+    exportCsv("tenants.csv", orgs, [
+      { label: "নাম",    get: o => o.name },
+      { label: "Slug",   get: o => o.slug },
+      { label: "অবস্থা", get: o => orgState(o) },
+      { label: "সেক্টর", get: o => o.sector || "" },
+      { label: "তৈরি",   get: o => o.created_at || "" },
+    ]);
+  }
+
   return (
     <>
-      <Head title="ব্যবসা তালিকা" sub="সব ব্যবসার তালিকা, স্বাস্থ্য এবং ৩৬০° বিশদ" />
-      <div style={{ marginBottom: 16 }}>
-        <input className="pa-search" placeholder="নাম বা slug খুঁজুন…" value={q} onChange={e => setQ(e.target.value)} />
+      <Head title="ব্যবসা তালিকা" sub="সব ব্যবসার তালিকা, স্বাস্থ্য এবং ৩৬০° বিশদ"
+        action={<Button size="sm" variant="secondary" onClick={doExport}>CSV ডাউনলোড</Button>} />
+
+      <div style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
+        <input className="pa-search" style={{ flex: 1, minWidth: 180 }} placeholder="নাম বা slug খুঁজুন…" value={q}
+          onChange={e => { setQ(e.target.value); paged.reset(); }} />
+        <select className="pa-input" style={{ width: 130 }} value={statusFilter}
+          onChange={e => { setStatusFilter(e.target.value); paged.reset(); }}>
+          <option value="all">সব অবস্থা</option>
+          <option value="active">সক্রিয়</option>
+          <option value="suspended">স্থগিত</option>
+          <option value="inactive">নিষ্ক্রিয়</option>
+        </select>
       </div>
-      {loading ? <Skeleton lines={6} /> : error ? <Notice tone="danger">{error}</Notice> : (
-        <div className="pa-table-wrap">
-          <table className="pa-table">
-            <thead><tr><th>নাম</th><th>Slug</th><th>অবস্থা</th><th>তৈরি</th><th>অ্যাকশন</th></tr></thead>
-            <tbody>{orgs.map(o => (
-              <tr key={o.id}>
-                <td><button className="pa-link-btn" onClick={() => setSelected(o)}>{o.name}</button></td>
-                <td className="pa-muted" style={{ fontFamily: "monospace", fontSize: 12 }}>{o.slug}</td>
-                <td><Badge tone={STATE_TONE[orgState(o)] || "neutral"}>{orgState(o)}</Badge></td>
-                <td className="pa-muted" style={{ fontSize: 12 }}>{dateBn(o.created_at)}</td>
-                <td>
-                  <div className="pa-row-actions">
-                    <Button size="sm" variant="secondary" onClick={() => setSelected(o)}>৩৬০°</Button>
-                    {orgState(o) === "suspended"
-                      ? <Button size="sm" variant="secondary" onClick={() => unsuspend(o)}>সক্রিয় করুন</Button>
-                      : <Button size="sm" variant="danger" onClick={() => suspend(o)}>স্থগিত</Button>}
-                  </div>
-                </td>
-              </tr>
-            ))}</tbody>
-          </table>
-          {orgs.length === 0 && <EmptyState title="কোনো ব্যবসা পাওয়া যায়নি" />}
+
+      {checked.size > 0 && (
+        <div className="pa-bulk-bar">
+          <span>{checked.size}টি নির্বাচিত</span>
+          <Button size="sm" variant="danger" onClick={bulkSuspend}>স্থগিত করুন</Button>
+          <Button size="sm" variant="secondary" onClick={bulkUnsuspend}>সক্রিয় করুন</Button>
+          <Button size="sm" variant="secondary" onClick={() => setChecked(new Set())}>বাতিল</Button>
         </div>
       )}
-      {selected && <Tenant360Drawer org={selected} onClose={() => setSelected(null)} />}
+
+      {loading ? <Skeleton lines={6} /> : error ? <Notice tone="danger">{error}</Notice> : (
+        <>
+          <div className="pa-table-wrap">
+            <table className="pa-table">
+              <thead><tr>
+                <th style={{ width: 32 }}><input type="checkbox" checked={checked.size === paged.slice.length && paged.slice.length > 0} onChange={toggleAll} /></th>
+                <th>নাম</th><th>Slug</th><th>অবস্থা</th><th>সেক্টর</th><th>তৈরি</th><th>অ্যাকশন</th>
+              </tr></thead>
+              <tbody>{paged.slice.map(o => (
+                <tr key={o.id} className={checked.has(o.id) ? "pa-row-checked" : ""}>
+                  <td><input type="checkbox" checked={checked.has(o.id)} onChange={() => toggleCheck(o.id)} /></td>
+                  <td><button className="pa-link-btn" onClick={() => setSelected(o)}>{o.name}</button></td>
+                  <td className="pa-muted" style={{ fontFamily: "monospace", fontSize: 12 }}>{o.slug}</td>
+                  <td><Badge tone={STATE_TONE[orgState(o)] || "neutral"}>{orgState(o)}</Badge></td>
+                  <td className="pa-muted" style={{ fontSize: 12 }}>{o.sector || "—"}</td>
+                  <td className="pa-muted" style={{ fontSize: 12 }}>{dateBn(o.created_at)}</td>
+                  <td>
+                    <div className="pa-row-actions">
+                      <Button size="sm" variant="secondary" onClick={() => setSelected(o)}>৩৬০°</Button>
+                      {orgState(o) === "suspended"
+                        ? <Button size="sm" variant="secondary" onClick={() => unsuspend(o)}>সক্রিয় করুন</Button>
+                        : <Button size="sm" variant="danger" onClick={() => suspend(o)}>স্থগিত</Button>}
+                    </div>
+                  </td>
+                </tr>
+              ))}</tbody>
+            </table>
+            {orgs.length === 0 && <EmptyState title="কোনো ব্যবসা পাওয়া যায়নি" />}
+          </div>
+          {paged.pager}
+        </>
+      )}
+      {selected && <Tenant360Drawer org={selected} onClose={() => { setSelected(null); reload(); }} />}
       {confirm.dialog}
     </>
   );
@@ -514,6 +748,35 @@ function RecommendationOpsPanel() {
 
           {decisions.length > 0 && (
             <>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, marginBottom: 20 }}>
+                <div>
+                  <div className="pa-section-title" style={{ marginBottom: 6 }}>সিদ্ধান্ত বিভাজন</div>
+                  <div className="pa-chart-box">
+                    <ResponsiveContainer width="100%" height={120}>
+                      <BarChart data={[
+                        { name: "গৃহীত",       value: accepted,  fill: "#0a8754" },
+                        { name: "প্রত্যাখ্যাত", value: rejected, fill: "#e63946" },
+                        { name: "স্থগিত",       value: deferred, fill: "#f59e0b" },
+                        { name: "পরিমাপ",       value: measured,  fill: "#64748b" },
+                      ]} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                        <XAxis dataKey="name" tick={{ fontSize: 10 }} tickLine={false} />
+                        <YAxis tick={{ fontSize: 10 }} tickLine={false} axisLine={false} allowDecimals={false} />
+                        <Tooltip />
+                        <Bar dataKey="value" name="সংখ্যা" radius={[3,3,0,0]}>
+                          {[accepted, rejected, deferred, measured].map((_, i) => (
+                            <rect key={i} />
+                          ))}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+                <div className="pa-stats-grid" style={{ alignContent: "start" }}>
+                  <Stat label="পরিমাপের হার" value={pct(measured, total)} tone={measured / total > 0.5 ? "success" : "warn"} />
+                  <Stat label="গ্রহণের হার"  value={pct(accepted, total)} tone={accepted / total > 0.5 ? "success" : "neutral"} />
+                </div>
+              </div>
               <div className="pa-section-title" style={{ marginBottom: 8 }}>সাম্প্রতিক সিদ্ধান্ত</div>
               <div className="pa-table-wrap">
                 <table className="pa-table">
@@ -732,6 +995,64 @@ function SupportSuccessPanel() {
   );
 }
 
+// ─── AUDIT LOG SUB-COMPONENT ─────────────────────────────────────────────────
+function AuditLogTab({ audit, loading }) {
+  const [actionQ, setActionQ] = useState("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo]   = useState("");
+
+  const filtered = audit.filter(e => {
+    const matchA = !actionQ || e.action?.includes(actionQ) || e.actor_email?.includes(actionQ);
+    const matchF = !dateFrom || new Date(e.created_at) >= new Date(dateFrom);
+    const matchT = !dateTo   || new Date(e.created_at) <= new Date(dateTo + "T23:59:59");
+    return matchA && matchF && matchT;
+  });
+  const paged = usePaged(filtered);
+
+  function doExport() {
+    exportCsv("audit_log.csv", filtered, [
+      { label: "অ্যাকশন",  get: e => e.action },
+      { label: "অ্যাক্টর", get: e => e.actor_email || "system" },
+      { label: "টার্গেট",  get: e => `${e.entity_type} ${e.entity_id || ""}` },
+      { label: "সময়",     get: e => e.created_at },
+    ]);
+  }
+
+  return (
+    <>
+      <div style={{ display: "flex", gap: 8, marginBottom: 12, flexWrap: "wrap", alignItems: "center" }}>
+        <input className="pa-search" style={{ flex: 1, minWidth: 160 }} placeholder="অ্যাকশন বা অ্যাক্টর খুঁজুন…"
+          value={actionQ} onChange={e => { setActionQ(e.target.value); paged.reset(); }} />
+        <input type="date" className="pa-input" style={{ width: 140 }} value={dateFrom}
+          onChange={e => { setDateFrom(e.target.value); paged.reset(); }} />
+        <span className="pa-muted">—</span>
+        <input type="date" className="pa-input" style={{ width: 140 }} value={dateTo}
+          onChange={e => { setDateTo(e.target.value); paged.reset(); }} />
+        <Button size="sm" variant="secondary" onClick={doExport}>CSV</Button>
+      </div>
+      {loading ? <Skeleton lines={5} /> : (
+        <>
+          <div className="pa-table-wrap">
+            <table className="pa-table">
+              <thead><tr><th>অ্যাকশন</th><th>অ্যাক্টর</th><th>টার্গেট</th><th>সময়</th></tr></thead>
+              <tbody>{paged.slice.map((e, i) => (
+                <tr key={i}>
+                  <td style={{ fontFamily: "monospace", fontSize: 12 }}>{e.action}</td>
+                  <td style={{ fontSize: 12 }}>{e.actor_email || "system"}</td>
+                  <td style={{ fontSize: 12 }} className="pa-muted">{e.entity_type} {e.entity_id?.slice(0, 8)}</td>
+                  <td className="pa-muted" style={{ fontSize: 12 }}>{dateTimeBn(e.created_at)}</td>
+                </tr>
+              ))}</tbody>
+            </table>
+            {filtered.length === 0 && <EmptyState title="কোনো লগ পাওয়া যায়নি" />}
+          </div>
+          {paged.pager}
+        </>
+      )}
+    </>
+  );
+}
+
 // ─── 8. SECURITY & AUDIT ─────────────────────────────────────────────────────
 function SecurityAuditPanel() {
   const [subTab, setSubTab] = useState("alerts");
@@ -876,24 +1197,7 @@ function SecurityAuditPanel() {
       )}
 
       {subTab === "audit" && (
-        <>
-          {auditL ? <Skeleton lines={5} /> : (
-            <div className="pa-table-wrap">
-              <table className="pa-table">
-                <thead><tr><th>অ্যাকশন</th><th>অ্যাক্টর</th><th>টার্গেট</th><th>সময়</th></tr></thead>
-                <tbody>{audit.slice(0, 50).map((e, i) => (
-                  <tr key={i}>
-                    <td style={{ fontFamily: "monospace", fontSize: 12 }}>{e.action}</td>
-                    <td style={{ fontSize: 12 }}>{e.actor_email || "system"}</td>
-                    <td style={{ fontSize: 12 }} className="pa-muted">{e.entity_type} {e.entity_id?.slice(0, 8)}</td>
-                    <td className="pa-muted" style={{ fontSize: 12 }}>{dateTimeBn(e.created_at)}</td>
-                  </tr>
-                ))}</tbody>
-              </table>
-              {audit.length === 0 && <EmptyState title="কোনো লগ নেই" />}
-            </div>
-          )}
-        </>
+        <AuditLogTab audit={audit} loading={auditL} />
       )}
       {confirm.dialog}
     </>
@@ -910,16 +1214,37 @@ function SystemOpsPanel() {
   const { data: backupsData, loading: bl, reload: bReload } = useData(() => api.platformBackups());
   const toast = useToast();
   const confirm = useConfirm();
+  const [inciForm, setInciForm] = useState(false);
+  const [newInci, setNewInci]   = useState({ title: "", severity: "p2" });
+  const [resolveForm, setResolveForm] = useState(null);
+  const [resolveNote, setResolveNote] = useState("");
 
   const h = health || {};
   const jobs = jobsData?.jobs || jobsData || [];
   const incidents = inciData?.incidents || inciData || [];
   const rollouts = rolloutData?.configs || rolloutData || [];
   const backups = backupsData?.backups || [];
+  const jobsPaged = usePaged(jobs);
 
   async function retryJob(job) {
     try { await api.adminRetryJob(job.id); toast.success("পুনরায় চেষ্টা শুরু হয়েছে"); jReload(); }
     catch (e) { toast.error(e.message); }
+  }
+
+  async function createIncident() {
+    if (!newInci.title.trim()) return;
+    try {
+      await api.adminCreateIncident(newInci);
+      toast.success("ইনসিডেন্ট তৈরি হয়েছে"); setInciForm(false);
+      setNewInci({ title: "", severity: "p2" }); iReload();
+    } catch (e) { toast.error(e.message); }
+  }
+
+  async function resolveIncident() {
+    try {
+      await api.adminUpdateIncident(resolveForm.id, { status: "resolved", resolution_summary: resolveNote });
+      toast.success("সমাধান হয়েছে"); setResolveForm(null); setResolveNote(""); iReload();
+    } catch (e) { toast.error(e.message); }
   }
 
   async function createBackup() {
@@ -977,37 +1302,76 @@ function SystemOpsPanel() {
       {subTab === "jobs" && (
         <>
           {jl ? <Skeleton lines={5} /> : (
-            <div className="pa-table-wrap">
-              <table className="pa-table">
-                <thead><tr><th>জব টাইপ</th><th>অবস্থা</th><th>ত্রুটি</th><th>সময়</th><th>অ্যাকশন</th></tr></thead>
-                <tbody>{jobs.map(j => (
-                  <tr key={j.id}>
-                    <td>{j.job_type}</td>
-                    <td><Badge tone={j.status === "failed" ? "danger" : "neutral"}>{j.status}</Badge></td>
-                    <td style={{ fontSize: 12 }} className="pa-muted">{j.error_message?.slice(0, 60) || "—"}</td>
-                    <td className="pa-muted" style={{ fontSize: 12 }}>{dateTimeBn(j.created_at)}</td>
-                    <td><Button size="sm" variant="secondary" onClick={() => retryJob(j)}>পুনরায় চেষ্টা</Button></td>
-                  </tr>
-                ))}</tbody>
-              </table>
-              {jobs.length === 0 && <EmptyState title="কোনো ব্যর্থ জব নেই" />}
-            </div>
+            <>
+              <div className="pa-table-wrap">
+                <table className="pa-table">
+                  <thead><tr><th>জব টাইপ</th><th>অবস্থা</th><th>ত্রুটি</th><th>সময়</th><th>অ্যাকশন</th></tr></thead>
+                  <tbody>{jobsPaged.slice.map(j => (
+                    <tr key={j.id}>
+                      <td>{j.job_type}</td>
+                      <td><Badge tone={j.status === "failed" ? "danger" : "neutral"}>{j.status}</Badge></td>
+                      <td style={{ fontSize: 12 }} className="pa-muted">{j.error_message?.slice(0, 60) || "—"}</td>
+                      <td className="pa-muted" style={{ fontSize: 12 }}>{dateTimeBn(j.created_at)}</td>
+                      <td><Button size="sm" variant="secondary" onClick={() => retryJob(j)}>পুনরায় চেষ্টা</Button></td>
+                    </tr>
+                  ))}</tbody>
+                </table>
+                {jobs.length === 0 && <EmptyState title="কোনো ব্যর্থ জব নেই" />}
+              </div>
+              {jobsPaged.pager}
+            </>
           )}
         </>
       )}
 
       {subTab === "incidents" && (
         <>
+          <div style={{ marginBottom: 12 }}>
+            <Button size="sm" onClick={() => setInciForm(true)}>নতুন ইনসিডেন্ট</Button>
+          </div>
+          {inciForm && (
+            <Modal title="নতুন ইনসিডেন্ট" onClose={() => setInciForm(false)}>
+              <Field label="শিরোনাম"><input className="pa-input" value={newInci.title} onChange={e => setNewInci(p => ({ ...p, title: e.target.value }))} placeholder="সমস্যার সংক্ষিপ্ত বিবরণ" /></Field>
+              <Field label="তীব্রতা">
+                <select className="pa-input" value={newInci.severity} onChange={e => setNewInci(p => ({ ...p, severity: e.target.value }))}>
+                  <option value="p1">P1 — সর্বোচ্চ জরুরি</option>
+                  <option value="p2">P2 — উচ্চ</option>
+                  <option value="p3">P3 — মাঝারি</option>
+                  <option value="p4">P4 — কম</option>
+                </select>
+              </Field>
+              <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
+                <Button onClick={createIncident}>তৈরি করুন</Button>
+                <Button variant="secondary" onClick={() => setInciForm(false)}>বাতিল</Button>
+              </div>
+            </Modal>
+          )}
+          {resolveForm && (
+            <Modal title={`সমাধান: ${resolveForm.title}`} onClose={() => setResolveForm(null)}>
+              <Field label="সমাধানের বিবরণ">
+                <textarea className="pa-textarea" rows={3} value={resolveNote} onChange={e => setResolveNote(e.target.value)} placeholder="কীভাবে সমাধান হলো…" />
+              </Field>
+              <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
+                <Button onClick={resolveIncident}>সমাধান করুন</Button>
+                <Button variant="secondary" onClick={() => setResolveForm(null)}>বাতিল</Button>
+              </div>
+            </Modal>
+          )}
           {il ? <Skeleton lines={4} /> : (
             <div className="pa-table-wrap">
               <table className="pa-table">
-                <thead><tr><th>শিরোনাম</th><th>তীব্রতা</th><th>অবস্থা</th><th>শুরু</th></tr></thead>
+                <thead><tr><th>শিরোনাম</th><th>তীব্রতা</th><th>অবস্থা</th><th>শুরু</th><th>অ্যাকশন</th></tr></thead>
                 <tbody>{incidents.map(inc => (
                   <tr key={inc.id}>
                     <td style={{ fontWeight: 500 }}>{inc.title}</td>
-                    <td><Badge tone={TONE_MAP[inc.severity] || "neutral"}>{inc.severity}</Badge></td>
+                    <td><Badge tone={inc.severity === "p1" ? "danger" : inc.severity === "p2" ? "warn" : "neutral"}>{inc.severity?.toUpperCase()}</Badge></td>
                     <td><Badge tone={inc.status === "resolved" ? "success" : "warn"}>{inc.status}</Badge></td>
                     <td className="pa-muted" style={{ fontSize: 12 }}>{dateTimeBn(inc.started_at)}</td>
+                    <td>
+                      {inc.status !== "resolved" && (
+                        <Button size="sm" variant="secondary" onClick={() => { setResolveForm(inc); setResolveNote(""); }}>সমাধান করুন</Button>
+                      )}
+                    </td>
                   </tr>
                 ))}</tbody>
               </table>
@@ -1409,13 +1773,55 @@ const PANELS = {
   "announcements": AnnouncementsPanel,
 };
 
+const SHORTCUT_MAP = {
+  "c": "command", "t": "tenants", "d": "data-readiness",
+  "a": "ai-governance", "r": "recom-ops", "p": "plans",
+  "s": "support", "e": "security-audit", "o": "system-ops",
+  "w": "site", "n": "announcements",
+};
+
 export default function Platform() {
   const [params, setParams] = useSearchParams();
   const tab = ALL_TABS.some(t => t.value === params.get("tab")) ? params.get("tab") : "command";
   const Panel = PANELS[tab] || CommandCenterPanel;
+  const { data: alertsData } = useData(() => api.adminSecurityAlerts("open"));
+  const openAlerts = (alertsData?.alerts || alertsData || []).length;
+  const [gPressed, setGPressed] = useState(false);
+
+  useEffect(() => {
+    let gTimer;
+    function handler(e) {
+      if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA" || e.target.tagName === "SELECT") return;
+      if (e.key === "g" || e.key === "G") {
+        setGPressed(true);
+        clearTimeout(gTimer);
+        gTimer = setTimeout(() => setGPressed(false), 1500);
+        return;
+      }
+      if (gPressed && SHORTCUT_MAP[e.key]) {
+        setParams({ tab: SHORTCUT_MAP[e.key] });
+        setGPressed(false);
+        clearTimeout(gTimer);
+      }
+    }
+    window.addEventListener("keydown", handler);
+    return () => { window.removeEventListener("keydown", handler); clearTimeout(gTimer); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gPressed]);
+
   return (
     <div className="platform-layout">
       <nav className="platform-sidenav">
+        <div className="platform-nav-header">
+          <span style={{ fontWeight: 700, fontSize: 13 }}>Admin Panel</span>
+          {openAlerts > 0 && (
+            <button className="pa-alert-bell" onClick={() => setParams({ tab: "security-audit" })}
+              title={`${openAlerts}টি খোলা অ্যালার্ট`}>
+              <Icon name="bell" size={14} />
+              <span className="pa-alert-count">{openAlerts}</span>
+            </button>
+          )}
+        </div>
         {NAV_GROUPS.map(group => (
           <div key={group.label} className="platform-nav-group">
             <div className="platform-nav-group-label">{group.label}</div>
@@ -1427,10 +1833,14 @@ export default function Platform() {
               >
                 <Icon name={item.icon} size={15} />
                 <span>{item.label}</span>
+                {item.value === "security-audit" && openAlerts > 0 && (
+                  <span className="pa-nav-badge">{openAlerts}</span>
+                )}
               </button>
             ))}
           </div>
         ))}
+        {gPressed && <div className="pa-shortcut-hint">G + কী চাপুন…</div>}
       </nav>
       <div className="platform-content"><Panel /></div>
     </div>
