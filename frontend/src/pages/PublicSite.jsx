@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, NavLink, useLocation } from "react-router-dom";
 import { api } from "../api";
 import { useAuth } from "../AuthContext";
@@ -240,6 +240,71 @@ const ROLE_GUIDES = [
   ], features: ["নিজের কাজের তালিকা", "অফলাইনেও আপডেট", "ছবি/প্রমাণ জমা দেওয়া", "COD/পার্টস বুঝিয়ে দেওয়া", "সমস্যা হলে ম্যানেজারকে জানানো"] },
 ];
 
+// ── Default constants for admin-editable sections ──────────────────────────
+const FLOW_ITEMS_DEFAULT = [
+  ["cart","বিক্রি","বিল ও কাস্টমার"],["box","স্টক","কমলো বা বাড়লো"],
+  ["wallet","টাকা","নগদ অথবা বাকি"],["fileText","হিসাব","খাতা মিলে যায়"],
+  ["pie","ফলাফল","প্রমাণসহ পরামর্শ"],
+];
+const GETTING_STARTED_STEPS_DEFAULT = [
+  ["নিজের অ্যাকাউন্ট","মোবাইল/ইমেইল, পাসওয়ার্ড ও ব্যবসার পরিচয়"],
+  ["ব্যবসার তথ্য","শাখা, কাউন্টার, গুদাম ও ব্যবসার ধরন"],
+  ["শুরুর হিসাব","পণ্য, স্টক, কাস্টমারের বাকি, সাপ্লায়ারের দেনা ও হাতের ক্যাশ"],
+  ["টিম নিয়ে শুরু","কর্মী যোগ করা, ভূমিকা ঠিক করা ও একবার পরীক্ষা করে যাচাই"],
+];
+const CUSTOMER_QUESTIONS_DEFAULT = [
+  ["কোন মাল আজই কিনতে হবে?","স্টক + বিক্রি + সাপ্লায়ার","কতদিনের স্টক আছে, সাপ্লায়ারের সময় কত আর বাজেটে কত কেনা যাবে — কারণসহ দেখুন।","ক্রয় বিভাগ"],
+  ["ক্যাশ কম দেখাচ্ছে কেন?","শিফট + পেমেন্ট + রিফান্ড","শুরুর ক্যাশ, বিক্রি, রিফান্ড ও COD মিলিয়ে কোথায় পার্থক্য হয়েছে তার প্রমাণ।","ক্যাশিয়ার → ম্যানেজার"],
+  ["কার কাছে বাকি, আজ কাকে বলব?","বিল + বয়স + প্রতিশ্রুতি","কত বাকি, কতদিনের পুরোনো আর আগে কী বলেছিল — আজকের কল করার তালিকা।","সেলস / হিসাবরক্ষক"],
+  ["রাইডার টাকা জমা দিয়েছে কি?","ডেলিভারি + COD","ডেলিভারি হওয়া অর্ডার আর আসলে হাতে টাকা আসা — আলাদা করে দেখায়, কোনটা বাকি তাও বলে।","রাইডার → ক্যাশিয়ার"],
+  ["কোন স্টকে গরমিলের ঝুঁকি বেশি?","বদল + গণনা + সংঘাত","অনেকবার সংশোধন হয়েছে বা অনেকদিন গোনা হয়নি এমন পণ্য আগে গণনার তালিকায় আসবে।","স্টোরকিপার"],
+  ["আজ মালিক হিসেবে আমার কাজ কী?","অনুমোদন + ঝুঁকি + সময়সীমা","সব জায়গা থেকে শুধু গুরুত্বপূর্ণ সিদ্ধান্তগুলো বেছে আজকের করণীয় তালিকা।","মালিক"],
+];
+const ACTOR_ITEMS_DEFAULT = [
+  ["userCheck","মালিক","ক্যাশ, ব্যবসার অবস্থা, ঝুঁকি ও অনুমোদন"],
+  ["sliders","ম্যানেজার","শাখার দৈনিক কাজ ও সমস্যা সমাধান"],
+  ["cart","ক্যাশিয়ার","শিফট, বিক্রি ও রসিদ"],
+  ["box","স্টোরকিপার","মাল গ্রহণ, গণনা ও শাখা বদল"],
+  ["wallet","হিসাবরক্ষক","বাকি-দেনা, মিলানো ও মাস বন্ধ করা"],
+  ["truck","রাইডার","রুট, প্রমাণ ও COD"],
+];
+const PREVIEW_STATS_DEFAULT = [
+  {label:"আজকের বিক্রি",value:"৳ ৮৪,৬৫০",note:"গত বুধবারের চেয়ে ১২% বেশি"},
+  {label:"হাতে ক্যাশ",value:"৳ ৩২,৪০০",note:"২টি shift চলছে"},
+  {label:"আদায়যোগ্য বাকি",value:"৳ ১,১৮,২০০",note:"আজ promise ৪টি"},
+];
+const PREVIEW_MISSION_DEFAULT = ["PO-234 অনুমোদন","২টি payment যাচাই","Expiry claim পাঠান"];
+const PRIVACY_SECTIONS_DEFAULT = [
+  {heading:"কী তথ্য লাগে",body:"আপনার অ্যাকাউন্টের তথ্য, ব্যবসার সদস্যপদ, বিক্রি-ক্রয়ের লেনদেন, এবং কাজের জন্য প্রয়োজনীয় কাস্টমার-সাপ্লায়ার-কর্মীর তথ্য। পাসওয়ার্ড খোলামেলা, OTP বা কার্ডের পুরো তথ্য কখনো সংরক্ষণ বা AI-কে দেখানো হয় না।"},
+  {heading:"কেন ব্যবহার হয়",body:"লগইন, বিক্রি-ক্রয়-স্টক-হিসাবের কাজ, কাস্টমার সার্ভিস, নিরাপত্তা, ব্যাকআপ, রিপোর্ট এবং আপনার অনুমতি নিয়ে বিশ্লেষণের জন্য।"},
+  {heading:"কে দেখতে পারে",body:"শুধু আপনার ব্যবসার সদস্য, এবং যার যতটুকু ভূমিকা ততটুকু অনুমতি। সাপোর্টের জন্য কেউ দেখলে তার সময় ও কারণ লেখা থাকবে।"},
+  {heading:"তথ্য রাখা ও আপনার অধিকার",body:"আইনি/হিসাবের প্রয়োজনে কিছু তথ্য একটা সময় পর্যন্ত রাখা হয়। নিজের প্রোফাইল ঠিক করা, তথ্য ডাউনলোড করা ও অ্যাকাউন্ট বন্ধের অনুরোধ করা যাবে।"},
+];
+const TERMS_SECTIONS_DEFAULT = [
+  {heading:"কীভাবে ব্যবহার করা যাবে",body:"ব্যবসার মালিক নিশ্চিত করবেন যে তার কর্মী, কাস্টমার-সাপ্লায়ারের তথ্য ও যুক্ত পেমেন্ট অ্যাকাউন্ট ব্যবহারের অধিকার তার আছে।"},
+  {heading:"ব্যবসার নিজের দায়িত্ব",body:"পণ্যের দাম, কর, কর্মী-কাস্টমারের অনুমতি, শুরুর হিসাব এবং পেমেন্ট অ্যাকাউন্টের তথ্য ঠিক রাখা ব্যবসার নিজের দায়িত্ব।"},
+  {heading:"সেবার সীমা",body:"পেমেন্ট সফল হবে যখন bKash/Nagad-এর মতো প্রতিষ্ঠান নিশ্চিত করবে। AI পরামর্শ শুধু পরামর্শ, মানুষ অনুমোদন না দিলে কোনো টাকা বা বার্তা যায় না।"},
+  {heading:"চূড়ান্ত চুক্তি",body:"প্যাকেজ, ব্যবহারের সীমা, সাপোর্টের সময়, তথ্য রপ্তানি, বন্ধ করার নিয়ম — এসব আসল ব্যবহারের চুক্তিতে স্পষ্ট করে লেখা থাকবে।"},
+];
+const STATUS_COMPONENTS_DEFAULT = [
+  ["ওয়েব অ্যাপ","এখন আপনি যা দেখছেন সেটাই চলছে"],
+  ["ব্যবসার API","সার্ভারের স্বাস্থ্য যাচাই করা যায়"],
+  ["ডেটাবেজ ও ব্যাকআপ","ব্যাকআপ কত পুরোনো তা নিয়মিত যাচাই করা হয়"],
+  ["bKash/Nagad সংযোগ","প্রতিটা আলাদাভাবে পরীক্ষা করতে হয়"],
+  ["SMS / WhatsApp","পাঠানো বার্তার অবস্থা আলাদা দেখা যায়"],
+  ["ব্যাকগ্রাউন্ড সিংক","আটকে থাকা কাজের উপর নজর দরকার"],
+];
+const CONTACT_CARDS_DEFAULT = [
+  {icon:"zap",title:"নতুন ব্যবসা",text:"নিজেই অ্যাকাউন্ট খুলে ধাপে ধাপে শুরু করুন।",link_label:"অ্যাকাউন্ট খুলুন",link_to:"/signup"},
+  {icon:"key",title:"আগে থেকে ব্যবহারকারী",text:"লগইন করে সাহায্য পাতা ও গাইড দেখুন।",link_label:"লগইন করুন",link_to:"/login",ghost:true},
+  {icon:"fileText",title:"কথা বলে জেনে নিতে চান",text:"আপনার ব্যবসার ধরন অনুযায়ী কী লাগবে বুঝে নিন।",link_label:"ব্যবসার ধরন দেখুন",link_to:"/solutions",ghost:true},
+];
+
+const ABOUT_VALUES_DEFAULT = [
+  {num:"01",title:"সত্যি কথা বলি, বাড়িয়ে না",text:"ভুয়া কাস্টমার সংখ্যা, মিথ্যা সাফল্যের গল্প বা এখনো তৈরি না হওয়া ফিচারকে চালু আছে বলে দেখাই না।"},
+  {num:"02",title:"মানুষ আগে, মেনু পরে",text:"মালিক, ক্যাশিয়ার, স্টোরকিপার, হিসাবরক্ষক ও রাইডার — প্রত্যেকের কাজ আলাদা করে ভেবে সাজানো।"},
+  {num:"03",title:"পুরো হিসাব এক জায়গায়",text:"শুধু ফিচারের সংখ্যা বাড়ানো না। স্টক, টাকা, খাতা, অনুমোদন — সব একসাথে মিলে কাজ করাই আসল।"},
+];
 function Brand({ compact = false }) {
   return (
     <Link to="/" className={`public-brand${compact ? " compact" : ""}`} aria-label="B-SMART হোম">
@@ -281,29 +346,36 @@ function PublicHeader() {
         </button>
         <nav id="public-navigation" className={`public-nav${open ? " is-open" : ""}`} aria-label="প্রধান নেভিগেশন">
           {nav.map(([to, label]) => <NavLink key={to} to={to} className={({ isActive }) => isActive ? "active" : ""}>{label}</NavLink>)}
-          <NavLink to="/help" className={({ isActive }) => isActive ? "active" : ""}>সহায়তা</NavLink>
+          <NavLink to="/help" className={({ isActive }) => isActive ? "active" : ""}>{site.get("header.help_label","সহায়তা")}</NavLink>
         </nav>
         <div className="public-actions">
           <ThemeToggleBtn />
-          {user ? <Link className="public-linkbtn" to="/app">ড্যাশবোর্ড</Link> : <Link className="public-linkbtn" to="/login">লগইন</Link>}
-          <Link className="public-cta" to="/signup">বিনামূল্যে শুরু করুন <Icon name="chevronRight" size={16} /></Link>
+          {user ? <Link className="public-linkbtn" to="/app">{site.get("header.dashboard_label","ড্যাশবোর্ড")}</Link> : <Link className="public-linkbtn" to="/login">{site.get("header.login_label","লগইন")}</Link>}
+          <Link className="public-cta" to="/signup">{site.get("header.cta_label","বিনামূল্যে শুরু করুন")} <Icon name="chevronRight" size={16} /></Link>
         </div>
       </div>
     </header>
   );
 }
 
+const FOOTER_COL1 = [["/features","ফিচার"],["/solutions","ব্যবসার ধরন"],["/pricing","মূল্য পরিকল্পনা"]];
+const FOOTER_COL2 = [["/security","নিরাপত্তা"],["/guidelines","ব্যবহারবিধি"],["/about","আমাদের কথা"],["/help","সহায়তা"]];
+const FOOTER_COL3 = [["/signup","Owner account"],["/login","Business login"],["/contact","যোগাযোগ"]];
+
 function PublicFooter() {
   const site = useSiteContent();
+  const col1 = site.getJson("footer.col1_links", FOOTER_COL1);
+  const col2 = site.getJson("footer.col2_links", FOOTER_COL2);
+  const col3 = site.getJson("footer.col3_links", FOOTER_COL3);
   return (
     <footer className="public-footer">
       <div className="public-footergrid">
         <div><Brand compact /><p>{site.get("footer.tagline", "বাংলাদেশের ছোট ও মাঝারি ব্যবসার জন্য তৈরি — সহজ, স্পষ্ট ও প্রমাণসহ।")}</p></div>
-        <div><strong>পণ্য</strong><Link to="/features">ফিচার</Link><Link to="/solutions">ব্যবসার ধরন</Link><Link to="/pricing">মূল্য পরিকল্পনা</Link></div>
-        <div><strong>বিশ্বাস</strong><Link to="/security">নিরাপত্তা</Link><Link to="/guidelines">ব্যবহারবিধি</Link><Link to="/about">আমাদের কথা</Link><Link to="/help">সহায়তা</Link></div>
-        <div><strong>শুরু করুন</strong><Link to="/signup">Owner account</Link><Link to="/login">Business login</Link><Link to="/contact">যোগাযোগ</Link></div>
+        <div><strong>পণ্য</strong>{col1.map(([to, label]) => <Link key={to} to={to}>{label}</Link>)}</div>
+        <div><strong>বিশ্বাস</strong>{col2.map(([to, label]) => <Link key={to} to={to}>{label}</Link>)}</div>
+        <div><strong>শুরু করুন</strong>{col3.map(([to, label]) => <Link key={to} to={to}>{label}</Link>)}</div>
       </div>
-      <div className="public-footnote"><span>© 2026 B-SMART · Bangladesh SME Business OS</span><span className="public-legal"><Link to="/privacy">গোপনীয়তা</Link><Link to="/terms">শর্তাবলি</Link><Link to="/status">System status</Link></span><span>Production capability ও rollout status স্বচ্ছভাবে প্রকাশ করা হয়।</span></div>
+      <div className="public-footnote"><span>{site.get("footer.copy","© 2026 B-SMART · Bangladesh SME Business OS")}</span><span className="public-legal"><Link to="/privacy">গোপনীয়তা</Link><Link to="/terms">শর্তাবলি</Link><Link to="/status">System status</Link></span><span>{site.get("footer.rollout_note","Production capability ও rollout status স্বচ্ছভাবে প্রকাশ করা হয়।")}</span></div>
     </footer>
   );
 }
@@ -323,13 +395,14 @@ function PhotoCredit({ media }) {
 function RealWorkGallery() {
   const site = useSiteContent();
   const rw = site.getJson("real_work", REAL_WORK);
-  const items = [rw.retail, rw.restaurant, rw.manufacturing, rw.craft, rw.service].filter(Boolean);
+  const cardEyebrow = site.get("real_work_section.card_eyebrow", "বাংলাদেশের বাস্তব ব্যবসা");
+  const items = Object.values(rw).slice(0, 5).filter(Boolean);
   return (
     <div className="real-work-gallery">
       {items.map((media, index) => (
         <figure className={`real-work-card real-work-${index + 1}`} key={media.label}>
           <img src={media.src} alt={media.alt} loading="lazy" referrerPolicy="no-referrer" />
-          <figcaption><small>বাংলাদেশের বাস্তব ব্যবসা</small><b>{media.label}</b><span>{media.detail}</span></figcaption>
+          <figcaption><small>{cardEyebrow}</small><b>{media.label}</b><span>{media.detail}</span></figcaption>
           <PhotoCredit media={media} />
         </figure>
       ))}
@@ -338,15 +411,18 @@ function RealWorkGallery() {
 }
 
 function ProductPreview() {
+  const site = useSiteContent();
+  const stats = site.getJson("preview.stats", PREVIEW_STATS_DEFAULT);
+  const missionItems = site.getJson("preview.mission_items", PREVIEW_MISSION_DEFAULT);
   return (
     <div className="public-productshot" aria-label="B-SMART dashboard preview">
-      <div className="productshot-bar"><span /><span /><span /><b>B-SMART · মিরপুর শাখা</b><em>ডেমো ডেটা</em></div>
+      <div className="productshot-bar"><span /><span /><span /><b>{site.get("preview.branch_name","B-SMART · মিরপুর শাখা")}</b><em>ডেমো ডেটা</em></div>
       <div className="productshot-layout">
         <aside><strong>আজকের কাজ</strong>{["ড্যাশবোর্ড", "বিক্রি", "স্টক", "ক্রয়", "হিসাব"].map((x, i) => <span className={i === 0 ? "on" : ""} key={x}>{x}</span>)}</aside>
         <div className="productshot-main">
-          <div className="productshot-welcome"><div><small>বুধবার · ১ অক্টোবর</small><strong>শুভ সকাল, Rahim</strong><span>৩টি কাজ এখন আপনার মনোযোগ চায়</span></div><i><Icon name="zap" size={18} /> Today Mission</i></div>
-          <div className="productshot-stats"><div><span>আজকের বিক্রি</span><b>৳ ৮৪,৬৫০</b><small>গত বুধবারের চেয়ে ১২% বেশি</small></div><div><span>হাতে ক্যাশ</span><b>৳ ৩২,৪০০</b><small>২টি shift চলছে</small></div><div><span>আদায়যোগ্য বাকি</span><b>৳ ১,১৮,২০০</b><small>আজ promise ৪টি</small></div></div>
-          <div className="productshot-bottom"><div className="fake-chart"><span>বিক্রির ধারা</span><svg viewBox="0 0 420 100" role="img" aria-label="ঊর্ধ্বমুখী বিক্রির রেখা"><path d="M4 86 C45 80 52 61 88 68 S140 87 170 54 S230 67 264 38 S330 52 416 12" /></svg></div><div className="mission-list"><span>এখন করুন</span><b><i>1</i> PO-234 অনুমোদন</b><b><i>2</i> ২টি payment যাচাই</b><b><i>3</i> Expiry claim পাঠান</b></div></div>
+          <div className="productshot-welcome"><div><small>{site.get("preview.date_label","বুধবার · ১ অক্টোবর")}</small><strong>{site.get("preview.greeting","শুভ সকাল, Rahim")}</strong><span>{site.get("preview.task_subtitle","৩টি কাজ এখন আপনার মনোযোগ চায়")}</span></div><i><Icon name="zap" size={18} /> Today Mission</i></div>
+          <div className="productshot-stats">{stats.map((s) => <div key={s.label}><span>{s.label}</span><b>{s.value}</b><small>{s.note}</small></div>)}</div>
+          <div className="productshot-bottom"><div className="fake-chart"><span>বিক্রির ধারা</span><svg viewBox="0 0 420 100" role="img" aria-label="ঊর্ধ্বমুখী বিক্রির রেখা"><path d="M4 86 C45 80 52 61 88 68 S140 87 170 54 S230 67 264 38 S330 52 416 12" /></svg></div><div className="mission-list"><span>এখন করুন</span>{missionItems.map((label, i) => <b key={label}><i>{i + 1}</i> {label}</b>)}</div></div>
         </div>
       </div>
     </div>
@@ -380,6 +456,11 @@ function ProductTour() {
 
 function HomePage() {
   const site = useSiteContent();
+  const solutions = site.getJson("solutions_list", SOLUTIONS);
+  const flowItems = site.getJson("flow_section.items", FLOW_ITEMS_DEFAULT);
+  const gettingStartedSteps = site.getJson("getting_started.steps", GETTING_STARTED_STEPS_DEFAULT);
+  const customerQuestions = site.getJson("customer_questions.items", CUSTOMER_QUESTIONS_DEFAULT);
+  const actorItems = site.getJson("actor_section.items", ACTOR_ITEMS_DEFAULT);
   return (
     <>
       <section className="public-hero">
@@ -429,49 +510,38 @@ function HomePage() {
       </section>
 
       <section className="public-section">
-        <SectionHead eyebrow="সব এক সুতায় বাঁধা" title="একটা বিক্রি হলেই পুরো হিসাব নিজে থেকে আপডেট হয়" text="আলাদা খাতা বা আলাদা অ্যাপ লাগবে না। প্রতিটা বিক্রি স্টক, টাকা, বাকি ও হিসাবের খাতা — সবখানে একসাথে যোগ হয়ে যায়।" />
-        <div className="public-flow"><div><Icon name="cart" /><b>বিক্রি</b><span>বিল ও কাস্টমার</span></div><Icon name="chevronRight" /><div><Icon name="box" /><b>স্টক</b><span>কমলো বা বাড়লো</span></div><Icon name="chevronRight" /><div><Icon name="wallet" /><b>টাকা</b><span>নগদ অথবা বাকি</span></div><Icon name="chevronRight" /><div><Icon name="fileText" /><b>হিসাব</b><span>খাতা মিলে যায়</span></div><Icon name="chevronRight" /><div><Icon name="pie" /><b>ফলাফল</b><span>প্রমাণসহ পরামর্শ</span></div></div>
+        <SectionHead eyebrow={site.get("flow_section.eyebrow","সব এক সুতায় বাঁধা")} title={site.get("flow_section.title","একটা বিক্রি হলেই পুরো হিসাব নিজে থেকে আপডেট হয়")} text={site.get("flow_section.text","আলাদা খাতা বা আলাদা অ্যাপ লাগবে না। প্রতিটা বিক্রি স্টক, টাকা, বাকি ও হিসাবের খাতা — সবখানে একসাথে যোগ হয়ে যায়।")} />
+        <div className="public-flow">{flowItems.flatMap(([icon, label, sub], i, arr) => [
+          <div key={label}><Icon name={icon} /><b>{label}</b><span>{sub}</span></div>,
+          ...(i < arr.length - 1 ? [<Icon key={`sep-${i}`} name="chevronRight" />] : [])
+        ])}</div>
       </section>
 
       <section className="public-section public-tint getting-started">
-        <div><SectionHead align="left" eyebrow="শুরু করার ধাপ" title="খাতা থেকে অ্যাপে যাওয়ার চারটা সহজ ধাপ" text="আপনার ব্যবসার ধরন অনুযায়ী শুধু দরকারি প্রশ্নই করা হবে। পুরনো হিসাব একদিনে না বদলে, ধাপে ধাপে ও যাচাই করে নতুন সিস্টেমে যাবেন।" /><div className="setup-proof"><Icon name="shield" /><span><b>আপনার হাতে নিয়ন্ত্রণ</b> শুরুর স্টক, হিসাব ও বাকি — মালিক নিজে অনুমোদন না দেওয়া পর্যন্ত কিছুই চূড়ান্ত হবে না।</span></div></div>
-        <ol>{[
-          ["নিজের অ্যাকাউন্ট", "মোবাইল/ইমেইল, পাসওয়ার্ড ও ব্যবসার পরিচয়"],
-          ["ব্যবসার তথ্য", "শাখা, কাউন্টার, গুদাম ও ব্যবসার ধরন"],
-          ["শুরুর হিসাব", "পণ্য, স্টক, কাস্টমারের বাকি, সাপ্লায়ারের দেনা ও হাতের ক্যাশ"],
-          ["টিম নিয়ে শুরু", "কর্মী যোগ করা, ভূমিকা ঠিক করা ও একবার পরীক্ষা করে যাচাই"],
-        ].map(([title, text], index) => <li key={title}><i>{index + 1}</i><div><b>{title}</b><span>{text}</span></div></li>)}</ol>
+        <div><SectionHead align="left" eyebrow={site.get("getting_started.eyebrow","শুরু করার ধাপ")} title={site.get("getting_started.title","খাতা থেকে অ্যাপে যাওয়ার চারটা সহজ ধাপ")} text={site.get("getting_started.text","আপনার ব্যবসার ধরন অনুযায়ী শুধু দরকারি প্রশ্নই করা হবে। পুরনো হিসাব একদিনে না বদলে, ধাপে ধাপে ও যাচাই করে নতুন সিস্টেমে যাবেন।")} /><div className="setup-proof"><Icon name="shield" /><span><b>{site.get("getting_started.proof_title","আপনার হাতে নিয়ন্ত্রণ")}</b> {site.get("getting_started.proof_text","শুরুর স্টক, হিসাব ও বাকি — মালিক নিজে অনুমোদন না দেওয়া পর্যন্ত কিছুই চূড়ান্ত হবে না।")}</span></div></div>
+        <ol>{gettingStartedSteps.map(([stepTitle, stepText], index) => <li key={stepTitle}><i>{index + 1}</i><div><b>{stepTitle}</b><span>{stepText}</span></div></li>)}</ol>
       </section>
 
       <section className="public-section public-tint customer-questions">
-        <SectionHead eyebrow="আপনার বাস্তব প্রশ্ন" title="রিপোর্ট না, সরাসরি উত্তর আর পরের করণীয়" text="প্রতিটা উত্তর আসল লেনদেন থেকে আসে, আর ঠিক যার কাজ তার কাছেই যায়।" />
-        <div>{[
-          ["কোন মাল আজই কিনতে হবে?", "স্টক + বিক্রি + সাপ্লায়ার", "কতদিনের স্টক আছে, সাপ্লায়ারের সময় কত আর বাজেটে কত কেনা যাবে — কারণসহ দেখুন।", "ক্রয় বিভাগ"],
-          ["ক্যাশ কম দেখাচ্ছে কেন?", "শিফট + পেমেন্ট + রিফান্ড", "শুরুর ক্যাশ, বিক্রি, রিফান্ড ও COD মিলিয়ে কোথায় পার্থক্য হয়েছে তার প্রমাণ।", "ক্যাশিয়ার → ম্যানেজার"],
-          ["কার কাছে বাকি, আজ কাকে বলব?", "বিল + বয়স + প্রতিশ্রুতি", "কত বাকি, কতদিনের পুরোনো আর আগে কী বলেছিল — আজকের কল করার তালিকা।", "সেলস / হিসাবরক্ষক"],
-          ["রাইডার টাকা জমা দিয়েছে কি?", "ডেলিভারি + COD", "ডেলিভারি হওয়া অর্ডার আর আসলে হাতে টাকা আসা — আলাদা করে দেখায়, কোনটা বাকি তাও বলে।", "রাইডার → ক্যাশিয়ার"],
-          ["কোন স্টকে গরমিলের ঝুঁকি বেশি?", "বদল + গণনা + সংঘাত", "অনেকবার সংশোধন হয়েছে বা অনেকদিন গোনা হয়নি এমন পণ্য আগে গণনার তালিকায় আসবে।", "স্টোরকিপার"],
-          ["আজ মালিক হিসেবে আমার কাজ কী?", "অনুমোদন + ঝুঁকি + সময়সীমা", "সব জায়গা থেকে শুধু গুরুত্বপূর্ণ সিদ্ধান্তগুলো বেছে আজকের করণীয় তালিকা।", "মালিক"],
-        ].map(([q, source, answer, actor], i) => <article key={q}><i>{String(i + 1).padStart(2, "0")}</i><div><small>{source}</small><h3>{q}</h3><p>{answer}</p><span><Icon name="userCheck" /> {actor}</span></div></article>)}</div>
+        <SectionHead eyebrow={site.get("customer_questions.eyebrow","আপনার বাস্তব প্রশ্ন")} title={site.get("customer_questions.title","রিপোর্ট না, সরাসরি উত্তর আর পরের করণীয়")} text={site.get("customer_questions.text","প্রতিটা উত্তর আসল লেনদেন থেকে আসে, আর ঠিক যার কাজ তার কাছেই যায়।")} />
+        <div>{customerQuestions.map(([q, source, answer, actor], i) => <article key={q}><i>{String(i + 1).padStart(2, "0")}</i><div><small>{source}</small><h3>{q}</h3><p>{answer}</p><span><Icon name="userCheck" /> {actor}</span></div></article>)}</div>
       </section>
 
       <section className="public-section real-work-section">
-        <SectionHead eyebrow="Built for Bangladesh" title="এক software, বাস্তব ব্যবসার বহু রূপ" text="ছবির ব্যবসাগুলো আলাদা, কিন্তু প্রতিটির মৌলিক প্রশ্ন একই। কী বিক্রি হলো, কত stock আছে, টাকা কোথায় এবং পরের কাজ কার।" />
+        <SectionHead eyebrow={site.get("real_work_section.eyebrow","Built for Bangladesh")} title={site.get("real_work_section.title","এক software, বাস্তব ব্যবসার বহু রূপ")} text={site.get("real_work_section.text","ছবির ব্যবসাগুলো আলাদা, কিন্তু প্রতিটির মৌলিক প্রশ্ন একই। কী বিক্রি হলো, কত stock আছে, টাকা কোথায় এবং পরের কাজ কার।")} />
         <RealWorkGallery />
-        <div className="real-work-note"><Icon name="info" /><span>ছবিগুলো বাস্তব বাংলাদেশি ব্যবসা ও কর্মপরিবেশের licensed editorial photograph; এগুলো B-SMART customer endorsement নয়।</span></div>
+        <div className="real-work-note"><Icon name="info" /><span>{site.get("real_work_section.disclaimer","ছবিগুলো বাস্তব বাংলাদেশি ব্যবসা ও কর্মপরিবেশের licensed editorial photograph; এগুলো B-SMART customer endorsement নয়।")}</span></div>
       </section>
 
       <section className="public-section public-tint">
-        <SectionHead eyebrow="যার যা কাজ, তার তাই দেখা" title="সবার জন্য একই মেনু না" text="প্রত্যেকে লগইন করে শুধু নিজের কাজটুকুই দেখবেন — বাকি কিছু দেখার দরকার নেই।" />
-        <div className="actor-cards">{[
-          ["userCheck", "মালিক", "ক্যাশ, ব্যবসার অবস্থা, ঝুঁকি ও অনুমোদন"], ["sliders", "ম্যানেজার", "শাখার দৈনিক কাজ ও সমস্যা সমাধান"], ["cart", "ক্যাশিয়ার", "শিফট, বিক্রি ও রসিদ"], ["box", "স্টোরকিপার", "মাল গ্রহণ, গণনা ও শাখা বদল"], ["wallet", "হিসাবরক্ষক", "বাকি-দেনা, মিলানো ও মাস বন্ধ করা"], ["truck", "রাইডার", "রুট, প্রমাণ ও COD"],
-        ].map(([icon, title, text]) => <article key={title}><span><Icon name={icon} /></span><b>{title}</b><p>{text}</p></article>)}</div>
+        <SectionHead eyebrow={site.get("actor_section.eyebrow","যার যা কাজ, তার তাই দেখা")} title={site.get("actor_section.title","সবার জন্য একই মেনু না")} text={site.get("actor_section.text","প্রত্যেকে লগইন করে শুধু নিজের কাজটুকুই দেখবেন — বাকি কিছু দেখার দরকার নেই।")} />
+        <div className="actor-cards">{actorItems.map(([icon, title, text]) => <article key={title}><span><Icon name={icon} /></span><b>{title}</b><p>{text}</p></article>)}</div>
       </section>
 
       <section className="public-section">
-        <SectionHead eyebrow="যেকোনো ব্যবসার জন্য" title="একই ভিত্তির উপর প্রতিটা ব্যবসার নিজস্ব কাজ" text="ব্যবসার ধরন বেছে শুরু করুন। পরে পণ্য বিক্রি, সেবা, বুকিং বা ডেলিভারি — যেটা দরকার যোগ করুন।" />
-        <div className="solution-grid compact">{Object.entries(SOLUTIONS).slice(0, 8).map(([slug, s]) => <Link to={`/solutions/${slug}`} key={slug}><span><Icon name={s.icon} /></span><div><b>{s.title}</b><p>{s.tagline}</p></div><Icon name="chevronRight" /></Link>)}</div>
-        <div className="public-center"><Link className="public-textlink" to="/solutions">সব ব্যবসার ধরন দেখুন <Icon name="chevronRight" /></Link></div>
+        <SectionHead eyebrow={site.get("home_solutions.eyebrow","যেকোনো ব্যবসার জন্য")} title={site.get("home_solutions.title","একই ভিত্তির উপর প্রতিটা ব্যবসার নিজস্ব কাজ")} text={site.get("home_solutions.text","ব্যবসার ধরন বেছে শুরু করুন। পরে পণ্য বিক্রি, সেবা, বুকিং বা ডেলিভারি — যেটা দরকার যোগ করুন।")} />
+        <div className="solution-grid compact">{Object.entries(solutions).slice(0, 8).map(([slug, s]) => <Link to={`/solutions/${slug}`} key={slug}><span><Icon name={s.icon} /></span><div><b>{s.title}</b><p>{s.tagline}</p></div><Icon name="chevronRight" /></Link>)}</div>
+        <div className="public-center"><Link className="public-textlink" to="/solutions">{site.get("home_solutions.see_all","সব ব্যবসার ধরন দেখুন")} <Icon name="chevronRight" /></Link></div>
       </section>
 
       <section className="public-section ai-decision-section">
@@ -495,11 +565,11 @@ function FeaturesPage() {
       <PageHero eyebrow={site.get("features.eyebrow", "সব ফিচার")} title={site.get("features.title", "দৈনিক কাজ থেকে মালিকের সিদ্ধান্ত, সব একটা সিস্টেমে")} text={site.get("features.text", "একই core সব ধরনের ব্যবসার জন্য কাজ করে, আর ব্যবসার ধরন অনুযায়ী বিশেষ অংশগুলো যোগ হয়।")} />
       <section className="public-section"><div className="feature-grid">{features.map((f) => <article key={f.title}><span><Icon name={f.icon} /></span><h3>{f.title}</h3><p>{f.text}</p></article>)}</div></section>
       <section className="public-section feature-photo-story">
-        <div className="feature-photo-copy"><SectionHead align="left" eyebrow="একই নিয়ম সব জায়গায়" title="দোকানের কাউন্টার, রান্নাঘর বা কারখানা — সব জায়গায় একই নিয়ম" text="কাজ কে শুরু করলো, কী হলো, টাকায় কী প্রভাব পড়লো আর তার প্রমাণ — এসব একসাথে যুক্ত থাকলেই মালিক আসল নিয়ন্ত্রণ পান।" /><Link className="public-textlink" to="/guidelines">কে কীভাবে ব্যবহার করবেন <Icon name="chevronRight" /></Link></div>
+        <div className="feature-photo-copy"><SectionHead align="left" eyebrow={site.get("features_photo.eyebrow","একই নিয়ম সব জায়গায়")} title={site.get("features_photo.title","দোকানের কাউন্টার, রান্নাঘর বা কারখানা — সব জায়গায় একই নিয়ম")} text={site.get("features_photo.text","কাজ কে শুরু করলো, কী হলো, টাকায় কী প্রভাব পড়লো আর তার প্রমাণ — এসব একসাথে যুক্ত থাকলেই মালিক আসল নিয়ন্ত্রণ পান।")} /><Link className="public-textlink" to="/guidelines">কে কীভাবে ব্যবহার করবেন <Icon name="chevronRight" /></Link></div>
         {[rw.restaurant, rw.service, rw.electronics].filter(Boolean).map((media) => <figure key={media.label}><img src={media.src} alt={media.alt} loading="lazy" referrerPolicy="no-referrer" /><figcaption><b>{media.label}</b><span>{media.detail}</span></figcaption><PhotoCredit media={media} /></figure>)}
       </section>
-      <section className="public-section public-tint"><div className="split-feature"><div><SectionHead align="left" eyebrow="তথ্য থেকে সরাসরি কাজে" title="শুধু রিপোর্ট দেখে বসে না থেকে, সরাসরি কাজে নামুন" text="স্টক কমে গেলে সেখান থেকেই নতুন অর্ডার, বাকি পুরোনো হলে কালেকশনের কাজ, মেয়াদ ফুরালে সাপ্লায়ারের দাবি — এক ক্লিকে তৈরি করুন।" /><ul className="check-list"><li><Icon name="check" /> যেকোনো সংখ্যার আসল উৎস পর্যন্ত দেখা যায়</li><li><Icon name="check" /> কাকে কাজ দেওয়া হলো ও কবের মধ্যে</li><li><Icon name="check" /> অনুমোদনের পর আবার যাচাই হয়</li><li><Icon name="check" /> ফলাফল পরে মাপা হয়</li></ul></div><div className="public-stack">{["আজকের করণীয়", "ক্যাশ মেলানো", "স্টকের সত্য হিসাব", "বাকি আদায়ের পরিকল্পনা"].map((x, i) => <div key={x}><i>{String(i + 1).padStart(2, "0")}</i><b>{x}</b><span>{["ঠিক মানুষের সামনে জরুরি কাজ", "ক্যাশ, bKash, কার্ড ও COD-র গরমিল", "গণনা থেকে ভুলের ঝুঁকি", "প্রতিশ্রুতি ও বয়স দেখে আদায়ের কাজ"][i]}</span></div>)}</div></div></section>
-      <section className="public-section"><SectionHead eyebrow="পরিষ্কার অবস্থা" title="কোনটা চালু, কোনটা এখনো বাকি — স্পষ্ট করে বলি" text="একটা পূর্ণ সমাধানের সব অংশ সবসময় সব ব্যবসায় একসাথে চালু নাও থাকতে পারে। আপনার নিজের workspace-এ ঠিক কী চালু আছে তা স্পষ্ট দেখা যাবে।" /><div className="status-row"><div><i className="status-live" /><b>চালু আছে</b><span>আপনার workspace-এ এখনই ব্যবহার করা যায়</span></div><div><i className="status-pilot" /><b>সীমিত আকারে চালু</b><span>নির্দিষ্ট শাখা বা ভূমিকার জন্য</span></div><div><i className="status-roadmap" /><b>সেট করা লাগবে</b><span>প্রয়োজনীয় তথ্য বা অনুমতি এখনো দেওয়া হয়নি</span></div></div></section>
+      <section className="public-section public-tint"><div className="split-feature"><div><SectionHead align="left" eyebrow={site.get("features_workflow.eyebrow","তথ্য থেকে সরাসরি কাজে")} title={site.get("features_workflow.title","শুধু রিপোর্ট দেখে বসে না থেকে, সরাসরি কাজে নামুন")} text={site.get("features_workflow.text","স্টক কমে গেলে সেখান থেকেই নতুন অর্ডার, বাকি পুরোনো হলে কালেকশনের কাজ, মেয়াদ ফুরালে সাপ্লায়ারের দাবি — এক ক্লিকে তৈরি করুন।")} /><ul className="check-list">{site.getJson("features_workflow.checklist",["যেকোনো সংখ্যার আসল উৎস পর্যন্ত দেখা যায়","কাকে কাজ দেওয়া হলো ও কবের মধ্যে","অনুমোদনের পর আবার যাচাই হয়","ফলাফল পরে মাপা হয়"]).map((item) => <li key={item}><Icon name="check" /> {item}</li>)}</ul></div><div className="public-stack">{site.getJson("features_workflow.tasks",[["আজকের করণীয়","ঠিক মানুষের সামনে জরুরি কাজ"],["ক্যাশ মেলানো","ক্যাশ, bKash, কার্ড ও COD-র গরমিল"],["স্টকের সত্য হিসাব","গণনা থেকে ভুলের ঝুঁকি"],["বাকি আদায়ের পরিকল্পনা","প্রতিশ্রুতি ও বয়স দেখে আদায়ের কাজ"]]).map(([x, desc], i) => <div key={x}><i>{String(i + 1).padStart(2, "0")}</i><b>{x}</b><span>{desc}</span></div>)}</div></div></section>
+      <section className="public-section"><SectionHead eyebrow={site.get("features_status.eyebrow","পরিষ্কার অবস্থা")} title={site.get("features_status.title","কোনটা চালু, কোনটা এখনো বাকি — স্পষ্ট করে বলি")} text={site.get("features_status.text","একটা পূর্ণ সমাধানের সব অংশ সবসময় সব ব্যবসায় একসাথে চালু নাও থাকতে পারে। আপনার নিজের workspace-এ ঠিক কী চালু আছে তা স্পষ্ট দেখা যাবে।")} /><div className="status-row"><div><i className="status-live" /><b>চালু আছে</b><span>আপনার workspace-এ এখনই ব্যবহার করা যায়</span></div><div><i className="status-pilot" /><b>সীমিত আকারে চালু</b><span>নির্দিষ্ট শাখা বা ভূমিকার জন্য</span></div><div><i className="status-roadmap" /><b>সেট করা লাগবে</b><span>প্রয়োজনীয় তথ্য বা অনুমতি এখনো দেওয়া হয়নি</span></div></div></section>
       <CtaBand />
     </>
   );
@@ -514,9 +584,9 @@ function SolutionsPage({ slug }) {
   return (
     <>
       <PageHero eyebrow={site.get("solutions.eyebrow", "ব্যবসার ধরন")} title={site.get("solutions.title", "আপনার ব্যবসার মতো করেই সাজানো")} text={site.get("solutions.text", "যেকোনো একটা ধরন বেছে দ্রুত শুরু করুন। পরে আরও প্রয়োজন হলে নতুন সুবিধা যোগ করতে পারবেন।")} />
-      <section className="public-section solution-visual-intro"><div><SectionHead align="left" eyebrow="আপনার ব্যবসা বুঝে সাজানো" title="প্রতিটা ব্যবসার কাজ আলাদা, তাই স্ক্রিনও আলাদা" text="মুদি দোকানের স্ক্রিন, রেস্টুরেন্টের রান্নাঘর, আর ওয়ার্কশপের কাজের কার্ড — একরকম না। ভেতরের হিসাব একই থাকলেও, আপনার সামনে যা দেখাবে তা আপনার ব্যবসার মতো করেই সাজানো থাকবে।" /></div><div className="solution-visual-stack">{[rw.retail, rw.manufacturing, rw.craft].filter(Boolean).map((media, index) => <figure key={media.label} style={{ "--stack-index": index }}><img src={media.src} alt={media.alt} loading="lazy" referrerPolicy="no-referrer" /><figcaption>{media.label}</figcaption></figure>)}</div></section>
+      <section className="public-section solution-visual-intro"><div><SectionHead align="left" eyebrow={site.get("solutions_intro.eyebrow","আপনার ব্যবসা বুঝে সাজানো")} title={site.get("solutions_intro.title","প্রতিটা ব্যবসার কাজ আলাদা, তাই স্ক্রিনও আলাদা")} text={site.get("solutions_intro.text","মুদি দোকানের স্ক্রিন, রেস্টুরেন্টের রান্নাঘর, আর ওয়ার্কশপের কাজের কার্ড — একরকম না। ভেতরের হিসাব একই থাকলেও, আপনার সামনে যা দেখাবে তা আপনার ব্যবসার মতো করেই সাজানো থাকবে।")} /></div><div className="solution-visual-stack">{[rw.retail, rw.manufacturing, rw.craft].filter(Boolean).map((media, index) => <figure key={media.label} style={{ "--stack-index": index }}><img src={media.src} alt={media.alt} loading="lazy" referrerPolicy="no-referrer" /><figcaption>{media.label}</figcaption></figure>)}</div></section>
       <section className="public-section"><div className="solution-grid full">{Object.entries(solutions).map(([key, s]) => <Link to={`/solutions/${key}`} key={key}><span><Icon name={s.icon} /></span><div><b>{s.title}</b><p>{s.tagline}</p>{s.status && <small>{s.status}</small>}</div><Icon name="chevronRight" /></Link>)}</div></section>
-      <section className="public-section public-tint"><SectionHead eyebrow="একসাথে একাধিক কাজ" title="এক ব্যবসায় দুই ধরনের কাজ করলেও সমস্যা নেই" text="যেমন ইলেকট্রনিক্স বিক্রির সাথে সার্ভিসিংও করেন, বা রেস্টুরেন্টের সাথে ডেলিভারিও দেন — কাস্টমার, টাকা, স্টক ও হিসাব সব একই জায়গায় থাকবে, আলাদা করে দুইবার লিখতে হবে না।" /><div className="hybrid-map"><div><b>রহিম ইলেকট্রনিক্স</b><span>একটাই ব্যবসা হিসেবে</span></div>{["দোকানে বিক্রি", "অনলাইন অর্ডার", "সার্ভিসিং সেন্টার", "গুদাম", "হিসাব"].map((x) => <article key={x}><Icon name="chevronRight" /><b>{x}</b></article>)}</div></section>
+      <section className="public-section public-tint"><SectionHead eyebrow={site.get("solutions_hybrid.eyebrow","একসাথে একাধিক কাজ")} title={site.get("solutions_hybrid.title","এক ব্যবসায় দুই ধরনের কাজ করলেও সমস্যা নেই")} text={site.get("solutions_hybrid.text","যেমন ইলেকট্রনিক্স বিক্রির সাথে সার্ভিসিংও করেন, বা রেস্টুরেন্টের সাথে ডেলিভারিও দেন — কাস্টমার, টাকা, স্টক ও হিসাব সব একই জায়গায় থাকবে, আলাদা করে দুইবার লিখতে হবে না।")} /><div className="hybrid-map"><div><b>{site.get("solutions_hybrid.example_name","রহিম ইলেকট্রনিক্স")}</b><span>একটাই ব্যবসা হিসেবে</span></div>{site.getJson("solutions_hybrid.items",["দোকানে বিক্রি","অনলাইন অর্ডার","সার্ভিসিং সেন্টার","গুদাম","হিসাব"]).map((x) => <article key={x}><Icon name="chevronRight" /><b>{x}</b></article>)}</div></section>
       <CtaBand />
     </>
   );
@@ -570,9 +640,9 @@ function AboutPage() {
   return (
     <>
       <PageHero eyebrow={site.get("about.eyebrow", "আমরা কেন এটা বানাচ্ছি")} title={site.get("about.title", "বাংলাদেশের ব্যবসার বাস্তব কাজ দেখে তৈরি")} text={site.get("about.text", "ছোট্ট একটা দোকান থেকে শুরু করে একাধিক শাখার ব্যবসা পর্যন্ত — দৈনিক কাজ, মানুষ, টাকা আর বুদ্ধিমান পরামর্শ, সব একটা বিশ্বস্ত জায়গায় রাখাই আমাদের লক্ষ্য।")} />
-      <section className="public-section"><div className="about-grid"><div><span>01</span><h3>সত্যি কথা বলি, বাড়িয়ে না</h3><p>ভুয়া কাস্টমার সংখ্যা, মিথ্যা সাফল্যের গল্প বা এখনো তৈরি না হওয়া ফিচারকে "চালু আছে" বলে দেখাই না।</p></div><div><span>02</span><h3>মানুষ আগে, মেনু পরে</h3><p>মালিক, ক্যাশিয়ার, স্টোরকিপার, হিসাবরক্ষক ও রাইডার — প্রত্যেকের কাজ আলাদা করে ভেবে সাজানো।</p></div><div><span>03</span><h3>পুরো হিসাব এক জায়গায়</h3><p>শুধু ফিচারের সংখ্যা বাড়ানো না। স্টক, টাকা, খাতা, অনুমোদন — সব একসাথে মিলে কাজ করাই আসল।</p></div></div></section>
-      <section className="public-section public-people-story"><div><img src={site.get("about.image_src", "https://www.undp.org/sites/g/files/zskgke326/files/migration/bd/swapno1.jpg")} alt={site.get("about.image_alt", "বাংলাদেশের একজন ক্ষুদ্র উদ্যোক্তা দোকানের হিসাব করছেন")} loading="lazy" referrerPolicy="no-referrer" /><a href={site.get("about.image_link", "https://www.undp.org/bangladesh/blog/mitu-hasina-and-jamila-champions-womens-empowerment")} target="_blank" rel="noreferrer">ছবি: {site.get("about.image_credit", "UNDP Bangladesh")}</a></div><div><SectionHead align="left" eyebrow="আমরা যাদের জন্য বানাচ্ছি" title="যারা খাতা, ফোন আর ক্যাশ বাক্সের উপর ভরসা করে ব্যবসা চালান" text="আপনাকে নতুন ভাষা শিখতে হবে না। আমরা আপনার কাজের প্রমাণ এক জায়গায় এনে ভুল আর অপেক্ষা কমাই। ব্যবসা বাড়লে একই জায়গায় আরও নিয়ন্ত্রণ যোগ হবে।" /><ul className="check-list"><li><Icon name="check" /> একটা দোকান থেকে একাধিক শাখা পর্যন্ত</li><li><Icon name="check" /> পণ্য বিক্রি, সেবা বা দুটোই একসাথে</li><li><Icon name="check" /> একই ডিভাইস কয়েকজন ব্যবহার করলেও কে কী করলো বোঝা যায়</li><li><Icon name="check" /> ইন্টারনেট দুর্বল হলেও সত্যি অবস্থা দেখায়, লুকায় না</li></ul></div></section>
-      <section className="public-section public-tint"><div className="split-feature"><div><SectionHead align="left" eyebrow="দায়িত্বশীল AI" title="যে পরামর্শ বোঝা যায়, সেটাই দেই" text="সহজ হিসাব যথেষ্ট হলে জটিল মডেল ব্যবহার করি না। প্রতিটা পরামর্শের সাথে কতটা নিশ্চিত আর কীসের ভিত্তিতে বলা হচ্ছে তা দেখানো হয়।" /></div><div className="research-card"><Icon name="target" size={30} /><b>পরামর্শ থেকে শেখা পর্যন্ত চক্র</b><p>পরামর্শ দেওয়া হয় → মালিক সিদ্ধান্ত নেন → কাজ হয় → ফলাফল মাপা হয় → মডেল আরও ভালো হয়</p></div></div></section>
+      <section className="public-section"><div className="about-grid">{site.getJson("about_values.items", ABOUT_VALUES_DEFAULT).map((v) => <div key={v.num}><span>{v.num}</span><h3>{v.title}</h3><p>{v.text}</p></div>)}</div></section>
+      <section className="public-section public-people-story"><div><img src={site.get("about.image_src","https://www.undp.org/sites/g/files/zskgke326/files/migration/bd/swapno1.jpg")} alt={site.get("about.image_alt","বাংলাদেশের একজন ক্ষুদ্র উদ্যোক্তা দোকানের হিসাব করছেন")} loading="lazy" referrerPolicy="no-referrer" /><a href={site.get("about.image_link","https://www.undp.org/bangladesh/blog/mitu-hasina-and-jamila-champions-womens-empowerment")} target="_blank" rel="noreferrer">ছবি: {site.get("about.image_credit","UNDP Bangladesh")}</a></div><div><SectionHead align="left" eyebrow={site.get("about_audience.eyebrow","আমরা যাদের জন্য বানাচ্ছি")} title={site.get("about_audience.title","যারা খাতা, ফোন আর ক্যাশ বাক্সের উপর ভরসা করে ব্যবসা চালান")} text={site.get("about_audience.text","আপনাকে নতুন ভাষা শিখতে হবে না। আমরা আপনার কাজের প্রমাণ এক জায়গায় এনে ভুল আর অপেক্ষা কমাই। ব্যবসা বাড়লে একই জায়গায় আরও নিয়ন্ত্রণ যোগ হবে।")} /><ul className="check-list"><li><Icon name="check" /> একটা দোকান থেকে একাধিক শাখা পর্যন্ত</li><li><Icon name="check" /> পণ্য বিক্রি, সেবা বা দুটোই একসাথে</li><li><Icon name="check" /> একই ডিভাইস কয়েকজন ব্যবহার করলেও কে কী করলো বোঝা যায়</li><li><Icon name="check" /> ইন্টারনেট দুর্বল হলেও সত্যি অবস্থা দেখায়, লুকায় না</li></ul></div></section>
+      <section className="public-section public-tint"><div className="split-feature"><div><SectionHead align="left" eyebrow={site.get("about_ai.eyebrow","দায়িত্বশীল AI")} title={site.get("about_ai.title","যে পরামর্শ বোঝা যায়, সেটাই দেই")} text={site.get("about_ai.text","সহজ হিসাব যথেষ্ট হলে জটিল মডেল ব্যবহার করি না। প্রতিটা পরামর্শের সাথে কতটা নিশ্চিত আর কীসের ভিত্তিতে বলা হচ্ছে তা দেখানো হয়।")} /></div><div className="research-card"><Icon name="target" size={30} /><b>{site.get("about_ai.cycle_title","পরামর্শ থেকে শেখা পর্যন্ত চক্র")}</b><p>{site.get("about_ai.cycle_text","পরামর্শ দেওয়া হয় → মালিক সিদ্ধান্ত নেন → কাজ হয় → ফলাফল মাপা হয় → মডেল আরও ভালো হয়")}</p></div></div></section>
       <CtaBand />
     </>
   );
@@ -621,7 +691,7 @@ function ContactPage() {
   return (
     <>
       <PageHero eyebrow={site.get("contact.eyebrow", "যোগাযোগ")} title={site.get("contact.title", "আপনার জন্য সবচেয়ে ভালো পথ বেছে নিন")} text={site.get("contact.text", "এখনো ইমেইল/ফোনে সরাসরি সাপোর্ট চালু হয়নি। তাই মিথ্যা করে একটি বার্তা পাঠানো হয়েছে না দেখিয়ে, যা সত্যিই কাজ করে সেই পথ দেখাচ্ছি।")} />
-      <section className="public-section"><div className="contact-grid"><article><span><Icon name="zap" /></span><h3>নতুন ব্যবসা</h3><p>নিজেই অ্যাকাউন্ট খুলে ধাপে ধাপে শুরু করুন।</p><Link className="public-cta" to="/signup">অ্যাকাউন্ট খুলুন</Link></article><article><span><Icon name="key" /></span><h3>আগে থেকে ব্যবহারকারী</h3><p>লগইন করে সাহায্য পাতা ও গাইড দেখুন।</p><Link className="public-ghost" to="/login">লগইন করুন</Link></article><article><span><Icon name="fileText" /></span><h3>কথা বলে জেনে নিতে চান</h3><p>আপনার ব্যবসার ধরন অনুযায়ী কী লাগবে বুঝে নিন।</p><Link className="public-ghost" to="/solutions">ব্যবসার ধরন দেখুন</Link></article></div><div className="public-notice warn"><Icon name="alert" /><div><b>এখনো চালু হয়নি</b><p>পাবলিক ইমেইল বা ফোন সাপোর্ট এখনো চালু করা হয়নি। চালু না হওয়া পর্যন্ত মিথ্যা করে "পাঠানো হয়েছে" দেখানো হবে না।</p></div></div></section>
+      <section className="public-section"><div className="contact-grid">{site.getJson("contact.cards", CONTACT_CARDS_DEFAULT).map((c) => <article key={c.title}><span><Icon name={c.icon} /></span><h3>{c.title}</h3><p>{c.text}</p>{c.ghost ? <Link className="public-ghost" to={c.link_to}>{c.link_label}</Link> : <Link className="public-cta" to={c.link_to}>{c.link_label}</Link>}</article>)}</div><div className="public-notice warn"><Icon name="alert" /><div><b>{site.get("contact.notice_title","এখনো চালু হয়নি")}</b><p>{site.get("contact.notice_text","পাবলিক ইমেইল বা ফোন সাপোর্ট এখনো চালু করা হয়নি। চালু না হওয়া পর্যন্ত মিথ্যা করে পাঠানো হয়েছে দেখানো হবে না।")}</p></div></div></section>
     </>
   );
 }
@@ -632,10 +702,7 @@ function PrivacyPage() {
     <>
       <PageHero eyebrow={site.get("privacy.eyebrow", "গোপনীয়তা")} title={site.get("privacy.title", "যতটুকু দরকার, ততটুকুই তথ্য নেওয়া হয়")} text={site.get("privacy.text", "এই পাতাটা এখনো খসড়া। চূড়ান্ত হওয়ার আগে আইনজীবী দিয়ে যাচাই করানো হবে।")} />
       <section className="public-section legal-copy">
-        <article><h2>কী তথ্য লাগে</h2><p>আপনার অ্যাকাউন্টের তথ্য, ব্যবসার সদস্যপদ, বিক্রি-ক্রয়ের লেনদেন, এবং কাজের জন্য প্রয়োজনীয় কাস্টমার-সাপ্লায়ার-কর্মীর তথ্য। পাসওয়ার্ড খোলামেলা, OTP বা কার্ডের পুরো তথ্য কখনো সংরক্ষণ বা AI-কে দেখানো হয় না।</p></article>
-        <article><h2>কেন ব্যবহার হয়</h2><p>লগইন, বিক্রি-ক্রয়-স্টক-হিসাবের কাজ, কাস্টমার সার্ভিস, নিরাপত্তা, ব্যাকআপ, রিপোর্ট এবং আপনার অনুমতি নিয়ে বিশ্লেষণের জন্য। মার্কেটিং বার্তার জন্য আলাদাভাবে অনুমতি নেওয়া হয়, এবং যেকোনো সময় বন্ধ করা যায়়।</p></article>
-        <article><h2>কে দেখতে পারে</h2><p>শুধু আপনার ব্যবসার সদস্য, এবং যার যতটুকু ভূমিকা ততটুকু অনুমতি। সাপোর্টের জন্য কেউ দেখলে তার সময়় ও কারণ লেখা থাকবে। বাইরের প্রতিষ্ঠান (যেমন bKash) শুধু তাদের কাজের জন্য প্রয়োজনীয়় তথ্যটুকুই পাবে।</p></article>
-        <article><h2>তথ্য রাখা ও আপনার অধিকার</h2><p>আইনি/হিসাবের প্রয়োজনে কিছু তথ্য একটা সময় পর্যন্ত রাখা হয়়। নিজের প্রোফাইল ঠিক করা, তথ্য ডাউনলোড করা, ডিভাইস থেকে লগআউট করা এবং অ্যাকাউন্ট বন্ধ করার অনুরোধ করা যাবে — তবে জমা হওয়া বিল বা হিসাবের প্রমাণ ইচ্ছামতো মুছে ফেলা যাবে না।</p></article>
+        {site.getJson("privacy.sections", PRIVACY_SECTIONS_DEFAULT).map((s) => <article key={s.heading}><h2>{s.heading}</h2><p>{s.body}</p></article>)}
         <div className="public-notice warn"><Icon name="alert" /><div><b>এটা খসড়া</b><p>এটা আইনি পরামর্শ বা চূড়ান্ত চুক্তি না। সত্যিকার ব্যবহারের আগে বাংলাদেশের আইনজীবী দিয়ে অনুমোদন করিয়ে নিতে হবে।</p></div></div>
       </section>
     </>
@@ -648,10 +715,7 @@ function TermsPage() {
     <>
       <PageHero eyebrow={site.get("terms.eyebrow", "শর্তাবলি")} title={site.get("terms.title", "সিস্টেম কী করবে, আর কী করবে না")} text={site.get("terms.text", "চূড়ান্ত ব্যবসায়িক শর্ত ঠিক না হওয়া পর্যন্ত কোনো কাল্পনিক প্রতিশ্রুতি এখানে দেওয়া হয়নি।")} />
       <section className="public-section legal-copy">
-        <article><h2>কীভাবে ব্যবহার করা যাবে</h2><p>ব্যবসার মালিক নিশ্চিত করবেন যে তার কর্মী, কাস্টমার-সাপ্লায়়ারের তথ্য ও যুক্ত পেমেন্ট অ্যাকাউন্ট ব্যবহারের অধিকার তার আছে। নিজের লগইন অন্যের সাথে ভাগ করা বা অন্য ব্যবসার তথ্য দেখার চেষ্টা করা যাবে না।</p></article>
-        <article><h2>ব্যবসার নিজের দায়়িত্ব</h2><p>পণ্যের দাম, কর, কর্মী-কাস্টমারের অনুমতি, শুরুর হিসাব এবং পেমেন্ট অ্যাকাউন্টের তথ্য ঠিক রাখা ব্যবসার নিজের দায়়িত্ব। এখানকার হিসাব বা AI পরামর্শ কোনো যোগ্য আইনজীবী বা হিসাবরক্ষকের বিকল্প না।</p></article>
-        <article><h2>সেবার সীমা</h2><p>পেমেন্ট সফল হবে যখন bKash/Nagad-এর মতো প্রতিষ্ঠান নিশ্চিত করবে — তাদের নিজস্ব সমস্যা হলে তা তাদের দায়়। AI পরামর্শ শুধু পরামর্শ, মানুষ অনুমোদন না দিলে কোনো টাকা পাঠানো বা বার্তা পাঠানো হয়় না।</p></article>
-        <article><h2>চূড়ান্ত চুক্তি</h2><p>প্যাকেজ, ব্যবহারের সীমা, সাপোর্টের সময়়, তথ্য রপ্তানি, বন্ধ করার নিয়ম — এসব আসল ব্যবহারের চুক্তিতে স্পষ্ট করে লেখা থাকবে।</p></article>
+        {site.getJson("terms.sections", TERMS_SECTIONS_DEFAULT).map((s) => <article key={s.heading}><h2>{s.heading}</h2><p>{s.body}</p></article>)}
       </section>
     </>
   );
@@ -661,18 +725,11 @@ function StatusPage() {
   const site = useSiteContent();
   return (
     <>
-      <PageHero eyebrow={site.get("status.eyebrow", "সিস্টেমের অবস্থা")} title={site.get("status.title", "না মেপে মিথ্যা সংখ্যা দেখাই না")} text={site.get("status.text", "এই সার্ভার এখনো কোনো uptime মনিটরিং সিস্টেমের সাথে যুক্ত না। তাই বানোয়াট ১১.১১% আপটাইম না দেখিয়ে সত্যি অবস্থা দেখাচ্ছি।")} />
+      <PageHero eyebrow={site.get("status.eyebrow","সিস্টেমের অবস্থা")} title={site.get("status.title","না মেপে মিথ্যা সংখ্যা দেখাই না")} text={site.get("status.text","এই সার্ভার এখনো কোনো uptime মনিটরিং সিস্টেমের সাথে যুক্ত না।")} />
       <section className="public-section status-page">
-        <div className="status-summary"><span><i /> সার্ভার চালু আছে</span><small>বাইরের monitoring এখনো যুক্ত করা হয়়নি</small></div>
-        <div className="status-components">{[
-          ["ওয়়েব অ্যাপ", "এখন আপনি যা দেখছেন সেটাই চলছে"],
-          ["ব্যবসার API", "সার্ভারের স্বাস্থ্য যাচাই করা যায়়"],
-          ["ডেটাবেজ ও ব্যাকআপ", "ব্যাকআপ কত পুরোনো তা নিয়মিত যাচাই করা হয়়"],
-          ["bKash/Nagad সংযোগ", "প্রতিটা আলাদাভাবে পরীক্ষা করতে হয়়"],
-          ["SMS / WhatsApp", "পাঠানো বার্তার অবস্থা আলাদা দেখা যায়়"],
-          ["ব্যাকগ্রাউন্ড সিংক", "আটকে থাকা কাজের উপর নজর দরকার"],
-        ].map(([name, detail]) => <article key={name}><div><i /><b>{name}</b></div><p>{detail}</p><span>নজরদারি প্রয়োজন</span></article>)}</div>
-        <div className="public-notice"><Icon name="info" /><div><b>আসল ব্যবহারের আগে যা লাগবে</b><p>স্বাধীন নজরদারি ব্যবস্থা, আগের সমস্যার ইতিহাস ও রক্ষণাবেক্ষণের সময়়সূচি যুক্ত হলে এই পাতা সত্যিকার অবস্থা দেখাবে।</p></div></div>
+        <div className="status-summary"><span><i /> {site.get("status.summary_label","সার্ভার চালু আছে")}</span><small>{site.get("status.monitoring_note","বাইরের monitoring এখনো যুক্ত করা হয়নি")}</small></div>
+        <div className="status-components">{site.getJson("status.components", STATUS_COMPONENTS_DEFAULT).map(([name, detail]) => <article key={name}><div><i /><b>{name}</b></div><p>{detail}</p><span>নজরদারি প্রয়োজন</span></article>)}</div>
+        <div className="public-notice"><Icon name="info" /><div><b>{site.get("status.notice_title","আসল ব্যবহারের আগে যা লাগবে")}</b><p>{site.get("status.notice_text","স্বাধীন নজরদারি ব্যবস্থা, আগের সমস্যার ইতিহাস ও রক্ষণাবেক্ষণের সময়সূচি যুক্ত হলে এই পাতা সত্যিকার অবস্থা দেখাবে।")}</p></div></div>
       </section>
     </>
   );
@@ -695,6 +752,9 @@ function CtaBand() {
 
 export default function PublicSite() {
   const { pathname } = useLocation();
+  const site = useSiteContent();
+  const siteName = site.get("meta.title", "B-SMART");
+  const siteDesc = site.get("meta.description", "বাংলাদেশের SME এর জন্য বিক্রি, স্টক, হিসাব, কর্মী, ডেলিভারি ও ব্যাখ্যাসহ সিদ্ধান্ত সহায়তার connected Business OS।");
   useEffect(() => {
     const labels = {
       "/": "বাংলাদেশের SME Business OS", "/features": "ফিচার", "/solutions": "ব্যবসার Solution",
@@ -702,12 +762,12 @@ export default function PublicSite() {
       "/help": "সহায়তা", "/guidelines": "ব্যবহারবিধি", "/contact": "যোগাযোগ",
       "/privacy": "গোপনীয়তা", "/terms": "শর্তাবলি", "/status": "System Status",
     };
-    const title = pathname.startsWith("/solutions/") ? "ব্যবসার Solution" : labels[pathname] || "B-SMART";
-    document.title = `${title} · B-SMART`;
+    const title = pathname.startsWith("/solutions/") ? "ব্যবসার Solution" : labels[pathname] || siteName;
+    document.title = `${title} · ${siteName}`;
     const description = document.querySelector('meta[name="description"]');
-    if (description) description.setAttribute("content", "বাংলাদেশের SME এর জন্য বিক্রি, স্টক, হিসাব, কর্মী, ডেলিভারি ও ব্যাখ্যাসহ সিদ্ধান্ত সহায়তার connected Business OS।");
-    return () => { document.title = "B-SMART"; };
-  }, [pathname]);
+    if (description) description.setAttribute("content", siteDesc);
+    return () => { document.title = siteName; };
+  }, [pathname, siteName, siteDesc]);
   let page = <HomePage />;
   if (pathname === "/features") page = <FeaturesPage />;
   else if (pathname === "/solutions") page = <SolutionsPage />;

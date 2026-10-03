@@ -2072,8 +2072,18 @@ const SITE_SCHEMA = [
     { key: "pagehero.cta_secondary", label: "সেকেন্ডারি বোতাম",type: "string", rows: 1 },
   ]},
   { group: "ফুটার", keys: [
-    { key: "footer.tagline", label: "ট্যাগলাইন", type: "string", rows: 1 },
-    { key: "footer.copy",    label: "Copyright",  type: "string", rows: 1 },
+    { key: "footer.tagline",     label: "ট্যাগলাইন",                                          type: "string", rows: 1 },
+    { key: "footer.copy",        label: "Copyright টেক্সট",                                   type: "string", rows: 1 },
+    { key: "footer.rollout_note",label: "Rollout নোট",                                        type: "string", rows: 1 },
+    { key: "footer.col1_links",  label: "পণ্য কলাম JSON — [[path, label], ...]",             type: "json",   rows: 4 },
+    { key: "footer.col2_links",  label: "বিশ্বাস কলাম JSON — [[path, label], ...]",          type: "json",   rows: 5 },
+    { key: "footer.col3_links",  label: "শুরু করুন কলাম JSON — [[path, label], ...]",        type: "json",   rows: 4 },
+  ]},
+  { group: "হেডার লেবেল", keys: [
+    { key: "header.help_label",      label: "সহায়তা লিঙ্ক লেবেল", type: "string", rows: 1 },
+    { key: "header.dashboard_label", label: "ড্যাশবোর্ড লিঙ্ক",   type: "string", rows: 1 },
+    { key: "header.login_label",     label: "লগইন লিঙ্ক",         type: "string", rows: 1 },
+    { key: "header.cta_label",       label: "Header CTA বোতাম",   type: "string", rows: 1 },
   ]},
   // ── ইনার পেজ ─────────────────────────────────────────────────────────────
   { group: "ফিচার পেজ", keys: [
@@ -2182,6 +2192,110 @@ const SITE_SCHEMA = [
   ]},
   { group: "নেভিগেশন লিঙ্ক", keys: [
     { key: "nav_links", label: "নেভিগেশন JSON — array of [path, label]", type: "json", rows: 4 },
+  ]},
+  // ── হোম পেজ — বাকি সেকশন ─────────────────────────────────────────────────
+  { group: "হোম ফ্লো সেকশন", keys: [
+    { key: "flow_section.eyebrow", label: "Eyebrow",                               type: "string", rows: 1 },
+    { key: "flow_section.title",   label: "শিরোনাম",                              type: "string", rows: 2 },
+    { key: "flow_section.text",    label: "সাবটেক্সট",                            type: "string", rows: 2 },
+    { key: "flow_section.items",   label: "ফ্লো JSON — [[icon,label,sub], ...]",  type: "json",   rows: 6 },
+  ]},
+  { group: "শুরু করার ধাপ", keys: [
+    { key: "getting_started.eyebrow",     label: "Eyebrow",         type: "string", rows: 1 },
+    { key: "getting_started.title",       label: "শিরোনাম",        type: "string", rows: 2 },
+    { key: "getting_started.text",        label: "সাবটেক্সট",      type: "string", rows: 2 },
+    { key: "getting_started.proof_title", label: "Proof শিরোনাম",  type: "string", rows: 1 },
+    { key: "getting_started.proof_text",  label: "Proof টেক্সট",   type: "string", rows: 2 },
+    { key: "getting_started.steps",       label: "ধাপ JSON — [[title,text], ...]", type: "json", rows: 6 },
+  ]},
+  { group: "কাস্টমার প্রশ্ন সেকশন", keys: [
+    { key: "customer_questions.eyebrow", label: "Eyebrow",                                          type: "string", rows: 1 },
+    { key: "customer_questions.title",   label: "শিরোনাম",                                         type: "string", rows: 2 },
+    { key: "customer_questions.text",    label: "সাবটেক্সট",                                       type: "string", rows: 2 },
+    { key: "customer_questions.items",   label: "প্রশ্ন JSON — [[q,source,answer,actor], ...]",    type: "json",   rows: 10 },
+  ]},
+  { group: "Real Work সেকশন", keys: [
+    { key: "real_work_section.eyebrow",      label: "Eyebrow",                  type: "string", rows: 1 },
+    { key: "real_work_section.title",        label: "শিরোনাম",                 type: "string", rows: 2 },
+    { key: "real_work_section.text",         label: "সাবটেক্সট",               type: "string", rows: 2 },
+    { key: "real_work_section.disclaimer",   label: "ডিসক্লেইমার",            type: "string", rows: 2 },
+    { key: "real_work_section.card_eyebrow", label: "গ্যালারি কার্ড লেবেল",   type: "string", rows: 1 },
+  ]},
+  { group: "Actor সেকশন", keys: [
+    { key: "actor_section.eyebrow", label: "Eyebrow",                                   type: "string", rows: 1 },
+    { key: "actor_section.title",   label: "শিরোনাম",                                  type: "string", rows: 2 },
+    { key: "actor_section.text",    label: "সাবটেক্সট",                                type: "string", rows: 2 },
+    { key: "actor_section.items",   label: "Actor JSON — [[icon,title,text], ...]",     type: "json",   rows: 8 },
+  ]},
+  { group: "Home Solutions সেকশন", keys: [
+    { key: "home_solutions.eyebrow", label: "Eyebrow",           type: "string", rows: 1 },
+    { key: "home_solutions.title",   label: "শিরোনাম",          type: "string", rows: 2 },
+    { key: "home_solutions.text",    label: "সাবটেক্সট",        type: "string", rows: 2 },
+    { key: "home_solutions.see_all", label: "সব দেখুন লিঙ্ক",  type: "string", rows: 1 },
+  ]},
+  // ── প্রোডাক্ট প্রিভিউ ────────────────────────────────────────────────────
+  { group: "প্রোডাক্ট প্রিভিউ", keys: [
+    { key: "preview.branch_name",   label: "শাখার নাম",                                    type: "string", rows: 1 },
+    { key: "preview.greeting",      label: "স্বাগত বার্তা (শুভ সকাল, …)",                 type: "string", rows: 1 },
+    { key: "preview.date_label",    label: "তারিখ লেবেল",                                  type: "string", rows: 1 },
+    { key: "preview.task_subtitle", label: "কাজের সংখ্যা সাবটাইটেল",                      type: "string", rows: 1 },
+    { key: "preview.stats",         label: "স্ট্যাট JSON — [{label,value,note}, ...]",     type: "json",   rows: 6 },
+    { key: "preview.mission_items", label: "Mission JSON — [label, ...]",                   type: "json",   rows: 4 },
+  ]},
+  // ── ফিচার পেজ সাব-সেকশন ─────────────────────────────────────────────────
+  { group: "ফিচার পেজ সাব-সেকশন", keys: [
+    { key: "features_photo.eyebrow", label: "Photo Eyebrow",      type: "string", rows: 1 },
+    { key: "features_photo.title",   label: "Photo শিরোনাম",     type: "string", rows: 2 },
+    { key: "features_photo.text",    label: "Photo সাবটেক্সট",   type: "string", rows: 2 },
+    { key: "features_workflow.eyebrow",   label: "Workflow Eyebrow",    type: "string", rows: 1 },
+    { key: "features_workflow.title",     label: "Workflow শিরোনাম",   type: "string", rows: 2 },
+    { key: "features_workflow.text",      label: "Workflow সাবটেক্সট", type: "string", rows: 2 },
+    { key: "features_workflow.checklist", label: "Checklist JSON — [label, ...]",        type: "json", rows: 4 },
+    { key: "features_workflow.tasks",     label: "Tasks JSON — [[title, desc], ...]",    type: "json", rows: 4 },
+    { key: "features_status.eyebrow", label: "Status Eyebrow",    type: "string", rows: 1 },
+    { key: "features_status.title",   label: "Status শিরোনাম",   type: "string", rows: 2 },
+    { key: "features_status.text",    label: "Status সাবটেক্সট", type: "string", rows: 2 },
+  ]},
+  // ── সলিউশন পেজ সাব-সেকশন ──────────────────────────────────────────────
+  { group: "সলিউশন পেজ সাব-সেকশন", keys: [
+    { key: "solutions_intro.eyebrow",      label: "Intro Eyebrow",        type: "string", rows: 1 },
+    { key: "solutions_intro.title",        label: "Intro শিরোনাম",       type: "string", rows: 2 },
+    { key: "solutions_intro.text",         label: "Intro সাবটেক্সট",     type: "string", rows: 2 },
+    { key: "solutions_hybrid.eyebrow",     label: "Hybrid Eyebrow",       type: "string", rows: 1 },
+    { key: "solutions_hybrid.title",       label: "Hybrid শিরোনাম",      type: "string", rows: 2 },
+    { key: "solutions_hybrid.text",        label: "Hybrid সাবটেক্সট",    type: "string", rows: 2 },
+    { key: "solutions_hybrid.example_name",label: "উদাহরণ ব্যবসার নাম", type: "string", rows: 1 },
+    { key: "solutions_hybrid.items",       label: "Hybrid Items JSON — [label, ...]", type: "json", rows: 4 },
+  ]},
+  // ── পেজ কনটেন্ট JSON ────────────────────────────────────────────────────
+  { group: "Contact কার্ড", keys: [
+    { key: "contact.cards", label: "Contact কার্ড JSON — [{icon,title,text,link_label,link_to,ghost?}, ...]", type: "json", rows: 8 },
+  ]},
+  { group: "Privacy সেকশন", keys: [
+    { key: "privacy.sections", label: "Privacy সেকশন JSON — [{heading, body}, ...]", type: "json", rows: 10 },
+  ]},
+  { group: "Terms সেকশন", keys: [
+    { key: "terms.sections", label: "Terms সেকশন JSON — [{heading, body}, ...]", type: "json", rows: 10 },
+  ]},
+  { group: "Status পেজ কনটেন্ট", keys: [
+    { key: "status.summary_label",   label: "সারসংক্ষেপ লেবেল",                              type: "string", rows: 1 },
+    { key: "status.monitoring_note", label: "Monitoring নোট",                                type: "string", rows: 1 },
+    { key: "status.components",      label: "কম্পোনেন্ট JSON — [[name, detail], ...]",       type: "json",   rows: 8 },
+    { key: "status.notice_title",    label: "Notice শিরোনাম",                                type: "string", rows: 1 },
+    { key: "status.notice_text",     label: "Notice টেক্সট",                                type: "string", rows: 2 },
+  ]},
+  // ── About পেজ সাব-সেকশন ──────────────────────────────────────────────────
+  { group: "About পেজ সাব-সেকশন", keys: [
+    { key: "about_values.items",       label: "Values JSON — [{stat,title,text}, ...]",     type: "json",   rows: 6 },
+    { key: "about_audience.eyebrow",   label: "Audience Eyebrow",                           type: "string", rows: 1 },
+    { key: "about_audience.title",     label: "Audience শিরোনাম",                          type: "string", rows: 2 },
+    { key: "about_audience.text",      label: "Audience সাবটেক্সট",                        type: "string", rows: 2 },
+    { key: "about_audience.checklist", label: "Checklist JSON — [label, ...]",              type: "json",   rows: 4 },
+    { key: "about_ai.eyebrow",    label: "AI Eyebrow",       type: "string", rows: 1 },
+    { key: "about_ai.title",      label: "AI শিরোনাম",      type: "string", rows: 2 },
+    { key: "about_ai.text",       label: "AI সাবটেক্সট",    type: "string", rows: 2 },
+    { key: "about_ai.card_title", label: "AI Card শিরোনাম", type: "string", rows: 1 },
+    { key: "about_ai.card_text",  label: "AI Card টেক্সট",  type: "string", rows: 2 },
   ]},
   { group: "Meta / SEO", keys: [
     { key: "meta.title",       label: "Site Title",  type: "string", rows: 1 },
