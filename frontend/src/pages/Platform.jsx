@@ -67,7 +67,14 @@ function dateTimeBn(s) { return s ? new Date(s).toLocaleString("bn-BD") : "—";
 function pct(n, d) { return d ? `${((n / d) * 100).toFixed(1)}%` : "—"; }
 
 const TONE_MAP = { low: "success", medium: "warn", high: "danger", critical: "danger" };
-const STATE_TONE = { active: "success", trial: "info", suspended: "danger", churned: "neutral", onboarding: "warn" };
+const STATE_TONE = { active: "success", trial: "info", suspended: "danger", churned: "neutral", onboarding: "warn", inactive: "neutral" };
+
+// Orgs don't have a `state` string field — derive it from active+suspended_at
+function orgState(org) {
+  if (!org.active && org.suspended_at) return "suspended";
+  if (!org.active) return "inactive";
+  return "active";
+}
 
 // ─── 1. COMMAND CENTER ────────────────────────────────────────────────────────
 function CommandCenterPanel() {
@@ -193,22 +200,29 @@ function Tenant360Drawer({ org, onClose }) {
 
         <div className="pa-section-title" style={{ marginTop: 16 }}>স্বাস্থ্য স্কোর</div>
         {health ? (
-          <div className="pa-stats-grid">
-            <Stat label="স্কোর" value={health.score != null ? health.score.toFixed(1) : "—"} tone={health.score >= 70 ? "success" : health.score >= 40 ? "warn" : "danger"} />
-            <Stat label="ডেটা অ্যাক্টিভিটি" value={health.data_activity_score != null ? health.data_activity_score.toFixed(1) : "—"} />
-            <Stat label="রেকমেন্ডেশন এনগেজমেন্ট" value={health.recommendation_engagement_score != null ? health.recommendation_engagement_score.toFixed(1) : "—"} />
-          </div>
+          <>
+            <div className="pa-stats-grid" style={{ marginBottom: 8 }}>
+              <Stat label="স্কোর" value={health.score != null ? health.score : "—"} tone={health.score >= 70 ? "success" : health.score >= 40 ? "warn" : "danger"} />
+              <Stat label="ঝুঁকি" value={health.risk_level || "—"} tone={TONE_MAP[health.risk_level] || "neutral"} />
+              <Stat label="অ্যাক্টিভিটি" value={health.factors?.recent_activity ?? "—"} />
+              <Stat label="টিম ব্যবহার" value={health.factors?.team_adoption ?? "—"} />
+            </div>
+            {health.recommendation && <div className="pa-muted" style={{ fontSize: 12, marginBottom: 4 }}>{health.recommendation}</div>}
+          </>
         ) : <Skeleton lines={1} />}
 
         <div className="pa-section-title" style={{ marginTop: 16 }}>প্ল্যান ও সাবস্ক্রিপশন</div>
-        {sub ? (
-          <div className="pa-kv-list">
-            <div className="pa-kv-row"><span>প্ল্যান</span><strong>{sub.plan_name || sub.plan_id || "—"}</strong></div>
-            <div className="pa-kv-row"><span>অবস্থা</span><Badge tone={STATE_TONE[sub.status] || "neutral"}>{sub.status}</Badge></div>
-            <div className="pa-kv-row"><span>শুরু</span><span>{dateBn(sub.starts_at)}</span></div>
-            <div className="pa-kv-row"><span>শেষ</span><span>{dateBn(sub.ends_at)}</span></div>
-          </div>
-        ) : <Skeleton lines={2} />}
+        {sub === null ? <Skeleton lines={1} /> : (() => {
+          const s = sub?.subscription;
+          return s ? (
+            <div className="pa-kv-list">
+              <div className="pa-kv-row"><span>প্ল্যান</span><strong>{s.plan_name || s.plan_id || "—"}</strong></div>
+              <div className="pa-kv-row"><span>অবস্থা</span><Badge tone={STATE_TONE[s.status] || "neutral"}>{s.status}</Badge></div>
+              <div className="pa-kv-row"><span>শুরু</span><span>{dateBn(s.starts_at)}</span></div>
+              <div className="pa-kv-row"><span>শেষ</span><span>{dateBn(s.ends_at)}</span></div>
+            </div>
+          ) : <div className="pa-muted" style={{ fontSize: 13 }}>কোনো সাবস্ক্রিপশন নেই</div>;
+        })()}
 
         <div className="pa-section-title" style={{ marginTop: 16 }}>খোলা সাপোর্ট কেস</div>
         {tenantCases.length === 0 ? <div className="pa-muted" style={{ fontSize: 13 }}>কোনো কেস নেই</div> : (
@@ -226,9 +240,12 @@ function Tenant360Drawer({ org, onClose }) {
 
         <div className="pa-section-title" style={{ marginTop: 16 }}>প্রাতিষ্ঠানিক তথ্য</div>
         <div className="pa-kv-list">
-          <div className="pa-kv-row"><span>অবস্থা</span><Badge tone={STATE_TONE[org.state] || "neutral"}>{org.state}</Badge></div>
+          <div className="pa-kv-row"><span>অবস্থা</span><Badge tone={STATE_TONE[orgState(org)] || "neutral"}>{orgState(org)}</Badge></div>
+          <div className="pa-kv-row"><span>সেক্টর</span><span>{org.sector || "—"}</span></div>
           <div className="pa-kv-row"><span>তৈরি</span><span>{dateBn(org.created_at)}</span></div>
-          <div className="pa-kv-row"><span>ইমেইল</span><span>{org.contact_email || "—"}</span></div>
+          <div className="pa-kv-row"><span>ফোন</span><span>{org.phone || "—"}</span></div>
+          <div className="pa-kv-row"><span>সদস্য</span><span>{org.member_count ?? "—"}</span></div>
+          <div className="pa-kv-row"><span>পণ্য</span><span>{org.product_count ?? "—"}</span></div>
         </div>
       </div>
     </div>
@@ -274,12 +291,12 @@ function TenantsPanel() {
               <tr key={o.id}>
                 <td><button className="pa-link-btn" onClick={() => setSelected(o)}>{o.name}</button></td>
                 <td className="pa-muted" style={{ fontFamily: "monospace", fontSize: 12 }}>{o.slug}</td>
-                <td><Badge tone={STATE_TONE[o.state] || "neutral"}>{o.state}</Badge></td>
+                <td><Badge tone={STATE_TONE[orgState(o)] || "neutral"}>{orgState(o)}</Badge></td>
                 <td className="pa-muted" style={{ fontSize: 12 }}>{dateBn(o.created_at)}</td>
                 <td>
                   <div className="pa-row-actions">
                     <Button size="sm" variant="secondary" onClick={() => setSelected(o)}>৩৬০°</Button>
-                    {o.state === "suspended"
+                    {orgState(o) === "suspended"
                       ? <Button size="sm" variant="secondary" onClick={() => unsuspend(o)}>সক্রিয় করুন</Button>
                       : <Button size="sm" variant="danger" onClick={() => suspend(o)}>স্থগিত</Button>}
                   </div>
@@ -301,13 +318,16 @@ function DataReadinessPanel() {
   const { data: orgsData, loading: ol } = useData(() => api.platformOrganizations());
   const orgs = orgsData?.organizations || orgsData || [];
 
-  // Derive readiness from real org fields: active state + has_sales_data indicator
+  // Derive readiness from real org fields
   function readinessScore(org) {
-    if (org.state !== "active") return 10;
-    const base = org.has_sales_data ? 65 : 30;
-    // Bump score when org has multiple branches or uses expiry tracking (more data depth)
-    const extra = (org.uses_expiry ? 15 : 0) + (org.sector === "pharmacy" ? 10 : 0);
-    return Math.min(100, base + extra);
+    if (!org.active) return 10;
+    // More products + recent sales = better data readiness
+    const base = 35;
+    const productBonus = Math.min(30, (org.product_count || 0) * 2);
+    const recentBonus = org.last_sale_at ? 20 : 0;
+    const memberBonus = Math.min(10, (org.member_count || 0) * 2);
+    const sectorBonus = org.sector === "pharmacy" ? 5 : 0;
+    return Math.min(100, base + productBonus + recentBonus + memberBonus + sectorBonus);
   }
   function readinessTone(s) { return s >= 70 ? "success" : s >= 40 ? "warn" : "danger"; }
 
@@ -319,7 +339,7 @@ function DataReadinessPanel() {
           <div className="pa-stats-grid" style={{ marginBottom: 20 }}>
             <Stat label="মোট টেন্যান্ট" value={fmt(orgs.length)} />
             <Stat label="AI-প্রস্তুত (≥70)" value={fmt(orgs.filter(o => readinessScore(o) >= 70).length)} tone="success" />
-            <Stat label="উন্নতি প্রয়োজন" value={fmt(orgs.filter(o => o.state !== "active").length)} tone="warn" />
+            <Stat label="নিষ্ক্রিয়" value={fmt(orgs.filter(o => !o.active).length)} tone="warn" />
           </div>
           <div className="pa-table-wrap">
             <table className="pa-table">
@@ -327,13 +347,14 @@ function DataReadinessPanel() {
               <tbody>{orgs.map(o => {
                 const score = readinessScore(o);
                 const issues = [];
-                if (o.state !== "active") issues.push("ব্যবসা সক্রিয় নয়");
-                if (score < 40) issues.push("বিক্রয় ডেটা অপর্যাপ্ত");
-                if (score < 70) issues.push("হিস্টোরিক্যাল ডেটা বাড়ান");
+                if (!o.active) issues.push("ব্যবসা নিষ্ক্রিয়");
+                if (!o.last_sale_at) issues.push("সাম্প্রতিক বিক্রয় নেই");
+                if ((o.product_count || 0) < 5) issues.push("পণ্য কম");
+                if (score < 70 && issues.length === 0) issues.push("ডেটা বাড়ান");
                 return (
                   <tr key={o.id}>
                     <td style={{ fontWeight: 500 }}>{o.name}</td>
-                    <td><Badge tone={STATE_TONE[o.state] || "neutral"}>{o.state}</Badge></td>
+                    <td><Badge tone={STATE_TONE[orgState(o)] || "neutral"}>{orgState(o)}</Badge></td>
                     <td>
                       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                         <div style={{ width: 60, height: 6, background: "var(--border)", borderRadius: 3 }}>
