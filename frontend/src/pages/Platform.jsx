@@ -392,7 +392,7 @@ function AiGovernancePanel() {
 
   async function toggleKill(sw) {
     try {
-      await api.adminSetKillSwitch({ feature: sw.feature, killed: !sw.killed, reason: sw.killed ? "Restored" : "Admin kill" });
+      await api.adminSetKillSwitch({ feature: sw.feature, disabled: !sw.killed, reason: sw.killed ? "Restored" : "Admin kill" });
       toast.success("Kill switch আপডেট হয়েছে"); kReload();
     } catch (e) { toast.error(e.message); }
   }
@@ -549,7 +549,7 @@ function PlansPanel() {
   const { data: plansData, loading, error, reload } = useData(() => api.adminPlans());
   const { data: usageData } = useData(() => api.adminUsage());
   const [creating, setCreating] = useState(false);
-  const [newPlan, setNewPlan]   = useState({ name: "", max_users: 5, max_branches: 1, price_bdt: 0 });
+  const [newPlan, setNewPlan]   = useState({ code: "", name: "", price_bdt: 0 });
   const toast = useToast();
 
   const plans = plansData?.plans || plansData || [];
@@ -608,10 +608,9 @@ function PlansPanel() {
 
       {creating && (
         <Modal title="নতুন প্ল্যান তৈরি করুন" onClose={() => setCreating(false)}>
+          <Field label="কোড"><input className="pa-input" value={newPlan.code} onChange={e => setNewPlan(p => ({ ...p, code: e.target.value }))} placeholder="যেমন: starter, pro" /></Field>
           <Field label="নাম"><input className="pa-input" value={newPlan.name} onChange={e => setNewPlan(p => ({ ...p, name: e.target.value }))} /></Field>
           <Field label="মূল্য (৳/মাস)"><input className="pa-input" type="number" value={newPlan.price_bdt} onChange={e => setNewPlan(p => ({ ...p, price_bdt: +e.target.value }))} /></Field>
-          <Field label="সর্বোচ্চ ব্যবহারকারী"><input className="pa-input" type="number" value={newPlan.max_users} onChange={e => setNewPlan(p => ({ ...p, max_users: +e.target.value }))} /></Field>
-          <Field label="সর্বোচ্চ শাখা"><input className="pa-input" type="number" value={newPlan.max_branches} onChange={e => setNewPlan(p => ({ ...p, max_branches: +e.target.value }))} /></Field>
           <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
             <Button onClick={createPlan}>তৈরি করুন</Button>
             <Button variant="secondary" onClick={() => setCreating(false)}>বাতিল</Button>
@@ -630,7 +629,7 @@ function SupportSuccessPanel() {
   const toast = useToast();
   const [subTab, setSubTab] = useState("cases");
   const [creating, setCreating] = useState(false);
-  const [newCase, setNewCase] = useState({ title: "", priority: "medium", organization_id: "" });
+  const [newCase, setNewCase] = useState({ subject: "", priority: "normal", organization_id: "" });
 
   const cases = casesData?.cases || casesData || [];
   const churned = churnData?.risks || [];
@@ -677,10 +676,10 @@ function SupportSuccessPanel() {
           )}
           {creating && (
             <Modal title="নতুন সাপোর্ট কেস" onClose={() => setCreating(false)}>
-              <Field label="বিষয়"><input className="pa-input" value={newCase.title} onChange={e => setNewCase(p => ({ ...p, title: e.target.value }))} /></Field>
+              <Field label="বিষয়"><input className="pa-input" value={newCase.subject} onChange={e => setNewCase(p => ({ ...p, subject: e.target.value }))} /></Field>
               <Field label="প্রাধান্য">
                 <select className="pa-input" value={newCase.priority} onChange={e => setNewCase(p => ({ ...p, priority: e.target.value }))}>
-                  <option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option><option value="critical">Critical</option>
+                  <option value="low">Low</option><option value="normal">Normal</option><option value="high">High</option><option value="urgent">Urgent</option>
                 </select>
               </Field>
               <Field label="Org ID"><input className="pa-input" value={newCase.organization_id} onChange={e => setNewCase(p => ({ ...p, organization_id: e.target.value }))} /></Field>
@@ -737,11 +736,13 @@ function SupportSuccessPanel() {
 function SecurityAuditPanel() {
   const [subTab, setSubTab] = useState("alerts");
   const { data: alertsData, loading: al, error: ae, reload: aReload } = useData(() => api.adminSecurityAlerts("open"));
-  const { data: jitData, loading: jl } = useData(() => api.adminJitGrants(true));
+  const { data: jitData, loading: jl, reload: jReload } = useData(() => api.adminJitGrants(true));
   const { data: auditData, loading: auditL } = useData(() => api.platformAudit());
   const { data: adminsData, loading: adminL, reload: adminReload } = useData(() => api.platformAdministrators());
   const toast = useToast();
   const confirm = useConfirm();
+  const [jitForm, setJitForm] = useState(null);
+  const [newJit, setNewJit] = useState({ grantee_id: "", permission: "", reason: "", duration_minutes: 60 });
 
   const alerts = alertsData?.alerts || alertsData || [];
   const jit = jitData?.grants || jitData || [];
@@ -751,16 +752,19 @@ function SecurityAuditPanel() {
   async function resolveAlert(a) {
     const resolution = window.prompt("সমাধানের বিবরণ:");
     if (!resolution) return;
-    try { await api.adminResolveAlert(a.id, { resolution }); toast.success("সমাধান হয়েছে"); aReload(); }
+    try { await api.adminResolveAlert(a.id, { response_action: resolution }); toast.success("সমাধান হয়েছে"); aReload(); }
     catch (e) { toast.error(e.message); }
   }
 
   async function grantJit() {
-    const target = window.prompt("User ID:");
-    if (!target) return;
-    const reason = window.prompt("JIT কারণ:");
-    if (!reason) return;
-    try { await api.adminGrantJit({ target_user_id: target, reason, duration_hours: 4 }); toast.success("JIT অ্যাক্সেস দেওয়া হয়েছে"); }
+    if (!newJit.grantee_id.trim() || !newJit.permission.trim() || !newJit.reason.trim()) return;
+    try {
+      await api.adminGrantJit({ grantee_id: newJit.grantee_id, permission: newJit.permission, reason: newJit.reason, duration_minutes: newJit.duration_minutes });
+      toast.success("JIT অ্যাক্সেস দেওয়া হয়েছে");
+      setJitForm(null);
+      setNewJit({ grantee_id: "", permission: "", reason: "", duration_minutes: 60 });
+      jReload();
+    }
     catch (e) { toast.error(e.message); }
   }
 
@@ -805,8 +809,28 @@ function SecurityAuditPanel() {
       {subTab === "jit" && (
         <>
           <div style={{ marginBottom: 12 }}>
-            <Button size="sm" onClick={grantJit}>JIT অ্যাক্সেস দিন</Button>
+            <Button size="sm" onClick={() => setJitForm(true)}>JIT অ্যাক্সেস দিন</Button>
           </div>
+          {jitForm && (
+            <Modal title="JIT অ্যাক্সেস দিন" onClose={() => setJitForm(null)}>
+              <Field label="User ID"><input className="pa-input" value={newJit.grantee_id} onChange={e => setNewJit(p => ({ ...p, grantee_id: e.target.value }))} placeholder="ব্যবহারকারীর ID" /></Field>
+              <Field label="পারমিশন"><input className="pa-input" value={newJit.permission} onChange={e => setNewJit(p => ({ ...p, permission: e.target.value }))} placeholder="যেমন: platform.admin" /></Field>
+              <Field label="কারণ"><input className="pa-input" value={newJit.reason} onChange={e => setNewJit(p => ({ ...p, reason: e.target.value }))} placeholder="JIT অ্যাক্সেসের কারণ" /></Field>
+              <Field label="সময়সীমা (মিনিট)">
+                <select className="pa-input" value={newJit.duration_minutes} onChange={e => setNewJit(p => ({ ...p, duration_minutes: +e.target.value }))}>
+                  <option value={15}>১৫ মিনিট</option>
+                  <option value={30}>৩০ মিনিট</option>
+                  <option value={60}>১ ঘন্টা</option>
+                  <option value={240}>৪ ঘন্টা</option>
+                  <option value={1440}>২৪ ঘন্টা</option>
+                </select>
+              </Field>
+              <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
+                <Button onClick={grantJit}>দিন</Button>
+                <Button variant="secondary" onClick={() => setJitForm(null)}>বাতিল</Button>
+              </div>
+            </Modal>
+          )}
           {jl ? <Skeleton lines={4} /> : (
             <div className="pa-table-wrap">
               <table className="pa-table">
@@ -1330,7 +1354,7 @@ function AnnouncementsPanel() {
   async function send() {
     if (!msg.trim()) return;
     setSending(true);
-    try { await api.platformSendAnnouncement({ message: msg, type }); toast.success("পাঠানো হয়েছে"); setMsg(""); }
+    try { await api.platformSendAnnouncement({ title: msg.split("\n")[0].slice(0, 200) || msg.slice(0, 200), body: msg, type }); toast.success("পাঠানো হয়েছে"); setMsg(""); }
     catch (e) { toast.error(e.message); }
     setSending(false);
   }

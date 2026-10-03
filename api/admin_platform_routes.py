@@ -847,6 +847,7 @@ def create_support_case(payload: SupportCaseIn, admin: Admin, db: Db):
         sla_resolution_due_at=now + timedelta(hours=resolution_h),
     )
     db.add(case)
+    db.flush()  # assigns case.id before child record
     db.add(SupportCaseEvent(
         case_id=case.id, event_type="created", actor_id=admin.id,
         body=f"Case created by {admin.display_name}",
@@ -1339,6 +1340,7 @@ def create_incident(payload: IncidentIn, admin: Admin, db: Db):
         affected_org_count=payload.affected_org_count,
     )
     db.add(incident)
+    db.flush()  # assigns incident.id before child records
     db.add(IncidentEvent(
         incident_id=incident.id, event_type="opened",
         actor_id=admin.id, body=f"Incident opened by {admin.display_name}",
