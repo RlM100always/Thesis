@@ -618,3 +618,42 @@ tr.pa-row-checked td { background: color-mix(in srgb, var(--pa-accent) 8%, trans
 
 /* Chart box */
 .pa-chart-box { background: var(--pa-panel); border: 1px solid var(--pa-border); border-radius: 12px; padding: 10px; }
+
+/* ── Phase 4: Global Search ────────────────────────────────────────────── */
+.pa-gsearch-overlay { position: fixed; inset: 0; background: rgba(6,12,20,0.55); z-index: 9999; display: flex; align-items: flex-start; justify-content: center; padding-top: 80px; }
+.pa-gsearch-box { width: min(560px, calc(100vw - 24px)); background: var(--surface); border-radius: 16px; border: 1px solid var(--pa-border); box-shadow: var(--shadow-3); overflow: hidden; }
+.pa-gsearch-input-wrap { display: flex; align-items: center; gap: 10px; padding: 12px 16px; border-bottom: 1px solid var(--pa-border); }
+.pa-gsearch-input { flex: 1; background: none; border: none; outline: none; font-size: 15px; color: var(--text); }
+.pa-gsearch-spin { color: var(--pa-muted); font-size: 14px; animation: pa-spin 1s linear infinite; }
+@keyframes pa-spin { to { transform: rotate(360deg); } }
+.pa-gsearch-results { max-height: 340px; overflow-y: auto; }
+.pa-gsearch-item { display: flex; align-items: center; gap: 10px; width: 100%; background: none; border: none; cursor: pointer; padding: 10px 16px; text-align: left; color: var(--text); border-bottom: 1px solid var(--pa-border); }
+.pa-gsearch-item:hover { background: var(--pa-panel-soft); }
+.pa-gsearch-label { font-size: 14px; font-weight: 500; }
+.pa-gsearch-sub { font-size: 12px; color: var(--pa-muted); margin-top: 2px; }
+.pa-gsearch-empty { padding: 16px; text-align: center; font-size: 13px; color: var(--pa-muted); }
+
+/* ── Phase 4: AI Risk Summary ──────────────────────────────────────────── */
+.pa-ai-summary { display: flex; align-items: flex-start; gap: 8px; padding: 10px 14px; border-radius: 10px; font-size: 13px; margin-bottom: 14px; }
+.pa-ai-ok { background: var(--success-soft, #ecfdf5); color: var(--green); }
+.pa-ai-warn { background: var(--warn-soft, #fffbeb); color: var(--warn, #b45309); flex-direction: column; gap: 4px; }
+.pa-ai-title { display: flex; align-items: center; gap: 6px; font-weight: 600; }
+.pa-ai-list { margin: 4px 0 0 16px; padding: 0; list-style: disc; display: flex; flex-direction: column; gap: 2px; }
+
+/* ── Phase 4: Tenant Compare ───────────────────────────────────────────── */
+.pa-compare-col { background: var(--pa-panel); border: 1px solid var(--pa-border); border-radius: 10px; padding: 14px; }
+.pa-compare-empty { display: flex; align-items: center; justify-content: center; color: var(--pa-muted); font-size: 13px; min-height: 120px; }
+.pa-compare-name { font-size: 15px; font-weight: 700; }
+
+/* ── Phase 4: Form field errors ────────────────────────────────────────── */
+.pa-field-error { color: var(--danger, #e63946); font-size: 12px; margin-top: 3px; }
+
+/* ── Phase 4: Clickable stat links ────────────────────────────────────── */
+.pa-stats-clickable .pa-stat-link { cursor: pointer; border-radius: 10px; transition: box-shadow 150ms ease; }
+.pa-stats-clickable .pa-stat-link:hover { box-shadow: 0 0 0 2px var(--green); }
+
+/* ── Phase 4: Undo button ──────────────────────────────────────────────── */
+.pa-undo-btn { background: none; border: none; cursor: pointer; text-decoration: underline; color: inherit; font: inherit; padding: 0; }
+
+/* ── Phase 4: Notification dropdown ───────────────────────────────────── */
+.pa-notif-dropdown { position: absolute; right: 0; top: calc(100% + 6px); width: 280px; background: var(--surface); border: 1px solid var(--pa-border); border-radius: 12px; box-shadow: var(--shadow-3); z-index: 300; }

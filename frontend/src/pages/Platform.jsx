@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import {
   Area, AreaChart, Bar, BarChart, CartesianGrid,
+  Cell, Legend, Pie, PieChart,
   ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from "recharts";
 import { api } from "../api";
@@ -113,17 +114,265 @@ function orgState(org) {
   return "active";
 }
 
+// ─── SSE HOOK ─────────────────────────────────────────────────────────────────
+function useSSEAlerts(onAlert) {
+  useEffect(() => {
+    let es;
+    try {
+      es = new EventSource("/api/admin/security-alerts/stream");
+      es.onmessage = e => {
+        try { onAlert(JSON.parse(e.data)); } catch {}
+      };
+      es.onerror = () => es.close();
+    } catch {}
+    return () => es?.close();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+}
+
+// ─── UNDO HOOK ────────────────────────────────────────────────────────────────
+function useUndo(toast) {
+  const timerRef = useRef(null);
+  const commit = useCallback((label, action, undo) => {
+    clearTimeout(timerRef.current);
+    let cancelled = false;
+    const dismiss = toast.info(
+      <span>{label} — <button className="pa-undo-btn" onClick={() => { cancelled = true; dismiss?.(); undo(); }}>পূর্বাবস্থায় ফিরুন</button></span>,
+      { duration: 8000 }
+    );
+    timerRef.current = setTimeout(() => { if (!cancelled) action(); }, 8000);
+    return () => { cancelled = true; clearTimeout(timerRef.current); };
+  }, [toast]);
+  useEffect(() => () => clearTimeout(timerRef.current), []);
+  return commit;
+}
+
+// ─── FORM VALIDATION ──────────────────────────────────────────────────────────
+function useForm(initial, rules = {}) {
+  const [values, setValues] = useState(initial);
+  const [touched, setTouch] = useState({});
+  const errors = {};
+  for (const [k, rule] of Object.entries(rules)) {
+    const e = rule(values[k], values);
+    if (e) errors[k] = e;
+  }
+  const valid = Object.keys(errors).length === 0;
+  const set = (k, v) => setValues(p => ({ ...p, [k]: v }));
+  const touch = k => setTouch(p => ({ ...p, [k]: true }));
+  const touchAll = () => setTouch(Object.fromEntries(Object.keys(rules).map(k => [k, true])));
+  const reset = () => { setValues(initial); setTouch({}); };
+  function FieldErr({ name }) {
+    if (!touched[name] || !errors[name]) return null;
+    return <div className="pa-field-error">{errors[name]}</div>;
+  }
+  return { values, set, errors, valid, touched, touch, touchAll, reset, FieldErr };
+}
+
+// ─── NOTIFICATION CENTER ──────────────────────────────────────────────────────
+const MAX_NOTIFS = 30;
+let _notifListeners = [];
+const _notifs = [];
+function pushNotif(n) {
+  _notifs.unshift({ ...n, id: Date.now() + Math.random(), at: new Date() });
+  if (_notifs.length > MAX_NOTIFS) _notifs.length = MAX_NOTIFS;
+  _notifListeners.forEach(fn => fn([..._notifs]));
+}
+function useNotifications() {
+  const [notifs, setNotifs] = useState([..._notifs]);
+  useEffect(() => {
+    _notifListeners.push(setNotifs);
+    return () => { _notifListeners = _notifListeners.filter(f => f !== setNotifs); };
+  }, []);
+  const clear = () => { _notifs.length = 0; _notifListeners.forEach(fn => fn([])); };
+  return { notifs, clear };
+}
+
+// ─── GLOBAL SEARCH ────────────────────────────────────────────────────────────
+function GlobalSearch({ setParams, onClose }) {
+  const [q, setQ] = useState("");
+  const [results, setResults] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const debounceRef = useRef(null);
+
+  useEffect(() => {
+    if (!q.trim() || q.length < 2) { setResults([]); return; }
+    clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(async () => {
+      setLoading(true);
+      try {
+        const [orgsRes, casesRes, alertsRes] = await Promise.allSettled([
+          api.platformOrganizations(),
+          api.adminSupportCases("open"),
+          api.adminSecurityAlerts("open"),
+        ]);
+        const qq = q.toLowerCase();
+        const hits = [];
+        (orgsRes.value?.organizations || orgsRes.value || []).forEach(o => {
+          if (o.name?.toLowerCase().includes(qq) || o.slug?.includes(qq))
+            hits.push({ type: "tenant", label: o.name, sub: o.slug, tab: "tenants", icon: "users" });
+        });
+        (casesRes.value?.cases || casesRes.value || []).forEach(c => {
+          if ((c.subject || c.title)?.toLowerCase().includes(qq))
+            hits.push({ type: "case", label: c.subject || c.title, sub: `priority: ${c.priority}`, tab: "support", icon: "bell" });
+        });
+        (alertsRes.value?.alerts || alertsRes.value || []).forEach(a => {
+          if (a.description?.toLowerCase().includes(qq))
+            hits.push({ type: "alert", label: a.description, sub: a.severity, tab: "security-audit", icon: "shield" });
+        });
+        setResults(hits.slice(0, 8));
+      } catch {}
+      setLoading(false);
+    }, 280);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [q]);
+
+  useEffect(() => {
+    function handler(e) { if (e.key === "Escape") onClose(); }
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [onClose]);
+
+  return (
+    <div className="pa-gsearch-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="pa-gsearch-box">
+        <div className="pa-gsearch-input-wrap">
+          <Icon name="search" size={16} />
+          <input autoFocus className="pa-gsearch-input" placeholder="Tenant, case, alert, incident খুঁজুন… (Esc বন্ধ করুন)" value={q} onChange={e => setQ(e.target.value)} />
+          {loading && <span className="pa-gsearch-spin">⟳</span>}
+        </div>
+        {results.length > 0 && (
+          <div className="pa-gsearch-results">
+            {results.map((r, i) => (
+              <button key={i} className="pa-gsearch-item" onClick={() => { setParams({ tab: r.tab }); onClose(); }}>
+                <Icon name={r.icon} size={14} />
+                <div>
+                  <div className="pa-gsearch-label">{r.label}</div>
+                  <div className="pa-gsearch-sub">{r.type} · {r.sub}</div>
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
+        {q.length >= 2 && !loading && results.length === 0 && (
+          <div className="pa-gsearch-empty">কোনো ফলাফল পাওয়া যায়নি</div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── ERROR BOUNDARY ───────────────────────────────────────────────────────────
+class PanelBoundary extends (class { constructor(p){this.props=p; this.state={err:null};} }) {
+  static getDerivedStateFromError(e) { return { err: e }; }
+  render() {
+    if (this.state.err) return (
+      <div style={{ padding: 32, textAlign: "center" }}>
+        <Notice tone="danger">এই প্যানেলে সমস্যা হয়েছে: {this.state.err.message}</Notice>
+        <Button style={{ marginTop: 12 }} onClick={() => this.setState({ err: null })}>পুনরায় চেষ্টা করুন</Button>
+      </div>
+    );
+    return this.props.children;
+  }
+}
+
+// ─── AI RISK SUMMARY ──────────────────────────────────────────────────────────
+function AiRiskSummary({ overview, churn, sla }) {
+  const risks = [];
+  if (overview?.incidents?.open > 0)
+    risks.push(`${overview.incidents.open}টি সক্রিয় ইনসিডেন্ট চলছে`);
+  if (overview?.security?.open_alerts > 5)
+    risks.push(`${overview.security.open_alerts}টি সিকিউরিটি অ্যালার্ট মনোযোগ চাইছে`);
+  if (sla?.resolution_breached > 0)
+    risks.push(`${sla.resolution_breached}টি সাপোর্ট কেসের SLA ভঙ্গ হয়েছে`);
+  const highChurn = (churn?.risks || []).filter(t => t.risk_level === "high").length;
+  if (highChurn > 0) risks.push(`${highChurn}টি ব্যবসা উচ্চ চার্ন ঝুঁকিতে`);
+  if (overview?.jobs?.failed > 0) risks.push(`${overview.jobs.failed}টি ব্যাকগ্রাউন্ড জব ব্যর্থ হয়েছে`);
+
+  if (risks.length === 0) return (
+    <div className="pa-ai-summary pa-ai-ok">
+      <Icon name="check" size={14} /> <span>সব ঠিক আছে — কোনো জরুরি ইস্যু নেই</span>
+    </div>
+  );
+  return (
+    <div className="pa-ai-summary pa-ai-warn">
+      <div className="pa-ai-title"><Icon name="zap" size={14} /> AI সারসংক্ষেপ — {risks.length}টি মনোযোগ প্রয়োজন</div>
+      <ul className="pa-ai-list">{risks.map((r, i) => <li key={i}>{r}</li>)}</ul>
+    </div>
+  );
+}
+
+// ─── TENANT COMPARE ───────────────────────────────────────────────────────────
+function TenantCompareModal({ orgs, onClose }) {
+  const [selA, setSelA] = useState("");
+  const [selB, setSelB] = useState("");
+  const { data: hA } = useData(() => selA ? api.adminTenantHealthScore(selA) : Promise.resolve(null), [selA]);
+  const { data: hB } = useData(() => selB ? api.adminTenantHealthScore(selB) : Promise.resolve(null), [selB]);
+  const orgA = orgs.find(o => o.id === selA);
+  const orgB = orgs.find(o => o.id === selB);
+
+  function CompareCol({ org, health }) {
+    if (!org) return <div className="pa-compare-col pa-compare-empty">ব্যবসা নির্বাচন করুন</div>;
+    return (
+      <div className="pa-compare-col">
+        <div className="pa-compare-name">{org.name}</div>
+        <div className="pa-kv-list" style={{ marginTop: 12 }}>
+          <div className="pa-kv-row"><span>অবস্থা</span><Badge tone={STATE_TONE[orgState(org)]}>{orgState(org)}</Badge></div>
+          <div className="pa-kv-row"><span>সেক্টর</span><span>{org.sector || "—"}</span></div>
+          <div className="pa-kv-row"><span>সদস্য</span><span>{org.member_count ?? "—"}</span></div>
+          <div className="pa-kv-row"><span>পণ্য</span><span>{org.product_count ?? "—"}</span></div>
+          <div className="pa-kv-row"><span>তৈরি</span><span>{dateBn(org.created_at)}</span></div>
+          {health && <>
+            <div className="pa-kv-row"><span>স্বাস্থ্য স্কোর</span><Badge tone={health.score >= 70 ? "success" : health.score >= 40 ? "warn" : "danger"}>{health.score ?? "—"}</Badge></div>
+            <div className="pa-kv-row"><span>ঝুঁকি</span><span>{health.risk_level || "—"}</span></div>
+          </>}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <Modal title="ব্যবসা তুলনা করুন" onClose={onClose}>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
+        <Field label="ব্যবসা A">
+          <select className="pa-input" value={selA} onChange={e => setSelA(e.target.value)}>
+            <option value="">বেছে নিন…</option>
+            {orgs.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
+          </select>
+        </Field>
+        <Field label="ব্যবসা B">
+          <select className="pa-input" value={selB} onChange={e => setSelB(e.target.value)}>
+            <option value="">বেছে নিন…</option>
+            {orgs.filter(o => o.id !== selA).map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
+          </select>
+        </Field>
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+        <CompareCol org={orgA} health={hA} />
+        <CompareCol org={orgB} health={hB} />
+      </div>
+    </Modal>
+  );
+}
+
 // ─── 1. COMMAND CENTER ────────────────────────────────────────────────────────
-function CommandCenterPanel() {
+function CommandCenterPanel({ onNavigate }) {
   const { data: overview, loading: ol, error: oe, reload: oReload } = useData(() => api.adminOverview());
   const { data: mq, loading: ml, error: me, reload: mqReload } = useData(() => api.adminMissionQueue("open"));
   const { data: alerts, loading: al, error: ae, reload: aReload } = useData(() => api.adminSecurityAlerts("open"));
   const { data: trends, loading: tl } = useData(() => api.platformTrends(30));
   const { data: tenantGrowth } = useData(() => api.platformOrganizations());
+  const { data: churnData } = useData(() => api.adminChurnRisk("high"));
+  const { data: slaData } = useData(() => api.adminSlaSummary());
   const toast = useToast();
   const o = overview || {};
 
   useAutoRefresh(() => { oReload(); aReload(); }, 30000);
+
+  // SSE: push new alerts into notification center + badge
+  useSSEAlerts(alert => {
+    pushNotif({ kind: "alert", title: `নতুন অ্যালার্ট: ${alert.description || alert.alert_type}`, severity: alert.severity });
+    aReload();
+  });
 
   async function generateQueue() {
     try { await api.adminGenerateMissionQueue(); toast.success("Queue রিফ্রেশ হয়েছে"); mqReload(); }
@@ -156,15 +405,27 @@ function CommandCenterPanel() {
     <>
       <Head title="কমান্ড সেন্টার" sub="আজকের সবচেয়ে গুরুত্বপূর্ণ ইস্যু এবং প্ল্যাটফর্মের সামগ্রিক অবস্থা" />
 
-      {/* KPI row */}
+      <AiRiskSummary overview={o} churn={churnData} sla={slaData} />
+
+      {/* KPI row — clickable, jumps to relevant panel */}
       {ol ? <Skeleton lines={2} /> : oe ? <Notice tone="danger">{oe}</Notice> : (
-        <div className="pa-stats-grid" style={{ marginBottom: 24 }}>
+        <div className="pa-stats-grid pa-stats-clickable" style={{ marginBottom: 24 }}>
+          <div className="pa-stat-link" onClick={() => onNavigate("system-ops")} title="System Ops বোর্ডে যান">
+            <Stat label="ইনসিডেন্ট (খোলা)"  value={fmt(o.incidents?.open)}              tone={o.incidents?.open > 0 ? "danger" : "success"} />
+          </div>
+          <div className="pa-stat-link" onClick={() => onNavigate("security-audit")} title="Security বোর্ডে যান">
+            <Stat label="সিকিউরিটি অ্যালার্ট" value={fmt(o.security?.open_alerts)}      tone={o.security?.open_alerts > 0 ? "danger" : "success"} />
+          </div>
+          <div className="pa-stat-link" onClick={() => onNavigate("support")} title="Support বোর্ডে যান">
+            <Stat label="চার্ন রিস্ক (উচ্চ)" value={fmt(o.churn_risk?.high)}            tone={o.churn_risk?.high > 0 ? "warn" : "success"} />
+          </div>
+          <div className="pa-stat-link" onClick={() => onNavigate("system-ops")} title="Jobs বোর্ডে যান">
+            <Stat label="ব্যর্থ জব"          value={fmt(o.jobs?.failed)}                tone={o.jobs?.failed > 0 ? "danger" : "success"} />
+          </div>
+          <div className="pa-stat-link" onClick={() => onNavigate("support")} title="Support বোর্ডে যান">
+            <Stat label="খোলা সাপোর্ট কেস"  value={fmt(o.support?.open_cases)}          tone="neutral" />
+          </div>
           <Stat label="মিশন কিউ (খোলা)"   value={fmt(o.mission_queue?.open)}          tone={o.mission_queue?.open > 10 ? "danger" : "warn"} />
-          <Stat label="ইনসিডেন্ট (খোলা)"  value={fmt(o.incidents?.open)}              tone={o.incidents?.open > 0 ? "danger" : "success"} />
-          <Stat label="সিকিউরিটি অ্যালার্ট" value={fmt(o.security?.open_alerts)}      tone={o.security?.open_alerts > 0 ? "danger" : "success"} />
-          <Stat label="চার্ন রিস্ক (উচ্চ)" value={fmt(o.churn_risk?.high)}            tone={o.churn_risk?.high > 0 ? "warn" : "success"} />
-          <Stat label="ব্যর্থ জব"          value={fmt(o.jobs?.failed)}                tone={o.jobs?.failed > 0 ? "danger" : "success"} />
-          <Stat label="খোলা সাপোর্ট কেস"  value={fmt(o.support?.open_cases)}          tone="neutral" />
         </div>
       )}
 
@@ -414,14 +675,24 @@ function Tenant360Drawer({ org, onClose }) {
 function TenantsPanel() {
   const { data, loading, error, reload } = useData(() => api.platformOrganizations());
   const [selected, setSelected] = useState(null);
+  const [comparing, setComparing] = useState(false);
   const [q, setQ] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [checked, setChecked] = useState(new Set());
+  // optimistic overrides: id → "suspended" | "active"
+  const [optimistic, setOptimistic] = useState({});
   const toast = useToast();
   const confirm = useConfirm();
 
   const allOrgs = data?.organizations || data || [];
-  const orgs = allOrgs.filter(o => {
+  // apply optimistic state
+  const allOrgsOpt = allOrgs.map(o => optimistic[o.id] === "suspended"
+    ? { ...o, active: false, suspended_at: new Date().toISOString() }
+    : optimistic[o.id] === "active"
+    ? { ...o, active: true, suspended_at: null }
+    : o
+  );
+  const orgs = allOrgsOpt.filter(o => {
     const matchQ = !q || o.name?.toLowerCase().includes(q.toLowerCase()) || o.slug?.includes(q);
     const matchS = statusFilter === "all" || orgState(o) === statusFilter;
     return matchQ && matchS;
@@ -439,14 +710,24 @@ function TenantsPanel() {
     const reason = window.prompt("স্থগিতের কারণ লিখুন:");
     if (!reason) return;
     if (!await confirm(`"${org.name}" স্থগিত করবেন?`)) return;
-    try { await api.platformSuspend(org.id, reason); toast.success("স্থগিত হয়েছে"); reload(); }
-    catch (e) { toast.error(e.message); }
+    setOptimistic(p => ({ ...p, [org.id]: "suspended" }));
+    try {
+      await api.platformSuspend(org.id, reason);
+      toast.success("স্থগিত হয়েছে");
+      pushNotif({ kind: "action", title: `"${org.name}" স্থগিত হয়েছে` });
+      reload();
+    } catch (e) { toast.error(e.message); setOptimistic(p => { const n={...p}; delete n[org.id]; return n; }); }
   }
 
   async function unsuspend(org) {
     if (!await confirm(`"${org.name}" পুনরায় সক্রিয় করবেন?`)) return;
-    try { await api.platformUnsuspend(org.id); toast.success("সক্রিয় হয়েছে"); reload(); }
-    catch (e) { toast.error(e.message); }
+    setOptimistic(p => ({ ...p, [org.id]: "active" }));
+    try {
+      await api.platformUnsuspend(org.id);
+      toast.success("সক্রিয় হয়েছে");
+      pushNotif({ kind: "action", title: `"${org.name}" পুনরায় সক্রিয় হয়েছে` });
+      reload();
+    } catch (e) { toast.error(e.message); setOptimistic(p => { const n={...p}; delete n[org.id]; return n; }); }
   }
 
   async function bulkSuspend() {
@@ -455,6 +736,7 @@ function TenantsPanel() {
     const reason = window.prompt(`${targets.length}টি ব্যবসা স্থগিত করার কারণ:`);
     if (!reason) return;
     if (!await confirm(`${targets.length}টি ব্যবসা স্থগিত করবেন?`)) return;
+    targets.forEach(o => setOptimistic(p => ({ ...p, [o.id]: "suspended" })));
     let ok = 0;
     for (const o of targets) {
       try { await api.platformSuspend(o.id, reason); ok++; } catch {}
@@ -466,6 +748,7 @@ function TenantsPanel() {
     const targets = orgs.filter(o => checked.has(o.id) && orgState(o) === "suspended");
     if (!targets.length) return;
     if (!await confirm(`${targets.length}টি ব্যবসা সক্রিয় করবেন?`)) return;
+    targets.forEach(o => setOptimistic(p => ({ ...p, [o.id]: "active" })));
     let ok = 0;
     for (const o of targets) {
       try { await api.platformUnsuspend(o.id); ok++; } catch {}
@@ -486,7 +769,10 @@ function TenantsPanel() {
   return (
     <>
       <Head title="ব্যবসা তালিকা" sub="সব ব্যবসার তালিকা, স্বাস্থ্য এবং ৩৬০° বিশদ"
-        action={<Button size="sm" variant="secondary" onClick={doExport}>CSV ডাউনলোড</Button>} />
+        action={<div style={{ display:"flex", gap:8 }}>
+          <Button size="sm" variant="secondary" onClick={() => setComparing(true)}>তুলনা করুন</Button>
+          <Button size="sm" variant="secondary" onClick={doExport}>CSV ডাউনলোড</Button>
+        </div>} />
 
       <div style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
         <input className="pa-search" style={{ flex: 1, minWidth: 180 }} placeholder="নাম বা slug খুঁজুন…" value={q}
@@ -542,6 +828,7 @@ function TenantsPanel() {
         </>
       )}
       {selected && <Tenant360Drawer org={selected} onClose={() => { setSelected(null); reload(); }} />}
+      {comparing && <TenantCompareModal orgs={allOrgsOpt} onClose={() => setComparing(false)} />}
       {confirm.dialog}
     </>
   );
@@ -1780,6 +2067,41 @@ const SHORTCUT_MAP = {
   "w": "site", "n": "announcements",
 };
 
+// ─── NOTIFICATION CENTER ──────────────────────────────────────────────────────
+function NotificationCenter() {
+  const { notifs, clear } = useNotifications();
+  const [open, setOpen] = useState(false);
+  const unread = notifs.length;
+  return (
+    <div style={{ position: "relative" }}>
+      <button className="pa-alert-bell" onClick={() => setOpen(o => !o)} title="নোটিফিকেশন">
+        <Icon name="bell" size={14} />
+        {unread > 0 && <span className="pa-alert-count">{unread}</span>}
+      </button>
+      {open && (
+        <div className="pa-notif-dropdown" onClick={e => e.stopPropagation()}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 12px", borderBottom: "1px solid var(--border)" }}>
+            <span style={{ fontWeight: 600, fontSize: 13 }}>নোটিফিকেশন</span>
+            {notifs.length > 0 && <button className="pa-link-btn" style={{ fontSize: 12 }} onClick={() => { clear(); setOpen(false); }}>সব মুছুন</button>}
+          </div>
+          {notifs.length === 0 ? (
+            <div className="pa-muted" style={{ padding: "16px 12px", fontSize: 13 }}>কোনো নোটিফিকেশন নেই</div>
+          ) : (
+            <div style={{ maxHeight: 280, overflowY: "auto" }}>
+              {notifs.map(n => (
+                <div key={n.id} style={{ padding: "8px 12px", borderBottom: "1px solid var(--border)", fontSize: 13 }}>
+                  <div>{n.title}</div>
+                  <div className="pa-muted" style={{ fontSize: 11 }}>{n.at?.toLocaleTimeString("bn-BD")}</div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function Platform() {
   const [params, setParams] = useSearchParams();
   const tab = ALL_TABS.some(t => t.value === params.get("tab")) ? params.get("tab") : "command";
@@ -1787,10 +2109,19 @@ export default function Platform() {
   const { data: alertsData } = useData(() => api.adminSecurityAlerts("open"));
   const openAlerts = (alertsData?.alerts || alertsData || []).length;
   const [gPressed, setGPressed] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+
+  const navigate = useCallback((t) => setParams({ tab: t }), [setParams]);
 
   useEffect(() => {
     let gTimer;
     function handler(e) {
+      // Ctrl+K or Cmd+K → global search
+      if ((e.ctrlKey || e.metaKey) && e.key === "k") {
+        e.preventDefault();
+        setSearchOpen(true);
+        return;
+      }
       if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA" || e.target.tagName === "SELECT") return;
       if (e.key === "g" || e.key === "G") {
         setGPressed(true);
@@ -1809,18 +2140,27 @@ export default function Platform() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gPressed]);
 
+  // Pass onNavigate only to CommandCenterPanel which uses it
+  const panelProps = tab === "command" ? { onNavigate: navigate } : {};
+
   return (
     <div className="platform-layout">
       <nav className="platform-sidenav">
         <div className="platform-nav-header">
           <span style={{ fontWeight: 700, fontSize: 13 }}>Admin Panel</span>
-          {openAlerts > 0 && (
-            <button className="pa-alert-bell" onClick={() => setParams({ tab: "security-audit" })}
-              title={`${openAlerts}টি খোলা অ্যালার্ট`}>
-              <Icon name="bell" size={14} />
-              <span className="pa-alert-count">{openAlerts}</span>
+          <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+            <button className="pa-alert-bell" onClick={() => setSearchOpen(true)} title="সার্চ (Ctrl+K)">
+              <Icon name="search" size={14} />
             </button>
-          )}
+            <NotificationCenter />
+            {openAlerts > 0 && (
+              <button className="pa-alert-bell" onClick={() => setParams({ tab: "security-audit" })}
+                title={`${openAlerts}টি খোলা অ্যালার্ট`}>
+                <Icon name="bell" size={14} />
+                <span className="pa-alert-count">{openAlerts}</span>
+              </button>
+            )}
+          </div>
         </div>
         {NAV_GROUPS.map(group => (
           <div key={group.label} className="platform-nav-group">
@@ -1842,7 +2182,12 @@ export default function Platform() {
         ))}
         {gPressed && <div className="pa-shortcut-hint">G + কী চাপুন…</div>}
       </nav>
-      <div className="platform-content"><Panel /></div>
+      <div className="platform-content">
+        <PanelBoundary key={tab}>
+          <Panel {...panelProps} />
+        </PanelBoundary>
+      </div>
+      {searchOpen && <GlobalSearch setParams={p => setParams(p)} onClose={() => setSearchOpen(false)} />}
     </div>
   );
 }
