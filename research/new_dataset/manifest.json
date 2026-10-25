@@ -1,0 +1,26 @@
+{
+  "dataset_id": "bsmart_bd_sme_synthetic_v1",
+  "title": "B-SMART Bangladesh SME Integrated Research Simulation v1",
+  "data_nature": "100% synthetic Bangladesh-context FMCG; no real merchant records",
+  "status": "NOT_UPLOADED_NOT_TRAINED",
+  "source_zip": "B-SMART_ALL_DATASETS_ONE_DOWNLOAD.zip",
+  "source_zip_bytes": 63104115,
+  "source_zip_sha256": "d15074a1ada30bfdd0cf9c06a32ff0639fde9cf898ef314acb511cd99190f9c5",
+  "seed": 20261025,
+  "period": [
+    "2023-01-01",
+    "2025-12-31"
+  ],
+  "currency": "BDT",
+  "shops": 32,
+  "customers": 11000,
+  "products": 480,
+  "suppliers": 56,
+  "sales_orders": 365447,
+  "sales_lines": 736683,
+  "inventory_movements": 994808,
+  "purchase_orders": 122422,
+  "payments": 381756,
+  "rq4_machine_cases": 1800,
+  "human_participants": 0
+}
