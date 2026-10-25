@@ -173,43 +173,12 @@ def export_anonymized_sales(membership: CurrentMembership, db: Db):
     )
 
 
-@router.post("/train-demand-model", tags=["real-data"])
+@router.post("/train-demand-model", tags=["research"])
 def train_demand_model(membership: CurrentMembership, db: Db):
-    """One click: train all four real models (demand forecast, future-repeat
-    churn, RFM segmentation, return-risk) on this organization's own sales
-    history and make each immediately available to /api/app/recommendations
-    and /api/app/segments.
-
-    Previously this trained only the demand model, leaving /api/app/recommendations
-    to score retention with a fixed baseline forever. Each stage is independent:
-    one failing (not enough data yet) does not block the others, matching the
-    CLI's `ml.real_pipeline` behaviour — never a fabricated result, only an
-    honest `available: false` with the reason.
-    """
+    """Block legacy model training until the new dataset-specific pipeline exists."""
     require_permission(membership, "model:train")
-    from ml.real_pipeline import train_churn, train_forecast, train_returns, train_segments, validate_sales
-
-    frame = canonical_sales_frame(db, membership.organization_id)
-    if frame.empty:
-        raise HTTPException(status_code=422, detail="এই ব্যবসায় এখনো কোনো বিক্রি নথিভুক্ত হয়নি।")
-    try:
-        sales = validate_sales(frame)
-    except ValueError as exc:
-        raise HTTPException(status_code=422, detail=str(exc)) from exc
-
-    output_dir = Path("artifacts/real") / membership.organization_id
-    output_dir.mkdir(parents=True, exist_ok=True)
-    report = {}
-    for name, trainer in [
-        ("forecast", train_forecast), ("churn", train_churn),
-        ("segments", train_segments), ("return_risk", train_returns),
-    ]:
-        try:
-            report[name] = trainer(sales, output_dir)
-        except ValueError as exc:
-            report[name] = {"available": False, "reason": str(exc)}
-    if "available" in report["forecast"]:
-        raise HTTPException(status_code=422, detail=report["forecast"]["reason"])
-    record_audit(db, membership, "model.trained", "demand_model", None)
-    db.commit()
-    return {"status": "trained", **report}
+    raise HTTPException(
+        status_code=503,
+        detail="Old trained models have been retired. Import and validate the new "
+               "Bangladesh SME synthetic relational dataset before training new models.",
+    )
