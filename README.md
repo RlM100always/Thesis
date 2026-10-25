@@ -1,5 +1,15 @@
 # AI-Powered Business Analytics System for Bangladeshi Pharmacy SMEs
 
+## Online deployment (Render)
+
+- **Application URL:** https://thesis.onrender.com
+- **Repository:** https://github.com/RlM100always/Thesis
+- **Hosting:** Render Docker web service, React/Vite frontend and FastAPI backend on the same domain.
+- **Deployment status:** See the Render dashboard for the latest build/deploy status; a URL alone does not certify successful deployment.
+
+The Render service uses the root `Dockerfile` and `requirements.render.txt`. The API runs under `/api/`, documentation is at `/docs`, and readiness/artifact health is at `/health`. For secure, persistent production use, set `APP_ENV=production`, `AUTH_MODE=jwt`, a unique `JWT_SECRET`, and a **PostgreSQL** `DATABASE_URL` from the Render database dashboard. SQLite on an ephemeral free service is not a durable database. The free Render PostgreSQL instance may expire; check its expiry before relying on it.
+
+
 > **Revised research scope (8 September 2026):** the initial implementation and
 > empirical validation target **multiple Bangladeshi retail pharmacies**, not
 > every SME category. B-SMART remains an extensible SME framework, but grocery,
