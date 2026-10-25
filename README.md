@@ -2,6 +2,16 @@
 
 > **Research reset (25 October 2026).** All previously committed research datasets, trained model binaries, legacy ML pipelines and old experiment results were removed from **main**. They remain recoverable at [archive/pre-new-bsmart-dataset-2026-10-25](https://github.com/RlM100always/Thesis/tree/archive/pre-new-bsmart-dataset-2026-10-25).
 
+## Original multi-store e-commerce platform restored from local thesis.zip
+
+**Operational business stores:** `/#/stores` is a public directory reading active `Store` rows from the business database. Every merchant has a separate `/#/store/<slug>` storefront connected to the same organization's inventory, products, checkout, order tracking and owner management. The recovered local frontend includes Store Directory, Store, Store Customer Portal, Store Admin, order status and branded image helpers.
+
+**Full customer/merchant features:** account registration/login, profile, previous orders, buyer-owner chat, promo coupons, product variants, reviews, inventory/stock warnings, owner order management, payments (COD and optional bKash/Nagad/SSLCommerz configured with private credentials). Source recovered from the user's supplied ZIP and integrated through `api/main.py` and `frontend/src/api.js`. **Online gateway settlement, security and refunds are not declared verified.**
+
+**Store demo records:** a guarded `seed_10_businesses.py` from local source can populate an isolated empty **development** DB with ten fictional sector-specific owners and products; it is NOT run automatically or on live tenant records. Source code restoration alone cannot recover old operational users/orders without the persisted DB backup.
+
+**Migration and verification:** additive `migrations/versions/b5f251025a01_restored_full_storefront_schema.py` is provided for deliberate staging upgrade; never upgrade a production DB without a verified snapshot. [Complete restoration notes](docs/FULL_STOREFRONT_LOCAL_RECOVERY.md) and automated build/route tests.
+
 ## Store preview restored
 
 The public website now includes a read-only [**32 simulated stores explorer**](https://thesis-j0n8.onrender.com/#/sample-stores). It shows Bangladesh division/district store cards, 2023–2025 generated revenue, order/customer/purchase/stock summaries, top product and an invoice example for each shop. Source summaries [here](research/new_dataset/shops_overview.psv), examples [here](research/new_dataset/shop_examples.psv) and scope/limitations [here](research/new_dataset/STORE_EXPLORER_README.md). **This is NOT a full operational database import.** The changes must deploy and load to become visible on the hosted website.
