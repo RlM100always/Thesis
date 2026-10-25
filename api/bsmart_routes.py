@@ -19,7 +19,6 @@ from __future__ import annotations
 
 import json
 from datetime import datetime, timezone
-from pathlib import Path
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -39,8 +38,6 @@ from .permissions import require_permission
 router = APIRouter()
 Db = Annotated[Session, Depends(get_db)]
 
-ARTIFACT = Path("output/bsmart_recommendations.json")
-RUN_SUMMARY = Path("output/bsmart_run_summary.json")
 
 
 def _persist(db: Session, membership, cutoff: str, actions: list[dict], model_version: str) -> dict:
@@ -95,54 +92,13 @@ def _persist(db: Session, membership, cutoff: str, actions: list[dict], model_ve
 # ─────────────────────────────────────────────────────────────────────────────
 @router.get("/api/research/bsmart/latest", tags=["research"])
 def bsmart_latest():
-    """The most recent B-SMART Algorithm 1 run from the thesis dataset.
-
-    Returns R_t, the declared assumptions and the funnel counts exactly as the
-    engine wrote them. Nothing is recomputed here: the numbers a reader sees
-    are the numbers in the artifact, which is what makes them citable.
-    """
-    if not ARTIFACT.is_file():
-        raise HTTPException(
-            status_code=404,
-            detail="No B-SMART run found. Run: python 13_bsmart_recommendation_engine.py",
-        )
-    payload = json.loads(ARTIFACT.read_text(encoding="utf-8"))
-    summary = (
-        json.loads(RUN_SUMMARY.read_text(encoding="utf-8"))
-        if RUN_SUMMARY.is_file() else {}
-    )
-    return {
-        "cutoff": payload.get("cutoff"),
-        "assumptions": payload.get("assumptions", {}),
-        "recommendations": payload.get("R_t", []),
-        "summary": summary,
-        "evidence_tier": "Tier 3 — real medicine catalogue, synthetic transactions",
-        "source": str(ARTIFACT),
-    }
+    raise HTTPException(410, "Previous research runs were retired; no new verified run exists.")
 
 
 @router.post("/api/app/bsmart/import-run", tags=["bsmart"])
 def import_run(membership: CurrentMembership, db: Db):
-    """Persist the latest engine run into this organization's own records.
-
-    Layer 5 writes a JSON artifact; layers 9-10 need rows the owner can act on.
-    This is the bridge. It is explicit rather than automatic so that importing
-    a research-dataset run into a tenant's workspace is always a deliberate
-    act — the evidence tier of the source is carried through on every row.
-
-    Re-importing the same cutoff is a no-op rather than a duplicate, so the
-    button is safe to press twice.
-    """
     require_permission(membership, "bsmart:import")
-    if not ARTIFACT.is_file():
-        raise HTTPException(
-            status_code=404,
-            detail="No B-SMART run found. Run: python 13_bsmart_recommendation_engine.py",
-        )
-    payload = json.loads(ARTIFACT.read_text(encoding="utf-8"))
-    cutoff = payload.get("cutoff")
-    actions = payload.get("R_t", [])
-    return _persist(db, membership, cutoff, actions, f"13_bsmart_recommendation_engine@{cutoff}")
+    raise HTTPException(410, "Legacy research-run import disabled until new data pipeline is ready.")
 
 
 @router.post("/api/app/bsmart/run", tags=["bsmart"])
