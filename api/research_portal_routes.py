@@ -804,7 +804,7 @@ def _run_experiment_bg(exp_id: str):
 def _dataset_rows(path: str) -> int:
     """Count the actual file rows, rather than claiming 30,000 for missing files."""
     with open(path, "rb") as handle:
-        return max(0, sum(chunk.count(b"\\n") for chunk in iter(lambda: handle.read(1024 * 1024), b"")) - 1)
+        return max(0, sum(chunk.count(b"\n") for chunk in iter(lambda: handle.read(1024 * 1024), b"")) - 1)
 
 
 def _built_in_path(vertical: str) -> Path:
