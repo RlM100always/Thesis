@@ -78,6 +78,7 @@ export default function ResearchPortal() {
   }),{revenue:0,orders:0,movements:0,purchase_orders:0}),[state.shops]);
 
   return <main style={{maxWidth:1240,margin:"18px auto 56px",padding:"12px 18px"}}>
+    <div style={{marginBottom:12}}><a href="#/" style={{fontSize:13}}>← ওয়েবসাইটে ফিরুন</a></div>
     <header style={{display:"flex",justifyContent:"space-between",flexWrap:"wrap",alignItems:"start",gap:18,marginBottom:20}}>
       <div>
         <div style={{fontSize:12,fontWeight:700,color:"#27826a",letterSpacing:1,textTransform:"uppercase"}}>
