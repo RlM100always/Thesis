@@ -59,6 +59,7 @@ const PlatformPage = lazy(() => import("./pages/Platform"));
 const AcceptInvite = lazy(() => import("./pages/AcceptInvite"));
 const Onboarding = lazy(() => import("./pages/Onboarding"));
 const StorePage = lazy(() => import("./pages/Store"));
+const StoreDirectoryPage = lazy(() => import("./pages/StoreDirectory"));
 const OrderStatusPage = lazy(() => import("./pages/OrderStatus"));
 const StoreAdminPage = lazy(() => import("./pages/StoreAdmin"));
 const ResearchPortal = lazy(() => import("./pages/ResearchPortal"));
@@ -190,10 +191,11 @@ function Shell() {
   if (pathname === "/sample-stores") return <ResearchPortal />;
   // The public storefront and order-status lookup need no account at all —
   // a visitor opens these from a link the shop shares, not through the app.
-  if (pathname.startsWith("/store/") || pathname.startsWith("/order-status/")) {
+  if (pathname.startsWith("/store/") || pathname.startsWith("/order-status/") || pathname === "/stores") {
     return (
       <Routes>
         <Route path="/store/:orgId" element={<StorePage />} />
+        <Route path="/stores" element={<StoreDirectoryPage />} />
         <Route path="/order-status/:orgId/:token" element={<OrderStatusPage />} />
       </Routes>
     );
