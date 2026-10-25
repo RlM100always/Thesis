@@ -15,6 +15,16 @@ The three panels have visible navigation links when signed in with an authorized
 
 **Provisioning:** Set `PRESENTATION_DEMO_ENABLED=true`, `PRESENTATION_DEMO_EMAIL` and `PRESENTATION_PASSWORD_HASH` in **Render environment variables**, with `AUTH_MODE=jwt`. The password hash must use the project's scrypt format and be computed locally; never store the raw password or hash in README, public GitHub or client-side JavaScript. Startup invokes `api/presentation_demo.py` idempotently after schema creation, without elevating pre-existing non-admin users. Disable demo access after the presentation and rotate or deactivate the account as appropriate. In demo deployment currently using ephemeral SQLite, account and sample records can disappear on restart/redeploy and are reprovisioned from the environment; never rely on it for real business data. For production use a durable PostgreSQL connection, proper migrations, MFA and independent security verification.
 
+## Live research datasets on Render (25 October 2026)
+
+The Research Portal built-in CSVs are **generated reproducibly during the Docker build** using `00b_generate_multi_vertical_datasets.py` (pharmacy, grocery, clothing, restaurant, electronics) and `00c_generate_additional_datasets.py` (auto_parts, stationery), because `normalized_data/` is gitignored and not present in a GitHub clone. Both generators explicitly label their 30,000-transaction-per-vertical output **synthetic**, not collected from real shops. Deployment fails if any of the seven CSVs is missing.
+
+The safe, checked-in `data/real_public/` and `artifacts/real_public/` folders are now included in the Docker build; `data/real_sme/`, personal uploads and private content remain excluded. The real-source reference files are *not* interchangeable with the generated transaction CSVs. The independently trained model artifacts required by `predict.py` are also separate: verify `/health` before relying on the legacy `/api/forecast` or model endpoints.
+
+For the interactive portal, sign in and open `/#/research` → **New Experiment**. Choose a vertical, read its true server-side `available` state and row count, preview the first rows or download the CSV, then create an experiment. The authenticated endpoints are `GET /api/research/portal/datasets`, `GET /api/research/portal/datasets/{vertical}/preview` and `GET /api/research/portal/datasets/{vertical}/download`. No arbitrary path access.
+
+**Important:** CSVs packaged inside the Render Docker image remain available after application restarts because they are baked into the image. By contrast, user-uploaded CSV/XLSX files, newly generated experiments and model checkpoints under `artifacts/research_portal/` are currently written to Render's ephemeral filesystem and **will not persist reliably across redeploys/restarts**. For a genuinely persistent multi-user research service, move upload/experiment/model artifacts to durable object storage (e.g. R2/S3) and metadata to PostgreSQL, with per-user authorization and backup policy. Do not call synthetic data live observational data.
+
 ## Online deployment (Render)
 
 - **Application URL (deployment in progress):** https://thesis-j0n8.onrender.com
