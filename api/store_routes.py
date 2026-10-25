@@ -26,7 +26,7 @@ from .auth import CurrentMembership
 from .database import get_db
 from .domain_models import (
     Branch, Customer, InventoryBalance, Organization, Product,
-    SalesDocument, Store, StoreProduct, utcnow,
+    ProductVariant, SalesDocument, Store, StoreProduct, utcnow,
 )
 from .permissions import require_permission
 
@@ -52,7 +52,7 @@ def _stock_status(db: Session, org_id: str, product_id: str, show_level: str) ->
     if show_level == "hide":
         return {}
     balance = db.scalar(
-        select(func.coalesce(func.sum(InventoryBalance.quantity_on_hand), 0)).where(
+        select(func.coalesce(func.sum(InventoryBalance.quantity), 0)).where(
             InventoryBalance.organization_id == org_id,
             InventoryBalance.product_id == product_id,
         )
@@ -64,19 +64,45 @@ def _stock_status(db: Session, org_id: str, product_id: str, show_level: str) ->
 
 
 def _public_product(p: Product, sp: StoreProduct | None, store: Store, db: Session) -> dict:
+    from datetime import datetime, timezone as tz
     price = float(sp.online_price_bdt) if sp and sp.online_price_bdt is not None else float(p.selling_price)
+    # Flash sale
+    sale_price = None
+    sale_end = None
+    if sp and sp.sale_price is not None:
+        now = datetime.now(tz.utc).isoformat()
+        start_ok = (not sp.sale_start) or sp.sale_start <= now
+        end_ok   = (not sp.sale_end)   or sp.sale_end   >= now
+        if start_ok and end_ok:
+            sale_price = float(sp.sale_price)
+            sale_end   = sp.sale_end
+    # Variants
+    variants = []
+    for v in db.scalars(select(ProductVariant).where(ProductVariant.product_id == p.id)).all():
+        try:
+            opts = json.loads(v.options)
+        except Exception:
+            opts = []
+        try:
+            deltas = json.loads(v.price_deltas) if v.price_deltas else {}
+        except Exception:
+            deltas = {}
+        variants.append({"id": v.id, "name": v.name, "options": opts, "price_deltas": deltas})
     return {
         "id": p.id,
         "name": p.name,
         "sku": p.sku,
         "unit": p.unit,
         "price": price if store.show_price else None,
-        "description": (sp.description_long if sp and sp.description_long else p.description) or "",
+        "sale_price": sale_price if store.show_price else None,
+        "sale_end": sale_end,
+        "description": (sp.description_long if sp and sp.description_long else "") or "",
         "image_data_url": sp.image_data_url if sp else None,
         "tags": (sp.tags.split(",") if sp and sp.tags else []),
         "is_featured": sp.is_featured if sp else False,
         "sort_order": sp.sort_order if sp else 0,
         "max_order_qty": sp.max_order_qty if sp else None,
+        "variants": variants,
         **_stock_status(db, p.organization_id, p.id, store.show_stock_level),
     }
 
@@ -103,10 +129,23 @@ def _store_public_view(store: Store, org: Organization) -> dict:
         "payment_cod": store.payment_cod,
         "payment_bkash": store.payment_bkash,
         "payment_nagad": store.payment_nagad,
+        "bkash_number": store.bkash_number if store.payment_bkash else None,
+        "nagad_number": store.nagad_number if store.payment_nagad else None,
         "min_order_bdt": float(store.min_order_bdt) if store.min_order_bdt else None,
         "delivery_note": store.delivery_note,
         "meta_title": store.meta_title,
         "meta_desc": store.meta_desc,
+        "delivery_inside_dhaka": float(store.delivery_inside_dhaka) if store.delivery_inside_dhaka else None,
+        "delivery_outside_dhaka": float(store.delivery_outside_dhaka) if store.delivery_outside_dhaka else None,
+        "delivery_free_above": float(store.delivery_free_above) if store.delivery_free_above else None,
+        "allow_zone_restriction": store.allow_zone_restriction,
+        "allowed_divisions": store.allowed_divisions,
+        # Expose only the store_id (not password) to public — needed for frontend to show SSLCommerz option
+        "sslcz_store_id": store.sslcz_store_id or None,
+        "sslcz_is_live": store.sslcz_is_live,
+        # Expose presence (not secrets) so frontend knows direct API mode is available
+        "bkash_app_key": store.bkash_app_key or None,
+        "nagad_merchant_id": store.nagad_merchant_id or None,
     }
 
 
@@ -131,11 +170,21 @@ def _store_admin_view(store: Store) -> dict:
         "payment_cod": store.payment_cod,
         "payment_bkash": store.payment_bkash,
         "payment_nagad": store.payment_nagad,
+        "bkash_number": store.bkash_number,
+        "nagad_number": store.nagad_number,
         "min_order_bdt": float(store.min_order_bdt) if store.min_order_bdt else None,
         "delivery_note": store.delivery_note,
         "hours_json": json.loads(store.hours_json) if store.hours_json else None,
         "meta_title": store.meta_title,
         "meta_desc": store.meta_desc,
+        "delivery_inside_dhaka": float(store.delivery_inside_dhaka) if store.delivery_inside_dhaka else None,
+        "delivery_outside_dhaka": float(store.delivery_outside_dhaka) if store.delivery_outside_dhaka else None,
+        "delivery_free_above": float(store.delivery_free_above) if store.delivery_free_above else None,
+        "allow_zone_restriction": store.allow_zone_restriction,
+        "allowed_divisions": store.allowed_divisions,
+        "sslcz_store_id": store.sslcz_store_id or None,
+        "sslcz_store_passwd": store.sslcz_store_passwd or None,
+        "sslcz_is_live": store.sslcz_is_live,
         "created_at": store.created_at,
     }
 
@@ -150,16 +199,16 @@ def list_public_stores(
     category: str | None = Query(None),
     area: str | None = Query(None),
 ):
-    """List active storefronts from real operational Store records, never research fixtures."""
+    """Return all active stores for the public directory page."""
     q = select(Store, Organization).join(
         Organization, Organization.id == Store.organization_id
     ).where(Store.is_active.is_(True)).order_by(Store.display_name)
-    entries = db.execute(q).all()
+    rows = db.execute(q).all()
     result = []
-    for store, org in entries:
-        if category and (category.casefold() not in (store.category or "").casefold()):
+    for store, org in rows:
+        if category and store.category and category.lower() not in store.category.lower():
             continue
-        if area and (area.casefold() not in (store.area or "").casefold()):
+        if area and store.area and area.lower() not in store.area.lower():
             continue
         result.append({
             "organization_id": store.organization_id,
@@ -180,14 +229,40 @@ def list_public_stores(
 
 
 @public_router.get("/slug/{slug}", tags=["public-store"])
-def public_store_by_slug(slug: str, db: Db):
-    """Resolve human-readable storefront URLs while honoring the active flag."""
+def get_public_store_by_slug(slug: str, db: Db):
+    """Lookup a store by its slug instead of org UUID."""
     store = db.scalar(select(Store).where(
         Store.slug == slug, Store.is_active.is_(True)
     ))
     if store is None:
-        raise HTTPException(404, "Store not found or inactive")
-    return get_public_store(store.organization_id, db)
+        raise HTTPException(status_code=404, detail="Store not found or not active")
+    org = db.scalar(select(Organization).where(Organization.id == store.organization_id))
+    if org is None:
+        raise HTTPException(status_code=404, detail="Store not found")
+    return _build_store_response(store, org, db)
+
+
+def _build_store_response(store: Store, org: Organization, db: Session) -> dict:
+    """Shared logic for public store responses (by org_id or by slug)."""
+    sp_rows = {
+        sp.product_id: sp
+        for sp in db.scalars(select(StoreProduct).where(
+            StoreProduct.store_id == store.id, StoreProduct.is_listed.is_(True)
+        ))
+    }
+    listed_product_ids = set(sp_rows.keys())
+    products = list(db.scalars(
+        select(Product).where(
+            Product.organization_id == store.organization_id,
+            Product.active.is_(True),
+            Product.id.in_(listed_product_ids or {""}),
+        ).order_by(Product.name)
+    ))
+    product_list = sorted(
+        [_public_product(p, sp_rows.get(p.id), store, db) for p in products],
+        key=lambda x: (x["sort_order"], x["name"]),
+    )
+    return {**_store_public_view(store, org), "products": product_list}
 
 
 @public_router.get("/{organization_id}", tags=["public-store"])
@@ -206,34 +281,7 @@ def get_public_store(organization_id: str, db: Db):
     org = db.scalar(select(Organization).where(Organization.id == organization_id))
     if org is None:
         raise HTTPException(status_code=404, detail="Store not found")
-
-    # Build product map: StoreProduct rows keyed by product_id.
-    sp_rows = {
-        sp.product_id: sp
-        for sp in db.scalars(select(StoreProduct).where(
-            StoreProduct.store_id == store.id, StoreProduct.is_listed.is_(True)
-        ))
-    }
-    listed_product_ids = set(sp_rows.keys())
-
-    # Active products that have a StoreProduct listing.
-    products = list(db.scalars(
-        select(Product).where(
-            Product.organization_id == organization_id,
-            Product.active.is_(True),
-            Product.id.in_(listed_product_ids or {""}),
-        ).order_by(Product.name)
-    ))
-
-    product_list = sorted(
-        [_public_product(p, sp_rows.get(p.id), store, db) for p in products],
-        key=lambda x: (x["sort_order"], x["name"]),
-    )
-
-    return {
-        **_store_public_view(store, org),
-        "products": product_list,
-    }
+    return _build_store_response(store, org, db)
 
 
 # ---------------------------------------------------------------------------
@@ -284,11 +332,31 @@ class StoreUpdate(BaseModel):
     payment_cod: bool | None = None
     payment_bkash: bool | None = None
     payment_nagad: bool | None = None
+    bkash_number: str | None = Field(default=None, max_length=20)
+    nagad_number: str | None = Field(default=None, max_length=20)
     min_order_bdt: Decimal | None = None
     delivery_note: str | None = Field(default=None, max_length=300)
     hours_json: dict | None = None
     meta_title: str | None = Field(default=None, max_length=160)
     meta_desc: str | None = Field(default=None, max_length=320)
+    delivery_inside_dhaka: Decimal | None = None
+    delivery_outside_dhaka: Decimal | None = None
+    delivery_free_above: Decimal | None = None
+    allow_zone_restriction: bool | None = None
+    allowed_divisions: str | None = Field(default=None, max_length=200)
+    sslcz_store_id: str | None = Field(default=None, max_length=100)
+    sslcz_store_passwd: str | None = Field(default=None, max_length=200)
+    sslcz_is_live: bool | None = None
+    bkash_app_key: str | None = Field(default=None, max_length=200)
+    bkash_app_secret: str | None = Field(default=None, max_length=200)
+    bkash_username: str | None = Field(default=None, max_length=100)
+    bkash_password: str | None = Field(default=None, max_length=100)
+    bkash_is_live: bool | None = None
+    nagad_merchant_id: str | None = Field(default=None, max_length=100)
+    nagad_merchant_number: str | None = Field(default=None, max_length=20)
+    nagad_pub_key: str | None = None
+    nagad_priv_key: str | None = None
+    nagad_is_live: bool | None = None
 
 
 class StoreProductUpdate(BaseModel):
@@ -300,6 +368,10 @@ class StoreProductUpdate(BaseModel):
     tags: str | None = Field(default=None, max_length=300)
     is_featured: bool | None = None
     max_order_qty: int | None = None
+    # Flash sale
+    sale_price: Decimal | None = None
+    sale_start: str | None = None   # ISO datetime string or null to clear
+    sale_end: str | None = None
 
 
 @router.get("", tags=["store-admin"])
@@ -434,6 +506,8 @@ def list_online_orders(
     membership: CurrentMembership, db: Db,
     status: str | None = Query(default=None),
     limit: int = Query(default=50, le=200),
+    from_date: str | None = Query(default=None),
+    to_date: str | None = Query(default=None),
 ):
     """Online orders placed through the public storefront (channel='online')."""
     require_permission(membership, "orders:read")
@@ -450,6 +524,18 @@ def list_online_orders(
     )
     if status:
         stmt = stmt.where(SalesDocument.status == status)
+    if from_date:
+        from datetime import datetime as _dt
+        try:
+            stmt = stmt.where(SalesDocument.issued_at >= _dt.fromisoformat(from_date))
+        except ValueError:
+            pass
+    if to_date:
+        from datetime import datetime as _dt
+        try:
+            stmt = stmt.where(SalesDocument.issued_at <= _dt.fromisoformat(to_date))
+        except ValueError:
+            pass
 
     orders = list(db.scalars(stmt))
     product_ids = {line.product_id for order in orders for line in order.lines}
@@ -460,12 +546,18 @@ def list_online_orders(
             "id": doc.id,
             "order_number": doc.document_number,
             "status": doc.status,
+            "payment_status": getattr(doc, "payment_status", "pending"),
+            "status_note": getattr(doc, "status_note", None),
             "placed_at": doc.issued_at,
             "customer_name": doc.shipping_name,
             "customer_phone": doc.shipping_phone,
             "delivery_address": doc.shipping_address,
+            "subtotal": float(doc.subtotal),
+            "delivery_fee": float(getattr(doc, "delivery_fee", 0) or 0),
             "total": float(doc.total),
+            "notes": doc.notes,
             "access_token": doc.access_token,
+            "has_payment_screenshot": bool(getattr(doc, "payment_screenshot_url", None)),
             "items": [
                 {
                     "product_name": products[l.product_id].name if l.product_id in products else l.product_id,
@@ -478,6 +570,112 @@ def list_online_orders(
         }
         for doc in orders
     ]
+
+
+class PaymentStatusIn(BaseModel):
+    payment_status: str = Field(max_length=20)
+
+
+class StatusNoteIn(BaseModel):
+    note: str = Field(max_length=500)
+
+
+class BulkStatusIn(BaseModel):
+    order_ids: list[str] = Field(min_length=1, max_length=100)
+    status: str = Field(max_length=20)
+
+
+@router.post("/orders/{order_id}/payment-status", tags=["store-admin"])
+def update_payment_status(order_id: str, body: PaymentStatusIn, membership: CurrentMembership, db: Db):
+    require_permission(membership, "orders:write")
+    doc = db.scalar(select(SalesDocument).where(
+        SalesDocument.id == order_id,
+        SalesDocument.organization_id == membership.organization_id,
+    ))
+    if doc is None:
+        raise HTTPException(status_code=404, detail="Order not found")
+    doc.payment_status = body.payment_status
+    db.commit()
+    return {"id": doc.id, "payment_status": doc.payment_status}
+
+
+@router.post("/orders/{order_id}/status-note", tags=["store-admin"])
+def update_status_note(order_id: str, body: StatusNoteIn, membership: CurrentMembership, db: Db):
+    require_permission(membership, "orders:write")
+    doc = db.scalar(select(SalesDocument).where(
+        SalesDocument.id == order_id,
+        SalesDocument.organization_id == membership.organization_id,
+    ))
+    if doc is None:
+        raise HTTPException(status_code=404, detail="Order not found")
+    doc.status_note = body.note
+    db.commit()
+    return {"id": doc.id, "status_note": doc.status_note}
+
+
+@router.post("/orders/bulk-status", tags=["store-admin"])
+def bulk_update_status(body: BulkStatusIn, membership: CurrentMembership, db: Db):
+    require_permission(membership, "orders:write")
+    from .order_routes import ORDER_TRANSITIONS
+    updated = []
+    for order_id in body.order_ids:
+        doc = db.scalar(select(SalesDocument).where(
+            SalesDocument.id == order_id,
+            SalesDocument.organization_id == membership.organization_id,
+        ))
+        if doc is None:
+            continue
+        allowed = ORDER_TRANSITIONS.get(doc.status, set())
+        if body.status in allowed:
+            doc.status = body.status
+            updated.append(order_id)
+    db.commit()
+    return {"updated": updated, "count": len(updated)}
+
+
+@router.get("/orders/export.csv", tags=["store-admin"])
+def export_orders_csv(membership: CurrentMembership, db: Db):
+    import csv
+    import io
+    from fastapi.responses import StreamingResponse
+    require_permission(membership, "orders:read")
+    stmt = (
+        select(SalesDocument)
+        .options(selectinload(SalesDocument.lines))
+        .where(
+            SalesDocument.organization_id == membership.organization_id,
+            SalesDocument.document_type == "order",
+            SalesDocument.channel == "online",
+        )
+        .order_by(SalesDocument.issued_at.desc())
+        .limit(5000)
+    )
+    orders = list(db.scalars(stmt))
+    product_ids = {line.product_id for order in orders for line in order.lines}
+    products = {p.id: p for p in db.scalars(select(Product).where(Product.id.in_(product_ids or {""})))}
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(["Order Number", "Status", "Payment Status", "Placed At", "Customer Name", "Phone", "Address", "Subtotal", "Delivery Fee", "Total", "Items"])
+    for doc in orders:
+        items_str = "; ".join(
+            f"{products[l.product_id].name if l.product_id in products else l.product_id} x{float(l.quantity)}"
+            for l in doc.lines
+        )
+        writer.writerow([
+            doc.document_number, doc.status,
+            getattr(doc, "payment_status", "pending"),
+            doc.issued_at.isoformat() if doc.issued_at else "",
+            doc.shipping_name, doc.shipping_phone, doc.shipping_address,
+            float(doc.subtotal), float(getattr(doc, "delivery_fee", 0) or 0), float(doc.total),
+            items_str,
+        ])
+    output.seek(0)
+    return StreamingResponse(
+        iter([output.getvalue()]),
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=orders.csv"},
+    )
 
 
 @router.get("/stats", tags=["store-admin"])
@@ -526,3 +724,160 @@ def store_stats(membership: CurrentMembership, db: Db):
         "confirmed_revenue_bdt": float(revenue),
         "listed_products": listed,
     }
+
+
+# ── Revenue chart ─────────────────────────────────────────────────────────────
+
+@router.get("/revenue-chart", tags=["store-admin"])
+def revenue_chart(
+    membership: CurrentMembership,
+    db: Db,
+    days: int = Query(default=30, ge=7, le=365),
+):
+    """Daily confirmed revenue for the last N days."""
+    require_permission(membership, "orders:read")
+    from datetime import datetime, timedelta, timezone as tz
+    import json as _json
+
+    org_id = membership.organization_id
+    cutoff = datetime.now(tz.utc) - timedelta(days=days)
+
+    docs = db.scalars(
+        select(SalesDocument).where(
+            SalesDocument.organization_id == org_id,
+            SalesDocument.document_type == "order",
+            SalesDocument.channel == "online",
+            SalesDocument.status.in_(["confirmed", "ready", "dispatched", "delivered", "invoiced"]),
+            SalesDocument.issued_at >= cutoff,
+        )
+    ).all()
+
+    # Aggregate by date
+    by_date: dict[str, float] = {}
+    for doc in docs:
+        day = doc.issued_at.strftime("%Y-%m-%d")
+        by_date[day] = by_date.get(day, 0.0) + float(doc.total)
+
+    # Fill gaps
+    result = []
+    for i in range(days):
+        day = (datetime.now(tz.utc) - timedelta(days=days - 1 - i)).strftime("%Y-%m-%d")
+        result.append({"date": day, "revenue": by_date.get(day, 0.0)})
+
+    return {"days": days, "data": result}
+
+
+# ── Low stock alerts ──────────────────────────────────────────────────────────
+
+@router.get("/low-stock", tags=["store-admin"])
+def low_stock_alerts(membership: CurrentMembership, db: Db):
+    """Products below their stock_alert_threshold."""
+    require_permission(membership, "catalog:read")
+    from .domain_models import InventoryBalance as IB, Product as P
+
+    org_id = membership.organization_id
+    products = db.scalars(
+        select(P).where(
+            P.organization_id == org_id,
+            P.active.is_(True),
+            P.stock_alert_threshold.isnot(None),
+        )
+    ).all()
+
+    alerts = []
+    for p in products:
+        bal = db.scalar(
+            select(func.coalesce(func.sum(InventoryBalance.quantity), 0)).where(
+                InventoryBalance.organization_id == org_id,
+                InventoryBalance.product_id == p.id,
+            )
+        ) or Decimal("0")
+        if float(bal) <= p.stock_alert_threshold:
+            alerts.append({
+                "product_id": p.id,
+                "name": p.name,
+                "sku": p.sku,
+                "current_stock": float(bal),
+                "threshold": p.stock_alert_threshold,
+            })
+    return alerts
+
+
+# ── Stock alert threshold update ─────────────────────────────────────────────
+
+class AlertThresholdIn(BaseModel):
+    threshold: int | None = None
+
+
+@router.patch("/products/{product_id}/alert-threshold", tags=["store-admin"])
+def set_alert_threshold(product_id: str, body: AlertThresholdIn, membership: CurrentMembership, db: Db):
+    require_permission(membership, "catalog:write")
+    from .domain_models import Product as P
+    product = db.scalar(
+        select(P).where(P.id == product_id, P.organization_id == membership.organization_id)
+    )
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+    product.stock_alert_threshold = body.threshold
+    db.commit()
+    return {"ok": True}
+
+
+# ── Product variant CRUD ──────────────────────────────────────────────────────
+
+class VariantIn(BaseModel):
+    name: str = Field(max_length=50)
+    options: list[str]
+    price_deltas: dict[str, float] | None = None
+
+
+@router.get("/products/{product_id}/variants", tags=["store-admin"])
+def list_variants(product_id: str, membership: CurrentMembership, db: Db):
+    require_permission(membership, "catalog:read")
+    variants = db.scalars(
+        select(ProductVariant).where(
+            ProductVariant.product_id == product_id,
+            ProductVariant.organization_id == membership.organization_id,
+        )
+    ).all()
+    return [
+        {
+            "id": v.id,
+            "name": v.name,
+            "options": json.loads(v.options),
+            "price_deltas": json.loads(v.price_deltas) if v.price_deltas else {},
+        }
+        for v in variants
+    ]
+
+
+@router.post("/products/{product_id}/variants", status_code=201, tags=["store-admin"])
+def create_variant(product_id: str, body: VariantIn, membership: CurrentMembership, db: Db):
+    require_permission(membership, "catalog:write")
+    v = ProductVariant(
+        organization_id=membership.organization_id,
+        product_id=product_id,
+        name=body.name,
+        options=json.dumps(body.options),
+        price_deltas=json.dumps(body.price_deltas) if body.price_deltas else None,
+    )
+    db.add(v)
+    db.commit()
+    db.refresh(v)
+    return {"id": v.id, "name": v.name, "options": body.options, "price_deltas": body.price_deltas or {}}
+
+
+@router.delete("/products/{product_id}/variants/{variant_id}", status_code=204, tags=["store-admin"])
+def delete_variant(product_id: str, variant_id: str, membership: CurrentMembership, db: Db):
+    require_permission(membership, "catalog:write")
+    v = db.scalar(
+        select(ProductVariant).where(
+            ProductVariant.id == variant_id,
+            ProductVariant.product_id == product_id,
+            ProductVariant.organization_id == membership.organization_id,
+        )
+    )
+    if not v:
+        raise HTTPException(status_code=404, detail="Variant not found")
+    db.delete(v)
+    db.commit()

@@ -194,7 +194,7 @@ function Shell() {
   if (pathname.startsWith("/store/") || pathname.startsWith("/order-status/") || pathname === "/stores") {
     return (
       <Routes>
-        <Route path="/store/:orgId" element={<StorePage />} />
+        <Route path="/store/:storeId" element={<StorePage />} />
         <Route path="/stores" element={<StoreDirectoryPage />} />
         <Route path="/order-status/:orgId/:token" element={<OrderStatusPage />} />
       </Routes>

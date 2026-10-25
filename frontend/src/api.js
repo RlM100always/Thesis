@@ -30,10 +30,16 @@ async function post(path, body) {
   return res.json();
 }
 
+function getActiveOrgId() {
+  try { return localStorage.getItem("activeOrganization") || ""; }
+  catch { return ""; }
+}
+
 async function appRequest(path, { method = "GET", body, organizationId, formData } = {}) {
   const headers = {};
   if (body !== undefined) headers["Content-Type"] = "application/json";
-  if (organizationId) headers["X-Organization-ID"] = organizationId;
+  const orgId = organizationId || getActiveOrgId();
+  if (orgId) headers["X-Organization-ID"] = orgId;
   // formData: pass a FormData object directly (browser sets multipart boundary)
   const fetchBody = formData !== undefined ? formData
     : body !== undefined ? JSON.stringify(body)
@@ -645,6 +651,89 @@ export const api = {
   accountingPeriods: (org) => appRequest("/api/app/accounting/periods", { organizationId: org }),
   closePeriod: (org, body) => appRequest("/api/app/accounting/periods/close", { method: "POST", body, organizationId: org }),
   reopenPeriod: (org, id, body) => appRequest(`/api/app/accounting/periods/${encodeURIComponent(id)}/reopen`, { method: "POST", body, organizationId: org }),
+  // Restored public storefront, accounts, payment, coupons, reviews, stock/variant methods.
+  publicCancelOrder: (orgId, token) => post(`/api/public/orders/${encodeURIComponent(orgId)}/cancel/${encodeURIComponent(token)}`, {}),
+
+  publicUploadPaymentScreenshot: (orgId, token, body) => post(`/api/public/orders/${encodeURIComponent(orgId)}/payment-screenshot/${encodeURIComponent(token)}`, body),
+
+  initiateSSLCommerzPayment: async (orgId, orderId) => {
+    const form = new FormData();
+    form.append("order_id", orderId);
+    const resp = await fetch(`/api/public/payment/initiate/${orgId}`, { method: "POST", body: form });
+    if (!resp.ok) throw new Error((await resp.json()).detail || "Payment initiation failed");
+    return resp.json();
+  },
+
+  initiateBkashPayment: async (orgId, orderId) => {
+    const form = new FormData();
+    form.append("order_id", orderId);
+    const resp = await fetch(`/api/public/payment/bkash/initiate/${orgId}`, { method: "POST", body: form });
+    if (!resp.ok) throw new Error((await resp.json()).detail || "bKash payment failed");
+    return resp.json();
+  },
+
+  initiateNagadPayment: async (orgId, orderId) => {
+    const form = new FormData();
+    form.append("order_id", orderId);
+    const resp = await fetch(`/api/public/payment/nagad/initiate/${orgId}`, { method: "POST", body: form });
+    if (!resp.ok) throw new Error((await resp.json()).detail || "Nagad payment failed");
+    return resp.json();
+  },
+
+  getPaymentStatus: (orgId, orderId) => request(`/api/public/payment/status/${orgId}/${orderId}`),
+
+  getStoreOrdersFiltered: (params={}) => appRequest(`/api/app/store/orders?${new URLSearchParams(Object.fromEntries(Object.entries(params).filter(([,v])=>v!==undefined&&v!==null&&v!=="")))}`),
+
+  markOrderPaid: (orderId) => appRequest(`/api/app/store/orders/${orderId}/payment-status`, { method: "POST", body: { payment_status: "paid" } }),
+
+  addOrderStatusNote: (orderId, note) => appRequest(`/api/app/store/orders/${orderId}/status-note`, { method: "POST", body: { note } }),
+
+  bulkUpdateOrderStatus: (orderIds, status) => appRequest("/api/app/store/orders/bulk-status", { method: "POST", body: { order_ids: orderIds, status } }),
+
+  exportStoreOrders: () => appDownload("/api/app/store/orders/export.csv", "store_orders.csv"),
+
+  getStoreCustomerAnalytics: (slug) => appRequest(`/api/app/store-customers/${slug}/analytics`),
+
+  getStoreCustomerChatInbox: (slug) => appRequest(`/api/app/store-customers/${slug}/chat`),
+
+  getStoreCustomerThread: (slug, customerId) => appRequest(`/api/app/store-customers/${slug}/chat/${customerId}`),
+
+  replyStoreCustomerChat: (slug, customerId, body) => appRequest(`/api/app/store-customers/${slug}/chat/${customerId}/reply`, { method: "POST", body }),
+
+  getStoreCustomerUnread: (slug) => appRequest(`/api/app/store-customers/${slug}/unread`),
+
+  getStoreCustomerDetail: (slug, customerId) => appRequest(`/api/app/store-customers/${slug}/customers/${customerId}`),
+
+  getCoupons: () => appRequest("/api/app/store/coupons"),
+
+  createCoupon: (body) => appRequest("/api/app/store/coupons", { method: "POST", body }),
+
+  updateCoupon: (id, body) => appRequest(`/api/app/store/coupons/${encodeURIComponent(id)}`, { method: "PATCH", body }),
+
+  deleteCoupon: (id) => appRequest(`/api/app/store/coupons/${encodeURIComponent(id)}`, { method: "DELETE" }),
+
+  getReviews: (orgId, productId) => request(`/api/public/reviews/${encodeURIComponent(orgId)}/${encodeURIComponent(productId)}`),
+
+  submitReview: (orgId, body, scToken) => {
+    return fetch(`/api/public/reviews/${encodeURIComponent(orgId)}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...(scToken ? { Authorization: `Bearer ${scToken}` } : {}) },
+      body: JSON.stringify(body),
+    }).then(r => r.ok ? r.json() : r.json().then(e => Promise.reject(new Error(e.detail || "Review failed"))));
+  },
+
+  validateCoupon: (orgId, code, orderSubtotal) => post(`/api/public/store/${encodeURIComponent(orgId)}/coupon/validate`, {code, order_subtotal:orderSubtotal}),
+
+  getRevenueChart: (days = 30) => appRequest(`/api/app/store/revenue-chart?days=${days}`),
+
+  getLowStockAlerts: () => appRequest("/api/app/store/low-stock"),
+
+  getVariants: (productId) => appRequest(`/api/app/store/products/${encodeURIComponent(productId)}/variants`),
+
+  createVariant: (productId, body) => appRequest(`/api/app/store/products/${encodeURIComponent(productId)}/variants`, { method: "POST", body }),
+
+  deleteVariant: (productId, variantId) => appRequest(`/api/app/store/products/${encodeURIComponent(productId)}/variants/${encodeURIComponent(variantId)}`, { method: "DELETE" }),
+
 };
 
 // Money is in BDT and runs to billions — plain toLocaleString is unreadable.

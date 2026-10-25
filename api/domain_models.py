@@ -13,7 +13,7 @@ from decimal import Decimal
 
 from sqlalchemy import (
     Boolean, CheckConstraint, Date, DateTime, ForeignKey, Index, Integer, Numeric,
-    String, Text, UniqueConstraint, false,
+    String, Text, UniqueConstraint, false, func,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -272,6 +272,7 @@ class Product(Base, TimestampMixin):
     # first-out (FEFO). Pharmacy products are tracked; plain goods need not be.
     track_expiry: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
     active: Mapped[bool] = mapped_column(Boolean, default=True)
+    stock_alert_threshold: Mapped[int | None] = mapped_column(Integer)
 
 
 class Customer(Base, TimestampMixin):
@@ -504,11 +505,34 @@ class Store(Base, TimestampMixin):
     payment_cod: Mapped[bool] = mapped_column(Boolean, default=True)
     payment_bkash: Mapped[bool] = mapped_column(Boolean, default=False)
     payment_nagad: Mapped[bool] = mapped_column(Boolean, default=False)
+    bkash_number: Mapped[str | None] = mapped_column(String(20))
+    nagad_number: Mapped[str | None] = mapped_column(String(20))
     min_order_bdt: Mapped[Decimal | None] = mapped_column(Numeric(10, 2))
     delivery_note: Mapped[str | None] = mapped_column(String(300))
     hours_json: Mapped[str | None] = mapped_column(Text)
     meta_title: Mapped[str | None] = mapped_column(String(160))
     meta_desc: Mapped[str | None] = mapped_column(String(320))
+    delivery_inside_dhaka: Mapped[Decimal | None] = mapped_column(Numeric(10, 2))
+    delivery_outside_dhaka: Mapped[Decimal | None] = mapped_column(Numeric(10, 2))
+    delivery_free_above: Mapped[Decimal | None] = mapped_column(Numeric(14, 2))
+    allow_zone_restriction: Mapped[bool] = mapped_column(Boolean, default=False)
+    allowed_divisions: Mapped[str | None] = mapped_column(String(200))
+    # SSLCommerz payment gateway (optional; if set, enables redirect-based payment)
+    sslcz_store_id: Mapped[str | None] = mapped_column(String(100))
+    sslcz_store_passwd: Mapped[str | None] = mapped_column(String(200))
+    sslcz_is_live: Mapped[bool] = mapped_column(Boolean, default=False)
+    # bKash Tokenized Checkout API (merchant credentials)
+    bkash_app_key: Mapped[str | None] = mapped_column(String(100))
+    bkash_app_secret: Mapped[str | None] = mapped_column(String(200))
+    bkash_username: Mapped[str | None] = mapped_column(String(50))
+    bkash_password: Mapped[str | None] = mapped_column(String(100))
+    bkash_is_live: Mapped[bool] = mapped_column(Boolean, default=False)
+    # Nagad Merchant API
+    nagad_merchant_id: Mapped[str | None] = mapped_column(String(50))
+    nagad_merchant_number: Mapped[str | None] = mapped_column(String(20))
+    nagad_pub_key: Mapped[str | None] = mapped_column(Text)   # Nagad's public key (encrypt payload)
+    nagad_priv_key: Mapped[str | None] = mapped_column(Text)  # Merchant's private key (sign)
+    nagad_is_live: Mapped[bool] = mapped_column(Boolean, default=False)
 
 
 class StoreProduct(Base, TimestampMixin):
@@ -534,6 +558,10 @@ class StoreProduct(Base, TimestampMixin):
     tags: Mapped[str | None] = mapped_column(String(300))
     is_featured: Mapped[bool] = mapped_column(Boolean, default=False)
     max_order_qty: Mapped[int | None] = mapped_column(Integer)
+    # Flash sale
+    sale_price: Mapped[Decimal | None] = mapped_column(Numeric(14, 2))
+    sale_start: Mapped[str | None] = mapped_column(String(30))   # ISO datetime string
+    sale_end: Mapped[str | None] = mapped_column(String(30))
 
 
 class SalesOrder(Base, TimestampMixin):
@@ -640,6 +668,14 @@ class SalesDocument(Base, TimestampMixin):
     # look up their own order status without an account. Null for orders that
     # were never placed through the public endpoint.
     access_token: Mapped[str | None] = mapped_column(String(64), unique=True, index=True)
+    # Linked store customer account (when the buyer was signed in at checkout).
+    store_customer_id: Mapped[str | None] = mapped_column(String(36), index=True)
+    delivery_fee: Mapped[Decimal] = mapped_column(Numeric(14, 2), default=Decimal("0"))
+    payment_status: Mapped[str] = mapped_column(String(20), default="pending")
+    payment_screenshot_url: Mapped[str | None] = mapped_column(Text)
+    status_note: Mapped[str | None] = mapped_column(String(500))
+    coupon_code: Mapped[str | None] = mapped_column(String(50))
+    coupon_discount: Mapped[Decimal] = mapped_column(Numeric(14, 2), default=Decimal("0"))
 
     lines: Mapped[list["SalesDocumentLine"]] = relationship(back_populates="document", cascade="all, delete-orphan")
 
@@ -656,6 +692,7 @@ class SalesDocumentLine(Base, TimestampMixin):
     unit_price: Mapped[Decimal] = mapped_column(Numeric(14, 2))
     discount_amount: Mapped[Decimal] = mapped_column(Numeric(14, 2), default=0)
     line_total: Mapped[Decimal] = mapped_column(Numeric(14, 2))
+    variant_label: Mapped[str | None] = mapped_column(String(100))  # e.g. "Size: L"
 
     document: Mapped[SalesDocument] = relationship(back_populates="lines")
 
@@ -1582,6 +1619,46 @@ class TeamMessage(Base, TimestampMixin):
     body: Mapped[str] = mapped_column(Text)
 
 
+class OrgSubscription(Base, TimestampMixin):
+    """Which plan an org is on and its billing cycle state."""
+
+    __tablename__ = "org_subscriptions"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    organization_id: Mapped[str] = mapped_column(ForeignKey("organizations.id"), unique=True, index=True)
+    plan_code: Mapped[str] = mapped_column(String(40), default="free")
+    plan_name: Mapped[str] = mapped_column(String(80), default="Free")
+    price_bdt: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=Decimal("0"))
+    billing_cycle: Mapped[str] = mapped_column(String(10), default="monthly")  # monthly | yearly
+    status: Mapped[str] = mapped_column(String(20), default="active")  # active | overdue | cancelled | trial
+    trial_ends_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    current_period_start: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    current_period_end: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    assigned_by_user_id: Mapped[str | None] = mapped_column(ForeignKey("users.id"))
+    notes: Mapped[str | None] = mapped_column(String(500))
+
+    organization: Mapped["Organization"] = relationship("Organization", lazy="joined")
+
+
+class OrgInvoice(Base):
+    """A billing period invoice for an org subscription."""
+
+    __tablename__ = "org_invoices"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    organization_id: Mapped[str] = mapped_column(ForeignKey("organizations.id"), index=True)
+    subscription_id: Mapped[str | None] = mapped_column(ForeignKey("org_subscriptions.id"))
+    amount_bdt: Mapped[Decimal] = mapped_column(Numeric(12, 2))
+    period_label: Mapped[str] = mapped_column(String(20))  # "2026-10"
+    status: Mapped[str] = mapped_column(String(20), default="pending")  # pending | paid | overdue | waived
+    due_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    paid_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    notes: Mapped[str | None] = mapped_column(String(300))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
+
+    organization: Mapped["Organization"] = relationship("Organization", lazy="joined")
+
+
 class AdminConversation(Base, TimestampMixin):
     """One thread per organization between platform admin and the business."""
 
@@ -1636,3 +1713,140 @@ class SiteContent(Base, TimestampMixin):
     key: Mapped[str] = mapped_column(String(80), primary_key=True)
     value_json: Mapped[str] = mapped_column(Text)
     updated_by_user_id: Mapped[str | None] = mapped_column(ForeignKey("users.id"))
+
+
+# ── Store Customer Accounts ──────────────────────────────────────────────────
+# Separate from the business User/Customer tables. These are the end-consumers
+# who browse and order from the public store — one account works across all
+# B-SMART stores; each store sees only orders placed through its own checkout.
+
+class StoreCustomer(Base):
+    """A registered buyer on the public storefront.
+
+    One global account (by email or phone) covers all stores. Address fields
+    follow the Bangladesh administrative hierarchy: Division → District → Thana.
+    """
+
+    __tablename__ = "store_customers"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    email: Mapped[str | None] = mapped_column(String(200), unique=True, index=True)
+    phone: Mapped[str | None] = mapped_column(String(20), index=True)
+    display_name: Mapped[str] = mapped_column(String(100))
+    password_hash: Mapped[str | None] = mapped_column(String(300))
+    avatar_data_url: Mapped[str | None] = mapped_column(Text)
+    # Bangladesh address
+    division: Mapped[str | None] = mapped_column(String(50))
+    district: Mapped[str | None] = mapped_column(String(50))
+    thana: Mapped[str | None] = mapped_column(String(80))
+    address_detail: Mapped[str | None] = mapped_column(String(400))
+    referral_code: Mapped[str | None] = mapped_column(String(20), unique=True, index=True)
+    referred_by: Mapped[str | None] = mapped_column(String(20))  # referral_code of referrer
+    # auth housekeeping
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    token_version: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    updated_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), onupdate=func.now()
+    )
+
+
+class StoreMessage(Base):
+    """One chat message between a store customer and the store's staff.
+
+    `sender` is either "customer" or "store". `read_at` is set when the
+    other party first fetches it, so unread counts stay accurate.
+    """
+
+    __tablename__ = "store_messages"
+    __table_args__ = (
+        Index("ix_store_msg_store_customer", "store_id", "customer_id"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    store_id: Mapped[str] = mapped_column(
+        ForeignKey("stores.id", ondelete="CASCADE"), index=True
+    )
+    customer_id: Mapped[str] = mapped_column(
+        ForeignKey("store_customers.id", ondelete="CASCADE"), index=True
+    )
+    sender: Mapped[str] = mapped_column(String(10))  # "customer" | "store"
+    body: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    read_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+# ── New ecommerce feature models ──────────────────────────────────────────────
+
+class StoreCoupon(Base, TimestampMixin):
+    """Discount coupon / promo code for a store."""
+
+    __tablename__ = "store_coupons"
+    __table_args__ = (UniqueConstraint("organization_id", "code"),)
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    organization_id: Mapped[str] = mapped_column(
+        ForeignKey("organizations.id", ondelete="CASCADE"), index=True
+    )
+    code: Mapped[str] = mapped_column(String(50))
+    # "percent" | "fixed"
+    discount_type: Mapped[str] = mapped_column(String(10), default="percent")
+    discount_value: Mapped[Decimal] = mapped_column(Numeric(14, 2))
+    min_order_bdt: Mapped[Decimal] = mapped_column(Numeric(14, 2), default=Decimal("0"))
+    max_uses: Mapped[int | None] = mapped_column(Integer)
+    used_count: Mapped[int] = mapped_column(Integer, default=0)
+    valid_from: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    valid_to: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+
+
+class ProductVariant(Base, TimestampMixin):
+    """Size / Color / Weight variant group for a store product.
+
+    ``options`` is a JSON-encoded list of variant names, e.g. ["S","M","L"].
+    ``price_deltas`` maps option → price adjustment (positive or negative),
+    stored as JSON, e.g. {"XL": 50, "XXL": 100}.
+    """
+
+    __tablename__ = "product_variants"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    organization_id: Mapped[str] = mapped_column(
+        ForeignKey("organizations.id", ondelete="CASCADE"), index=True
+    )
+    product_id: Mapped[str] = mapped_column(
+        ForeignKey("products.id", ondelete="CASCADE"), index=True
+    )
+    name: Mapped[str] = mapped_column(String(50))   # e.g. "Size", "Color"
+    options: Mapped[str] = mapped_column(Text)       # JSON list
+    price_deltas: Mapped[str | None] = mapped_column(Text)  # JSON map option→Decimal
+
+
+class ProductReview(Base):
+    """Star rating + optional comment left by a verified buyer."""
+
+    __tablename__ = "product_reviews"
+    __table_args__ = (
+        UniqueConstraint("organization_id", "product_id", "store_customer_id"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    organization_id: Mapped[str] = mapped_column(
+        ForeignKey("organizations.id", ondelete="CASCADE"), index=True
+    )
+    product_id: Mapped[str] = mapped_column(
+        ForeignKey("products.id", ondelete="CASCADE"), index=True
+    )
+    store_customer_id: Mapped[str] = mapped_column(
+        ForeignKey("store_customers.id", ondelete="CASCADE"), index=True
+    )
+    order_id: Mapped[str | None] = mapped_column(String(36))  # document id for verification
+    rating: Mapped[int] = mapped_column(Integer)              # 1–5
+    comment: Mapped[str | None] = mapped_column(String(1000))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )

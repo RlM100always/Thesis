@@ -19,7 +19,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 
@@ -28,7 +28,8 @@ from .audit import record_audit
 from .auth import CurrentMembership, CurrentUser
 from .commerce_routes import create_sale
 from .database import get_db
-from .domain_models import Branch, Customer, Organization, Product, Reservation, SalesDocument, SalesDocumentLine
+from .domain_models import Branch, Customer, InventoryBalance, Organization, Product, Reservation, SalesDocument, SalesDocumentLine, Store, StoreCustomer
+from .domain_models import StoreCoupon
 from .permissions import require_permission
 
 router = APIRouter(prefix="/api/app/sales-documents")
@@ -243,17 +244,27 @@ def invoice_order(document_id: str, body: SalesDocumentInvoice, membership: Curr
 
 def _public_view(document: SalesDocument, products: dict[str, Product]) -> dict:
     return {
+        "id": document.id,
         "order_number": document.document_number,
         "access_token": document.access_token,
         "status": document.status,
+        "payment_status": getattr(document, "payment_status", "pending"),
+        "status_note": getattr(document, "status_note", None),
         "placed_at": document.issued_at,
         "shipping_name": document.shipping_name,
         "shipping_phone": document.shipping_phone,
         "shipping_address": document.shipping_address,
-        "subtotal": document.subtotal, "tax_amount": document.tax_amount, "total": document.total,
+        "subtotal": document.subtotal, "tax_amount": document.tax_amount,
+        "delivery_fee": getattr(document, "delivery_fee", Decimal("0")) or Decimal("0"),
+        "discount_amount": getattr(document, "discount_amount", Decimal("0")) or Decimal("0"),
+        "coupon_code": getattr(document, "coupon_code", None),
+        "coupon_discount": float(getattr(document, "coupon_discount", 0) or 0),
+        "total": document.total,
+        "organization_id": document.organization_id,
         "items": [{
             "product_name": products[line.product_id].name,
             "quantity": line.quantity, "unit_price": line.unit_price, "line_total": line.line_total,
+            "variant_label": getattr(line, "variant_label", None),
         } for line in document.lines],
     }
 
@@ -300,10 +311,115 @@ def place_public_order(organization_id: str, payload: PublicOrderCreate, db: Db)
     subtotal = Decimal("0"); lines = []
     for item in payload.items:
         product = products[item.product_id]
-        gross = (product.selling_price * item.quantity).quantize(MONEY, rounding=ROUND_HALF_UP)
+        # Use online_price or sale_price from StoreProduct if available
+        from .domain_models import StoreProduct as _SP
+        sp = db.scalar(select(_SP).join(Store, _SP.store_id == Store.id).where(
+            Store.organization_id == organization_id, _SP.product_id == item.product_id
+        ))
+        from datetime import datetime as _dt, timezone as _tz
+        base_price = product.selling_price
+        if sp:
+            if sp.online_price_bdt is not None:
+                base_price = sp.online_price_bdt
+            # Apply active flash sale price
+            if sp.sale_price is not None:
+                _now = _dt.now(_tz.utc).isoformat()
+                _start_ok = (not sp.sale_start) or sp.sale_start <= _now
+                _end_ok   = (not sp.sale_end)   or sp.sale_end   >= _now
+                if _start_ok and _end_ok:
+                    base_price = sp.sale_price
+        gross = (base_price * item.quantity).quantize(MONEY, rounding=ROUND_HALF_UP)
         subtotal += gross
-        lines.append((item, product.selling_price, gross))
-    total = subtotal.quantize(MONEY)
+        lines.append((item, base_price, gross))
+
+    # Stock validation
+    for item in payload.items:
+        balance = db.scalar(
+            select(func.coalesce(func.sum(InventoryBalance.quantity), 0)).where(
+                InventoryBalance.organization_id == organization_id,
+                InventoryBalance.product_id == item.product_id,
+            )
+        ) or Decimal("0")
+        if Decimal(str(balance)) < Decimal(str(item.quantity)):
+            product_name = products[item.product_id].name
+            raise HTTPException(status_code=422, detail=f"দুঃখিত, '{product_name}' এর পর্যাপ্ত স্টক নেই")
+
+    # Delivery fee calculation
+    store = db.scalar(select(Store).where(Store.organization_id == organization_id))
+    delivery_fee = Decimal("0")
+    if store:
+        division = getattr(payload, "delivery_division", None)
+        if store.allow_zone_restriction and store.allowed_divisions and division:
+            allowed = [d.strip() for d in store.allowed_divisions.split(",")]
+            if division not in allowed:
+                raise HTTPException(status_code=422, detail="দুঃখিত, এই এলাকায় ডেলিভারি দেওয়া সম্ভব নয়")
+        if store.delivery_free_above and subtotal >= store.delivery_free_above:
+            delivery_fee = Decimal("0")
+        elif division and "ঢাকা" in division:
+            delivery_fee = Decimal(str(store.delivery_inside_dhaka or 0))
+        elif division:
+            delivery_fee = Decimal(str(store.delivery_outside_dhaka or store.delivery_inside_dhaka or 0))
+        else:
+            delivery_fee = Decimal(str(store.delivery_inside_dhaka or 0))
+
+    # Coupon validation (no side-effects yet; decrement after commit)
+    coupon_discount = Decimal("0")
+    coupon_obj = None
+    if payload.coupon_code:
+        from datetime import timezone as _tzc
+        _now = datetime.now(_tzc.utc)
+        coupon_obj = db.scalar(
+            select(StoreCoupon).where(
+                StoreCoupon.organization_id == organization_id,
+                StoreCoupon.code == payload.coupon_code.upper(),
+                StoreCoupon.is_active.is_(True),
+            )
+        )
+        if coupon_obj:
+            _ok = True
+            if coupon_obj.valid_from and coupon_obj.valid_from > _now:
+                _ok = False
+            if coupon_obj.valid_to and coupon_obj.valid_to < _now:
+                _ok = False
+            if coupon_obj.max_uses is not None and coupon_obj.used_count >= coupon_obj.max_uses:
+                _ok = False
+            if subtotal < coupon_obj.min_order_bdt:
+                _ok = False
+            if _ok:
+                if coupon_obj.discount_type == "percent":
+                    coupon_discount = (subtotal * coupon_obj.discount_value / 100).quantize(MONEY)
+                else:
+                    coupon_discount = min(coupon_obj.discount_value, subtotal)
+
+    total = (subtotal + delivery_fee - coupon_discount).quantize(MONEY)
+    if total < Decimal("0"):
+        total = Decimal("0")
+
+    # Resolve optional store-customer JWT → link order to account
+    sc_id: str | None = None
+    if getattr(payload, "store_customer_token", None):
+        try:
+            from .store_customer_routes import _decode as _sc_decode
+            from .domain_models import StoreCustomer as _SC
+            _claims = _sc_decode(payload.store_customer_token)
+            _sc = db.get(_SC, _claims["sub"])
+            if _sc and _sc.is_active and _sc.token_version == _claims.get("tv", 0):
+                sc_id = _sc.id
+        except Exception:
+            pass  # invalid token → place as guest
+
+    screenshot_url = getattr(payload, "payment_screenshot", None)
+    pay_status = "screenshot_uploaded" if screenshot_url else "pending"
+
+    # Referral: if sc has a referral credit coming (referred_by set), apply ৳50 bonus
+    referral_discount = Decimal("0")
+    referral_applied = False
+    if sc_id:
+        sc_obj = db.get(StoreCustomer, sc_id)
+        if sc_obj and sc_obj.referred_by and total > Decimal("200"):
+            referral_discount = Decimal("50")
+            referral_applied = True
+            total = max(Decimal("0"), total - referral_discount)
 
     # Both the order number and the lookup token are generated server-side and
     # retried on collision, since an anonymous buyer supplies neither.
@@ -312,10 +428,17 @@ def place_public_order(organization_id: str, payload: PublicOrderCreate, db: Db)
             organization_id=organization_id, branch_id=branch.id, customer_id=None,
             document_type="order", document_number=f"WEB-{secrets.token_hex(5).upper()}",
             status="placed", channel="online", issued_at=datetime.now(),
-            notes=payload.notes, subtotal=subtotal, discount_amount=Decimal("0"),
+            notes=(f"[{payload.payment_method.upper()}] " if payload.payment_method else "") + (payload.notes or ""),
+            subtotal=subtotal, discount_amount=coupon_discount + referral_discount,
             tax_amount=Decimal("0"), total=total,
             shipping_name=payload.shipping_name, shipping_phone=payload.shipping_phone,
             shipping_address=payload.shipping_address, access_token=secrets.token_urlsafe(24),
+            store_customer_id=sc_id,
+            delivery_fee=delivery_fee,
+            payment_status=pay_status,
+            payment_screenshot_url=screenshot_url,
+            coupon_code=coupon_obj.code if coupon_obj else None,
+            coupon_discount=coupon_discount,
         )
         db.add(document)
         try:
@@ -327,14 +450,40 @@ def place_public_order(organization_id: str, payload: PublicOrderCreate, db: Db)
             db.add(SalesDocumentLine(
                 organization_id=organization_id, document_id=document.id, product_id=item.product_id,
                 quantity=item.quantity, unit_price=price, discount_amount=Decimal("0"), line_total=line_total,
+                variant_label=getattr(item, "variant_label", None),
             ))
         db.commit(); db.refresh(document)
+        # Increment coupon usage
+        if coupon_obj:
+            coupon_obj.used_count = (coupon_obj.used_count or 0) + 1
+            db.commit()
+        # Clear referral credit (one-time use)
+        if referral_applied and sc_obj:
+            sc_obj.referred_by = None
+            db.commit()
         break
     else:
         raise HTTPException(status_code=500, detail="Could not allocate an order number, try again")
 
     document = _load(db, organization_id, document.id)
-    return _public_view(document, products)
+    result = _public_view(document, products)
+
+    # WhatsApp notification to the owning ORGANIZATION's number, not a missing Store.phone attribute.
+    owner_phone = db.scalar(select(Organization.phone).where(Organization.id == organization_id))
+    if store and owner_phone:
+        import urllib.parse
+        msg = f"নতুন অর্ডার #{document.document_number} — {payload.shipping_name} ({payload.shipping_phone}) — ৳{float(total):.0f}"
+        phone_digits = "".join(ch for ch in owner_phone if ch.isdigit())
+        result["whatsapp_notify_url"] = (f"https://wa.me/{phone_digits}?text={urllib.parse.quote(msg)}"
+                                         if phone_digits else None)
+    else:
+        result["whatsapp_notify_url"] = None
+
+    result["coupon_applied"] = coupon_discount > 0
+    result["coupon_discount"] = float(coupon_discount)
+    result["referral_discount"] = float(referral_discount)
+
+    return result
 
 
 @public_router.get("/{organization_id}/status/{access_token}", tags=["public-orders"])
@@ -343,6 +492,41 @@ def public_order_status(organization_id: str, access_token: str, db: Db):
         SalesDocument.organization_id == organization_id, SalesDocument.access_token == access_token))
     if document is None:
         raise HTTPException(status_code=404, detail="Order not found")
+    products = {p.id: p for p in db.scalars(select(Product).where(
+        Product.id.in_({l.product_id for l in document.lines} or {""})))}
+    return _public_view(document, products)
+
+
+class PublicScreenshotIn(BaseModel):
+    screenshot: str  # base64 data URL
+
+
+@public_router.post("/{organization_id}/cancel/{access_token}", tags=["public-orders"])
+def cancel_public_order(organization_id: str, access_token: str, db: Db):
+    document = db.scalar(select(SalesDocument).options(selectinload(SalesDocument.lines)).where(
+        SalesDocument.organization_id == organization_id, SalesDocument.access_token == access_token))
+    if document is None:
+        raise HTTPException(status_code=404, detail="Order not found")
+    if document.status != "placed":
+        raise HTTPException(status_code=409, detail="শুধু 'placed' অবস্থায় থাকা অর্ডার বাতিল করা যাবে")
+    document.status = "cancelled"
+    db.commit()
+    products = {p.id: p for p in db.scalars(select(Product).where(
+        Product.id.in_({l.product_id for l in document.lines} or {""})))}
+    return _public_view(document, products)
+
+
+@public_router.post("/{organization_id}/payment-screenshot/{access_token}", tags=["public-orders"])
+def upload_payment_screenshot(organization_id: str, access_token: str, body: PublicScreenshotIn, db: Db):
+    document = db.scalar(select(SalesDocument).options(selectinload(SalesDocument.lines)).where(
+        SalesDocument.organization_id == organization_id, SalesDocument.access_token == access_token))
+    if document is None:
+        raise HTTPException(status_code=404, detail="Order not found")
+    if document.status in ("cancelled", "delivered"):
+        raise HTTPException(status_code=409, detail="এই অর্ডারে পেমেন্ট স্ক্রিনশট যোগ করা যাবে না")
+    document.payment_screenshot_url = body.screenshot
+    document.payment_status = "screenshot_uploaded"
+    db.commit()
     products = {p.id: p for p in db.scalars(select(Product).where(
         Product.id.in_({l.product_id for l in document.lines} or {""})))}
     return _public_view(document, products)
