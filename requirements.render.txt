@@ -1,0 +1,19 @@
+# Web runtime only: intentionally excludes training-only TensorFlow, Playwright and plotting.
+numpy>=1.24,<3
+pandas>=2.0
+scipy>=1.10
+scikit-learn>=1.3
+xgboost>=2.0
+statsmodels>=0.14
+shap>=0.43
+joblib>=1.4
+fastapi>=0.110
+uvicorn>=0.27
+python-multipart>=0.0.9
+openpyxl>=3.1
+SQLAlchemy>=2.0.36
+alembic>=1.14
+pydantic-settings>=2.7
+PyJWT[crypto]>=2.10
+anthropic>=1.9
+psycopg2-binary>=2.9
