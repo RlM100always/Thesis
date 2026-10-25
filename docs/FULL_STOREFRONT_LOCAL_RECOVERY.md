@@ -1,23 +1,25 @@
-# Local storefront recovery: progress and remaining differences (25 October 2026)
+# Full Multi-Storefront Recovery from User's Local Thesis ZIP
 
-The local source archive `thesis.zip` and the accompanying generated recovery package contain additional store modules **not in the earlier GitHub checkout**. They must not be confused with the 32-shop research **synthetic** Store Explorer.
+**Restoration branch:** `restoration/full-local-stores-2026-10-25`.
 
-## Implemented on GitHub main
+## Restored original local source (not reimagined)
 
-- `GET /api/public/store/`: active **operational** stores from the application's `Store` and `Organization` tables, with only public profile fields; hidden/inactive stores excluded.
-- `GET /api/public/store/slug/{slug}`: resolves active stores to existing public product listing.
-- `/#/stores`: responsive directory with search, category filters, cover/logo/cards and Android-like mobile bottom navigation. Store cards open the existing `/#/store/{organization_id}` sales channel with cart/order flow.
-- Added visible nav item on the public website and unit tests for active filtering/slug lookup.
-- These changes preserve ongoing research-reset code; they do not re-enable old ML model weights.
+- Public `/#/stores` Store Directory lists **active tenant stores** from `stores` DB, not the 32 simulated thesis stores.
+- Dedicated branded storefront per business at `/#/store/<slug-or-organization-id>`, with product catalogue, cart, checkout and tracked orders.
+- Original local `Store.jsx` (127 KB), `StoreAdmin.jsx` (116 KB), `StoreCustomerPortal.jsx` (30 KB), `StoreDirectory.jsx`, `OrderStatus.jsx`, `storeImages.js` restored **byte-for-byte** from local recovery overlay. Git blob SHA validated.
+- Restored backend `store_routes.py`, `order_routes.py`, `store_customer_routes.py`, `coupon_routes.py`, `review_routes.py`, `payment_routes.py`, `domain_models.py` and `database.py` from the same source; wired each in `api/main.py`.
+- Restored missing methods in `frontend/src/api.js`, while **preserving** existing SaaS admin, B-SMART research reset and current enterprise operation methods; unsafe GET masquerading as POST corrected.
+- Recovered opt-in, explicitly synthetic `seed_10_businesses.py`; this has not been run on any production DB, and requires `BSMART_ALLOW_SYNTHETIC_SEED=YES`, a unique password and a local, empty test DB.
+- A new *additive* Alembic migration `b5f251025a01` merges existing two migration heads and introduces missing columns/tables when deliberately applied.
 
-## Local source modules still awaiting upload/merge
+## Scope and non-claims
 
-The local archive has substantially newer versions of `Store.jsx` (~127 KB), `StoreAdmin.jsx` (~116 KB), `OrderStatus.jsx`, and `api/store_routes.py`; missing modules include `StoreCustomerPortal.jsx`, `api/store_customer_routes.py`, `api/coupon_routes.py`, `api/review_routes.py`, `api/payment_routes.py`, customer/payment model additions and the opt-in `seed_10_businesses.py`. They have **not** been represented as finished or deployed here.
+Local isolated SQLite smoke test from recovery ZIP confirmed **store listing -> slug -> catalogue -> customer registration -> COD order -> tracking -> owner organization SalesDocument**. The ZIP's restoration report contains details. Full production PostgreSQL migration, frontend Vite bundle, sandbox payment callbacks, network/webhook security and mobile device-specific QA remain outstanding.
 
-The chat-generated **BSMART_FULL_LOCAL_STOREFRONT_RECOVERY_2026-10-25.zip** contains a safe selective merge script (`RESTORE_AND_PUSH.ps1`) to apply these exact source files to a freshly cloned GitHub working copy and push a named restoration branch after frontend build and isolated order smoke checks. This is the correct method to transfer local ZIP content to a remote repository when the GitHub connector cannot use the local ZIP as source bytes. Inspect the branch and perform final staging DB migration tests before merging to main.
+The uploaded local archive contained SQLite `-wal` and `-shm` but no complete matching `bsmart.db`. GitHub can restore source code; it cannot restore unbacked live customer/order history. Do not run the seed script on existing operational business data.
 
-## Existing business records
+**Academic split:** Research Portal's 32 synthetic shops are research data; this public storefront directory only reads real operational `Store` rows. Do not combine them without explicit test/simulation tagging.
 
-Git source control holds code, **not** the deployed business database. The uploaded `thesis.zip` contains SQLite WAL and SHM files, but **no matching complete `bsmart.db` file**. Therefore, an old owner/customer/order history cannot be automatically recovered from this Git archive. If your Render SQLite was ephemeral, check persistent Postgres/backups before assuming the records remain.
+## Next stage for production
 
-The ten businesses in the local seed script are simulated/demo businesses and should only be seeded on an isolated test tenant with explicit opt-in. They are not the 32 synthetic research shops and are not a substitute for restoring genuine persisted records.
+Run `npm ci && npm run build` in `frontend/`; run backend unit/route tests; test staging database migration with a backup; test owner/customer checkout and permissions; and verify Render build. Production payment gateway must use live-approved secret credentials and verified callbacks, never a demo password.
