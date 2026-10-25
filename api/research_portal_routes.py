@@ -778,7 +778,8 @@ def _run_experiment_bg(exp_id: str):
             return
 
         try:
-            df = pd.read_csv(dataset_path, encoding="utf-8-sig")
+            df = (pd.read_excel(dataset_path) if dataset_path.suffix.lower() == ".xlsx"
+                  else pd.read_csv(dataset_path, encoding="utf-8-sig"))
         except Exception as e:
             exp["status"] = "failed"
             exp["error"]  = f"Cannot read dataset: {e}"
