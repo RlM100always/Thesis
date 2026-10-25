@@ -104,19 +104,19 @@ export const api = {
   modelMetrics: () => request("/api/models/metrics"),
   realDataValidation: () => request("/api/research/real-data-validation"),
 
-  // Research Portal
-  portalDatasets:    () => request("/api/research/portal/datasets"),
-  portalSchema:      () => request("/api/research/portal/vertical-schema"),
-  portalExperiments: () => request("/api/research/portal/experiments"),
-  portalGetExp:      (id) => request(`/api/research/portal/experiments/${encodeURIComponent(id)}`),
-  portalStatus:      (id) => request(`/api/research/portal/experiments/${encodeURIComponent(id)}/status`),
-  portalCreateExp:   (body) => post("/api/research/portal/experiments", body),
-  portalRunExp:      (id) => post(`/api/research/portal/experiments/${encodeURIComponent(id)}/run`, {}),
-  portalDeleteExp:   (id) => fetch(`${BASE}/api/research/portal/experiments/${encodeURIComponent(id)}`, { method: "DELETE" }).then(r => r.json()),
-  portalCompare:     (ids) => post("/api/research/portal/compare", { experiment_ids: ids }),
+  // Research Portal — authenticated to protect experiment uploads and model runs.
+  portalDatasets:    () => appRequest("/api/research/portal/datasets"),
+  portalSchema:      () => appRequest("/api/research/portal/vertical-schema"),
+  portalExperiments: () => appRequest("/api/research/portal/experiments"),
+  portalGetExp:      (id) => appRequest(`/api/research/portal/experiments/${encodeURIComponent(id)}`),
+  portalStatus:      (id) => appRequest(`/api/research/portal/experiments/${encodeURIComponent(id)}/status`),
+  portalCreateExp:   (body) => appRequest("/api/research/portal/experiments", { method: "POST", body }),
+  portalRunExp:      (id) => appRequest(`/api/research/portal/experiments/${encodeURIComponent(id)}/run`, { method: "POST", body: {} }),
+  portalDeleteExp:   (id) => appRequest(`/api/research/portal/experiments/${encodeURIComponent(id)}`, { method: "DELETE" }),
+  portalCompare:     (ids) => appRequest("/api/research/portal/compare", { method: "POST", body: { experiment_ids: ids } }),
   portalUpload: (file) => {
     const fd = new FormData(); fd.append("file", file);
-    return fetch(`${BASE}/api/research/portal/upload-dataset`, { method: "POST", body: fd }).then(r => r.json());
+    return appRequest("/api/research/portal/upload-dataset", { method: "POST", formData: fd });
   },
 
   // B-SMART Algorithm 1 (docs/BSMART_ARCHITECTURE.md).
