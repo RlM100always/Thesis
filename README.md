@@ -31,6 +31,10 @@ R2_SECRET_ACCESS_KEY=<R2-scoped Secret Access Key>
 
 **Current implementation limit:** Research endpoints authenticate users but do not yet implement full per-researcher isolation for uploaded experiments. Do not upload confidential real-pharmacy or personal data until authorization, retention, and deletion policy have been independently reviewed. R2 does not replace PostgreSQL for permanent operational tenant/user/account records.
 
+## Public-dataset-only thesis path (25 October 2026)
+
+**New project constraint:** no local business data collection, owner interviews or surveys. See [Internet-only research protocol](docs/PUBLIC_DATA_ONLY_RESEARCH_PATH_2026-10-25.md) for a reproducible one-primary-public-dataset plan (dunnhumby The Complete Journey), optional stockout benchmarking and proposed reformulation of RQ3 as **offline simulation** and RQ4 as **technical explainability**. These require supervisor-approved methodology revisions; no local SME field effectiveness or owner usability can be claimed. The previously proposed pharmacy primary-data collection is NOT currently available to the team. The source report has not been rewritten and these are not experimental results.
+
 ## Thesis research dataset decision and submitted report (25 October 2026)
 
 The **latest author-supplied thesis report source** is archived without modification at [`thesis_report/archive/2026-10-25_user_submitted_report.tex`](thesis_report/archive/2026-10-25_user_submitted_report.tex). The 75-page PDF supplied in the conversation is not committed as a binary (see [archive notes](thesis_report/archive/README.md)).
