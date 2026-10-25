@@ -186,6 +186,8 @@ function Shell() {
   if (pathname === "/reset-password") return <AcceptInvite mode="reset" />;
   if (pathname === "/login") return <Login initialMode="login" />;
   if (pathname === "/signup") return <Login initialMode="register" />;
+  // Public, read-only synthetic store preview; no login or operational tenant required.
+  if (pathname === "/sample-stores") return <ResearchPortal />;
   // The public storefront and order-status lookup need no account at all —
   // a visitor opens these from a link the shop shares, not through the app.
   if (pathname.startsWith("/store/") || pathname.startsWith("/order-status/")) {
