@@ -15,6 +15,22 @@ The three panels have visible navigation links when signed in with an authorized
 
 **Provisioning:** Set `PRESENTATION_DEMO_ENABLED=true`, `PRESENTATION_DEMO_EMAIL` and `PRESENTATION_PASSWORD_HASH` in **Render environment variables**, with `AUTH_MODE=jwt`. The password hash must use the project's scrypt format and be computed locally; never store the raw password or hash in README, public GitHub or client-side JavaScript. Startup invokes `api/presentation_demo.py` idempotently after schema creation, without elevating pre-existing non-admin users. Disable demo access after the presentation and rotate or deactivate the account as appropriate. In demo deployment currently using ephemeral SQLite, account and sample records can disappear on restart/redeploy and are reprovisioned from the environment; never rely on it for real business data. For production use a durable PostgreSQL connection, proper migrations, MFA and independent security verification.
 
+## R2 persistent research storage setup (25 October 2026)
+
+A private **Cloudflare R2 bucket** called `bsmart-thesis-research` was created in the connected Cloudflare account (APAC). The backend now includes `api/r2_store.py`, an optional S3-compatible R2 object-storage adapter. When credentials are configured in Render, research CSV/XLSX uploads are stored under `thesis/research/uploads/`, experiment metadata/results under `thesis/research/experiments/`, and generated research checkpoints under `thesis/research/models/`.
+
+**Required private Render environment variables:**
+```env
+R2_ACCOUNT_ID=8490b2f23c78e0e51bf9a0e0dc52126c
+R2_BUCKET=bsmart-thesis-research
+R2_ACCESS_KEY_ID=<R2-scoped Access Key ID>
+R2_SECRET_ACCESS_KEY=<R2-scoped Secret Access Key>
+```
+
+**Security:** Create a bucket-restricted **Object Read & Write** R2 API token in Cloudflare R2 → Manage R2 API Tokens; keep the two access keys **only in Render environment**, never GitHub/frontend/README/chat. Cloudflare connector permissions to manage a bucket do not automatically provide an R2 S3 Access Key ID/Secret. As long as either key is missing, the portal intentionally reports **temporary Render disk**, and uploaded experiment data is **not permanent**. The built-in seven synthetic datasets are baked into the Docker image, so they do not need R2 at runtime.
+
+**Current implementation limit:** Research endpoints authenticate users but do not yet implement full per-researcher isolation for uploaded experiments. Do not upload confidential real-pharmacy or personal data until authorization, retention, and deletion policy have been independently reviewed. R2 does not replace PostgreSQL for permanent operational tenant/user/account records.
+
 ## Live research datasets on Render (25 October 2026)
 
 The Research Portal built-in CSVs are **generated reproducibly during the Docker build** using `00b_generate_multi_vertical_datasets.py` (pharmacy, grocery, clothing, restaurant, electronics) and `00c_generate_additional_datasets.py` (auto_parts, stationery), because `normalized_data/` is gitignored and not present in a GitHub clone. Both generators explicitly label their 30,000-transaction-per-vertical output **synthetic**, not collected from real shops. Deployment fails if any of the seven CSVs is missing.
