@@ -12,5 +12,11 @@ __pycache__
 e2e
 tests
 thesis_report
-data
-artifacts
+# Bundle only explicitly public research references; avoid private/user uploads.
+data/real_sme/
+data/uploads/
+data/real_public/online_retail_II.csv
+artifacts/real/
+artifacts/research_portal/uploads/
+artifacts/research_portal/models/
+
