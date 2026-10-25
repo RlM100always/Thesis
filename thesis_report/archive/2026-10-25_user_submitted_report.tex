@@ -1,0 +1,2045 @@
+\documentclass[a4paper,11pt,oneside]{book}
+\makeatletter
+\newcommand\bhrule{\typeout{------------------------------------------------------------------------------}}
+
+\newcommand\Declaration[1]{
+\btypeout{Declaration Form}
+\addtotoc{Declaration Form}
+\thispagestyle{plain}
+\null\vfil
+%\vskip 60\p@
+\begin{center}{\huge\bf Declaration Form\par}\end{center}
+%\vskip 60\p@
+{\normalsize #1}
+\vfil\vfil\null
+%\cleardoublepage
+}
+\usepackage[none]{hyphenat}
+
+\newcommand\btypeout[1]{\bhrule\typeout{\space #1}\bhrule}
+\def\today{\ifcase\month\or
+  January\or February\or March\or April\or May\or June\or
+  July\or August\or September\or October\or November\or December\fi
+  \space \number\year}
+\usepackage{setspace}
+\onehalfspacing
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{2.0ex plus0.5ex minus0.2ex}
+\usepackage{vmargin}
+\setmarginsrb           { 1.4in}  % left margin
+                        { 0.6in}  % top margin
+                        { 1.0in}  % right margin
+                        { 0.8in}  % bottom margin
+                        {  20pt}  % head height
+                        {0.25in}  % head sep
+                        {   9pt}  % foot height
+                        { 0.3in}  % foot sep
+\raggedbottom
+\setlength{\topskip}{1\topskip \@plus 5\p@}
+\doublehyphendemerits=10000       % No consecutive line hyphens.
+\brokenpenalty=10000              % No broken words across columns/pages.
+\widowpenalty=9999                % Almost no widows at bottom of page.
+\clubpenalty=9999                 % Almost no orphans at top of page.
+\interfootnotelinepenalty=9999    % Almost never break footnotes.
+\usepackage{fancyhdr}
+\lhead[\rm\thepage]{\fancyplain{}{\sl{\rightmark}}}
+\rhead[\fancyplain{}{\sl{\leftmark}}]{\rm\thepage}
+\chead{}\lfoot{}\rfoot{}\cfoot{}
+\pagestyle{fancy}
+\renewcommand{\chaptermark}[1]{\btypeout{\thechapter\space #1}\markboth{\@chapapp\ \thechapter\ #1}{\@chapapp\ \thechapter\ #1}}
+\renewcommand{\sectionmark}[1]{}
+\renewcommand{\subsectionmark}[1]{}
+\def\cleardoublepage{\clearpage\if@twoside \ifodd\c@page\else
+\hbox{}
+\thispagestyle{empty}
+\newpage
+\if@twocolumn\hbox{}\newpage\fi\fi\fi}
+\usepackage{amsmath,amsfonts,amssymb,amscd,amsthm,xspace}
+\theoremstyle{plain}
+\newtheorem{example}{Example}[chapter]
+\newtheorem{theorem}{Theorem}[chapter]
+\newtheorem{corollary}[theorem]{Corollary}
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{axiom}[theorem]{Axiom}
+\theoremstyle{definition}
+\newtheorem{definition}[theorem]{Definition}
+\theoremstyle{remark}
+\newtheorem{remark}[theorem]{Remark}
+\usepackage[centerlast,small,sc]{caption}
+\setlength{\captionmargin}{20pt}
+\newcommand{\fref}[1]{Figure~\ref{#1}}
+\newcommand{\tref}[1]{Table~\ref{#1}}
+\newcommand{\eref}[1]{Equation~\ref{#1}}
+\newcommand{\cref}[1]{Chapter~\ref{#1}}
+\newcommand{\sref}[1]{Section~\ref{#1}}
+\newcommand{\aref}[1]{Appendix~\ref{#1}}
+\newcommand{\pref}[1]{Algorithm~\ref{#1}}
+\renewcommand{\topfraction}{0.85}
+\renewcommand{\bottomfraction}{.85}
+\renewcommand{\textfraction}{0.1}
+\renewcommand{\dbltopfraction}{.85}
+\renewcommand{\floatpagefraction}{0.75}
+\renewcommand{\dblfloatpagefraction}{.75}
+\setcounter{topnumber}{9}
+\setcounter{bottomnumber}{9}
+\setcounter{totalnumber}{20}
+\setcounter{dbltopnumber}{9}
+\usepackage{graphicx}
+\usepackage{epstopdf}
+\usepackage[scriptsize]{subfigure}
+\usepackage{booktabs}
+\usepackage{rotating}
+\usepackage[pdfpagemode={UseOutlines},bookmarks=true,bookmarksopen=true,
+   bookmarksopenlevel=0,bookmarksnumbered=true,hypertexnames=false,
+   colorlinks,linkcolor={blue},citecolor={blue},urlcolor={red},
+   pdfstartview={FitV},unicode,breaklinks=true]{hyperref}
+\pdfstringdefDisableCommands{
+   \let\\\space
+}
+\newcommand*{\supervisor}[1]{\def\supname{#1}}
+\newcommand*{\examiner}[1]{\def\examname{#1}}
+\newcommand*{\degree}[1]{\def\degreename{#1}}
+\newcommand*{\authors}[1]{\def\authornames{#1}}
+\newcommand*{\addresses}[1]{\def\addressnames{#1}}
+\newcommand*{\university}[1]{\def\univname{#1}}
+\newcommand*{\UNIVERSITY}[1]{\def\UNIVNAME{#1}}
+\newcommand*{\department}[1]{\def\deptname{#1}}
+\newcommand*{\DEPARTMENT}[1]{\def\DEPTNAME{#1}}
+\newcommand*{\group}[1]{\def\groupname{#1}}
+\newcommand*{\GROUP}[1]{\def\GROUPNAME{#1}}
+\newcommand*{\faculty}[1]{\def\facname{#1}}
+\newcommand*{\FACULTY}[1]{\def\FACNAME{#1}}
+\newcommand*{\subject}[1]{\def\subjectname{#1}}
+\newcommand*{\keywords}[1]{\def\keywordnames{#1}}
+\supervisor  {}
+\examiner    {}
+\degree      {}
+\authors     {}
+\university  {\texorpdfstring{\href{http://www.du.ac.bd}
+                {University of Dhaka}}
+                {University of Dhaka}}
+\UNIVERSITY  {\texorpdfstring{\href{http://www.du.ac.bd}
+                {UNIVERSITY OF DHAKA}}
+                {UNIVERSITY OF DHAKA}}
+\department  {\texorpdfstring{\href{http://www.cse.du.ac.bd}
+                {Department of Computer Science and Engineering}}
+                {Department of Computer Science and Engineering}}
+\DEPARTMENT  {\texorpdfstring{\href{http://www.cse.du.ac.bd}
+                {DEPARTMENT OF COMPUTER SCIENCE AND ENGINEERING}}
+                {DEPARTMENT OF COMPUTER SCIENCE AND ENGINEERING}}
+\group       {\texorpdfstring{\href{link of your research group}   %%%%%%%%%%%%%%%%%   ADD YOUR RESEARCH GROUP LINK
+                {}}
+                {}}
+\GROUP       {\texorpdfstring{\href{link of your research group}   %%%%%%%%%%%%%%%%%   ADD YOUR RESEARCH GROUP LINK
+                {}}
+                {}}
+\faculty     {\texorpdfstring{\href{Supervisor profile link}    %%%%%%%%%%%%%%%   ADD Profile Link for Supervisor
+                {Name of the Supervisor}}
+                {Name of the Supervisor}}
+\FACULTY     {\texorpdfstring{\href{Supervisor profile link}    %%%%%%%%%%%%%%%   ADD Profile Link for Supervisor
+				{Name of the Supervisor}}
+				{Name of the Supervisor}}
+\addresses   {}
+\subject     {}
+\keywords    {}
+\renewcommand\maketitle{
+  \btypeout{Title Page}
+  \hypersetup{pdftitle={\@title}}
+  \hypersetup{pdfsubject=\subjectname}
+  \hypersetup{pdfauthor=\authornames}
+  \hypersetup{pdfkeywords=\keywordnames}
+  \thispagestyle{empty}
+  \begin{titlepage}
+    \let\footnotesize\small
+    \let\footnoterule\relax
+    \let \footnote \thanks
+    \setcounter{footnote}{0}
+    \null\vfil
+    \vskip 60\p@
+    \begin{center}
+      \setlength{\parskip}{0pt}
+      {\Large\textbf{\UNIVNAME}\par}
+      \vfill
+      {\huge \bf \@title \par}
+      \vfill
+      {\Large by \par}
+      \smallskip
+      {\large \authornames \par}
+      \bigskip
+      \bigskip
+      %{\large Supervised by \par}
+      %{\large \facname \par}
+      %{\large \deptname \par}
+      \bigskip
+      \bigskip
+      \bigskip
+      \includegraphics[width=1.5in, height=1.5in]{logo.pdf}
+      \vfill
+      %{\large A thesis submitted in partial fulfillment for the degree of\par}
+      {\Large Bachelor of Science \par}
+
+      {\Large \@date \par}
+      \bigskip
+    \end{center}
+    \par
+    \@thanks
+    \vfil\null
+  \end{titlepage}
+  \setcounter{footnote}{0}%
+  \global\let\thanks\relax
+  \global\let\maketitle\relax
+  \global\let\@thanks\@empty
+  \global\let\@author\@empty
+  \global\let\@date\@empty
+  \global\let\@title\@empty
+  \global\let\title\relax
+  \global\let\author\relax
+  \global\let\date\relax
+  \global\let\and\relax
+  \cleardoublepage
+}
+\newenvironment{abstract}
+{
+  \btypeout{Abstract Page}
+  \thispagestyle{empty}
+  \null\vfil
+  \begin{center}
+    \setlength{\parskip}{0pt}
+    {\Large \UNIVNAME \par}
+    \bigskip
+    {\huge{\textit{Abstract}} \par}
+    %\bigskip
+    %{\normalsize \facname \par}
+    %{\normalsize \deptname \par}
+    %\bigskip
+    %{\normalsize Doctor of Philosophy\par}
+    \bigskip
+    {\normalsize\bf \@title \par}
+    %\medskip
+    %{\normalsize by \authornames \par}
+    %\bigskip
+  \end{center}
+}
+{
+  \vfil\vfil\vfil\null
+  \cleardoublepage
+}
+\addtocounter{secnumdepth}{1}
+\setcounter{tocdepth}{10}
+\newcounter{dummy}
+\newcommand\addtotoc[1]{
+\refstepcounter{dummy}
+\addcontentsline{toc}{chapter}{#1}}
+\renewcommand\tableofcontents{
+\btypeout{Table of Contents}
+\begin{spacing}{1}{
+    \setlength{\parskip}{1pt}
+    \if@twocolumn
+      \@restonecoltrue\onecolumn
+    \else
+      \@restonecolfalse
+    \fi
+    \chapter*{\contentsname
+        \@mkboth{
+           \MakeUppercase\contentsname}{\MakeUppercase\contentsname}}
+    \@starttoc{toc}
+    \if@restonecol\twocolumn\fi
+   \cleardoublepage
+}\end{spacing}
+}
+\renewcommand\listoffigures{
+\btypeout{List of Figures}
+\addtotoc{List of Figures}
+\begin{spacing}{1}{
+    \setlength{\parskip}{1.5pt}
+    \if@twocolumn
+      \@restonecoltrue\onecolumn
+    \else
+      \@restonecolfalse
+    \fi
+    \chapter*{\listfigurename
+      \@mkboth{\MakeUppercase\listfigurename}
+              {\MakeUppercase\listfigurename}}
+    \@starttoc{lof}
+    \if@restonecol\twocolumn\fi
+    \cleardoublepage
+}\end{spacing}
+}
+\renewcommand\listoftables{
+\btypeout{List of Tables}
+\addtotoc{List of Tables}
+\begin{spacing}{1}{
+    \setlength{\parskip}{1.5pt}
+    \if@twocolumn
+      \@restonecoltrue\onecolumn
+    \else
+      \@restonecolfalse
+    \fi
+    \chapter*{\listtablename
+      \@mkboth{\MakeUppercase\listtablename}
+              {\MakeUppercase\listtablename}}
+    \@starttoc{lot}
+    \if@restonecol\twocolumn\fi
+    \cleardoublepage
+}\end{spacing}
+}
+
+\iffalse
+\renewcommand\listofalgorithms{
+\btypeout{List of Algorithms}
+\addtotoc{List of Algorithms}
+\begin{spacing}{1}{
+    \setlength{\parskip}{1.5pt}
+    \if@twocolumn
+      \@restonecoltrue\onecolumn
+    \else
+      \@restonecolfalse
+    \fi
+    \chapter*{\listalgorithmname
+      \@mkboth{\MakeUppercase\listalgorithmname}
+              {\MakeUppercase\listalgorithmname}}
+    \@starttoc{loa}
+    \if@restonecol\twocolumn\fi
+    \cleardoublepage
+}\end{spacing}
+}
+\fi
+%%%%%%%%%%%%%%%%%%%%%%%%%%%  NO NEED %%%%%%%%%%%%%%%%%%%%%%
+\iffalse
+\newcommand\listsymbolname{Abbreviations}
+\usepackage{longtable}
+\newcommand\listofsymbols[2]{
+\btypeout{\listsymbolname}
+\addtotoc{\listsymbolname}
+    \chapter*{\listsymbolname
+      \@mkboth{
+          \MakeUppercase\listsymbolname}{\MakeUppercase\listsymbolname}}
+\begin{longtable}[c]{#1}#2\end{longtable}\par
+    \cleardoublepage
+}
+\newcommand\listconstants{Physical Constants}
+\usepackage{longtable}
+\newcommand\listofconstants[2]{
+\btypeout{\listconstants}
+\addtotoc{\listconstants}
+    \chapter*{\listconstants
+      \@mkboth{
+          \MakeUppercase\listconstants}{\MakeUppercase\listconstants}}
+\begin{longtable}[c]{#1}#2\end{longtable}\par
+    \cleardoublepage
+}
+\newcommand\listnomenclature{Symbols}
+\usepackage{longtable}
+\newcommand\listofnomenclature[2]{
+\btypeout{\listnomenclature}
+\addtotoc{\listnomenclature}
+    \chapter*{\listnomenclature
+      \@mkboth{
+          \MakeUppercase\listnomenclature}{\MakeUppercase\listnomenclature}}
+\begin{longtable}[c]{#1}#2\end{longtable}\par
+    \cleardoublepage
+}
+\fi
+%%%%%%%%%%%%%%%%%%%%%%%%%%%  ------------ %%%%%%%%%%%%%%%%%%%%%%
+\newcommand\acknowledgements[1]{
+\btypeout{Acknowledgements}
+\addtotoc{Acknowledgements}
+\thispagestyle{plain}
+\begin{center}{
+	\huge{
+		\textit{Acknowledgements}
+		} \par
+}
+\end{center}
+{\normalsize #1}
+\vfil\vfil\null
+
+}
+
+\newtheorem{step}{STEP}
+\newcommand\dedicatory[1]{
+\btypeout{Dedicatory}
+\thispagestyle{plain}
+\null\vfil
+\vskip 60\p@
+\begin{center}{\Large \sl #1}\end{center}
+\vfil\null
+\cleardoublepage
+}
+\renewcommand\backmatter{
+  \if@openright
+    \cleardoublepage
+  \else
+    \clearpage
+  \fi
+  \addtotoc{\bibname}
+  \btypeout{\bibname}
+  \@mainmatterfalse}
+%%
+%% End of file `Thesis.cls'.
+
+\makeatother
+
+\graphicspath{{./}}
+
+\usepackage[square,numbers,comma,sort&compress]{natbib}
+\usepackage{longtable}
+\usepackage{multirow}
+\usepackage{tabularx}
+\usepackage{makecell}
+\usepackage{array}
+\usepackage{enumitem}
+\usepackage{float}
+\usepackage{pdflscape}
+\usepackage[table]{xcolor}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,shapes.geometric,fit,calc}
+\usepackage[ruled,vlined,linesnumbered]{algorithm2e}
+\usepackage{microtype}
+\usepackage{etoolbox}
+
+\definecolor{dugreen}{RGB}{0,92,72}
+\definecolor{dugold}{RGB}{193,145,44}
+\definecolor{softgreen}{RGB}{226,241,235}
+\definecolor{softblue}{RGB}{229,239,249}
+\definecolor{softorange}{RGB}{252,237,216}
+\definecolor{softgray}{RGB}{240,240,240}
+\arrayrulecolor{black}
+\setlength{\arrayrulewidth}{0.5pt}
+
+\hypersetup{
+  colorlinks=true,
+  linkcolor=dugreen,
+  citecolor=dugreen,
+  urlcolor=blue,
+  pdftitle={AI-Powered Business Analytics System for Performance Evaluation, Insight Extraction, and Strategy Optimization},
+  pdfauthor={Md. Rakib Hossain and Shah Jamal Islam},
+  pdfsubject={Initial Thesis Progress Report, February 2026 - February 2027},
+  pdfkeywords={Bangladesh pharmacy SMEs, pharmacy inventory, expiry-aware replenishment, demand forecasting, customer segmentation, explainable AI, B-SMART}
+}
+
+\newcommand{\system}{B-SMART}
+\newcommand{\reportdate}{7 September 2026}
+\newcommand{\projectperiod}{February 2026 - February 2027}
+\newcommand{\cmark}{\cellcolor{softgreen}\textbf{C}}
+\newcommand{\amark}{\cellcolor{softorange}\textbf{A}}
+\newcommand{\pmark}{\cellcolor{softblue}\textbf{P}}
+\newcommand{\na}{--}
+\newcolumntype{Y}{>{\raggedright\arraybackslash}X}
+\newcolumntype{C}[1]{>{\centering\arraybackslash}p{#1}}
+\setlength{\emergencystretch}{2em}
+\AtBeginEnvironment{thebibliography}{%
+  \footnotesize
+  \setstretch{1.0}%
+  \renewcommand{\newblock}{\hspace{0.25em}}%
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+\begin{document}
+
+
+
+
+
+
+\frontmatter	  % Begin Roman style (i, ii, iii, iv...) page numbering
+
+\title  {AI Powered Business Analytics System for
+    Performance Evaluation, Insight Extraction, and
+    Strategy Optimization}
+\authors  {\texorpdfstring
+            {Exam Roll: 2323870\\ \href{http://abc@gmail.com}{Registration No: 2020315665, Session: 2020-21}}
+            {}\\
+            {Exam Roll: 2323837\\ \href{http://abc@gmail.com}{Registration No: 2020915641, Session: 2020-21}}
+            }
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%        
+        
+        
+\addresses  {\groupname\\\deptname\\\univname}  % Do not change this here, instead these must be set in the "Thesis.cls" file, please look through it instead
+\date       {}
+\subject    {}
+\keywords   {}
+
+\maketitle 
+
+\setstretch{1.15}
+\pagestyle{fancy}
+\fancyhead{}
+\rhead{\thepage}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+%declaration form
+\thispagestyle{empty}
+\begin{center}
+    {\fontsize{24}{28}\selectfont\textbf{Declaration Form}}
+\end{center}
+
+\begin{center}
+\begin{tabular}{c}
+     \textbf {}
+     \includegraphics[width=1.5in, height=1.5in]{logo.pdf} \\
+     University of Dhaka\\
+\end{tabular}
+\end{center}
+
+
+	\hspace{1cm}	We, Md.Rakib Hossain and Shah Jamal Islam,declare that the background study, problem formulation and proposed methodology, as presented in this report, is the original work of the authors and done under the supervision of Dr. Saifuddin Md. Tareeq. This report contains all ideas, analyses and contributions that have been developed by the authors in the course of the thesis project. \\
+
+\begin{table}[!htbp]
+	\begin{tabular}{p{2in}cp{3in}}
+	\begin{tabular}{l}
+		%Signature:
+		\\\\\\\\
+		Md. Rakib Hossain\\
+		Exam Roll: 2323870\\
+		Registration No: 2020315665\\
+		Class Roll: 88\\
+		Candidate 1\\\\
+	\end{tabular}
+	
+	& & \\
+	\begin{tabular}{l}
+		%Signature:
+		\\\\\\\\
+		Shah Jamal Islam\\
+		Exam Roll: 2323837\\
+		Registration No: 2020915641\\
+		Class Roll: 81\\
+		Candidate 2\\\\
+	\end{tabular}
+	
+	& &
+	
+	\begin{tabular}{l}
+		%	Signature:
+		\\\\\\\\
+		Dr. Saifuddin Md. Tareeq\\
+		Professor\\
+		Department of Computer Science and Engineering\\
+		University of Dhaka\\
+		Supervisor\\\\
+		
+	\end{tabular} 
+	
+	
+	\end{tabular}
+\end{table}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+\definecolor{DUBlue}{RGB}{0,0,255}
+
+\newcommand{\dulink}[2]{%
+    \href{#1}{%
+        {\fontsize{17pt}{20pt}\selectfont
+        \rmfamily\bfseries
+        \color{DUBlue}
+        #2}%
+    }%
+}
+
+
+
+
+
+
+\clearpage
+\thispagestyle{empty}
+\addtotoc{Abstract}
+\begin{center}
+    \dulink{https://www.du.ac.bd/}{UNIVERSITY OF DHAKA}
+\end{center}
+
+\begin{center}
+  {\huge\textit{Abstract}\par}
+\end{center}
+% Intentionally left blank for the initial progress submission.
+% The abstract will be completed in the final thesis.
+
+
+
+\large Small and medium sized enterprises (SMEs) can produce a lot of operational data. But, they have difficulty converting that information to insights and decisions. In this research,We introduce an AI driven business analytics framework, B-SMART (Bangladesh SME Monitoring, Analytics, and Reporting Tool), which was originally designed for retail pharmacies in Bangladesh.
+
+
+B-SMART unifies business performance evaluation, demand forecasting, customer behaviour analysis, customer inactivity prediction and strategy recommendation in one decision making process. Using a time aware pipeline, the data snapshots are made at scheduled moments and it helps to prevent data leakage. Appropriate validation techniques are applied to evaluate the statistical baselines, pooled multi pharmacy models and shop-adapted models.
+
+
+
+The strategy layer translates the findings from the analysis into recommendations. It takes care of factors like Customer consent, Stock availability, Product expiry, Supplier lead time, Storage requirements and Budget. The study is conducted using the design science methodology and the benefits that are assessed are related to the prediction performance, data quality, explainability, robustness, scalability, usability and operational feasibility.
+
+B-SMART is overall intended to offer a turstworthy , reliable and locally relevant decision support system for retail pharmacies in Bangladesh.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+\clearpage
+
+\acknowledgements{
+  % Intentionally left blank for the initial progress submission.
+% The acknowledgement will be completed in the final thesis.
+\large
+\hspace{1cm} We are grateful to our supervisor,
+\textbf{Dr. Saifuddin Md. Tareeq}, Professor, Department of Computer
+Science and Engineering, University of Dhaka, for his kind guidance,
+constructive suggestions, valuable comments, and continuous support
+throughout the course of this research.
+
+We are also grateful to the Department of Computer Science and Engineering,
+University of Dhaka, and to all our teachers and individuals who supported
+and assisted us during this work.
+
+}
+
+
+
+\clearpage
+
+\lhead{\emph{Contents}}
+\setcounter{tocdepth}{2}
+\tableofcontents
+
+\lhead{\emph{List of Figures}}
+\listoffigures
+
+\lhead{\emph{List of Tables}}
+\listoftables
+
+
+\mainmatter
+\pagestyle{fancy}
+\fancyhead{}
+\rhead{\thepage}
+\lhead{\fancyplain{}{\rightmark}}
+\setstretch{1.14}
+\renewcommand{\sectionmark}[1]{\markright{\thesection\ #1}}
+
+\chapter{Introduction}
+\label{chapter_introduction}
+
+\section{Context and Motivation}
+
+Operational data is used for business intelligence and analytics to structure the data for decision-making. Decision makers can explain performance, predict future performance, and select an appropriate response \cite{chen2012business}. In a small or medium enterprise (SME), the journey towards analytics starts with familiar records: invoice lines, product movements, purchase receipts, expenses, payments, and customer visits. These records can shed light on revenue and stock position, but their value becomes limited if they remain on paper ledgers, spreadsheets, and separate applications. The owner might be aware of a sales drop last month but not realize what products, customers, or operating conditions were responsible for the reduction, whether the pattern is likely to persist, or whether an inexpensive course of action should be followed.
+
+This is a more challenging decision than making a dashboard. In retail, to ensure product availability, an owner of a pharmacy should make an early estimate of product demand and order in advance from a supplier. The order should be determined with respect to limited cash, storage capacity, pack multiples, and delivery time. Too little stock will result in stock-outs and lost sales, while too much will lead to high inventory levels and obsolescence. Much of the capital tied up in excess inventory can lead to near expiry or expired stock, which can vary based on batch, remaining shelf life, and temperature sensitive storage. Otherwise, an attractive order may still be possible.
+
+Meanwhile, a once valuable customer may become inactive, or a product may appear profitable because the costs were incompletely recorded. A promotion might lead to an increase in volume without a corresponding increase in contribution. These questions are based on the same operational history but involve different analytical activities within the same decision context.
+
+Hierarchy, intermittency, promotions, and local events are all identified as factors in retail forecasting research. New products, changing assortment, and organisational use of forecasts are also central practical concerns in retail forecasting \cite{fildes2022retail}. Evidence from large forecasting competitions also cautions against assuming that a more complex algorithm is automatically more accurate: combinations, statistical methods, and carefully constructed baselines are still competitive in many series \cite{makridakis2022m5}.
+
+So, the problem investigated in this research is not to put a pretty face on a sales file. It is to construct a defensible path from business events to out-of-time predictions and then from predictions to actionable, explainable decisions.
+
+
+\section{Bangladesh Pharmacy SME Context}
+
+Based on the research according to  Bangladesh, it is found that the perceived benefit, management and organisational readiness, government support, cost and complexity of the ICTs, organisational context and environment are some of the factors that influence the use of ICTs in SMEs \cite{hoque2016ict,shahadat2023digital}. Research also shows that mobile financial services need to be more  user friendly. The results mention  that such features are important  to designing a local payment channel .Also  the low friction data entry, as well as the owner readable explanations are essential details that should not just be added on.
+
+This study is based on a definition of population as a functional population. Rather than on a size criterion that might change over time. The set of target pharmacies has stock, sales and purchase records, take branch decisions, product/batch decisions and a limited ability to perform specialist analytics. This can vary based on the research question and could be the pharmacy, branch, stock keeping unit (SKU), batch, customer or historical customer snapshot. Depending on the research question, a customer snapshot is used or not.
+
+The conclusions will include only pharmacies that are listed and evidence gathered. The system is not designed to be used for diagnosis purposes. It does not include information on prescription or dosage
+
+
+\section{Decision Environment and Stakeholder Requirements}
+
+An SME analytics artifact is used inside an operating system of people, records, cash pledges, and supplier relationships. The owner or manager is the primary decision maker, while the evidence could be produced by sales staff, inventory staff, accountants, and external payment or supply services. A recommendation is reliable only if those roles generate compatible records and the decision-maker can interpret the outcome at the time of action.
+
+The Bangladesh adoption evidence makes the methodological implication clear: perceived value, organisational readiness, cost, and workflow compatibility must be assessed in addition to model accuracy \cite{hoque2016ict,shahadat2023digital}.
+
+The setting is translated into concrete information requirements in Table~\ref{tab:stakeholder_requirements}. The table is a design analysis of the present thesis. It is not a statement that every participating business has the same staffing structure. One individual can fill more than one role in a micro-enterprise.
+
+There is an important difference between those who create an event, those who validate it, and the person who validates the output and suffers the consequences of a bad decision.
+
+\begin{table}[H]
+\centering
+\small
+\caption{Stakeholder decisions, responsibilities, evidence requirements, and corresponding design implications in the target setting.}
+\label{tab:stakeholder_requirements}
+
+\begin{tabularx}{\textwidth}{|p{0.19\textwidth}|p{0.27\textwidth}|Y|Y|}
+\hline
+
+\textbf{Stakeholder} &
+\textbf{Decisions or Responsibilities} &
+\textbf{Evidence Required} &
+\textbf{Design Implication} \\
+\hline
+
+Owner or manager &
+Reorder products, allocate cash, approve customer contact, and accept or reject a recommendation &
+Current stock, expected demand, cost range, uncertainty, and supporting reasons &
+Present a concise and feasible action with drill-down evidence while retaining the owner's decision-making authority \\
+\hline
+
+Operational users &
+Maintain product records, minimize duplicate entry, validate imported data, and preserve corrections &
+Stable product keys, import-validation results, duplicate checks, correction history, and source records &
+Prevent uncontrolled changes to product keys, reduce duplicate entry, validate records at import, and preserve corrections for traceability \\
+\hline
+
+Accounts or finance personnel &
+Reconcile payments, expenses, receivables, and inputs used for margin calculations &
+Links between invoices and payments, expense periods, cost provenance, and identification of missing cost information &
+Preserve auditable links among transactions, payments, expenses, and cost records, and explicitly identify incomplete cost evidence \\
+\hline
+
+Supplier or logistics contacts &
+Confirm lead time, pack size, minimum-order quantity, incoming quantity, and related supply conditions &
+Dated purchase orders, receipt history, supplier lead-time records, pack-size information, minimum-order requirements, and incoming quantities &
+Apply lead-time and ordering restrictions as dated operational constraints rather than as universal constants \\
+\hline
+
+Research and system team &
+Build, evaluate, monitor, and maintain the artifact &
+Versioned datasets, analytical cutoffs, code, parameters, metrics, immutable analytical snapshots, and audit events &
+Ensure that reported outputs are reproducible from versioned and immutable analytical evidence \\
+\hline
+
+\end{tabularx}
+\end{table}
+
+
+This analysis leads to four owner-facing qualities: that the output is a decision which the business can actually make. Traceability is the ability to trace the value displayed back to its source events, transformations, and a declared cutoff. Proportionality refers to the fact that the model, interface, and data requirements are reasonable for the value and risk of a decision. The value and risk of a decision is contestable if the owner can examine the supporting evidence, reject the suggestion, and record a reason. These qualities transform local usability from a visual design preference into a condition of credible evaluation.
+
+
+\section{Problem Statement}
+
+The middle problem is the lack of a reliable and convenient link between data from these logs and the analysis of the resulting information. These logs are used for three activities: recording pharmacy operations, extracting predictive insights from the data, and choosing an action that is viable for the business.
+
+Orders can be stored in a transaction system, but even when the data are available, there may be no forecasts. A stand-alone model can report an accuracy score after evaluation, but it can still be untrustworthy because the features may not have existed at the time the prediction was supposed to be made. Its test data may have contained information from the training period, or it may be unable to deliver an output that is related to budget, stock, lead time, and customer consent. A recommendation can therefore be technically correct but not feasible for the business.
+
+
+The problem is broken down into four related gaps:
+
+\begin{enumerate}[label=G\arabic*.]
+
+\item \textbf{Data foundation gap.} Sales, inventory, purchases, expenses, customers, and payments need a consistent schema, timestamps, provenance, and organisational boundaries before they can support reliable and comparable analytics.
+
+\item \textbf{Prediction-validity gap.} Demand and customer risk models need historical snapshots, chronological or entity-safe splits, training-only transformations, consistent baselines, and metrics suitable for sparse or imbalanced outcomes. Without leakage control, there can be an attractive but false appearance of performance and validity \cite{kaufman2012leakage}.
+
+\item \textbf{Prediction-to-action gap.} A forecast or risk probability does not identify what to order, who to reach out to, or whether an action is cost effective. Prediction must therefore be related to costs, constraints, and uncertainty. This represents the shift from predictive to prescriptive analytics \cite{bertsimas2020prescriptive}.
+
+\item \textbf{Adoption and accountability gap.} An SME owner requires a short, clear explanation of the reason, confidence indication, and traceable source for a suggestion. A feature-attribution method can explain how features contributed to a model output, but it does not establish causality, nor does it attribute credit or blame for a model's behaviour. Instead of relying solely on human judgement, methods such as SHAP and explanation frameworks provide structured mechanisms for interpreting model behaviour \cite{lundberg2017shap,miller2019explanation}.
+
+\end{enumerate}
+
+This thesis therefore investigates the possibility of an integrated framework that is Bangladesh-aware and can visually represent an auditable retail record, a leakage-controlled forecast, customer insights, and ranked actions based on the operating constraints of an SME. The work does not assume that machine learning can outperform every existing baseline. Finding that a simple rule is more reliable or economical for a particular task is considered a valid result.
+
+
+\section{Analytical Logic and Claim Boundaries}
+
+The thesis, which is composed of four logical objects, is often lumped together in a single analytics process. A prototype of an analytics system can be viewed as a sequence consisting of an observed business event, an analytical estimate, an action influenced by that estimate, and a later outcome. Figure~\ref{fig:problem_logic} shows this dependency. There are failure modes associated with each of these transitions. Incomplete or inconsistent records reduce the available evidence; leakage or invalid records invalidate an estimate; ignored constraints make an action infeasible; and without outcome capture, it is not possible to determine whether the recommendation contributed to a successful outcome or to learning. Success in one area must therefore be matched by success in another.
+
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.9\textwidth]{1.png}
+    \caption{Logical dependency from an operational event to an evaluated outcome.}
+    \label{fig:problem_logic}
+\end{figure}
+This separation also regulates the claims made in the thesis. A dashboard value is \emph{descriptive}: it is supported when the accounting definition and source reconciliation are correct. The likelihood of inactivity indicated by a forecast or inactivity score is \emph{predictive}: it is only available on observations that were not used during model development. A rank recommendation is \emph{prescriptive}: it also calls for specific actions, considers costs, and is planned under constraints and uncertainty \cite{bertsimas2020prescriptive}. A positive field-impact claim is even stronger, since it relies on what decisions were made based on what was observed and on outcomes within a defensible comparison.
+
+Several terms are therefore used in a narrow sense. \emph{Demand} refers to the quantity required by customers; recorded sales may be a censored observation of demand when stock is not available. \emph{Future inactivity} refers to no observed demand in a future period and is not assumed to be permanent or, where applicable, a ``forever'' purchase pattern.
+
+A faithful summary of model behaviour should be supported by the behaviour itself and by the decisions made, rather than by assuming that attributed behaviour will necessarily cause the desired outcome \cite{lundberg2017shap,miller2019explanation}. Finally, \emph{local validity} refers to the validity demonstrated for the businesses involved, the sampled period, and the observed workflow, rather than automatic generalisation to every SME in Bangladesh.
+
+Negative and conditional findings are therefore informative within these boundaries. A model may be accurate but not actionable because of a lack of cost data. An action policy may lead to reductions in simulated stock-outs only under an assumed lead time and may therefore not be deployment-ready. An explanation can be technically faithful but still not be understood by owners. The evaluation is planned to uncover these distinctions. Instead of combining all these conditions into one label of success. It is advisable to evaluate and report each condition separately.
+
+
+\section{Research Aim and Objectives}
+
+\subsection{General Objective}
+
+The overall goal is to create and test an AI-based business solution. The analytics framework is designed as a solution that allows Bangladeshi retail pharmacies to track their business performance, extract reliable and explainable insights, and prioritise feasible strategies while maintaining owner control.
+
+
+\subsection{Specific Objectives}
+
+The study will:
+
+\begin{enumerate}[label=O\arabic*.]
+
+\item specify an auditable canonical data model for sales, with a focus on the pharmacy and its activities, including products, stock, batches, expiry, purchases, returns, customers, suppliers, payments, and expenses;
+
+\item build reproducible preprocessing and feature pipelines for performance analysis, SKU demand, customer inactivity, and segmentation;
+
+\item compare transparent baselines, a multi-pharmacy model pooled with shared pharmacy and shop-adapted models with chronological and held out pharmacy validation, both predictive and decision-making measures;
+
+\item quantify uncertainty and explain it (both globally and casewise) without assuming that association implies causation;
+
+\item develop a system that maintains constraint awareness in the reorder, retention and resource-allocation decisions; and
+
+\item evaluate technical correctness, robustness, scalability, usability, and possible business value at specific levels of evidence, based on data gathered with the agreement of the Bangladeshi SME sector.
+
+
+\end{enumerate}
+
+
+\section{Initial Solution Concept}
+
+B-SMART the Bangladesh SME Monitoring, Analytics, and Reporting tool is the proposed solution. The first validated application of the framework, is retail pharmacy. The structure is, however, based on SME categories so it can be adapted to an architecture and then later extended and validated on an individual basis for other business categories. Hence, B-SMART is not only an analytical tool, it is a decision support process that links operational data, analysis and viable business actions at different stages of the decision making process.
+
+Pharmacy business events move to a controlled operational layer and validated events are then processed and reconciled. The events confirmed are then converted to analytical snapshot views that fix the time elapsed. When there is enough evidence to perform model comparison, it is done using transparent baselines, a pooled multipharmacy model, and shop adapted candidate models. The selected model forecasts, estimates risks and segments customers for the active strategy layer.
+
+The strategy layer connects these forecasts, risks and segment profiles to viable business strategies. The shop owner states the operational constraints and priorities that are relevant before being ranked and presented as actions. The data cutoff, model or baseline source, uncertainty or error range, supporting documentation, and key supporting factors for each action are displayed. The owner's reaction to the suggestion, along with the subsequent business result, is kept in the system for evaluation and tracking.
+
+The three analytical results are related to the approved scope of the proposed system. Performance evaluation is a summary of the customer behaviour, movement of stocks, and margin and is correlated with revenue generated from reconciled records. Insight extraction predicts future demand, captures significant behavioural segments and provides identification of customer inactivity. These insights are then fed into strategy optimization to generate actionable orders, like changing order sizes and focusing on customer retention, given constraints like available cash, storage, supplier lead time, minimum order quantity, existing inventory and customer permission to be contacted.
+
+
+
+\section{Research Questions}
+
+The thesis is based on four research questions:
+
+\begin{description}[style=nextline,leftmargin=2em]
+
+\item[RQ1.] Do calendar effects, price, promotion, and market context provide additional value for branch SKU demand forecasts beyond seasonal and statistical baselines at the intended pharmacy location?
+
+\item[RQ2.] How reliably and accurately can the system predict whether a customer will make a purchase in a future time period using only a historical customer snapshot, without using information from that future period?
+
+\item[RQ3.]Given identical demand and operating conditions, can a forecast-based reorder policy reduce stock outs and holding costs compared with the current reorder policy used by the participating business?
+
+\item[RQ4.] Do short Bangla action descriptions improve owner task friendliness, confidence, and perceived usability without overloading the owner with information or increasing decision time?
+
+\end{description}
+
+
+\section{Scope and Boundaries}
+
+The study focuses on Bangladeshi retail pharmacies, structured operational data,
+The term "customer inactivity" refers to any customer who is not buying or has not engaged in any customer behaviour.Customer inactivity describes any buyer who has not purchased or made any customer behaviour.
+Identification, explainability, and business strategies in the pharmaceutical field like replenishment,
+stock out review and consent aware customer retention.
+
+Participating pharmacies contribute only their own portion of the data. Installed and anonymised research fields are used for cross shop modelling, while the raw records and constraint profile of each shop remain tenant-isolated. External portability testing on a different dataset does not, by itself, validate the portability of the method to Bangladeshi pharmacy settings. Public price information can provide background information but cannot replace evidence at the invoice, stock, batch, and constraint levels.
+
+The study does not include clinical diagnosis, prescription or dosage recommendations, manufacturing scheduling, credit scoring, employee surveillance, uncontrolled price changes, or unrestricted customer profiling. It does not claim causal inferences based on attributions of observational features. It will not treat generated data as field evidence or mix synthetic and observed materials without clear identification. Reported real world scores will not be extrapolated by assuming that they are equivalent to the performance of participating pharmacies.
+
+The study does not claim to transfer its results automatically to other SME verticals or to non-validated settings. The implementation details, experimental results, and final conclusions are presented in Chapters~\ref{chapter_implementation}--\ref{chapter_conclusion}. Any optional feature can be deliberately enabled and evaluated within the defined experimental scope.
+
+
+\section{Expected Contributions and Significance}
+
+The evaluated integration of established research methods, constrained within the context and relevance of small retail pharmacies, is expected to be a research contribution. Specifically, the work is expected to include (i) a traceable pharmacy operational to analytical data design; (ii) reusable historical snapshot protocols designed to avoid common forms of data leakage; (iii) a Bangladesh-aware comparison of forecasting and customer inactivity approaches; and (iv) a clear link between prediction and constrained, actionable recommendations.
+
+The work also provides evidence of the ability of owners to interpret and apply the information presented to them. When making a recommendation, the system presents supporting evidence to help the owner understand the ``how and why'' of the recommendation, while using familiar rules and maintaining the owner's control over the action. It is not intended to exclude the owner from the decision or to label a numerical output as profitable without considering the business context. Before measuring the impact on the business, the system must first establish that its outputs are accurate, interpretable, and actionable.
+
+
+\section{Anticipated Challenges}
+
+The most crucial dependency is on relevant primary data obtained from several consenting pharmacies. The purpose of the aggregated history is to obtain invoice lines, inventory, products, batches, expiration dates, prices, and customers. It may not be easy to estimate the number of products, batches, expiration date data, prices, and customers present in a particular pharmacy. Available publicly sourced data in Bangladesh may not contain the identifiers needed, and partner data may be lacking. Change in SKU codes, lack of consistency between box/strip/piece units, and missing cost or measurement data are some reasons for such issues.
+
+The technical risks are intermittent demand, short history, new products, stock out censoring, class imbalance, and data drift. The scientific risks are optimistic, underwhelming, or unsafe results of the models, incompatible comparison between datasets, conclusion drawn from a single model, and the disruptive to-and-fro process of data between several models. The human risks are time constraint, disparity in digital skills, lack of trust in the digital setting, and excessive confidence in explanations.
+
+The methodology has a prevention or evaluation step associated with each risk.
+
+\section{Organization of the Report}
+
+Chapter~\ref{chapter_backStudy} builds up the technical and contextual background, reviews the relevant literature, and identifies the research gap. Chapter~\ref{chapter_methodology} introduces the research design, data protocol, formal tasks, proposed framework, and evaluation plan. The Implementation and Experimental Results chapters are kept as placeholders in this preliminary report. The Conclusions chapter brings together only what can be concluded from the current background study and proposed methodology. Final conclusions based on empirical outcomes will be drawn from the evidence obtained during the implementation and experimental evaluation.
+
+
+\cleardoublepage
+
+\chapter{Background Study and Related Work}
+\label{chapter_backStudy}
+
+\section{Background Study}
+
+\subsection{Business Intelligence and the Decision Continuum}
+
+Business Intelligence (BI) is a combination of data, infrastructure, analytical tools and best practices. practices, experience, and organisational practice that is used to improve decision making. Chen, Chiang, and Storey trace its evolution from enterprise reporting to web, mobile, sensor rich analytics \cite{chen2012business}. This thesis has three steps; descriptive analytics Determines what happened and where; predictive analytics predicts what is likely to happen. NEXT; and prescriptive analytics makes comparisons between potential responses.
+
+The stages are interrelated. An action recommendation only takes hold if the underpinning it, and a prediction isn't as credible as the operational data that underpins it. from which he acquired it. Also, integrity requirements vary depending on the operational requirements. and analytical workloads. Since a sale needs regular updating of inventory and payments, An analytical model would need to include a historical feature view with values that would Not change after the evaluation point has been reached.
+
+The proposed framework thus moves the record of the transaction to a versioned analytical snapshots. It preserves the linkage between them via source identifiers, time, transformation meta data.
+
+\subsection{Digitalization of SMEs in Bangladesh}
+
+It is not only a question of the accuracy of technology models, but also of the decision to adopt technology. A mixed method study suggests that the key issues that affect the adoption of ICTs are Awareness of the benefits, government support, lack of understanding of available incentives, and lack of awareness of the market are among the factors affecting the adoption of biomass energy among SMEs in rural Bangladesh. top management support, and financial support \cite{hoque2016ict}. A subsequent survey of SME managers (535) is a mix of the technology organization environment model and diffusion of innovation. concepts. The authors \cite{shahadat2023digital} acknowledge that there are additional issues like relative advantage, complexity, perceived cost, management support, competitive pressure and government support are important considerations. Based on these studies, organizational readiness and expenses, as well as technological fit and workflow functionality, warrant attention when considering technology adoption. But neither of the two studies test a retail prediction system.
+
+This operating context also includes mobile financial services. Through in depth interviews, Accessibility, spatial and temporal mobility, and access to information were identified as. Key challenges in the MFS practices in Bangladesh. Self control and affordances are related. related to self control are also important considerations \cite{hazra2021mfs}. Hence the suggested data The payment mode is included in the settlement status field in the model, and other common fields. business fields. The study should not be construed as providing evidence of better business performance for a named provider or of better performance of one local provider compared with another.
+
+\subsection{Retail Pharmacy as the Initial SME Vertical}
+
+Empirical analysis is purposely limited to retail pharmacies and not other health care services. A mix of different types of SME's that are not directly related to each other would make the analytical setting less consistent. Pharmacies have similar retail requirements: that must be taken into account within a common operational context. The system needs to Manage selling, buying, supplier, payment and stock, and reconcile them batch identity, expiration dates, and inventory in question because these factors impact inventory decisions. Other relevant considerations include shelf life, box strip piece conversion, and, Temperature sensitive items and storage requirements, where necessary. These fields can impact the feasibility of an action even if they are not directly used to improve a demand model. Purchasing advice not taking the above limitations into account. May be “statistically” possible but not appropriate for the shop.
+
+It is a business support boundary, NOT a clinical boundary. The artifact may concentrate on refilling, out of stocks, over stock, near expiry products and other aspects of operations diagnose patient, prescribe medication or treatment plan, or provide any other medical advice regarding issues. recommend a dosage. Specialised extension of the literature in the field of Pharmacy Therefore, further investigation is needed before the final thesis especially in the aspect of storage and expiry awareness batch processing. Design decisions are thus taken with regard to the sector specific not only mentioned from the software design.
+
+\subsection{Performance Evaluation and Data Foundations}
+
+Well defined measures are the starting point for performance evaluation. Revenue, gross margin, average order value, stock turnover, return rate and customer repeat rate respectively must specify a time window, an aggregation strategy, and proper treatment. of events such as rescheduling, refunds, and lost fees. If one or more of these elements are not The measure itself might be misleading or ignored if it is included in a dashboard value.
+
+Definitions may vary also because they may be from the accounting records or be for different time periods. periods. In the canonical layer, invoice lines and stock movements are therefore maintained and documents views to create analytical measures.
+
+Data provenance refers to the origin of a record, the date of its receipt and how it has been transformed. Primary pharmacy data should be accompanied by provenance information, in conjunction with suitable customer anonymisation and organisational anonymisation. For Note the context and reasonable implications of the applicable licence should also be included, be documented.
+
+\subsection{Data Quality, Provenance and Temporal Semantics}
+
+There's not a single data quality percentage that can define the quality of a dataset. In this study, quality data is viewed, at least, with five dimensions. Syntactic validity, whether a value is of the expected type, range, and format. Entity integrity tests if the keys and valid relationships between the invoices, products, customers, The stems and branches are not easily broken. Temporal integrity were events, corrections, receipts reported in the correct order? There are achievable and reasonable availability times. Reconciliation poses the question of whether the moves Payments, returns and stocks are in sync based on declared business rules. Decision adequacy are fields required to complete an analysis filled out? enough at its decision cut off. A file could have high marks on one dimension and it is still not appropriate. for a particular task. Conversely, a data set can be structurally complete but have no value If the unit cost is not available, use for a margin analysis. In the same way, if the identity of the customer is not If it is not available for customer level study, the appropriate analysis cannot be completed. The distinction is significant because the data used to operate the system are continuously updated.
+
+A cancelled invoice can be exported, a return can happen days after the first sale and Later it is possible to reject a return. Apparent availability history can also be impacted by a late stock adjustment. So replacing the original value with the corrected value can therefore Wipe out enough evidence to make the system think it knew at some earlier time in time. An append aware design retains the source event and stores the Creates an analytical view with versions for correction or transition to a new status on a stated cut off. This is in accordance with the BI principle which says that the analytical value depends on an Clear and meaningful relationship between data, infrastructure and organisation use \cite{chen2012business}
+
+Missingness should also not be interpreted to automatically impute. Missing customer identity does not necessarily mean that the import is an unsuccessful one; it may be an anonymous cash sale. A record might be unsuitable because unit cost has not been included. for gross margin analysis. Likewise, records that contain missing data could be excluded from unit demand forecasting. A ZERO sale may indicate ZERO demand, a CLOSED location, a missing file or an unobserved stock out. The different meanings for these states are as follows: They should be When there is evidence from the source that allows them to be separated, they should be separated. Eligibility Thus the value of is proposed not by a man, but at the level of a research task, business, and period. marking the whole set of data as universally ‘clean” or ‘dirty”. The quality model is complemented with provenance. Each derived field should be identified by Its source columns, transformation version and analytical cut off. Each reported result The dataset manifest, data split, and the version of model or rule that created the it. This isn't just corrective inheritance, it's an auditable procedure that ensures the analytical results reproducible. Additionally, it assists to ensure that a public or generated dataset is was not quietly used instead of the original Bangladesh pharmacy data.
+
+\subsection{Customer Analytics: RFM, CLV and Segmentation}
+
+RFM is a simple summary of recency, frequency and monetary value. It summarises a customer's purchase or transaction history with features easy to use To calculate and keep an unambiguous behavioural interpretation. Fader, Hardie, and Lee connect RFM with Customer Lifetime Value (CLV) with the Pareto/NBD and how the value of a specific customer history feature is calculated.how the value of a specific customer history feature is calculated (gamma gamma components). can be estimated \cite{fader2005rfm}. CLV is not a planning measure, but can be used as an outcome. Does not need to be automatically a prediction target or operational target.
+
+A field that defines a segment, should not be accepted as an independent predictor of that segment. This will lead to information leakage, which is not allowed in the same segment. The question for Unsupervised: What would you do if you were the last person on Earth? segmentation is if there is an existing or not coherent behavioural groups can be identified. label. K Means aims to:
+
+\begin{equation}
+  \underset{\{C_k,\mu_k\}_{k=1}^{K}}{\operatorname{minimize}}
+  \sum_{k=1}^{K}\sum_{x_i\in C_k}\lVert x_i-\mu_k\rVert_2^2.
+  \label{eq:kmeans}
+\end{equation}
+
+Even if the data are a continuum, the procedure yields clusters. Therefore, both the number and the interpretation of the clusters need to be validated. The silhouette coefficient quantifies how alike observations are in a cluster and how different they are from the closest other cluster \cite{rousseeuw1987silhouettes}. The parameters of the clustering do not vary significantly from one resampling to another. The validity of the clusters and their business usefulness should be considered as separate tests. An attractive label such as “loyal” does not, by itself, imply statistical stability or actionability of a cluster.
+
+\subsection{Retail Demand Forecasting}
+
+A demand forecast is a prediction of the volumes required for a particular product or place or time. and future horizon. Price, promotion, stock outs are all factors which can affect retail demand series. festivals, product mix changes, and product/service line changes. Fildes, Ma, As and Kolassa stress, retail forecasting practice is not something that can be boiled down to just one. data hierarchy, operation requirement and volume of data make it impractical to use the algorithm involved. In addition to this, the forecasting process and how forecasts are utilized are important. statistical accuracy \cite{fildes2022retail}.
+
+There are many zero demand periods between periods of non zero demand in intermittent SKU demand. observations. Croston's approach is smoothing for the non zero size of the demand and the interval between demands separately. Syntetos and Boylan \cite{SyntetosBoylan2000bias} consider the bias associated while some later research looks in more detail at the The accuracy of intermittent demand forecasting \cite{syntetos2005intermittent}. These works lend themselves to an An intermittent demand baseline instead of a uniform and constant baseline. An appropriate dense series model can be used at the SKU level for dense time series. Forecasts also have to be consistent at varying levels of aggregation, such as Totals for product, category, branch and overall business. Optimal combination reconciliation gives a principled way to develop coherent hierarchical forecasts \cite{hyndman2011hierarchical}. In modelling, the model should be as simple or as complicated as evidence dictates. The ARIMA family models include dependence after appropriate, which are models of serial dependence. and lagged, calendar, transformations; tree ensembles can learn nonlinear effects from lagged, calendar, and transformations; tree ensembles can learn nonlinear effects from lagged, calendar, Ordered historical observations can be used in sequence models; and price variables can be used. Random Forest and XGBoost are more appropriate tabular alternatives \cite{breiman2001rf,chen2016xgboost}. The competition of the M5 retail. shows the relevance and value of large scale, hierarchical and uncertainty aware comparison \cite{makridakis2022m5}. A seasonal naive forecast is therefore a required benchmark and not a ceremonial. baseline.
+
+While there is a relationship between the usefulness of inventory and accuracy of forecasts, they are not synonymous. Hyndman and Koehler talk about the drawbacks of percentage error measures used often, and Propose other methods, such as MASE as a scale free method for comparison \cite{hyndman2006accuracy}. A study conducted by Syntetos et al. (2005) relates the selection of the forecasting techniques Upon the other hand, forecasting selection by means of only statistical results without taking into account stock control needs might cause problems. accuracy might not meet the requirements of inventory management \cite{syntetos2010stock}. The methods are was assessed through point forecast error, uncertainty and simulated stock out and the holding costs instead of picking out a technique from the one easily calculated metric.
+
+\subsection{Forecastability, Demand Regimes and Decision Loss}
+
+The forecasting task varies according to the information content of a series. A high volume A staple that is sold on regular weekly basis can yield ample observation of its level and seasonality. By contrast, a slow moving spare item may have a large number of periods with zero demand, For a newly introduced product, there might be few or no historical data. Pooling Such a combination of these different cases in a single score and evaluation using one algorithm might obscure the impact on the score. systematic failures. The literature on intermittent demand includes then a proposal: based on the demand regime. The comparisons should include zero demand frequency, that the demand is non zero, and data is available when deciding eligibility of a forecasting method \cite{croston1972intermittent,syntetos2005intermittent}.
+
+This results in another compromise: aggregation over time. Daily data maintain the time structure. order of observations and can support short range ordering decisions, but may not be suitable for long range ordering. Always, there is adequate stability for model estimation. Combining data on a weekly level. can help to lower the sparsity, but may also 'smooth' festival peaks and other short term patterns that are applicable to stock out periods and decisions when lead time is short. Product level aggregation A SKU level forecast cannot be directly derived from a forecast. category level forecast. Hierarchical reconciliation is when you are dealing with coherence between various without sacrificing the requirement to pick a granularity that fits the aggregation levels. the operational decision.
+
+They are not always available and observed sales is therefore not necessarily the preferred target. If an item A zero or low number of sales recorded does not prove that customer demand is low. is not in stock. was zero or low. Such time periods, lacking a stock availability indicator, can teach a Model that low demand is related to the observed supply limit. When censored If there are demand periods, the analysis should then take into account how the results vary with respect to the change in demand periods. Except for those periods or when different assumptions are made. Where sufficient If history does exist, sensitivity analysis may be performed in a variety of ways of handling censored periods. If the underlying demand cannot be reconstructed the study should Don't assume that sales are unconstrained demand.
+
+Forecast errors also have asymmetric decision consequences. When forecasts are made and they are too low, this can result in over forecasting can result in over inventories and holding costs while under forecasting can lead to stock outs and lost sales. costs. So the expense of a single choice or alternative can vary significantly from that of another. of another. These costs do not necessarily need to be reduced by choosing the model with the the minimum MAE, especially if forecast errors impact on other products or subsequent periods. This is the reason for scale aware error measures, prediction intervals and simulation of inventory. The use of identical demand paths complements each other for their different purposes \cite{hyndman2006accuracy,syntetos2010stock}. Model comparison can continue to be prediction oriented until the appropriate cost assumptions are declared, and then comparisons can be made to determine which way to decide.
+
+The review thus dismisses three short cuts: one, choosing a deep model before setting up a deep model; the organization of the data; second, assuming that a simple model is always adequate; and Finally, believing the more complex the model, the more valuable it is. The analysis should rather Start by getting a feel for the structure of the series and comparing suitable baselines and candidate models. The outcome of an event at a large scale forecasting competition shall not be counted as direct evidence for business value for a small local retailer. The M5 competition This offers strong support for a comparative retail forecasting, and the current job is to identify what parts of that evidence are appropriate for a situation with very different infrastructure, decision costs and data volumes \cite{makridakis2022m5}.
+
+\subsection{Customer Inactivity, Class Imbalance and Calibration}
+
+Churn is a cancelled subscription and can be documented. For However in the case of non contractual retail, the churn has to be defined at a fixed time t, since no repeat purchase in a time interval [t, t + H]. All features must be known at: time t, and the training and validation processes should not be contaminated by information. In the window of the label, select from the future. This definition is going to translate a business term into a repeatable one. prediction task.
+
+The positive class may be rare or change from data set to data set in B2B scenarios. Saito and Rehmsmeier offer an explanation on why precision recall analysis is superior For imbalanced binary classification, they have introduced the ROC curve and its analysis \cite{saito2015pr}. Model comparison should Before considering, therefore, report class prevalence and the quality of the predictions. The costs and benefits of an action.
+
+An extra requirement is added to the prescriptive layer. The model output is used in conjunction with a GIS or similar mapping software. Ranking on its own is not enough for a decision calculation; there must be a conversion of the output. Converted into an interpretable probability or score. A probability of 0.7 should, under appropriate Normal, 70\% of like events, correspond approximately to a 70\% frequency of the event among similar cases. Niculescu Mizil and Caruana's work is a study of how well are probability estimates calibrated. from supervised learners and post hoc calibration methods \cite{niculescu2005calibration}. The proposed framework Thus, Brier score is reported along with PR AUC, ROC AUC and top fraction lift, while at the same time providing calibration information.
+
+\subsection{From Customer Score to Responsible Retention Decision}
+
+A customer risk model doesn't give permission to do something, it gives a ranking or probability. The quality of the ranking is what decides whether or not we can achieve a given contact capacity. The selected fraction has a higher proportion of future inactive customers than an untargeted policy. The probability must be calibrated, since when an expected value is calculated the The benefits and costs are subject to uncertainty, and are weighted by the estimated probability.
+
+The customer record brings in some more confusion. The frequency and amount Opportunities to visit, household purchasing patterns, and even the type of purchases may be related to the time of year. or shared identifiers. Return behaviour coupled with discount seeking behaviour is not enough to show commitment or potential worth. Fader, Hardie, and Lee explain why They may be able to offer more information than a single RFM label if combined with transaction history \cite{fader2005rfm}. Segmentation can aid interpretation, a convincing "segment name" is only a description of a behavioural pattern. It does NOT state that the pattern is statistically stable. So, stability testing and owner checks should go hand in hand with clustering. Prior to using the segment output to make decisions \cite{rousseeuw1987silhouettes}.
+
+There is also a need for an independent feasibility gate for responsible use. The level of a score that implies a If consent, contact efforts should be made provided that there is a high probability of inactivity does not, by itself, justify customer contact. There is no policy or offer is appropriate. The score should also never be interpreted as a A causal attribution for example “long recency increased risk” or as a causal claim that a particular message will retain the customer. The thesis thus focuses on the prediction of inactivity, the estimated probability, contact eligibility, and subsequent Customer response as a stand alone element in the decision making process. This design enables the The MMR model should be scientifically informative even if there is not enough evidence to provide evidence to back up a statement about profit or the cause and effect of a retention action.
+
+\subsection{Leakage, Explainability and Change Over Time}
+
+Data leakage happens when training is accessible by information that wouldn't legitimately be present in their training. are in existence at prediction time. It can be introduced via target derived features, customers who strings that show up to either side of a data split, post customer action information, post outcome variables, also known as transformations that are applied prior to splitting the data \cite{kaufman2012leakage}. Leakage control is thus not a model choice, but a characteristic of the data pipeline. Before training, The prediction time, rules of feature availability, and data splitting should be defined by the system. policy.
+
+SHAP gives additive feature contributions with respect to a reference value and supports both local and global inspection of model predictions \cite{lundberg2017shap}. An attribution such as the above describes How the fitted model incorporates encoded features; does NOT create a cause and effect relationship. In In the eyes of the social science researchers, as summarized by Miller, the emphasis is often on useful explanations. Selective and contrastive that are \cite{miller2019explanation}. Therefor, a recommendation card should: Explain a few of the reasons why this action is occurring now. salient, decision relevant factors. It should not be written in a causal style and it should be detailed enough to be evidence to support for the owner to consider the recommendation.
+
+Business conditions change over time, too. Retail monitoring should differentiate The reason for this is that there is a trade off between data quality failure, input distribution shift, and outcome degradation. performance. If a model is on a model should not be assumed just because it remains on a retraining schedule. Evidence that a model is still valid should be the result of ongoing Evaluation under a declared validation protocol. Evaluation of models should also be done on retrained models. validation principles used at development being the same as for use. changes explicitly documented.
+
+After making a prediction, the subsequent step is to take an action, which is subject to business. constraints. Prescriptive Analytics is the use of predictions in a clear cut decision problem. Prescriptions developed by Bertsimas and Kallus are based on data available with auxiliary information, where observations are utilized to help condition stochastic optimization \cite{bertsimas2020prescriptive}. The present The thesis underlying this is that actions should be evaluated in terms of the expected benefit, cost, and constraints. It is not intended to simulate the asymptotic method or the theoretical The method used in the cited work. Rather, re ordering and retention decisions are made separately. From action families, due to the differences in their outcomes, costs, permissions and uncertainties.
+
+The proposed system is an information system artifact and an analytical study. Design science research involves the design and evaluation of artefacts in the context of a relevant problem. and an existing knowledge base \cite{hevner2004design}. This view helps to develop an assessment plan. which takes into account the validity of predictions, software behaviour, usability, and consequences of metric, but rather deciding as the owner of the model. criterion of success.
+
+\subsection{Cross Stream Evidence Synthesis}
+
+The proposed cannot be found in one body of literature that provides the full argumentation. artifact. Whilst technology adoption studies have been conducted in Bangladesh, these studies fail to consider the full transaction level analytical workflow. Forecasting and customer analytics are usually started from Once an analytical dataset has been created, and give method specific approach to constructing models. Leakage, calibration and explanation research is important. does not specify an SME operating workflow, but specifies safeguards. Prescriptive analytics shows a link between predictions and estimates and decisions made from them. Design science research also involves testing of the resultant product (artifact). and compared to the problem that it was intended to solve. Figure~\ref{fig:evidence_synthesis} demonstrates how evidence in these bodies addresses various aspects of the problem and, therefore, should should not be considered to be the same requirements.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.9\textwidth]{666.png}
+    \caption{Complementary roles of the literature streams in the proposed design.}
+    \label{fig:evidence_synthesis}
+\end{figure}
+
+The arrows need not indicate that the process is unidirectional. The local workflow can Restrict model selection by means of data adequacy, which might involve modification of available data data fields. Uncertainty can make something that would otherwise be a good action out because of the sense of uncertainty, owner assessment can reveal the infeasibility of an explanation or recommendation. The figure instead Logical dependency: claims later on need to be supported by evidence earlier on. The cross cutting integrity conditions apply for all stages, but other conditions may be. Only applicable to the 1st, 2nd or 3rd stage.
+
+Thanks to this synthesis, a more strict definition of integration is reached. Integration is a combination of a dashboard, a forecast, a classifier in one user. interface. It needs to be integrated in the hardware and software of the system. components, as well as a common operational language. There are several changes, therefore, Changes made to the English version of the framework, such as adding explicit cut offs, task eligibility, separate uncertainty statements and a single point of auditability From input to outcome, throughout the process. These properties become evaluation points.These properties become the points to be evaluated. targets in Chapter 3.
+
+\section{Literature Review Procedure}
+\label{sec:literature_review}
+
+The current literature review is not meant to be a structured review, but more of a background review. The methodology was not a systematic review and the relevant information is not comprehensive. Literature sources were chosen based on their direct relevance to one of 6 topics: Bangladesh SME digitalization, BI and design Science, customer analytics, retail demand/inventory, churn and evaluation integrity, Explainable/prescriptive analytics. Searches were conducted with the terms such as ICT adoption in SME, demand forecasting in retail, intermittent demand, RFM customer segmentation, churn profit, data leakage, concept drift and prescriptive analytics.
+
+The sources were preferably taken from peer reviewed journals or conferences. Literature sources were kept if they defined a concept needed for the topic, provided a method or an assessment criterion or evidence specific to Bangladesh. Metadata of each DOI was verified through crossref, and the sources of the datasets were verified through DataCite or the repository itself. Only certain numerical statements that can be found either in the The metadata, abstract or full text of sources was taken into account. There are 22 in the core set. as academic publications and 3 candidate datasets are mentioned in separate list in Chapter 3. So, this first report has a total of 25 citations.
+
+\subsection{Business and Bangladesh Evidence}
+
+The descriptive predictive prescriptive framework \cite{chen2012business} is provided in the BI literature, and design science offers an artefact driven logic for research \cite{hevner2004design}. Bangladesh specific An additional studies conducted show that organizational support, perceived value, cost and others are vital. complexity and real technology use in the local context \cite{hazra2021mfs,hoque2016ict,shahadat2023digital}. These factors Therefore, it should be taken into consideration in the proposed system design and evaluation.
+
+The main problem with these studies and for the current research, however, is that they are based on the unit of not in the quality of the analysis, but in the methodological quality. Adoption surveys and interview based organizational readiness, perceived benefits, barriers, and technology use can be explained through Although they are not a transaction level evidence to assess demand, they do provide behaviour. forecasting, customer inactivity, inventory decisions or other operational outcomes. As a result, these studies are relied on mostly to develop contextual requirements and The findings are not intended to be direct evidence of predictive validity for Bangladeshi SMEs, but instead evaluations considerations. or operational effectiveness.
+
+\subsection{Customer Evidence}
+
+Literature from customer analytics tells of a number of complementary forms of evidence. Probabilistic customer models, like the model proposed by Fader et al., set up A correlation between past transaction behaviour and the likelihood of future purchasing activity. Such models provide a theoretical basis for analysing customer recency, frequency, value and inactivity patterns. The silhouette coefficient is an internal measure of the behaviour segmentation in cohesion and separation in a cluster \cite{rousseeuw1987silhouettes}. It can thus be used as an adjunct diagnostic for assessing the internal consistency and size of segments of customers. differ from each other. But a good silhouette score is not sufficient proof of that a cluster is "useful" and that it does not change for a long time or is not "causally meaningful".
+
+These techniques combined encourage behaviour based customer profiling and inactivity analysis. However they are in themselves not leakage proof and time proof. A validated and operationally actionable non contractual Bangladeshi retail customers. The proposed system thus builds upon these values to assess customers' Portfolio reversion at explicit historical reversion points and trading performance off predictive performance. next business activity and result assessment.
+
+\subsection{Forecasting and Inventory Evidence}
+
+The term “evidence” refers to data and information, such as the forecasting process and its resulting forecasts. The methodological basis of forecasting and inventory research is used to assess Prediction of demand and its impact on operations. The M5 competition presents: on the a large scale comparative evidence on retail forecasting methods and evaluation practices \cite{makridakis2022m5} The retail forecasting literature gives further advice on the characteristics of a good forecast. and analysis of retail demand in the real world \cite{fildes2022retail}.
+
+Intermittent demand methods are especially significant when sales are haphazard. or have a large number of zero demand periods \cite{croston1972intermittent,syntetos2005intermittent}. Such settings require comparators that Instead of relying just on the timing and magnitude of demand, demand should be explicitly accounted for: models for dense and regular time series. Likewise, hierarchical forecasting and reconciliation methods highlight consistency at related levels of aggregation, Forecasts of various business metrics like SKU, category and branch forecasts.
+
+Forecasting accuracy should not be, as stock control research shows, the only measure of the effectiveness of forecasting. viewed as equivalent to the performance of inventory \cite{syntetos2010stock}. The forecasting model can attain a reduced statistical error, but not necessarily a reduced shortage, costs or cash. Wrapped up in the stock. Thus, such an evaluation, for SMEs, should not be limited to a single forecasting model or a single error criterion. Forecast candidates should first be compared After using appropriate out of time predictive measures and relevant baselines, their It is important to assess the outputs by inventory or replenishment decisions under explicitly Have stated the operational assumptions/constraints.
+
+\subsection{Risk, Integrity and Action Evidence}
+
+Predictive tasks with risk need to be evaluated not only in terms of traditional ranking accuracy but also in terms of risk. Precision recall analysis is especially germane when the class of interest is a rare or imbalanced class, Probability calibration examines how well the predicted probabilities are numerically reliable \cite{niculescu2005calibration,saito2015pr}. These two points of view tackle different features of a risk model: higher risk cases are either not ranked properly or discrimination is the rule that determines. calibration is the criterion by which one can assess the interpretation of the related probability estimates. reliably.
+
+Data leakage is an additional risk to model validity. Leakage research shows that apparently good predictive results may render unusable because of the features, labels, transformations (also called data processing procedures) involve processing data that would not have been provided at the real decision time \cite{kaufman2012leakage}. Consequently, temporal availability The explicit conditions of model evaluation are the and conditions not the provenance. post processing checks.
+
+There is further evidence in the form of model interpretation and human centred explanation. SHAP provides a universal approach to feature attribution at the local level \cite{lundberg2017shap} and human centred Explanation science research focuses that beneficial explanations should facilitate inspection, than just displaying model internals, it includes comparison, and communication. Such explanations can help users to understand the factors that are associated with a prediction, but they Should not be interpreted as evidence of causality.
+
+Lastly, Prescriptive Analytics is the conceptual link from prediction to action. through explicit cost, resource, and constraint structures of models that are filled with model outputs. \cite{bertsimas2020prescriptive}. The last research question is not whether these individual principles explain, and customer risk estimation, leakage control, and forecasting do exist are not addressed. constrained decision support can be included in a consistent, low resource SME workflow and rated based on evidence of the same time frame.
+
+\section{Research Gap and Thesis Positioning}
+\label{sec:research_gap}
+
+Research gap is the difference between what each stream of the reviewed To define a target SME decision problem and what is needed by the literature. This gap This thesis deliberately sets its boundaries using the 22 work core scholarly set. Therefore, It is not asserted that there is no other related system anywhere but six are identified in the thesis. relevant to the design and implementation of the program.compatible with the design and implementation of the program. pertinent to the context of the proposed research.
+
+\paragraph{G1: Contextual and Empirical Gap}
+Bangladesh focused research explains significant facilitators and enablers of digital technology use such as organizational readiness, perceived value, cost, management support and everyday technology use. But, this sort of adoption oriented research does not jointly and longitudinally assess the demand, customer inactivity and retail restrictions at the SKU level with transaction level operational data. On the other hand, retail and forecasting studies on a large scale deliver good analytical evidence \cite{fildes2022retail,makridakis2022m5} which do not automatically transfer. across variations in size, form, plant and equipment, and ownership of business operation challenges that are typical of the Bangladeshi SMEs. Therefore, evidence that integrates There is still a limited extent of local contextual validity and transaction level analytical evaluation.
+
+\paragraph{G2: Operational to Analytical Integration Gap}
+BI and CRM research shows a sample of operational data that can be used for several analytical functions \cite{chen2012business}. But, much of the literature is comprised of forecasting, segmentation, and churn studies Matrices start with an analytical dataset that has already been prepared. They don't necessarily look at the full lifecycle an auditable business event to a historically valid snapshot to prediction, action, and subsequent outcome. This missing path is especially significant for the context of the target pharmacy. Corrections changes such as to invoices, stock adjustments, changes in organizational records, and other operational changes. Data on which analytical features are based can change in any update. If these changes Previously generated rows, features and Reproduction of analytical cutoffs can become challenging and/or impossible. Therefore, an integrated A mechanism needs to be in place to ensure that the lineage from source events to analytical outputs is maintained and subsequent decisions.
+
+\paragraph{G3: Methodological Validity Gap}
+Previous studies have identified a number of Risks and safeguards of the methodology separately. Data leakage has been considered in forecasting has been considered in \cite{kaufman2012leakage}; intermittent demand forecasting has been considered in \cite{croston1972intermittent,syntetos2005intermittent}; hierarchical forecast The study of coherence is done in \cite{hyndman2011hierarchical} and forecast error measurement has been discussed in \cite{hyndman2006accuracy}. In \cite{niculescu2005calibration}, the problem of approximation and probability calibration of Fuzzy logic has been studied. What is still lacking in the envisioned SME setting is a common evaluation protocol that Implements these protections in conjunction. Let's add decision time feature to such protocol. availability, temporal and entity safe data splitting, baseline eligibility according to series pure) environment.properties, aggregation (if desired), probability calibration and a clean (pure) environment. final test set. Without these safeguards being applied jointly, apparently strong analytical Performance may not be a good indicator of real world predictive performance.
+
+\paragraph{G4: Prediction to Decision Gap}
+Correct forecasting, customer risk scores and Customer rankings are intermediate analytical results and not decisions per se. Stock control research demonstrates that operational consequences can change the preferred forecasting model even if there is a similar predictive accuracy \cite{syntetos2010stock}. Likewise, prescriptive In analytics, the process of using predictive outputs is explicitly formalized inside decision problems \cite{bertsimas2020prescriptive}. The need that remains to be resolved is thus a clear, low resource mechanism that transforms the Converts results from several SME analytical activities to actions that can be done. These actions should be considered a part of a score. due to operational limitations such as cash, stock levels, reordering policies, customer contact restrictions, customer consent, prediction error and acquisition cost of taking an action. The gap is not only to make predictions, but to make actions out of them that are still possible within the range of operation of the SME.
+
+\paragraph{G5: Owner Centred Explanation Gap}
+SHAP provides principled feature however, is an approach to explanation research that is more human centred than these attributions for complex predictive models. As indicated in the diagram, useful explanations are selective, contextual and relate to the decision being made \cite{miller2019explanation}. But neither is technical feature attribution sufficient nor is it The existence of a generic dashboard is an indication of a Bangladeshi SME owner's understanding of the key evidence and can differentiate association from causation and can appropriately use The explanation to justify the decision to be made. Therefore, the quality of the explanation should be assessed by means of an owner centred tasks and not by Inferred based on the inclusion of an explanation chart. Relevant evaluation ought to take into account If the explanation contains suitable supporting details, sources, uncertainty, timing and confidence in a form allowing the owner to make sense of and act on it. Appropriately assess and apply the suggestions.
+
+\paragraph{G6: Lifecycle Accountability Gap}
+Relationships between business inputs, model Outputs, actions and outcomes can vary with the passage of time. Design science research stresses the need to assess artifacts against the problem to which they are meant to solve. to address \cite{hevner2004design}. However, the reviewed task specific studies do not collectively close the By keeping the connection between model versions, baselines, recommendations, owner decisions, subsequent outcomes and revalidation decisions. If there is no lifecycle accountability, it is impossible to reliably determine a system's A recommendation that has been developed in the past is still valid when business conditions/inputs change. distributions or model behaviour have changed or operating constraints. A complete SME Thus, it is essential that an analytical system is explicitly versioned, monitored, outcomes are recorded, and revalidation mechanisms.
+
+\begin{quote}
+Based on evidence examined, a key research gap is that the bounded scholarly evidence base, of a jointly evaluated and Bangladesh centred A system that links auditable operational information from retail pharmacy several leakage controlled, calibrated analytical shops; Compares suitable baseline, pooled pharmacy models and eligible Analytical outputs to ATO pharmacy adapted models; and shop constrained, owner understandable actions which are used and then outcomes can be monitored over time.
+\end{quote}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.9\textwidth]{555.png}
+    \caption{Research gap bridge between six literature limitations and the integrated thesis response.}
+    \label{fig:research_gap_bridge}
+\end{figure}
+
+The central gap is thus not based on the creation but integrative and evaluative. of a completely new classifier or forecasting algorithm. Research is required to show Whether the existing methodologies can be combined in one logical SME decision support Without compromising human, decision feasibility, temporal validity or data lineage, you can design a workflow. accountability.
+
+Table 2.1 provides an operational test for each gap identified by corresponding it to the proposed Responses of the system and evidence needed for closure and study objectives. or research questions.
+
+\begin{table}[H]
+\centering
+\small
+\caption{Research gaps identified, proposed responses, and evaluation evidence.}
+\label{tab:gap_traceability}
+
+\begin{tabularx}{\textwidth}{|p{0.15\textwidth}|p{0.29\textwidth}|Y|p{0.14\textwidth}|}
+\hline
+\textbf{Gap} & \textbf{Proposed Response} & \textbf{Evidence Required to Close the Gap} & \textbf{Study Link} \\
+\hline
+G1: Context & Explicit external data boundaries and a Tier 1 multi pharmacy study & Primary pharmacy records, explicit separation of local evidence from foreign or generated evidence, and clearly bounded cross context claims & RQ1–RQ4 \\
+\hline
+G2: Integration & Canonical operational events, data manifests, and versioned historical snapshots & Reproducible traceability from source records to features, analytical outputs, actions, and subsequent outcomes & O1–O2 \\
+\hline
+G3: Validity & Temporal and entity safe a splitter, a baseline ladder and a consistent final test which is frozen. & Out of time performance metrics, ablation analysis, uncertainty intervals, calibration assessment, and leakage audit & RQ1–RQ2 \\
+\hline
+G4: Decision & Constraint aware reorder Rentention and retention actions with same path policy comparison & Operational outcomes under the same demand or customer history, together with sensitivity analysis under the alternative cost and constraint scenarios & RQ3 \\
+\hline
+G5: Explanation & High level Bangla explanations containing supporting evidence, source information, uncertainty, timing, and confidence & Owner task performance demonstrating understanding and appropriate use of explanations in decision making & RQ4 \\
+\hline
+G6: Lifecycle & Versioning, drift monitoring, response monitoring, outcome tracking, and a formal revalidation protocol & Revalidation logs, model and baseline histories, post decision observations, and records of recommendation outcomes & O6 \\
+\hline
+\end{tabularx}
+\end{table}
+
+B-SMART aims to fill this gap: at the same time as contextual, analytical and operational gap. Selected components of the can be tested using public or generated evidence. This evidence can't alone close the contextual, decision oriented, or owner centred gaps. Appropriate consented data from the pharmacy is needed to fill those gaps. Evaluation from target context based on both teacher's and participant's evaluations.
+
+The resulting thesis should therefore be a statement about the degree that such local evidence is are biologically closed, and gaps that are protected by current or planned management.available and should clearly differentiate between gaps that are empirically closed, gaps that are biologically closed, and gaps that are protected by current or planned management. are only partially answered and some remain open. The use of a prototype, successful benchmark result, or external dataset should not be treated as evidence that A local research gap has been addressed. Benchmark evidence can be used to determine methodological/technical performance, but claims of local effectiveness need secting to evidence from the intended operational context.
+
+\clearpage
+
+
+\chapter{Proposed Methodology}
+\label{chapter_methodology}
+
+\section{Research Approach}
+\label{sec:research_approach}
+
+\subsection{Research Strategy and Design Science Rationale}
+
+This thesis follows a design science research methodology with the backing of empirical assessment. The study is suitable as design science since it is an artifact that aims to solve. a practical organizational issue and assesses that artifact in relation to clearly specified. requirements \cite{hevner2004design}. The B SMART framework, with its principal artifact, is the first one. time aware analytical pipeline, canonical operational data design, constraint aware. recommendation process, and processes of presenting supporting evidence to the. owner.
+
+Empirical analysis is required as a plausible technical architecture per se is not sufficient. not sufficient to develop predictive validity, business usefulness, operational feasibility or usability. In this regard, the study not only assesses whether the suggested system can. be implemented, and whether the outputs of its analysis are still valid over time, whether its guidelines honour the working conditions of the participating pharmacies, and whether the intended users are able to interpret and use those recommendations appropriately.
+
+\subsection{Research Stages and Units of Analysis}
+
+The research is organized into four related stages:
+
+\begin{enumerate}[label=P\arabic*.]
+    \item Definition of problem and evidence: define the target pharmacy SME context, research questions, requirements based on literature, admissible evidence, analytical units, and measures of success.
+    \item Artifact design: specify the operational schema, historical snapshots, candidate. techniques of analysis, policy and strategy limitations, interfaces and audit records. must be provided by the suggested system.
+    \item Technical testing: test data integrity, predictive performance, calibration, strength, testability and scalability with explicitly divided development, public real, and primary real evidence.
+    \item Decision and user assessment: assess simulated or pilot operational. implications of inventory and customer related recommendations and evaluate. whether the participating owners are able to properly comprehend and utilize those. recommendations.
+\end{enumerate}
+
+The choice of the unit of analysis varies depending on the task of analysis. To forecast demand, the unit of observation is a pharmacy branch SKU day or pharmacy branch SKU week observation, inventory related decisions are stored using information even in cases where the demand itself is forecast. at the SKU level.
+
+In the context of customer risk modelling, the unit of analysis is a snapshot of customer features, which is created. at a specified historical cutoff. The unit is a qualified action as far as strategy evaluation is concerned. compared to the same set of information and pertinent product, pharmacy, or customer specific constraints as the comparison policy. Such task specialized units preclude. a piece of evidence at one level of analysis being misconstrued as evidence at another level. level.
+
+\subsection{Design Requirements and Acceptance Logic}
+
+Eight design requirements are based on literature review and the problem. formulation. They are defined prior to implementation in order to make the artifact be. compared with consistent goals as opposed to whatever functions are most comfortable to. demonstrate.
+
+\begin{description}[style=nextline,leftmargin=2em]
+    \item[DR1: Decision relevance]
+    Every analytical product will specify its target user, decision, analytical unit. feasible response, and decision horizon. A decision which does not lead to an output. been specified is exploratory and will not be reported as an actionable. recommendation.
+
+    \item[DR2: Operational integrity]
+    The source events will maintain pharmacy and branch scope, stable product, batch and. Where, invoice identifiers, event time, receipt or ingestion time, expiry information. available, status of the transactions, and status of correction history. KPIs, analytical features, and these governed source events should give reproducible model outputs.
+
+    \item[DR3: Temporal validity]
+    Only evidence shall be used as features, preprocessing parameters, labels and model inputs. which would otherwise have been in existence by the appropriate historical cutoff. Final evaluation shall be applied to a future period or group of entities that has not been utilized in model or hyperparameter selection \cite{kaufman2012leakage}.
+
+    \item[DR4: Proportionate modelling]
+    Each analytical work will have a clear starting point. A more complicated candidate. model can only be preferred in those cases when the available evidence justifies its intricacy. and in case the resulting bettering is material, stable, and pertinent to the intended. decision.
+
+    \item[DR5: Uncertainty and reliability]
+    Forecast level, probability calibration, data quality level, and sensitivity to uncertainties of costs or assumptions will be reported where the elements may change the. resulting decision \cite{niculescu2005calibration}.
+
+    \item[DR6: Feasible and responsible action]
+    Recommendation generation will take into consideration purchasing budget, present and future. stock, lead time, minimum order quantity or pack size, storage capacity, remaining. shelf life, expiry risk, cold chain requirements, contact consent, and policy. constraints. Unfeasible actions will be sieved or simply omitted instead of. simply given a low score.
+
+    \item[DR7: The power and knowledge of humans]
+    Recommendations will include a brief explanation, rationale, evidence, reference. not knowing where it counts, and a proper substitute. The proprietor will stand. capable of inspecting, disapproving, amending, or delaying the action proposed. Explanation quality will be graded by decision tasks but not by the mere presence. of an attribution or explanation chart \cite{lundberg2017shap,miller2019explanation}.
+
+    \item[DR8: responsibility and repeatability]
+    All analytical outputs issued will be saved with the versions of the dataset, historical. feature pipeline, interface, operational constraints, snapshot, model or rule. that output is linked to including the reaction of the owner and any later. observable outcome.
+
+\end{description}
+
+Reception is deliberate non compensatory. There is no compensatory ability of high predictive accuracy. because of data leakage, failure of privacy, or operationally infeasible act. Similarly, a usable interface fails to make up invalid or unreconciled KPI. Conversely, a candidate need not be the most complicated model on the market, to meet the artifact. requirements. When it is sufficiently and temporally valid a simpler baseline may be accepted. more reliable to the decision and more stable and easier to maintain.
+
+All requirements will thus be categorized as met, partially met, not met and not evaluable. and the evidence available. The last category is significant as the lack of proper cost, consent, constraint, or follow up data will minimize the power of the. ending instead of being made out of a supposed achievement. Task level measures will be reported alongside requirement level findings in such a way that there is not a common aggregate score. hide an acute failure.
+
+\subsection{Research Questions, Hypotheses, and Measures}
+
+The following are the operationalized research questions that were introduced in Chapter 1:
+
+\begin{description}[style=nextline,leftmargin=2em]
+    \item[RQ1 / H1]
+    The proposed will run at a lower cost under the same demand paths, costs and operational constraints. forecast based replenishment policy will minimize the joint effects of. stock outs and holding inventory as compared to the existing replenishment policy adopted by the participating owner.
+
+    \item[RQ2 / H2]
+    An explanation supported condition will in the counterbalanced owner decision tasks. improve decision accuracy or confidence without causing a practically detrimental decrease in the time to complete the tasks as compared to an output only condition.
+
+    \item[RQ3 / H3]
+    measures. RQ Unit and Comparison Primary Measures Evidence Required. RQ1 Unseen branch SKU periods; context aware
+
+    \item[RQ4 / H4]
+    models and forecasting baselines WAPE, MASE, interval
+
+\end{description}
+
+\begin{table}[H]
+\centering
+\small
+\caption{Research question, evidence, comparisons, and primary alignment measures.}
+\label{tab:rq_alignment}
+\begin{tabularx}{\textwidth}{|p{0.09\textwidth}|p{0.28\textwidth}|Y|Y|}
+\hline
+\textbf{RQ} & \textbf{Unit and Comparison} & \textbf{Primary Measures} & \textbf{Evidence Required} \\
+\hline
+RQ1 &
+RQ1 Unseen branch SKU periods; context aware model versus ablated models and forecasting baselines &
+WAPE, MASE, interval coverage, and related out of time forecast measures &
+Time stamped sales, stock, price, promotion, calendar, and relevant context data \\
+\hline
+RQ2 &
+RQ2 Future customer outcome. windows; predictive base rate or model versus rule based baseline &
+PR AUC, Lift@10\%, Brier score, and calibration measures &
+Pseudonymous customer transactions with historically valid feature cutoffs and sufficient future follow up \\
+\hline
+RQ3 &
+RQ3 The same demand paths; proposed replenishment policy versus the participating owner's existing policy &
+Stock out units, inventory holding, and total cost under declared assumptions &
+Stock records, lead times, purchasing constraints, and validated cost assumptions \\
+\hline
+RQ4 &
+RQ4 Equivalent decision situations; explanation supported output versus output only condition &
+Decision correctness, completion time, confidence, and perceived usability &
+Consenting target users and counterbalanced decision tasks \\
+\hline
+\end{tabularx}
+\end{table}
+
+The last set of tests will not be checked when developing the hypothesis, choosing the model, etc. primary metric selection, or feature selection. Actions that will be added after this phase will. be identified as exploratory. Moreover, statistically significant difference will not. instead of being automatically interpreted as practically important, unless its magnitude, operational. consequence, or cost implication is relevant to the decision made.
+
+\subsection{Target Population and Sampling Plan}
+
+The target market will be operating pharmacies based in Bangladesh, which uphold. data on inventory and transactions pertinent to the analytical activities that were outlined in this research. It will first recruit about three to five independent pharmacies. where possible, in the same retail pharmacy vertical. The target of the intended analysis is about 12-24 months longitudinal records across. participating pharmacies, which are dependent on the availability of data, the quality of data, owner consent, and ethics approval. A pharmacy that has significantly less history can still make contributions towards testing. The process of data collection, mapping, schema and data quality, but such a pharmacy will. not in isolation ascertain claims of temporal or cross pharmacy generalization.
+
+Pharmacies will be recruited intentionally since the participation will be based on the availability of the relevant. longitudinal data, such as invoice, stock, purchase, batch and expiry data. where authorized, in conjunction with owner consent. At a minimum, included transaction data will include decipherable dates, product identifiers, quantities, and adequate context. data to recreate the pertinent business process. Participating pharmacies shall also possess an owner or a responsible operator who can describe the existing replenishment. process.
+
+The customer level analysis subjects an extra eligibility criteria. It requires stable pseudonymous identifiers of customers and adequate follow up following every historical cutoff. to discover the outcome in question. In case a pharmacy, analysis activity, or period does. Fail to meet the evidence requirements of a given analysis, that unit will. not to be considered in that analysis but to be fixed by artificial identities, made up limitations, or conjectured results.
+
+\subsection{Data Sources and Evidence Tiers}
+
+Evidence will be divided into explicit levels in such a way that convenient external, public, or data generated cannot silently change the claim under test.
+
+\begin{table}[H]
+\centering
+\small
+\caption{Intended evidence levels as well as inference limits.}
+\label{tab:evidence_tiers}
+\begin{tabularx}{\textwidth}{|p{0.10\textwidth}|p{0.29\textwidth}|Y|Y|}
+\hline
+\textbf{Tier} & \textbf{Source} & \textbf{Authorized Use} & \textbf{Prohibited or Unsupported Inference} \\
+\hline
+1 &
+1 Consenting Bangladesh pharmacy invoice, stock, purchase, batch, expiry, customer, and constraint records &
+Primary pharmacy forecasting, customer risk, strategy, and usability evaluation &
+Generalization beyond sampled pharmacies or automatic transfer to other SME verticals \\
+\hline
+2a &
+2a Bangladesh market price data, including relevant WFP/DAM sources \cite{wfp2026prices} &
+Local external context and separate market price analysis &
+Direct inference of SKU level pharmacy sales, customer behaviour, or pharmacy revenue when those variables are not observed \\
+\hline
+2b &
+2b UCI Online Retail II data from the United Kingdom \cite{chen2012uci} &
+Real invoice pipeline testing and portability checks for selected methods &
+Claims about Bangladeshi purchasing behaviour or local pharmacy effectiveness \\
+\hline
+2c &
+2c Public Bangladesh retailer. demand series data \cite{jahin2024dataset} &
+Local quantity forecast procedure and implementation checks &
+Multi SKU, customer, price, inventory, or profit on account of the. required fields are absent \\
+\hline
+3 &
+3 Generated or synthetic records &
+Software testing, rare case testing, scalability checks, and privacy safe examples &
+Claims of field effectiveness, real customer behaviour, or local operational impact \\
+\hline
+\end{tabularx}
+\end{table}
+
+A manifest will be included with each incoming dataset, which will capture the source of data and its owner. or repository, collection period, received date, checksum, licence or agreement, number of rows, schema version, mapping rules, exclusions, and known limitations. Data created in Tier 3 will never be combined into Tier 1 test set. Provided or increased. records are employed in the model development, real only training outcomes and augmented. reporting will be done individually and compared to the same untouched real test. period wherever there is such real evidence as is necessary.
+
+\subsection{Data Acquisition and Variable Availability}
+
+The pharmacy already has its exports, which will be used preferentially to obtain primary data. point of sale, accounting, inventory or spreadsheet workflow. Where no uniform export. mechanism is a controlled collection template will be given.
+
+The least selling related fields are supposed to consist of organization, timestamp, branch, invoice number, SKU, quantity, unit price, discount, and cancellation or return. Other fields suggested to be added are unit cost, promotion status, payment mode, etc. pseudonym customer identifier, inventory, inventory activity, purchase receipt, supplier lead time, and incoming quantity. The extension of pharmacy specific data can also add generic and brand name, strength of product, dosage form, manufacturer, conversion to box strip pieces, batch or lot. identifier, expiry date, minimum acceptable remaining shelf life, cold chain requirement, and recall or damaged stock status in the presence of these records.
+
+Sub elements of owner maintained constraint inputs can be purchasing budget, storage capacity. minimum order quantity or pack multiple, category specific restrictions, and risk preferences. These constraints will have an effective date wherever they can have a historical value altered. Variables are categorized in terms of availability to the decision cutoff.
+
+\begin{table}[H]
+\centering
+\small
+\caption{The features available and the features leakage rules.}
+\label{tab:feature_availability}
+\begin{tabularx}{\textwidth}{|p{0.22\textwidth}|p{0.30\textwidth}|Y|}
+\hline
+\textbf{Availability Class} & \textbf{Examples} & \textbf{Rule} \\
+\hline
+Prior to cutoff Historical sales, recorded. &
+current stock, observed price, known lead time, and calendar information &
+Qualified in case of timestamp, provenance, and accessibility at the historical. decision time are valid. \\
+\hline
+Known for the forecast horizon &
+Confirmed promotion, planned drop, or a calendar. event known in advance &
+Only eligible in the same. information would genuinely have have been operational. \\
+\hline
+Observed after the outcome &
+Later purchase, realized customer response, realized return, or stock to come. adjustment &
+May be used as a label or evaluation an outcome but not as an predictor of. the earlier decision \\
+\hline
+Uncertain or subsequently revised &
+Unconfirmed promotion, estimated cost, or by hand. estimated lead time &
+Retain the source and uncertainty where sensitive and rank where the variable may significantly vary the. action \\
+\hline
+\end{tabularx}
+\end{table}
+
+\subsection{Data Quality Assessment and Task Eligibility}
+
+Before feature engineering, data quality assessment will be conducted, and after. each substantial structural transformation. A single dataset wide average will not be used since the high average score is seemingly the only quality claim since failure in one or more may be hidden in the overall score. a field which is required by a certain analytic task. Rather, quality profiles will be appraised according to organization, branch, field, period and analytical task where indicated. Completeness of required field j in an eligible row set G is defined as
+
+\begin{equation}
+C_{j,G}=1-\frac{\sum_{i\in G}\mathbb{I}\!\left(x_{ij}\text{ is missing}\right)}{|G|}.
+\label{eq:completeness}
+\end{equation}
+
+Completeness does not imply validity. The identifiers of products will thus be tested. referential integrity; sums of invoice lines will be recalculated based on the quantity, price, and discount; returns and cancellations will be reconciled with their parents transaction. where the identifying information is present; and the payments will be verified with invoice. settlement status. Duplicate detection will be used to differentiate between exact repeated records and valid recurrent records. purchases. The duplicates of candidates will be noted and sorted out by a stated rule. not taken out just because their values seem to be similar.
+
+Another test of structure is inventory records. Let I open p,t and I close p,t represent the reported beginning and ending balances of product p in interval. t, and deltaIp,t,m represents a signed inventory movement m, e.g. a receipt, sale, return, manual correction, or damage event. The residual of the reconciliation is.
+
+\begin{equation}
+r_{p,t}=I^{\mathrm{close}}_{p,t}-I^{\mathrm{open}}_{p,t}-\sum_m \Delta I_{p,t,m}.
+\label{eq:stock_reconciliation}
+\end{equation}
+
+The residual should be zero when all the balances are entered and considering every movement. consistently. A nonzero residual will not be set to zero. Rather, its size, length, and probable cause will be documented as a data quality incident, and impacted observations will be marked sensitive or not to be included in analyses where the inconsistency is material.
+
+Temporal quality tests will also find implausible sequences of events, e.g. stock receipt. recorded prior to its source purchase order, negative or unrealistic lead times, customer. attributes accessed beyond their validity period, or product history following the analytical. cutoff. Where possible, the event time and ingestion time will be kept separately. When the system will not create artificial within day time accuracy, only a date is known.
+
+Eligibility of tasks will be then decided based on evidence needed by each analysis. not by just any arbitrary missing data threshold. Demand forecasting requires a sufficiently interpretable product time series, and a justifiable definition of availability. KPIs based on margins need cost provenance to be documented. Customer inactivity modelling demands consistent pseudonymous identity and adequate follow up in the future. Replenishment assessment also involves documented or defensibly recreated stock, lead time. assumption, pertinent operating constraints and cost ranges. Customer retention actions need a suitable contact and consent mechanism. Any pharmacy task period combination that breaks a requirement will be proclaimed. ineligible for that analysis, and the reason will be included in the audit record. This gate of eligibility averts the production of evidence by statistical imputation that the business never took account of. Imputation may still be used for a model feature when its The missingness mechanism and decision time availability are comprehended, the imputation only training data is used to fit the transformer and an ablation or sensitivity analysis is performed. assesses the material consequences of the decision. Imputation will not be employed to. create identifiers, customer consent, future outcomes, operational constraints or the. ground truth of the main test.
+
+\subsection{Ethics, Privacy, and Governance}
+
+The ethics, privacy, and governance are also considered in 3.1.9. Ethics approval will be by the university and a suitable signed data sharing agreement. acquired prior to the start of primary data collection. Direct identifiers such as customer names, phone number, email address, national identity, account number, or mobile wallet. The research analytical tables do not need numbers. Where analysis on a customer level is authorized, a different one will be used by each of the participating pharmacies. salted pseudonymous customer key. Any mapping that can be re identified will be left. with the pharmacy involved and will not be kept in the study. repository.
+
+\subsection{Canonical Operational and Analytical Model}
+
+The suggested operational schema contains the key entities and events that are necessary to. maintain business context and analysis traceability. These include Organization, Branch, Product, PharmacyProductProfile, InventoryLot, ConstraintProfile, Customer, Supplier, SalesOrder, SalesOrderItem, Payment, InventoryBalance, StockMovement, PurchaseOrder, Expense, Ledgerentry, Sales return, Refund, Import batch, and AuditLog objects.
+
+The analysis layer will not automatically learn models using changing operation table. Instead, it will create versioned invoice line, SKU time, and customer cutoff analytical views. that store source identifiers, metadata about transformations, and the associated historical information. cutoff. This isolation is supposed to maintain reproducibility even in operation. records are subsequently rectified or revised.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.9\textwidth]{444.png}
+    \caption{Canonical proposed operational data model.}
+    \label{fig:canonical_operational_model}
+\end{figure}
+
+Rules of validation will check the distinctiveness of pharmacy scoped identifiers, chronological. consistency, physical quantities are nonnegative where necessary, payment and order. reconciliation, handling of cancellations, pack conversion, batch and expiry consistency, inventory balances, and stock movements.
+
+Instead, corrections will be described in the form of documented and reproducible transformations. than writing back again the historical source evidence. This enables the analytical layer to maintain a justifiable association amid operational incidents, historical snapshots, analytical characteristics, model results, suggestions and the further analysis.
+
+\section{Formal Problem Formulation}
+\label{sec:formal_problem_formulation}
+
+Where b represents a pharmacy, l a branch, p a product, r an inventory batch, c a customer, and. t a decision time. Let
+
+\begin{equation}
+D_t=\left\{\begin{array}{c}
+\text{Sales, Stock, Batches, Expiry, Purchases, Expenses,}\\
+\text{Individual, Constrained, and Context}
+\end{array}\right\}_{\leq t}.
+\label{eq:data_cutoff}
+\end{equation}
+
+represent the evidence under control at or prior to decision time t. Accordingly, any the output produced by the analysis at time t should only be obtained based on the information in Dt. .
+
+\subsection{Performance Evaluation}
+\label{subsec:performance_evaluation}
+
+Given a KPI K, the system provides K(Dt The system produces K(Dt): W, g), of which W is the reporting window. and g is the level of aggregation. Every KPI has its numerator, denominator, filters. definition version, and data quality status such that the owner can reproduce and inspect. the calculation. To compute the net sales of reporting window W, the valid invoice lines are used to compute the net sales. Written business treatment of discounts, cancellations and returns. A general form is
+
+\begin{equation}
+\mathrm{NetSales}_{W}=\sum_{i\in W}q_i p_i-\sum_{i\in W}d_i-\sum_{r\in W}v_r.
+\label{eq:netsales}
+\end{equation}
+
+where qipi is the amount of invoice line i, di. is the discount that is known, and vr is the. value of a valid reversal or valid return that is attributed to the reporting window.
+
+Gross margin is reported when there is sufficient reliable cost evidence available:
+
+\begin{equation}
+\mathrm{GrossMarginRate}_{W}=\frac{\mathrm{NetSales}_{W}-\mathrm{COGS}_{W}}{\mathrm{NetSales}_{W}}.
+\label{eq:grossmargin}
+\end{equation}
+
+provided that \(\mathrm{NetSales}_{W}\neq 0\). In case the cost data is not available on a material portion of the units sold, the system displays. sales and cost coverage and not silently interpreting revenue as profit. Average order value uses eligible completed orders as its denominator; repeat rate reporting states customer identification coverage; and stock turnover reporting specifies both the cost and convenience conventions of inventory. Period comparisons involve similar windows or clearly determine distinctions in trading days and closures. Every KPI response then has a value, version of its definition, reporting period. aggregation level, coverage indicators and reconciliation status. This structure makes alterations in the business rule definitions observable and enables the assessment to differentiate. calculation anomalies due to real change in business performance.
+
+\subsection{Demand Prediction}
+\label{subsec:demand_prediction}
+
+The demand of pharmacy b, branch l, product p and forecast horizon h is expressed as.
+
+\begin{equation}
+\hat{y}_{b,l,p,t+h}=f\!\left(X^{\mathrm{history}}_t,X^{\mathrm{price}}_t,X^{\mathrm{promotion}}_t,X^{\mathrm{calendar}}_{t:t+h},X^{\mathrm{market}}_t\right).
+\label{eq:demand}
+\end{equation}
+
+where \(\hat{y}_{b,l,p,t+h}\) is the forecast demand at horizon h. The uncertainty in forecasts will be modeled. using quantile forecasts or calibrated residual intervals. In situations where there is more than one level of aggregation in production of forecasts, reconciliation will be. considered such that totals at SKU, category, branch, and business levels are mutually. consistent \cite{hyndman2011hierarchical}.
+
+\subsection{Future Customer Inactivity}
+\label{subsec:customer_inactivity}
+
+Future inactivity of customer c at historical cutoff t is denoted as.
+
+\begin{equation}
+q_{c,t}=P\!\left(\text{no purchase in }(t,t+H]\mid X_{c,t}\right).
+\label{eq:churn}
+\end{equation}
+
+and Xc,t consists of records that are accessible at cutoff t, and H is the pre determined future. outcome horizon. Value of H will be predetermined prior to final assessment as against. the applicable business buying cycle. The resultant qc,t is a measure of predicted inactivity risk, and does not in itself approximate the. contacting customer c has causal effect.
+
+\subsection{Strategy Optimization}
+\label{subsec:strategy_optimization}
+
+Of an eligible action a in At. , the system evaluates
+
+\begin{equation}
+U(a\mid D_t)=\mathbb{E}\!\left[\Delta\mathrm{Profit}(a)\right]-\mathrm{ActionCost}(a)-\lambda\,\mathrm{Risk}(a).
+\label{eq:utility}
+\end{equation}
+
+with operational limitations such as budget, storage, minimum order quantity, supplier lead time, pack multiple, remaining shelf life, expiry, cold chain capacity, incoming. stock, inventory that is available and customer contact permission where necessary. This open goal is the shift of predictive to prescriptive outputs. decisions. It will estimate its terms based on evidence available and uncertain values will. be investigated by sensitivity analysis, not considered as known numbers.
+
+\subsubsection{Inventory Position and Cost of Replacement}
+
+To replace, the position of the inventory just before an action is.
+
+\begin{equation}
+\mathrm{IP}_{p,t}=\mathrm{OnHand}_{p,t}+\mathrm{OnOrder}_{p,t}-\mathrm{Backorder}_{p,t}.
+\label{eq:inventoryposition}
+\end{equation}
+
+p and t represent unpredictable demand of product p, during supplier lead time period L. and assume Q is a possible order quantity. An informative conditional replenishment cost. function is
+
+\begin{equation}
+\begin{aligned}
+J_p(Q)={}&c_o\,\mathbb{I}(Q>0)
++c_h\,\mathbb{E}\!\left[\left(\mathrm{IP}_{p,t}+Q-D^{(L)}_{p,t}\right)^+\right]\\
+&+c_s\,\mathbb{E}\!\left[\left(D^{(L)}_{p,t}-\mathrm{IP}_{p,t}-Q\right)^+\right].
+\end{aligned}
+\label{eq:replenishmentcost}
+\end{equation}
+
+The lead time demand distribution is used to represent uncertainty instead of.
+
+\begin{equation}
+x^+=\max(x,0).
+\label{eq:positive_part}
+\end{equation}
+
+Therefore, a predicted high demand cannot be used as an excuse to carry out an operationally banned act. Where predictive quantiles are available with reasonable predictive accuracy, candidate quantities can be compared. with those quantiles. Otherwise, residual/replay based scenarios during validation periods. will be used. When unconstrained cannot be credibly reconstructed due to stock out censoring. demand, in the outcome of which will be reported a policy comparison under observed sales instead. than as a measure of unconstrained demand. 3.2.4.2 Customer Action Logic and Abstention
+
+\subsubsection{Customer Action Logic and Abstention}
+
+The logic of customer action is not the same as replenishment logic. The probability of inactivity at time t at point c in The inactivity probability qc,t in It can be prioritized using equation 3.7 to review customers but it does not estimate the. contact with customer c causes. Contact action can only be eligible when the consent of the customer and the business policy allows contact, the treatment proposed is identified, and there is adequate capacity to operate. Expected only when a defensible estimate of incremental response benefit, profit will be calculated. is available. Otherwise, the result will be an explicit risk ranked contact list. This separation will not allow a predictive probability to be misconstrued into campaign. uplift.
+
+The action layer can also not give a recommendation. Abstention is suitable where there are missing the appropriate constraints whereby there is uncertainty causing the leading. substitutes that are practically identical, predicted utility does not surpass the action cost. out of the ranges of sensitivity specified, or the model in use does not pass a monitoring gate. An abstinence with a reason is thus considered as valid safety behaviour instead. than as a system error.
+
+\subsection{Preprocessing and Historical Snapshots}
+\label{subsec:preprocessing_snapshots}
+
+The processing sequence is determined: check the source and schema; delete or mark exact. duplicates, cancelations, returns; build up the data split; imputation, fit; train only; encode, and scale transformations; construct features; train. candidate models; and test them on the untouched test set. This ordering prevents leaks of information in future periods into model development \cite{kaufman2012leakage}.
+
+Demand characteristics can be lagging demand, rolling location and variability, day. of week, month, distance to pertinent festivals, price, discount, recognized promotions, stock out. indicators, pack units, shelf life left, and external market. Batch expiry and cold chain variables are used to limit the viability of actions, and only in the case that they enter prediction. their availability of decision time and the role they play in analysis is justifiable. Where possible any observed sales of zero will be differentiated by zero due to zero demand. sale due to out of stock. Prior to the choice of temporal, intermittency will be gauged. granularity and candidate forecasting methods.
+
+RFM variables, tenure, order value statistics and category may be part of customer snapshots. breadth, purchasing periods, discount behaviour, and pre cutoff returns rates. The outcome label is built out of an ensuing future window. Where required, a purge interval will move the observation and label windows apart so that no overlaps or delayed events happen. introducing leakage. The identifiers of the customer that will be used as an entity generalization test will not be on both sides of. the respective training test boundary.
+
+\section{Rules and Methods of Candidates}
+\label{sec:candidate_methods}
+
+\subsection{Baseline Ladder and Task Specific Candidates}
+
+The choice of methods is based on a baseline ladder and the models eligibility is based on the. volume of evidence available and task structure.
+
+\begin{itemize}
+    \item \textbf{Performance:} Rule based anomaly detection and auditable KPI definitions offer. the descriptive baseline.
+    \item \textbf{Demand:} Last value, seasonal naive, moving average, exponential smoothing. baselines are tested prior to more complicated models like ARIMA/SARIMA, Croston family, gradient boosted lag, and, where available, adequately, gradient boosted lag models. long sequences LSTM models. The Syntetos Boylan correction and Croston. in particular, deal with intermittent demand \cite{croston1972intermittent,syntetos2005intermittent}.
+    \item \textbf{Inactivity:} Logistic Regression is compared with a recency or base rate rule, Random Forest \cite{breiman2001rf}, and XGBoost \cite{chen2016xgboost}. The weighting of classes and levels of decision are selected using development data only.
+    \item \textbf{Segmentation:} Appropriately scaled RFM features are analysed using K Means. Inertia, silhouette, resampling stability, are used to assess candidate values of K. and business interpretability.
+    \item \textbf{Explanation:} Explanation Coefficient or rule based explanations are desirable with simple models, SHAP offers model behaviour attributions to compatible tree based models. \cite{lundberg2017shap}. Illustrated explanations will be contextual and selective \cite{miller2019explanation}.
+\end{itemize}
+
+\subsection{Model Pharmacy Domain Adaptation and Eligibility}
+
+An intricate candidate will be discarded in case there is inadequate training history or when it. when it produces unstable development data fails to outperform the relevant baseline on development data. when the extra cost of operation does not have any material value, or when its additional cost is as much as probabilities. This rule makes the suggested system convenient in the situation when the scientifically correct answer is a simple one. forecast or business rule.
+
+The model eligibility, too, is based on the pharmacy domain evidence. A new or data limited pharmacy makes use of an opaque base and can make use of a pooled model trained. on validated, anonymized data of the involved pharmacy vertical. In intermediate history, shop and branch specific context can be employed to calibrate the. pooled model. Only in case of adequate local, a fully shop adapted candidate is considered. history exists.
+
+Common chronological baseline, pooled and shop adapted candidates are compared. origins wherever possible. Further complexity is only accepted upon acceptance of a material and. constant improvement has been shown. Held out pharmacy assessment tests are transferred to a pharmacy not trained. and avoids the high pooled transaction volume covering weak cross pharmacy. generalization.
+
+\section{The B SMART Step by Step Process}
+\label{sec:sequential_procedure}
+
+\subsection{Strategy Recommendation Algorithm}
+
+The algorithm below refers to the B SMART Strategy Recommendation algorithm 1:
+
+\begin{algorithm}[H]
+\caption{B SMART Strategy Recommendation}
+\label{alg:bsmart}
+\KwIn{Data obtained prior to cutoff \(D_t\), horizon \(H\), constraints \(C_t\), validated model/baseline models \(M\), and candidate actions \(A\)}
+\KwOut{Ranked recommendations \(R_t\) which are feasible}
+Check sources, schema, timestamps and ownership by organization;\;
+Create the historical feature snapshot Xt ; 3 Use transformations that are trained on the suitable training evidence;\;
+Compare qualifying baseline, pooled pharmacy and shop adapted applicants;\;
+Approximate demand uncertainty and inactivity of customers;\;
+Calculate reproducible KPIs and data quality warnings;\;
+Create candidate actions and source and decision time metadata;\;
+\ForEach{\(a\in A\)}{
+    Check budget, stock, pack, expiry, storage, lead time, and consent feasibility under. Ct ;\;
+    Approximate benefit, cost, and uncertainty with proclaimed assumptions;\;
+    \(U(a)\leftarrow \mathbb{E}[\Delta\mathrm{Profit}(a)]-\mathrm{Cost}(a)-\lambda\,\mathrm{Risk}(a)\)\;
+}
+Eliminate infeasible actions and prioritize the rest of the actions by U(a);\;
+Include a brief description, uncertainty statement, cutoff, and source of evidence;\;
+Take the top K actions and document the response of the owner and any successive. observable outcome;\;
+\end{algorithm}
+
+\subsection{Computational Complexity}
+
+Given N invoice lines, d validated fields and P candidate actions, source validation and approximately, feature aggregation are around.
+
+\begin{equation}
+O(Nd).
+\label{eq:validation_complexity}
+\end{equation}
+
+when ranking the candidate actions, it is needed to take about.
+
+\begin{equation}
+O(P\log P).
+\label{eq:ranking_complexity}
+\end{equation}
+
+Computational complexity of training a model will depend on the model chosen and will. be measured empirically. Serving is versioned and thus does not retrain. the model in the request path.
+
+\section{Proposed Architecture and Information Flow}
+\label{sec:architecture_flow}
+
+\subsection{Architecture Components}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.9\textwidth]{77.png}
+    \caption{architecture based on the supervisor guided flow}
+    \label{fig:supervisor_guided_architecture}
+\end{figure}
+
+The architecture differentiates the pooled pharmacy level framework and shop level customization. Pooled may be supported by authorized and de identified records of several pharmacies. pharmacy model, with every deployed pharmacy storing its independent operational data and active constraint profile.
+
+The model chosen is an analytical one that gives estimates but does not give orders. The strategy layer is the combination of those estimates with the budget, inventory, pack, expiry, storage, of the shop. lead time, and consent constraints to come up with viable recommendations.
+
+\subsection{Continuous Learning and Monitoring}
+
+The flow of information is planned to be unidirectional at prediction time: one is just not allowed to change the future. the historical snapshot which produced a previous prediction or recommendation. The operational state and recommendations can be revised when there are any events of interest or. at a specified timetable. The deployed model is however not retrained blindly. after every transaction.
+
+The results of observation are put in the monitoring process and can be qualified as training evidence. In a subsequent model without reconciliation, label maturation, drift evaluation, and linking to the current model and baseline. This tracked feedback loop is the desired connotation of continuous learning. and still being able to reproduce what the system was aware of when a specific action. was proposed.
+
+\section{Frozen Evaluation Flow and Snapshot Lineage}
+\label{sec:snapshot_lineage}
+
+\subsection{Historical Snapshot Construction}
+\label{subsec:historical_snapshot_construction}
+
+The unit of preventing the entry of future information is known as the analytical snapshot. an earlier decision. In Figure~\ref{fig:snapshot_flow}, the observation period, decision cutoff, and are separated. subsequent outcome window. Raw events are initially stored in a controlled and versioned. event ledger. The snapshot builder only selected records that are available at cutoff t and then applies. announced mappings, and created task specific features out of the available evidence. at that time. The resultant snapshot is fixed to the respective analytical release. Its required attributes are the source event references, cutoff of the decisions, mapping and feature versions. relevant eligibility regulations, and the version of the model or baseline, on which the released was generated. output.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.9\textwidth]{33.png}
+    \caption{Separation and construction of historical snapshots.}
+    \label{fig:snapshot_flow}
+\end{figure}
+
+In forecasting, rolling forecast originates are constituted by a number of historical cutoffs. Transformations such as scalers, encoders, imputers and feature selection rules are only fitted in the. processing on the relevant training window and after that, this is then applied to the relevant validation origin. To conduct customer analysis, the behaviour recorded in each snapshot is that recorded up to cutoff t. A snapshot is only given an inactivity label when the entire future horizon H can be. observed. Where delayed returns, fulfilment or rolling features may cross the purge interval is inserted. To analyse entity generalization, customer or before any learning transformation, product grouping is done.
+
+\subsection{Frozen Final Evaluation and Maturation of the Outcome}
+\label{subsec:frozen_evaluation}
+
+Model development is done using training and validation snapshots. The final test set is not defined until the task definition, feature and eligibility rules, candidate models, Primary metrics, decision thresholds and random seeds are frozen. In case a defect is found after the final test has been opened, the defect and its effect will be documented. The observations thus affected cannot then be handled as they would otherwise be. were still part of an untouched final test. This rule safeguards the interpretation of the final. result and not just implementing the mechanics of a data split.
+
+The outcome records do not necessarily become a part of a released model. Observed outcomes are initially received in the monitoring store. They are eligible to an upgraded version of the model later. it is possible only after reconciliation, label maturation, and reiteration of the correct validation. protocol. This delay guarantees a response of an owner, a modified invoice, or a partially observed. outcome cannot retrospectively change the evidence that supported a historical production decision.
+
+\section{Evidence Contract Owner Facing Recommendation}
+\label{sec:recommendation_contract}
+
+\subsection{Minimum Recommendation Evidence}
+\label{subsec:minimum_recommendation_evidence}
+
+All presented recommendations will meet at least an evidence contract. The contract distinguishes the action to be done by the evidence necessary to judge that action. Figure~\ref{fig:recommendation_contract} outlines the necessary elements. The interface can also start with only the most significant information until the full information is loaded. record of recommendations should be saved to be audited and evaluated.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.9\textwidth]{222.png}
+    \caption{Minimum evidence contract for an owner facing recommendation}
+    \label{fig:recommendation_contract}
+\end{figure}
+
+The action part specifies exactly what is proposed and which comparator would otherwise be used. The evidence component is the place where the cutoff, source, snapshot, and To complete the coverage and to detect stale or incomplete data. In the case of "reason" a small number of certain supporting factors are used, and causal factors are avoided. wording if there is only associative evidence. The uncertainty component reports are provided. intervals, calibration information or sensitivity if applicable and helps determine if there are any alternatives that are practically closer. The operational constraints that are applied to the feasibility are included in the feasibility component documents. recommendation. Lastly, the accountability element is used to indicate if the owner either accepted, rejected, deferred or modified the recommendation, along with an optional reason and subsequent observable result.
+
+\subsection{Human use and accountability}
+\label{subsec:human_use_accountability}
+
+An explanation is only successful if it helps to correct and appropriate use. The owner study will thus cover situations where the right decision is to reject or defer an apparently attractive recommendation. This assesses the degree of calibrated human dependence, not just that participants would prefer a more elaborate user interface. Failure analysis is also supported by the evidence contract due to: an inappropriate decision can be traced to the underlying estimate, missing constraint, not attributed to an explanation, an outdated evidence, but to owner interpretation. genericly to the "AI.
+
+\section{Evaluation Protocol}
+\label{sec:evaluation_protocol}
+
+\subsection{Forecasting Evaluation}
+\label{subsec:forecasting_evaluation}
+
+Temporal order is preserved in all the forecasting splits. Random sampling is used for the selection of the candidates methods. rolling origin or expanding window validation, one evaluation on a final untouched period. The forecast values \(\hat{y}_i\) are given for the observed values \(y_i\). The main mistakes are:
+
+\begin{align}
+\mathrm{MAE} &= \frac{1}{n}\sum_{i=1}^{n}\left|y_i-\hat{y}_i\right|, \\[4pt]
+\mathrm{RMSE} &= \sqrt{\frac{1}{n}\sum_{i=1}^{n}\left(y_i-\hat{y}_i\right)^2}, \\[4pt]
+\mathrm{WAPE} &= \frac{\sum_{i=1}^{n}\left|y_i-\hat{y}_i\right|}{\sum_{i=1}^{n}|y_i|},
+\qquad \sum_{i=1}^{n}|y_i|>0.
+\end{align}
+
+MASE will also enable scale independent comparison and eliminates a number of Deficiencies of the traditional percentage errors \cite{hyndman2006accuracy}. The use of prediction interval coverage and interval estimation. width will be used to evaluate uncertainty. Results will be segmented in terms of demand volume and intermittency so that poor performance will not be attributed to a lack of volume. on low volume or sparse products is not masked within an average.
+
+\subsection{Customer and Segmentation Evaluation}
+\label{subsec:customer_segmentation_evaluation}
+
+Customer inactivity models will report outcome prevalence, PR AUC and ROC AUC, Lift@10\%, Brier and probability reliability analysis. Precision recall measures are highlighted in class imbalance \cite{saito2015pr} and calibration is tested separately. A model can generate valuable rankings and generate poor probabilities.A model can give good rankings and poor probabilities. \cite{niculescu2005calibration}.
+
+Validation evidence and will be used to select decision thresholds and contact fractions. declared cost assumptions. These will not be altered after the final test results have been inspected.
+
+Evaluation of clustering will report inertia, silhouette, minimum cluster size, cluster stability, and the respective RFM profiles. Final segment interpretations will also be reviewed with the Governor, Assembly, and Public Education Chancellor. domain participants. If separation is weak or unstable, then it will be reported as weak or unstable. The existence of Clusters that are algorithmically generated will not be considered evidence that natural or causal customer types exist.
+
+\subsection{Ablation, Robustness, and Statistical Analysis}
+\label{subsec:ablation_robustness}
+
+Planned ablations include local calendar features, price and promotion features, market Extensions of context, pack and expiry context, customer history extensions. The transparent baseline, eligible pooled pharmacy models, and When evidence is available, shop adapted models as appropriate. Where augmentation is Controlled comparisons of the used, real only and augmented versions of the algorithms will be conducted.
+
+Results will be presented for each pharmacy and paired comparisons will be made over common. predict the sources of materials or other similar analytical situations. A held out pharmacy transfer test will be used if adequate number of participating pharmacies exist. Paired block bootstrap intervals over time or This is dependent on the corresponding dependence structure and the business units. Differences between models Effect estimates and uncertainty intervals will be used to report instead of significance. labels alone.
+
+The sensitivity analysis will be performed by changing the supplier's lead time, shortage cost, holding cost, action cost and and the action risk penalty in Equation~\ref{eq:utility}.
+
+\subsection{Analysis and Statistical Decision Rules Frozen}
+\label{subsec:frozen_analysis_rules}
+
+One key comparison and one key measure (for each research question) will be fixed Prior to opening the final test. The main comparison for RQ1 is between paired out of time forecasting errors at common forecast origins. WAPE or MASE will be determined based on denominator The validity and scale suitability.
+
+For RQ2, PR AUC is the main discrimination measure, and probability calibration is used to account for. is considered to be a separate acceptance criterion. As for RQ3, the combinations of different replenishment policies are compared on the same demand paths under the condition of Using the same initial inventory and the same constraints. Task correctness is the primary owner facing outcome for RQ4, completion time and The complementary evidence of confidence in the practical effect of the explanation is provided by the confidence. condition.
+
+The unit for the estimation of uncertainty will be the same as the appropriate dependence structure. Forecast errors of adjacent dates will not be assumed to be independent observations. The local temporal dependence will be maintained when using block bootstrap resampling. If there are several pharmacies, the difference between pharmacies will be reported than being concealed in a commensalate count of transactions. A leave one pharmacy out or A pooled pharmacy analysis will be used to evaluate the transfer of a held out pharmacy model to an unseen shop. Repeated snapshots from the same customers will be taken into consideration for customer comparisons. Usability task comparisons will be paired within participants where the study design permits. Confidence intervals will also be provided for the effect estimates, and the remainder of the tables will present the effects and intervals for the other specifications. uncertainty is visible.
+
+\subsection{Practical Importance and Missing Outcomes}
+\label{subsec:practical_importance}
+
+Practical importance will not be judged based on statistical evidence. A small The decrease in the mean absolute deviation of the forecast could be practically significant for a high frequency forecast. product but after ordering constraints are applied is not important. In the same manner, a slight rise The reduction of time to complete the task may be acceptable, provided that it results in a material improvement in decision correctness. Where there are defensible cost or effect thresholds which can be determined in partnership with businesses, These will be indicated prior to the final comparison. If there is no 'defensible threshold', The size and the imprecision of the effect will be conveyed without arbitrary assignment of such a value. success label.
+
+Secondary metrics, other horizons, segments, feature interactions will still be used for diagnosis but will be termed secondary/exploratory analyses. If many related comparisons are taken into account, the set of relevant results will be only favourable cases were reported, not all. When a model, threshold, feature definition or analysis is changed after the post test, a new a 'trial' version and not the original main result. This separation permits ongoing model development without re writing of the initial evidence.
+
+Outcomes that are not covered will be clearly noted. An incomplete future horizon can't Will automatically be considered evidence of customer inactivity. An unknown inventory Do not consider balance as a zero stock. testament will not be accepted.Likewise, a will without a subsequent will following it would not be accepted. a noticeable outcome can aid a usability analysis and will not support a finding of realized business impact. When assumptions can be reasonably bounded, then sensitivity analysis will be employed. Otherwise, If this is the case, the corresponding claim will be rated as not evaluable with the available evidence.
+
+\subsection{Decision, Usability, and Scalability Evaluation}
+\label{subsec:decision_usability_scalability}
+
+All comparisons of replenishment policies will be made using the same observed or replayed demand paths. Several outputs will result: stock out units, average inventory, holding cost, shortage cost, total cost. For retention ranking, EV will only be used when a defensible incremental is utilized. It offers response benefit, contact cost and customer consent condition. Otherwise, The study still is a prioritization study, and not an actual profit study.
+
+Realistic decision tasks will be employed in a counterbalanced repeated measures design that will be used for owner evaluation. or within participant design as appropriate for the sample available. Measures will These include task correctness, completion time, confidence, perceived usability, and number of errors. The participants may also be requested to give their reasons to their decisions so that the study can recognize reasonable but wrong conclusions about the recommendation/explanation. Real data will be separated from generated data which will be used for scalability testing. accuracy claims. The proposed size of the transaction lines is
+
+\[
+100,\quad 500,\quad 1{,}000,\quad 10{,}000,\quad 100{,}000,\quad 1{,}000{,}000.
+\]
+
+Examples of scalability measures will be: import time, preprocessing time, query latency, representative serving latency. Any experiment on relation of association rules will be Only report if the associated algorithm has in fact been implemented and executed.
+
+\subsection{Monitoring Plan}
+\label{subsec:monitoring_plan}
+
+Monitoring will discriminate between schema/schema or data quality failure, input distribution shift, change in calibration and deterioration in outcomes performance. Retraining is not an automatic outcome of an alert. The replacement model must pass the Any replacement model must pass test. Revalidate and keep the training window, feature version, parameters, and comparison results. This requirement will ensure that adaptation is done prior to deployment and not This is because new data is assumed to be beneficial, even when it has not been proven to be so.
+
+\section{Reproducibility, Audit and Failure Reporting}
+\label{sec:reproducibility_audit}
+
+\subsection{Reproducibility Levels}
+\label{subsec:reproducibility_levels}
+
+The four levels of reproducibility will be designed.
+
+\begin{itemize}
+    \item \textbf{Data reproducibility:} needs a source manifest, checksum, schema version, mapping rules, and exclusion log.
+    \item \textbf{Analytical reproducibility:} must use snapshot identifiers, fitted transformations, feature definitions, target construction and split manifests.
+    \item \textbf{Model reproducibility:} Must specify and show code, execution environment, parameters, random number seeds, and inputs. seeds, trained artifacts and the evaluation command.
+    \item \textbf{Decision reproducibility:} moreover the applicable constraints, cost assumptions, the candidate action set, the ranking rule, and the interface version.
+\end{itemize}
+
+\subsection{Evidence that is restricted and shareable}
+\label{subsec:restricted_shareable_evidence}
+
+The study can be carried out without having to publish primary partner data. reproducibility controls. The reproducibility package will thus distinguish restricted and unrestricted situations. evidence by means of shareable artifacts. Schemas, data dictionaries, manifest templates, etc are all possible shareable materials. the source code, test fixtures created by the transformation code, and configuration files without revealing Confidential identifiers or transaction records.
+
+If there is restricted evidence that can be presented to an authorised evaluator, the evidence provided in the available package must allow that evaluator to re create the appropriate snapshot and outcome. An external The reader should also have the opportunity to review the process with a public or generated test. fixture.
+
+\subsection{Experiment Records and Correction History}
+\label{subsec:experiment_records}
+
+A machine readable record of the runs for each experiment will be produced, which will include, if applicable, The research question, data set and snapshot hashes, training and test windows and grouping keys, version, candidate and baseline versions, parameters, output artifact hashes, warnings, and start and end times.
+
+No manual changes to the spreadsheet will be made outside this record. An owner who provides Corrected, it is a dated source or mapping revision. The correction affects downstream is only triggered when a new version is run.
+
+\subsection{Failure Reporting}
+\label{subsec:failure_reporting}
+
+The scientific output includes the reporting of failures. Data eligibility failure, lack of convergence, numerical instability, failure of training, exhaustion of computational resources, and infeasibility of constraints will be separated from the typical evaluation results.
+
+The number of attempted cases will be reported. Results will not be summarized only if not provided by the school in the correct format. Including successful model runs and ignoring failures.
+
+A method that is not valid for a short or sparse series will thus be compared to the full series. to the set to which it was applied, rather than just to the subset for which it returned a prediction.
+
+\subsection{Recommendation Auditability and Claim Traceability}
+\label{subsec:claim_traceability}
+
+The owner interface is also subject to auditability. All recommendations are assigned an identifier connecting the evidence contract, evidence showcased, owner response and subsequent observable outcome.
+
+In the event of a change in a recommendation after a data correction or model change, the previous record remains immutable and the successor record refers to it. This supports accountability without suggesting that the model, researcher, or owner is solely responsible for the eventual business outcome.
+
+A claim to evidence index will also be included in the final research package. Each central claim will define the related research question, figure or table, experimental record and evidence tier. Claims which are only backed up by public, generated, simulated and/or small sample evidence will Must be clearly marked as such. This is an index of last resort against expansion. statement of the extent of a claim other than as actually assessed.
+
+\section{Threats to Validity and Planned Controls}
+\label{sec:validity_threats}
+
+Table 3.4 includes the major threats to validity and the measures taken to control for them.
+
+\begin{table}[H]
+\centering
+\small
+\caption{Main validity threats and planned controls.}
+\label{tab:validity_controls}
+\begin{tabularx}{\textwidth}{|p{0.22\textwidth}|p{0.30\textwidth}|Y|}
+\hline
+\textbf{Threat} & \textbf{Potential Effect on Evidence} & \textbf{Planned Control} \\
+\hline
+Selection bias &
+Selection bias Participating firms may be: more digitally advanced than the wider target population &
+Describe recruitment and The participating companies make a clear statement on the explicit participation of and restrict generalization accordingly \\
+\hline
+Data leakage &
+Data leakage from future or target derived. information may artificially improve measured performance &
+Utilize availability rules, historic cutoffs, snapshots, and temporal or entity safe splits \\
+\hline
+Stock out censoring &
+Observed sales may be subject to stock out censoring. understate unconstrained demand &
+Retain stock state information and flag or stratify periods of censorship \\
+\hline
+Overfitting on small or short series &
+Models with many components can be used. noise to transferable . . . demand structure &
+Model eligibility rules, simple baselines, and temporal rolling baselines. validation \\
+\hline
+Dataset mismatch &
+Foreign/public benchmark Dataset mismatch evidence may be incorrectly interpreted as local effectiveness evidence &
+Use explicit use of tiers of report shows results separately for each piece of evidence used \\
+\hline
+Weak cost or operational assumptions &
+The following statements are true: Uncertain cost values may materially alter utility rankings &
+If owner reviewed parameter ranges are available, utilize these. and sensitivity analysis \\
+\hline
+Novelty or learning effect &
+Interface performance may Are sensitive to the order of the presentation or participant learning &
+Task order and collect counterbalance Correctness and timing on task level measures \\
+\hline
+Concept drift &
+Concept drift Festival, price, demand, or customer behaviour relationships may change over time &
+Apply time based assessment and post deployment monitoring with model replacement and re validating. \\
+\hline
+\end{tabularx}
+\end{table}
+
+\section{Expected Methodological Outputs}
+\label{sec:expected_methodological_outputs}
+
+The methodology will give documented canonical pharmacy at completion. schema and data dictionary, a versioned feature and partner data protocol, and explicit transparent baselines, pooled pharmacy models and eligible shop adapted specifications. models.
+
+The study will also deliver a package of reproducible evaluation tools and a constraint aware procedure of recommendation, and an owner study instrument.
+
+Initial effectiveness statements will be limited to the participating vertical pharmacy until the results are confirmed in the pilot.Initial effectiveness statements will be limited to the participating vertical (pharmacy) until confirmed in the pilot. to the evidence that was really gathered. Extension to another SME category would need to be a new domain schema, additional operational constraints, extra data collection and a separate validation cycle.
+
+The artifact will be used for business decision support. Not a medical diagnosis Prescribe medicine, or suggest medicine dosage, in the absence of a prescription.
+
+Implementation details, observed numerical results and conclusions will be reported only where applicable by the empirical evidence.
+
+\clearpage
+
+\chapter{Implementation}
+\label{chapter_implementation}
+
+% This chapter is intentionally reserved for the second-semester report.
+
+\cleardoublepage
+\chapter{Experimental Results}
+\label{chapter_experimentalResults}
+
+% This chapter is intentionally reserved until the proposed experiments are run.
+
+\cleardoublepage
+\chapter{Conclusions}
+\label{chapter_conclusion}
+This report is the first step towards building a business intelligence system that will leverage AI to analyze the retail pharmacy sector in Bangladesh. It suggests a first implementation and empirical testing of an analytics system for one of its envisioned applications: retail pharmacies in Bangladesh. It is possible that the framework will be expanded in the future to other SME sectors. But each extension would need to be validated and each would have its own data and operation boundaries. The framework will be a portable framework and should not be a one size fits all.
+
+The main problem is not that they don't have a prediction model. The actual issue is the lack of a trustworthy link between the operational data, the analysis with valid time period and the relevant decision of the owner. The usefulness of the forecast is seriously reduced if the source of the data is not identified, if data from the future is used in the test data, or if the recommendation that is made based on the forecast does not consider practical issues like cash availability or stock levels, supplier lead time, or purchasing constraints. Similarly, if a level of risk to the customer isn't calibrated or if the proposed customer contact doesn't include consent, it isn't a product of a decision support process.
+
+Based on the available data the following four main conclusions can be drawn. Second, design factors, which must be considered in the workflow fit, perceived value, cost and local technology adoption (LTA) of secondhand ICTs are the focus of oriented research in Bangladesh \cite{hoque2016ict,shahadat2023digital,hazra2021mfs}. Secondly, retail inventory research has revealed a set of explicit attributes that must be tackled: intermittency, hierarchy, causality, and interactions between inventory items \cite{fildes2022retail, syntetos2005intermittent, hyndman2011hierarchical, syntetos2010stock}. Third, there are scientific and disciplinary safeguards like leakage control, imbalance aware evaluation, probability calibration, and understandable evidence \cite{kaufman2012leakage,saito2015pr,niculescu2005calibration,lundberg2017shap} that are important. Fourth, there is yet no integration and evaluation of these principles in a bounded and Bangladesh based SME workflow. This is the main research gap which this study seeks to fill.
+
+We propose a framework, called \system{}, to overcome this by constructing a traceable sequence of activities, based on multi pharmacy operational evidence, snapshots of historical events and activities, comparison of these models, estimation of uncertainties, explanation, constraint-aware ranking of the actions in the shop, owner's response, and monitoring of the outcomes of the executed actions. The transparent baseline is the model which the pharmacy should strive to emulate while the pooled model and the eligible shop-adapted model are offered mainly as reference models for comparison.
+
+The framework includes practical considerations that may impact the feasibility of an inventory action, such as buying budget, available inventory, pack size or minimum order amount, supplier lead time, product expiration date, product storage requirements, and customer consent. That is, not a new algorithm, nor the notion that a more complex model will have a better business outcome, but a series of decisions to inform business behavior and an empirical analysis of that series of decisions.
+
+The framework is also intended to allow for continuous operation. Model drift and decisions can be monitored with time, and data and recommendations can be updated as the software is applied in the pharmacy. Continuous operation isn't uncontrolled retraining following each transaction. Any replacement model should be versioned and reviewed histrically with regards to the existing model and existing common standard that was used before the release of the replacement model.
+
+The system is still a business decision support system. Does not provide medical diagnoses, orders drugs or prescribes doses of drugs.
+
+In this study, a testable step is provided in the process of moving to the next level of study  on ethics and multi pharmacy partner data readiness. Future inputs should include inputs from schema, constraint specific to the pharmacy, model transparency and model monitoring, model freezing, held out-pharmacy evaluation, untouched period evaluation, usability tasks, and decision impact analysis. These are key to determining the applicability of the system in real pharmacy environments in practice.
+
+However, at this stage the study will not be able to validate the overall system effectiveness. Then claims should be final consistent with the evidence that was observed. For example, if there is no clear distinction between models or conditions of decision support, it would be wrong to conclude that the increased complexity or explanations were improving the decision-making process. The next should rather be reported as evidence of the limits of the approach being proposed, and to focus the research questions.
+
+
+\cleardoublepage
+
+\addtocontents{toc}{\vspace{1em}}
+\backmatter
+\label{Bibliography}
+\lhead{\emph{Bibliography}}
+\begin{thebibliography}{10}
+
+\bibitem{bertsimas2020prescriptive}
+{\sc Bertsimas, D., and Kallus, N.}
+\newblock From predictive to prescriptive analytics.
+\newblock {\em Management Science 66}, 3 (2020), 1025--1044.
+
+\bibitem{breiman2001rf}
+{\sc Breiman, L.}
+\newblock Random forests.
+\newblock {\em Machine Learning 45\/} (2001), 5--32.
+
+\bibitem{chen2012uci}
+{\sc Chen, D.}
+\newblock Online retail ii.
+\newblock UCI Machine Learning Repository, 2012.
+\newblock CC BY 4.0.
+
+\bibitem{chen2012business}
+{\sc Chen, H., Chiang, R. H.~L., and Storey, V.~C.}
+\newblock Business intelligence and analytics: From big data to big impact.
+\newblock {\em MIS Quarterly 36}, 4 (2012), 1165--1188.
+
+\bibitem{chen2016xgboost}
+{\sc Chen, T., and Guestrin, C.}
+\newblock {XGBoost}: A scalable tree boosting system.
+\newblock In {\em Proceedings of the 22nd ACM SIGKDD International Conference
+  on Knowledge Discovery and Data Mining\/} (2016), pp.~785--794.
+
+\bibitem{croston1972intermittent}
+{\sc Croston, J.~D.}
+\newblock Forecasting and stock control for intermittent demands.
+\newblock {\em Operational Research Quarterly 23}, 3 (1972), 289--303.
+
+\bibitem{fader2005rfm}
+{\sc Fader, P.~S., Hardie, B. G.~S., and Lee, K.~L.}
+\newblock {RFM} and {CLV}: Using iso-value curves for customer base analysis.
+\newblock {\em Journal of Marketing Research 42}, 4 (2005), 415--430.
+
+\bibitem{fildes2022retail}
+{\sc Fildes, R., Ma, S., and Kolassa, S.}
+\newblock Retail forecasting: Research and practice.
+\newblock {\em International Journal of Forecasting 38}, 4 (2022), 1283--1318.
+
+\bibitem{hazra2021mfs}
+{\sc Hazra, U., and Priyo, A. K.~K.}
+\newblock Mobile financial services in bangladesh: Understanding the
+  affordances.
+\newblock {\em The Electronic Journal of Information Systems in Developing
+  Countries 87}, 3 (2021), e12166.
+
+\bibitem{hevner2004design}
+{\sc Hevner, A.~R., March, S.~T., Park, J., and Ram, S.}
+\newblock Design science in information systems research.
+\newblock {\em MIS Quarterly 28}, 1 (2004), 75--105.
+
+\bibitem{hoque2016ict}
+{\sc Hoque, M.~R., Saif, A. N.~M., AlBar, A.~M., and Bao, Y.}
+\newblock Adoption of information and communication technology for development:
+  A case study of small and medium enterprises in bangladesh.
+\newblock {\em Information Development 32}, 4 (2016), 986--1000.
+
+\bibitem{hyndman2011hierarchical}
+{\sc Hyndman, R.~J., Ahmed, R.~A., Athanasopoulos, G., and Shang, H.~L.}
+\newblock Optimal combination forecasts for hierarchical time series.
+\newblock {\em Computational Statistics \& Data Analysis 55}, 9 (2011),
+  2579--2589.
+
+\bibitem{hyndman2006accuracy}
+{\sc Hyndman, R.~J., and Koehler, A.~B.}
+\newblock Another look at measures of forecast accuracy.
+\newblock {\em International Journal of Forecasting 22}, 4 (2006), 679--688.
+
+\bibitem{jahin2024dataset}
+{\sc Jahin, M.~A., and Shahriar, A.}
+\newblock Supply chain demand forecasting dataset of bangladeshi retailer.
+\newblock Mendeley Data, Version 1, 2024.
+\newblock CC BY 4.0.
+
+\bibitem{kaufman2012leakage}
+{\sc Kaufman, S., Rosset, S., Perlich, C., and Stitelman, O.}
+\newblock Leakage in data mining: Formulation, detection, and avoidance.
+\newblock {\em ACM Transactions on Knowledge Discovery from Data 6}, 4 (2012),
+  15:1--15:21.
+
+\bibitem{lundberg2017shap}
+{\sc Lundberg, S.~M., and Lee, S.-I.}
+\newblock A unified approach to interpreting model predictions.
+\newblock In {\em Advances in Neural Information Processing Systems 30\/}
+  (2017), pp.~4765--4774.
+
+\bibitem{makridakis2022m5}
+{\sc Makridakis, S., Spiliotis, E., and Assimakopoulos, V.}
+\newblock The {M5} competition: Background, organization, and implementation.
+\newblock {\em International Journal of Forecasting 38}, 4 (2022), 1325--1336.
+
+\bibitem{miller2019explanation}
+{\sc Miller, T.}
+\newblock Explanation in artificial intelligence: Insights from the social
+  sciences.
+\newblock {\em Artificial Intelligence 267\/} (2019), 1--38.
+
+\bibitem{niculescu2005calibration}
+{\sc Niculescu-Mizil, A., and Caruana, R.}
+\newblock Predicting good probabilities with supervised learning.
+\newblock In {\em Proceedings of the 22nd International Conference on Machine
+  Learning\/} (2005), pp.~625--632.
+
+\bibitem{rousseeuw1987silhouettes}
+{\sc Rousseeuw, P.~J.}
+\newblock Silhouettes: A graphical aid to the interpretation and validation of
+  cluster analysis.
+\newblock {\em Journal of Computational and Applied Mathematics 20\/} (1987),
+  53--65.
+
+\bibitem{saito2015pr}
+{\sc Saito, T., and Rehmsmeier, M.}
+\newblock The precision--recall plot is more informative than the {ROC} plot
+  when evaluating binary classifiers on imbalanced datasets.
+\newblock {\em PLOS ONE 10}, 3 (2015), e0118432.
+
+\bibitem{shahadat2023digital}
+{\sc Shahadat, M. M.~H., Nekmahmud, M., Ebrahimi, P., and Fekete-Farkas, M.}
+\newblock Digital technology adoption in {SMEs}: What technological,
+  environmental and organizational factors influence {SMEs}' {ICT} adoption in
+  emerging countries?
+\newblock {\em Global Business Review\/} (2023), 1--27.
+
+\bibitem{syntetos2010stock}
+{\sc Syntetos, A.~A., Babai, M.~Z., Davies, J., and Stephenson, D.}
+\newblock Forecasting and stock control: A study in a wholesaling context.
+\newblock {\em International Journal of Production Economics 127}, 1 (2010),
+  103--111.
+
+\bibitem{syntetos2005intermittent}
+{\sc Syntetos, A.~A., and Boylan, J.~E.}
+\newblock The accuracy of intermittent demand estimates.
+\newblock {\em International Journal of Forecasting 21}, 2 (2005), 303--314.
+
+\bibitem{wfp2026prices}
+{\sc {World Food Programme}, and {Department of Agricultural Marketing,
+  Government of Bangladesh}}.
+\newblock {WFP} food prices database -- bangladesh.
+\newblock Humanitarian Data Exchange, 2026.
+\newblock CC BY-IGO.
+
+\end{thebibliography}
+
+
+\end{document}
+
