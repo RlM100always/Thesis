@@ -39,6 +39,8 @@ from typing import Any
 import numpy as np
 import pandas as pd
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from fastapi.responses import FileResponse
+from functools import lru_cache
 from .auth import get_current_user
 from pydantic import BaseModel
 
@@ -798,22 +800,67 @@ def _run_experiment_bg(exp_id: str):
 
 # ── Routes ────────────────────────────────────────────────────────────────────
 
+@lru_cache(maxsize=32)
+def _dataset_rows(path: str) -> int:
+    """Count the actual file rows, rather than claiming 30,000 for missing files."""
+    with open(path, "rb") as handle:
+        return max(0, sum(chunk.count(b"\\n") for chunk in iter(lambda: handle.read(1024 * 1024), b"")) - 1)
+
+
+def _built_in_path(vertical: str) -> Path:
+    if vertical not in VERTICAL_SCHEMAS or vertical == "generic":
+        raise HTTPException(404, "Unknown built-in research vertical")
+    return DATASETS_DIR / vertical / f"{vertical}_dataset.csv"
+
+
 @router.get("/datasets")
 def list_datasets():
+    """Catalog of physically available research CSVs in the deployed container."""
     built_in = []
     for v in VERTICAL_SCHEMAS:
         if v == "generic":
             continue
-        path = DATASETS_DIR / v / f"{v}_dataset.csv"
+        path = _built_in_path(v)
+        available = path.is_file()
         built_in.append({
-            "id":          f"builtin_{v}",
-            "name":        f"{v.replace('_', ' ').title()} — Bangladesh SME",
-            "vertical":    v,
+            "id": f"builtin_{v}",
+            "name": f"{v.replace('_', ' ').title()} — Bangladesh SME (synthetic)",
+            "vertical": v,
             "description": VERTICAL_SCHEMAS[v]["description"],
-            "available":   path.exists(),
-            "rows":        30000,
+            "available": available,
+            "rows": _dataset_rows(str(path)) if available else 0,
+            "bytes": path.stat().st_size if available else 0,
+            "provenance": "declared_synthetic",
+            "download_path": f"/api/research/portal/datasets/{v}/download" if available else None,
         })
     return {"datasets": built_in}
+
+
+@router.get("/datasets/{vertical}/preview")
+def preview_builtin_dataset(vertical: str, limit: int = 5):
+    """Small, authenticated preview (never exposes arbitrary local paths)."""
+    path = _built_in_path(vertical)
+    if not path.is_file():
+        raise HTTPException(404, "Dataset is not bundled in this deployment")
+    limit = max(1, min(limit, 20))
+    frame = pd.read_csv(path, nrows=limit, encoding="utf-8-sig")
+    return {
+        "vertical": vertical, "provenance": "declared_synthetic",
+        "columns": list(frame.columns),
+        "sample": json.loads(frame.to_json(orient="records", date_format="iso")),
+    }
+
+
+@router.get("/datasets/{vertical}/download")
+def download_builtin_dataset(vertical: str):
+    """Stream only allowlisted public synthetic built-in CSVs to authenticated users."""
+    path = _built_in_path(vertical)
+    if not path.is_file():
+        raise HTTPException(404, "Dataset is not bundled in this deployment")
+    return FileResponse(
+        path, media_type="text/csv",
+        filename=f"{vertical}_synthetic_research_dataset.csv",
+    )
 
 
 @router.get("/vertical-schema")
@@ -858,7 +905,9 @@ def create_experiment(body: CreateExperimentBody):
 
     if body.dataset_source == "built-in":
         v = body.vertical if body.vertical in VERTICAL_SCHEMAS else "pharmacy"
-        dataset_path = str(DATASETS_DIR / v / f"{v}_dataset.csv")
+        dataset_path = str(_built_in_path(v))
+        if not Path(dataset_path).is_file():
+            raise HTTPException(503, f"Research dataset {v} is not installed on the server")
     elif body.dataset_source == "upload" and body.upload_path:
         dataset_path = body.upload_path
     else:
