@@ -4,7 +4,7 @@
 
 import { authedFetch, clearTokens, getTokens, saveTokens } from "./auth";
 
-const BASE = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
+const BASE = import.meta.env.VITE_API_URL ?? (import.meta.env.PROD ? "" : "http://127.0.0.1:8000");
 
 async function request(path) {
   const res = await fetch(`${BASE}${path}`);
