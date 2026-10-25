@@ -188,6 +188,8 @@ app.mount("/api/app/messages/uploads", _StaticFiles(directory=str(_chat_upload_d
 def initialize_application_database():
     """Create the development schema; Alembic will own production upgrades."""
     create_schema()
+    from .presentation_demo import ensure_presentation_demo
+    ensure_presentation_demo()
     _seed_site_defaults()
 
 
