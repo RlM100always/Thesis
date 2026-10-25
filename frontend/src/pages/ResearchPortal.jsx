@@ -51,6 +51,7 @@ export default function ResearchPortal() {
   const [tab, setTab]           = useState("registry");
   const [experiments, setExps]  = useState([]);
   const [datasets, setDatasets] = useState([]);
+  const [storage, setStorage]   = useState(null);
   const [schema, setSchema]     = useState({});
   const [loading, setLoading]   = useState(true);
   const [error, setError]       = useState(null);
@@ -61,8 +62,10 @@ export default function ResearchPortal() {
       api.portalExperiments(),
       api.portalDatasets(),
       api.portalSchema(),
+      api.portalStorage(),
     ])
-      .then(([e, d, s]) => {
+      .then(([e, d, s, storageInfo]) => {
+        setStorage(storageInfo);
         setExps(e.experiments || []);
         setDatasets(d.datasets || []);
         setSchema(s || {});
@@ -86,6 +89,11 @@ export default function ResearchPortal() {
         <p className="rp-subtitle">
           Dynamic experiment registry — upload any SME dataset, run the full
           B-SMART pipeline, compare performance across verticals and configurations.
+        </p>
+        <p className="rp-subtitle" role="status">
+          Upload storage: {storage?.r2_configured
+            ? "Cloudflare R2 private bucket (persisted)"
+            : "Temporary Render disk — uploads can disappear on restart"}
         </p>
       </div>
 
