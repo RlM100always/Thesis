@@ -23,6 +23,200 @@ The Render service uses the root `Dockerfile` and `requirements.render.txt`. The
 > tenant-scoped dashboards, real-data import/training, and transparent action
 > ranking. See [the feature status](docs/FEATURE_STATUS.md) for exact boundaries.
 
+## Current system architecture and implementation map — 25 October 2026
+
+> **Documentation baseline:** Source-code inventory on `main`, including `frontend/src/App.jsx`, `frontend/src/pages/`, `frontend/src/PermissionContext.jsx`, `api/`, `docs/FEATURE_STATUS.md`, and `docs/BSMART_ARCHITECTURE.md`. "Implemented in code" does not mean every production scenario has been tested. The active Render web service was reported **live** for deploy `0f08ffef` on 25 October 2026. The deployed database is **not yet configured with a verified PostgreSQL DATABASE_URL**; do not consider the installation production-ready or its data durable.
+
+### Entry points and deployment
+
+| Component | Current entry point | Notes |
+|---|---|---|
+| Public website | [Live Render URL](https://thesis-j0n8.onrender.com) | Render web service `thesis` in Singapore, free plan |
+| Public marketing pages | `/#/`, `/#/features`, `/#/solutions`, `/#/pricing`, `/#/security`, `/#/about`, `/#/help`, `/#/contact`, `/#/privacy`, `/#/terms`, `/#/status` | Public React pages, no business account required |
+| Authentication | `/#/login`, `/#/signup`, `/#/accept-invite`, `/#/reset-password` | Account and invitation flows |
+| Business workspace | `/#/app` | Organization and branch context; permission-filtered pages |
+| Platform administration | `/#/platform` | Separate shell; requires platform-admin privileges |
+| Research/evaluator portal | `/#/research` | Separate authenticated thesis-research shell |
+| Public storefront | `/#/store/:orgId` | Customer-facing store per organization |
+| Order tracking | `/#/order-status/:orgId/:token` | Customer-facing token lookup |
+| API documentation | `/docs` | FastAPI OpenAPI/Swagger |
+| Health check | `/health` | Includes model artifact load status; `degraded` is possible if artifacts are missing |
+| Render management | [Web service dashboard](https://dashboard.render.com/web/srv-dbeumigm7kps73f5epng) | Auto-deploy enabled for `main` |
+| Database resource | [PostgreSQL dashboard](https://dashboard.render.com/d/dpg-dbeulp67bikc73bicp20-a) | Free PostgreSQL 17, Singapore; connection not yet verified; resource expiry 24 November 2026 |
+
+**Important URL distinction:** Render assigned `https://thesis-j0n8.onrender.com`, **not** the requested `https://thesis.onrender.com`. Do not publish the shorter URL as the actual production address unless the Render service name/subdomain is changed and verified.
+
+### Application architecture
+
+```mermaid
+flowchart TB
+    U[Public visitor / business user / platform admin / thesis evaluator] --> W[React 19 + Vite 8 SPA; HashRouter]
+    W --> CTX[Auth, Business, Branch, Permission, Workspace, UI contexts]
+    CTX --> SHELLS{Access mode}
+    SHELLS --> PUBLIC[Marketing / Store / Order status]
+    SHELLS --> OWNER[Business Operations Panels]
+    SHELLS --> ADMIN[Platform Admin Console]
+    SHELLS --> RESEARCH[Research Experiment Portal]
+    PUBLIC --> API[FastAPI service]
+    OWNER --> API
+    ADMIN --> API
+    RESEARCH --> API
+    API --> SEC[JWT/Auth + tenant/role permission enforcement]
+    SEC --> OP[Operational routes / inventory / sales / accounting / support]
+    SEC --> DS[Research and ML routes]
+    OP --> ORM[SQLAlchemy / Alembic]
+    ORM --> DB[(PostgreSQL production intended / SQLite development fallback)]
+    DS --> ML[Prediction artifacts + B-SMART engine]
+    ML --> LOGIC[Candidate generation / constraints / utility / explanations]
+    LOGIC --> DEC[Decision, outcome, monitoring]
+```
+
+- **Web/UI:** `frontend/src/App.jsx` defines shells, lazy pages, sidebar navigation, guards, and public routes; `frontend/src/pages/` contains screen implementations. `frontend/src/api.js` is the shared HTTP client. `frontend/src/auth.js` handles access/refresh tokens. Uses `HashRouter` for deep links.
+- **State and tenancy:** `AuthContext.jsx`, `BusinessContext.jsx`, `PermissionContext.jsx`, `WorkspaceContext.jsx`, `useBranch.jsx` and `UiContext.jsx`. Business selection is remembered locally; uploads are session-scoped. UI guards are not the security boundary—API permission checks must enforce authorization.
+- **Backend:** `api/main.py` wires modular `*_routes.py` FastAPI routers; `api/domain_models.py` and `api/admin_models.py` define SQLAlchemy entities; `api/database.py` uses `DATABASE_URL`; `migrations/` and `alembic.ini` hold database migration infrastructure.
+- **ML/research:** `00_*–13_*.py`, `ml/`, `predict.py`, `artifacts/`, `output/`, `api/bsmart_live.py`, `api/outcome_measurement.py` and `api/research_portal_routes.py` separate experiments and saved model artifacts from tenant operational workflows.
+- **Container:** Root `Dockerfile` builds the frontend with Node, installs backend web dependencies from `requirements.render.txt`, then serves SPA assets and API from one Uvicorn/FastAPI service on Render's `PORT`.
+- **Storage constraints:** The free web instance filesystem is ephemeral. Production requires a correctly connected persistent PostgreSQL database and an explicit persistent object-storage strategy for uploads; do not rely on local `uploads/`, session memory, or SQLite for durable business data.
+
+### Business / Owner workspace — navigation and panels
+
+These are **implemented UI routes/modules**, not guarantees that all flows are production-verified. Visibility is conditioned on permissions, enabled features, selected business and/or sector.
+
+| Group | Panel / route | Main purpose |
+|---|---|---|
+| Daily | Dashboard `/app` | Sales, receivables, low-stock alerts, daily action summary |
+| Sales & CRM | POS `/sales` | Sales, barcode/cart, receipt, credit limits, offline queue |
+| Sales & CRM | Sales history `/sales-history` | Find/reprint invoices, historical sales |
+| Sales & CRM | Quotations/orders `/orders` | Quote-to-order workflow |
+| Sales & CRM | Customer returns `/returns` | Refund/receivable/stock adjustment |
+| Sales & CRM | Customer and supplier directory `/directory` | Contact records, due balances and payments |
+| Sales & CRM | CRM `/crm` | Tickets, leads, customer feedback; feature-flagged |
+| Sales & CRM | Fulfilment `/fulfilment` | Reservations, deliveries, COD; feature-flagged |
+| Sales & CRM | Online store administration `/store-admin` | Configure merchant storefront/orders |
+| Stock & purchasing | Inventory `/inventory` | Stock balance and transfers |
+| Stock & purchasing | Batch/expiry `/expiry` | Batch lifecycle and expiring inventory; sector/feature-dependent |
+| Stock & purchasing | Stock count `/stock-count` | Review and reconcile physical stock |
+| Stock & purchasing | Products `/products` | SKUs, price, cost, barcode, categorization |
+| Stock & purchasing | Reorder planning `/reorder` | Suggestions and supplier purchasing preparation |
+| Stock & purchasing | Purchases `/purchases` | Purchase orders and goods receiving |
+| Stock & purchasing | Supplier returns `/purchase-returns` | Claims and returned stock |
+| Finance | Customer/supplier accounts `/accounts` | Receivables, payables, due ageing |
+| Finance | Cash closing `/cash` | Reconcile counted cash with ledger |
+| Finance | Accounting `/accounting` | Journals, trial balance, income/balance reports |
+| Finance | Insights `/insights` | ABC/XYZ, dead stock and supplier price changes |
+| Finance | Reports `/reports` | Exportable business reports |
+| AI | Today's actions `/strategy` | Prioritized practical actions |
+| AI | B-SMART recommendations `/bsmart-actions` | Recommendation decisions and outcome monitoring; feature-flagged |
+| AI | Sales forecast `/forecast` | Demand/sales projections |
+| AI | Customer segments `/segments` | Customer grouping |
+| AI | Upload analytics `/upload` | Session-scoped dataset upload/scoring; feature-flagged |
+| Setup & governance | Business/branches `/setup` | Business profile, branches and settings |
+| Setup & governance | Help `/guide` | On-screen workflow guidance |
+| Setup & governance | Import `/import` | CSV/XLSX data import and validation |
+| Setup & governance | Approvals `/approvals` | Controlled exception approval inbox |
+| Setup & governance | Staff/roles `/staff` | Membership and role assignment |
+| Setup & governance | Workforce `/workforce` | Attendance, leave, payroll; feature-flagged |
+| Setup & governance | Audit `/audit` | Traceable changes and actor history |
+| Account | My account `/account` | User account details |
+
+Additional legacy/research-adjacent routes registered inside the business shell include `/overview`, `/research-actions`, `/whatif`, `/customers`, `/models`, `/real-data-validation` and `/bsmart`. Their presence in code does not mean they appear in the main production sidebar.
+
+**Access roles declared by the UI:** `owner`, `manager`, `cashier`, `accountant`, `stock_keeper`, `viewer`, `evaluator`, `rider`. The platform administrator has a separate `is_platform_admin` gate. APIs, not the sidebar alone, must validate every business action.
+
+### Platform administration console
+
+Source: `frontend/src/pages/Platform.jsx`, `api/platform_routes.py`, `api/admin_platform_routes.py`. The separate console includes the following visible sections:
+
+| Tab | Scope |
+|---|---|
+| Command centre | Cross-tenant operational overview and summary |
+| Businesses / tenants | Tenant directory, inspect and suspend/reactivate workflows |
+| Data readiness | Data availability, quality/readiness per tenant |
+| AI governance | Model and AI operating oversight |
+| Recommendation operations | Recommendation/decision and outcome oversight |
+| Plans & entitlements | Platform-side plan and access controls |
+| Support & success | Cases and support operations |
+| Security & audit | Alerts, platform actions and audit visibility |
+| System operations | Operations/health tooling and platform status |
+| Public site content | Site-content management |
+| Announcements | Communications to selected tenants |
+| Business chat | Platform/business communication |
+
+Tabs and handlers exist in the frontend; **billing integrations, production alert delivery, and operational effectiveness are not established by their presence alone**. This panel is privileged and must never be exposed using ordinary business credentials.
+
+### Research / thesis evaluator portal
+
+Located at `/#/research`, with UI in `frontend/src/pages/ResearchPortal.jsx` and API in `api/research_portal_routes.py`. Main tabs:
+
+1. **Experiment Registry** — experiments/dataset inventory and statuses.
+2. **New Experiment** — configure and submit a research run.
+3. **Compare** — side-by-side experiments and metrics.
+4. **Algorithm Trace** — inspect stages from ingestion/features/splits/classification/clustering/forecast/churn to B-SMART `R_t`.
+5. **Export** — export comparable thesis-ready tables/results.
+
+Research-facing model report, validation, synthetic overview and what-if views are distinct from **live tenant decisions**. Experimental synthetic outcomes must never be represented as real-pharmacy field evidence.
+
+### B-SMART research architecture and status
+
+Detailed layer-by-layer source: [BSMART_ARCHITECTURE.md](docs/BSMART_ARCHITECTURE.md).
+
+| Layer | Component | Source-described state |
+|---|---|---|
+| 1 | Pharmacy data sources and entities | Partial: app entities present; research synthetic fields incomplete |
+| 2 | Canonicalization, validation, provenance | Partial: ID/null/data checks present; pack-unit normalization and some reconciliation gaps |
+| 3 | Historical decision-cutoff snapshots | Implemented in research pipeline |
+| 4 | KPIs, demand, churn/inactivity, RFM segments | Implemented research components; model selection must beat baseline |
+| 5 | Strategy candidate generation (reorder, near expiry, retention) | Research engine implemented; live tenant engine partial |
+| 6 | Feasibility/constraints | Research engine has budget, MOQ, pack, storage/cold-chain/consent; **live engine lacks several corresponding data fields and gates** |
+| 7 | Strategy optimization | Research utility: `U(a) = E[ΔProfit(a)] − ActionCost(a) − λ·Risk(a)`; per-action-type quotas |
+| 8 | Explanations and provenance | Recommendation reasons, constraints, confidence and cutoff |
+| 9 | Owner decision | Accept/reject/modify/defer; append-only decisions |
+| 10 | Monitoring/outcome | Recorded outcome and some ledger-derived auto-measurement; some costs cannot be measured reliably |
+
+The platform is a **Bangladeshi pharmacy-focused thesis MVP**, with some reusable cross-sector operational UI. It is **not** a clinically certified pharmacy system, a proven multi-pharmacy deployed intervention, or a fully validated universal SME engine. The research output deliberately distinguishes public real data, synthetic controls, operational live-tenant data, and assumptions.
+
+### Operational lifecycle at a glance
+
+```mermaid
+flowchart LR
+    A[Business onboarding] --> B[Product / supplier / opening stock / batch]
+    B --> C[Purchasing and inventory ledger]
+    C --> D[POS / returns / delivery]
+    D --> E[Customer dues / cash / accounting / reporting]
+    E --> F[Analytics / forecasting / risk]
+    F --> G[Live B-SMART recommendations]
+    G --> H[Owner accepts / modifies / rejects / defers]
+    H --> I[Measured results / audit / next decision]
+```
+
+### Current deployment readiness and known gaps
+
+- **Observed live:** Render marked the web service live, FastAPI startup completed, Vite bundle built successfully, auto-deploy from `main` was configured. This verifies server startup, **not** full browser/E2E workflows.
+- **Persistence not verified:** PostgreSQL resource was created but `DATABASE_URL` was not retrieved/set through the available connector. Render environment currently used a development configuration with SQLite fallback. **Do not enter real business data until persistence, backups and access control are verified.**
+- **Authentication:** The current deployment was configured with `AUTH_MODE=jwt` but `APP_ENV=development`. Before production traffic, set `APP_ENV=production` only after configuring PostgreSQL, a secure `JWT_SECRET`, migration verification and access control.
+- **Uploads:** Local container storage and in-memory upload sessions are not durable across Render restarts/deploys; external object storage and cleanup are future deployment requirements.
+- **Model artifacts:** `/health` independently reports whether trained artifacts can be loaded. A service can be live while model-dependent endpoints report degraded/missing-artifact errors.
+- **Research caveat:** Primary consenting Bangladesh pharmacy operational field data and prospective out-of-sample validation remain requirements for field-effectiveness claims. Compare models using honest holdouts; no synthetic-to-real performance substitution.
+- **Remaining domain gaps:** Full live-budget/MOQ/pack-unit/cold-chain/storage constraints, complete expiry-aware clinical workflow, and thorough independent production security/load/end-to-end verification.
+
+### Maintainer verification checklist
+
+```text
+[ ] Render web deploy is live and latest commit matches GitHub main
+[ ] GET / returns application HTML and GET /docs returns FastAPI documentation
+[ ] GET /health reports artifacts_loaded=true (or known limitations documented)
+[ ] DATABASE_URL points to working durable PostgreSQL; migrations applied
+[ ] APP_ENV=production, AUTH_MODE=jwt, secure unique JWT_SECRET
+[ ] Platform admin cannot access tenant data without privileged authorization
+[ ] Each tenant role sees only permitted views and API actions
+[ ] Test signup → onboarding → POS → purchase → return → accounting
+[ ] Test B-SMART run → decision → measured outcome for real tenant data
+[ ] Verify upload retention, backups, restore, logs and alerts
+[ ] Record real-vs-synthetic provenance and research reproducibility
+```
+
+---
+
 ## Verified current snapshot — 6 September 2026
 
 This is the source of truth for the present thesis state. The final progress
