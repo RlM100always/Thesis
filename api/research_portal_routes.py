@@ -5,7 +5,7 @@ comparison, and thesis export endpoints.
 
 Architecture
 ────────────
-- Any logged-in user can create experiments (no org required).
+- Authentication is required for experiments (no organization membership required).
 - Experiments are stored as JSON files under artifacts/research_portal/.
 - run_experiment uses a background thread so the HTTP response returns
   immediately with status="running"; poll /experiments/{id}/status.
@@ -38,12 +38,13 @@ from typing import Any
 
 import numpy as np
 import pandas as pd
-from fastapi import APIRouter, HTTPException, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from .auth import get_current_user
 from pydantic import BaseModel
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-router = APIRouter(prefix="/api/research/portal", tags=["research-portal"])
+router = APIRouter(prefix="/api/research/portal", tags=["research-portal"], dependencies=[Depends(get_current_user)])
 
 ARTIFACTS_DIR = Path("artifacts/research_portal")
 ARTIFACTS_DIR.mkdir(parents=True, exist_ok=True)
