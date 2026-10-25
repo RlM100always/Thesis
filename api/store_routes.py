@@ -144,6 +144,52 @@ def _store_admin_view(store: Store) -> dict:
 # Public endpoints — no auth required
 # ---------------------------------------------------------------------------
 
+@public_router.get("/", tags=["public-store"])
+def list_public_stores(
+    db: Db,
+    category: str | None = Query(None),
+    area: str | None = Query(None),
+):
+    """List active storefronts from real operational Store records, never research fixtures."""
+    q = select(Store, Organization).join(
+        Organization, Organization.id == Store.organization_id
+    ).where(Store.is_active.is_(True)).order_by(Store.display_name)
+    entries = db.execute(q).all()
+    result = []
+    for store, org in entries:
+        if category and (category.casefold() not in (store.category or "").casefold()):
+            continue
+        if area and (area.casefold() not in (store.area or "").casefold()):
+            continue
+        result.append({
+            "organization_id": store.organization_id,
+            "slug": store.slug,
+            "display_name": store.display_name,
+            "tagline": store.tagline,
+            "logo_data_url": store.logo_data_url,
+            "cover_data_url": store.cover_data_url,
+            "category": store.category,
+            "area": store.area,
+            "theme_color": store.theme_color,
+            "theme_preset": store.theme_preset,
+            "payment_cod": store.payment_cod,
+            "payment_bkash": store.payment_bkash,
+            "payment_nagad": store.payment_nagad,
+        })
+    return result
+
+
+@public_router.get("/slug/{slug}", tags=["public-store"])
+def public_store_by_slug(slug: str, db: Db):
+    """Resolve human-readable storefront URLs while honoring the active flag."""
+    store = db.scalar(select(Store).where(
+        Store.slug == slug, Store.is_active.is_(True)
+    ))
+    if store is None:
+        raise HTTPException(404, "Store not found or inactive")
+    return get_public_store(store.organization_id, db)
+
+
 @public_router.get("/{organization_id}", tags=["public-store"])
 def get_public_store(organization_id: str, db: Db):
     """Return the store profile and listed products in one call.
