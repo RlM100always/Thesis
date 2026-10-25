@@ -2,7 +2,7 @@
 
 ## Online deployment (Render)
 
-- **Application URL:** https://thesis.onrender.com
+- **Application URL (deployment in progress):** https://thesis-j0n8.onrender.com
 - **Repository:** https://github.com/RlM100always/Thesis
 - **Hosting:** Render Docker web service, React/Vite frontend and FastAPI backend on the same domain.
 - **Deployment status:** See the Render dashboard for the latest build/deploy status; a URL alone does not certify successful deployment.
