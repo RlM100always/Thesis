@@ -1,5 +1,20 @@
 # AI-Powered Business Analytics System for Bangladeshi Pharmacy SMEs
 
+## Thesis presentation login (privileged demonstration access)
+
+**One opt-in presentation account** can be configured privately to access the business-owner workspace, platform-administrator console and research portal with the same credentials. This is an actual JWT-authenticated database user with a dedicated **clearly labelled SAMPLE DATA** pharmacy tenant, not a bypass or public demo-password shortcut.
+
+| Target | Link after login |
+|---|---|
+| Login | [Sign in](https://thesis-j0n8.onrender.com/#/login) |
+| Business operations (owner role) | [Business panel](https://thesis-j0n8.onrender.com/#/app) |
+| Platform administration | [Platform admin](https://thesis-j0n8.onrender.com/#/platform) |
+| Research/evaluator portal | [Research portal](https://thesis-j0n8.onrender.com/#/research) |
+
+The three panels have visible navigation links when signed in with an authorized administrative/demo account. The demonstration tenant includes example catalogue, expiry batches, inventory, supplier and customers; it does **not** claim real transactions, real data collection or successful experimental model output.
+
+**Provisioning:** Set `PRESENTATION_DEMO_ENABLED=true`, `PRESENTATION_DEMO_EMAIL` and `PRESENTATION_PASSWORD_HASH` in **Render environment variables**, with `AUTH_MODE=jwt`. The password hash must use the project's scrypt format and be computed locally; never store the raw password or hash in README, public GitHub or client-side JavaScript. Startup invokes `api/presentation_demo.py` idempotently after schema creation, without elevating pre-existing non-admin users. Disable demo access after the presentation and rotate or deactivate the account as appropriate. In demo deployment currently using ephemeral SQLite, account and sample records can disappear on restart/redeploy and are reprovisioned from the environment; never rely on it for real business data. For production use a durable PostgreSQL connection, proper migrations, MFA and independent security verification.
+
 ## Online deployment (Render)
 
 - **Application URL (deployment in progress):** https://thesis-j0n8.onrender.com
