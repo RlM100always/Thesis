@@ -227,8 +227,23 @@ def health():
 
 @app.get("/", tags=["system"])
 def root():
-    return {
-        "name": "AI-Powered Business Analytics API",
-        "docs": "/docs",
-        "health": "/health",
-    }
+    if _frontend_dist.is_dir():
+        return _FileResponse(_frontend_dist / "index.html")
+    return {"name": "AI-Powered Business Analytics API", "docs": "/docs", "health": "/health"}
+
+
+from fastapi.responses import FileResponse as _FileResponse
+from fastapi import HTTPException as _HTTPException
+_frontend_dist = _Path(__file__).parent.parent / "frontend" / "dist"
+if _frontend_dist.is_dir():
+    app.mount("/assets", _StaticFiles(directory=str(_frontend_dist / "assets")), name="frontend_assets")
+
+
+@app.get("/{full_path:path}", include_in_schema=False)
+def frontend_spa(full_path: str):
+    if not _frontend_dist.is_dir() or full_path.startswith("api/"):
+        raise _HTTPException(status_code=404)
+    path = (_frontend_dist / full_path).resolve()
+    if path.is_relative_to(_frontend_dist.resolve()) and path.is_file():
+        return _FileResponse(path)
+    return _FileResponse(_frontend_dist / "index.html")
