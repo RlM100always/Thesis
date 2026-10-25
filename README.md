@@ -36,6 +36,7 @@ R2_SECRET_ACCESS_KEY=<R2-scoped Secret Access Key>
 The **latest author-supplied thesis report source** is archived without modification at [`thesis_report/archive/2026-10-25_user_submitted_report.tex`](thesis_report/archive/2026-10-25_user_submitted_report.tex). The 75-page PDF supplied in the conversation is not committed as a binary (see [archive notes](thesis_report/archive/README.md)).
 
 For data-driven, pharmacy-focused research see:
+- [**Bangladesh-any-SME** scope clarification and verified dataset feasibility (25 Oct 2026)](docs/BANGLADESH_SME_DATASET_SCOPE_UPDATE_2026-10-25.md) — proposed broader inventory-based SME focus, real Bangladesh dataset shortlisting, unresolved RQ2–RQ4 evidence and required supervisor-approved thesis amendments
 - [Research dataset selection and provenance decision](docs/RESEARCH_DATASET_DECISION_2026-10-25.md) — compare existing public benchmarks, recommended Complete Journey and FreshRetailNet, and indispensable Bangladesh pharmacy primary data
 - [Implementation and experimental research execution blueprint](docs/IMPLEMENTATION_EXPERIMENTS_EXECUTION_PLAN.md) — RQ1–RQ4 eligibility, experiment registry E01–E11, honest Chapter 4–5 completion path and product architecture
 - [Machine-readable selection registry](research/dataset_selection_2026-10-25.json) — *candidate/not-downloaded vs already documented evidence* states
