@@ -22,5 +22,27 @@
   "purchase_orders": 122422,
   "payments": 381756,
   "rq4_machine_cases": 1800,
-  "human_participants": 0
+  "human_participants": 0,
+  "shop_preview": {
+    "available_in_github": true,
+    "shops": 32,
+    "source_shop_summary": "research/new_dataset/shops_overview.psv",
+    "source_example_rows": "research/new_dataset/shop_examples.psv",
+    "yearly_history": [
+      2023,
+      2024,
+      2025
+    ],
+    "includes": {
+      "orders": true,
+      "unique_buyers": true,
+      "yearly_revenue": true,
+      "inventory_movements": true,
+      "purchase_orders": true,
+      "sample_invoice_per_shop": 1,
+      "top_product_per_shop": 1
+    },
+    "full_raw_relational_dataset_imported": false,
+    "actual_operational_business_records": false
+  }
 }
