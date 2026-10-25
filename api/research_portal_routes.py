@@ -42,6 +42,7 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from fastapi.responses import FileResponse
 from functools import lru_cache
 from .auth import get_current_user
+from . import r2_store
 from pydantic import BaseModel
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -685,12 +686,22 @@ def _exp_path(exp_id: str) -> Path:
     return ARTIFACTS_DIR / f"{exp_id}.json"
 
 def _load_exp(exp_id: str) -> dict:
+    if not exp_id.startswith("EXP-") or len(exp_id) > 32 or "/" in exp_id:
+        raise HTTPException(400, "Invalid experiment ID")
+    if r2_store.configured():
+        try:
+            return r2_store.get_json(f"experiments/{exp_id}.json")
+        except Exception as exc:
+            if exp_id != BASELINE_ID:
+                raise HTTPException(503, "Persistent experiment storage unavailable") from exc
     p = _exp_path(exp_id)
     if not p.exists():
         raise HTTPException(404, f"Experiment {exp_id} not found")
     return json.loads(p.read_text(encoding="utf-8"))
 
 def _save_exp(exp: dict):
+    if r2_store.configured():
+        r2_store.put_json(f"experiments/{exp['id']}.json", exp)
     _exp_path(exp["id"]).write_text(
         json.dumps(exp, ensure_ascii=False, indent=2), encoding="utf-8"
     )
@@ -698,10 +709,7 @@ def _save_exp(exp: dict):
 def _update_progress(exp_id: str, step: str, status: str):
     """Update experiment JSON with current step/status while running."""
     try:
-        p = _exp_path(exp_id)
-        if not p.exists():
-            return
-        exp = json.loads(p.read_text(encoding="utf-8"))
+        exp = _load_exp(exp_id)
         progress = exp.get("progress", [])
         # Update existing step or append
         for item in progress:
@@ -712,7 +720,7 @@ def _update_progress(exp_id: str, step: str, status: str):
         else:
             progress.append({"step": step, "status": status, "ts": time.time()})
         exp["progress"] = progress
-        p.write_text(json.dumps(exp, ensure_ascii=False, indent=2), encoding="utf-8")
+        _save_exp(exp)
     except Exception:
         pass  # progress updates are best-effort
 
@@ -752,7 +760,17 @@ def _run_experiment_bg(exp_id: str):
     """Run the full pipeline in a background thread, updating the JSON as it goes."""
     try:
         exp = _load_exp(exp_id)
-        dataset_path = Path(exp["dataset_path"])
+        source = exp["dataset_path"]
+        if source.startswith("r2://"):
+            if not r2_store.configured():
+                raise RuntimeError("R2 credentials missing: uploaded experiment cannot be restored")
+            name = source[len("r2://"):]
+            if not name.startswith("uploads/") or ".." in name:
+                raise RuntimeError("Invalid uploaded dataset key")
+            dataset_path = UPLOAD_DIR / (exp_id + "_" + Path(name).name)
+            dataset_path.write_bytes(r2_store.get_bytes(name))
+        else:
+            dataset_path = Path(source)
         if not dataset_path.exists():
             exp["status"]       = "failed"
             exp["error"]        = f"Dataset not found: {dataset_path}"
@@ -786,6 +804,8 @@ def _run_experiment_bg(exp_id: str):
             "vertical_specific": specific,
             "ml_models":         ml_results,
         }
+        if r2_store.configured():
+            r2_store.upload_model_directory(MODELS_DIR / exp_id, exp_id)
         _save_exp(exp)
 
     except Exception:
@@ -870,16 +890,37 @@ def vertical_schema():
 
 @router.get("/experiments")
 def list_experiments():
-    exps = []
+    exps = {}
+    if r2_store.configured():
+        try:
+            for key in r2_store.list_names("experiments/"):
+                if key.startswith("experiments/EXP-") and key.endswith(".json"):
+                    e = r2_store.get_json(key)
+                    exps[e["id"]] = {k: e.get(k) for k in
+                        ["id", "name", "vertical", "status", "locked",
+                         "created_at", "run_at", "config", "progress"]}
+        except Exception as exc:
+            raise HTTPException(503, "Persistent experiment storage unavailable") from exc
     for p in sorted(ARTIFACTS_DIR.glob("EXP-*.json")):
         try:
             e = json.loads(p.read_text(encoding="utf-8"))
-            exps.append({k: e.get(k) for k in
-                         ["id", "name", "vertical", "status", "locked",
-                          "created_at", "run_at", "config", "progress"]})
+            if not r2_store.configured() or e.get("id") == BASELINE_ID:
+                exps.setdefault(e["id"], {k: e.get(k) for k in
+                    ["id", "name", "vertical", "status", "locked",
+                     "created_at", "run_at", "config", "progress"]})
         except Exception:
             pass
-    return {"experiments": exps}
+    return {"experiments": sorted(exps.values(), key=lambda x: x.get("created_at") or 0, reverse=True)}
+
+
+@router.get("/storage-status")
+def storage_status():
+    """Report configuration only; never disclose keys or credentials."""
+    return {
+        "r2_configured": r2_store.configured(),
+        "object_storage": "Cloudflare R2" if r2_store.configured() else "ephemeral Render disk",
+        "permanent_uploads_enabled": r2_store.configured(),
+    }
 
 
 class CreateExperimentBody(BaseModel):
@@ -910,6 +951,16 @@ def create_experiment(body: CreateExperimentBody):
             raise HTTPException(503, f"Research dataset {v} is not installed on the server")
     elif body.dataset_source == "upload" and body.upload_path:
         dataset_path = body.upload_path
+        if r2_store.configured():
+            if not dataset_path.startswith("r2://uploads/") or ".." in dataset_path:
+                raise HTTPException(400, "Upload must be stored in your R2 research bucket")
+            try:
+                if not r2_store.exists(dataset_path[len("r2://"):]):
+                    raise HTTPException(404, "Uploaded R2 dataset not found")
+            except HTTPException:
+                raise
+            except Exception as exc:
+                raise HTTPException(503, "R2 unavailable") from exc
     else:
         raise HTTPException(400, "Provide dataset_id for built-in or upload_path for uploaded datasets")
 
@@ -979,13 +1030,22 @@ def delete_experiment(exp_id: str):
     model_dir = MODELS_DIR / exp_id
     if model_dir.exists():
         shutil.rmtree(model_dir, ignore_errors=True)
+    if r2_store.configured():
+        r2_store.remove_model_directory(exp_id)
 
     # Clean up uploaded dataset if it came from an upload
     if exp.get("dataset_source") == "upload" and exp.get("dataset_path"):
-        up = Path(exp["dataset_path"])
-        if up.exists() and str(up).startswith(str(UPLOAD_DIR)):
-            up.unlink(missing_ok=True)
+        if exp["dataset_path"].startswith("r2://") and r2_store.configured():
+            key = exp["dataset_path"][len("r2://"):]
+            if key.startswith("uploads/"):
+                r2_store.delete(key)
+        else:
+            up = Path(exp["dataset_path"])
+            if up.exists() and str(up).startswith(str(UPLOAD_DIR)):
+                up.unlink(missing_ok=True)
 
+    if r2_store.configured():
+        r2_store.delete(f"experiments/{exp_id}.json")
     _exp_path(exp_id).unlink(missing_ok=True)
     return {"deleted": exp_id}
 
@@ -1047,8 +1107,10 @@ def compare_experiments(body: CompareBody):
 async def upload_dataset(file: UploadFile = File(...)):
     if not (file.filename or "").endswith((".csv", ".xlsx")):
         raise HTTPException(400, "Only .csv and .xlsx files are accepted")
-    content = await file.read()
-    safe_name = f"{uuid.uuid4().hex}_{file.filename}"
+    content = await file.read(26 * 1024 * 1024)
+    if len(content) > 25 * 1024 * 1024:
+        raise HTTPException(413, "Maximum upload size is 25 MB")
+    safe_name = f"{uuid.uuid4().hex}_{Path(file.filename or 'dataset.csv').name}"
     dest = UPLOAD_DIR / safe_name
     dest.write_bytes(content)
 
@@ -1064,8 +1126,20 @@ async def upload_dataset(file: UploadFile = File(...)):
     schema   = VERTICAL_SCHEMAS.get(vertical, VERTICAL_SCHEMAS["generic"])
     missing  = [c for c in schema["universal_columns"] if c not in df.columns]
 
+    upload_path = str(dest)
+    if r2_store.configured():
+        try:
+            key = f"uploads/{safe_name}"
+            r2_store.put_bytes(key, content, "text/csv" if safe_name.lower().endswith(".csv")
+                               else "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+            upload_path = "r2://" + key
+            dest.unlink(missing_ok=True)
+        except Exception as exc:
+            dest.unlink(missing_ok=True)
+            raise HTTPException(503, "Could not securely save uploaded dataset to Cloudflare R2") from exc
+
     return {
-        "upload_path":       str(dest),
+        "upload_path":       upload_path,
         "filename":          file.filename,
         "rows":              len(df),
         "columns":           list(df.columns),
