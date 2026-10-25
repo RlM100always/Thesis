@@ -528,7 +528,7 @@ function SidebarBody({ badges }) {
               )}
               {(user.is_platform_admin || role === "evaluator") && (
                 <NavLink to="/research"><Icon name="fileText" size={14} />গবেষণা পোর্টাল</NavLink>
-              )
+              )}
               <NavLink to="/account"><Icon name="key" size={14} />পাসওয়ার্ড</NavLink>
               <button type="button" onClick={signOut}><Icon name="logout" size={14} />লগআউট</button>
             </div>
