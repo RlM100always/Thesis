@@ -249,7 +249,12 @@ class PublicOrderCreate(BaseModel):
     shipping_phone: str = Field(min_length=4, max_length=32)
     shipping_address: str = Field(min_length=1, max_length=1000)
     notes: str | None = Field(default=None, max_length=1000)
+    payment_method: str | None = Field(default=None, max_length=20)
     items: list[PublicOrderItem] = Field(min_length=1, max_length=50)
+    store_customer_token: str | None = None
+    delivery_division: str | None = Field(default=None, max_length=50)
+    payment_screenshot: str | None = None
+    coupon_code: str | None = Field(default=None, max_length=50)
 
 
 class BranchCreate(BaseModel):
