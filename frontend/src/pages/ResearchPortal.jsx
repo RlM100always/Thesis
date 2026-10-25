@@ -518,6 +518,9 @@ function NewExpTab({ datasets, schema, onCreated }) {
   }
 
   const selSchema = schema[vertical] || {};
+  const selectedDataset = datasets.find(d => d.vertical === vertical);
+  const [datasetPreview, setDatasetPreview] = useState(null);
+  const [datasetError, setDatasetError] = useState("");
 
   return (
     <div className="rp-section">
@@ -552,6 +555,31 @@ function NewExpTab({ datasets, schema, onCreated }) {
                 ))}
               </select>
             </label>
+            <div className="rp-schema-hint">
+              <strong>Research dataset on Render: </strong>
+              {selectedDataset?.available
+                ? `Available · ${selectedDataset.rows.toLocaleString()} rows · declared synthetic`
+                : "Not installed on server"}
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8 }}>
+                <button type="button" className="rp-btn-secondary" disabled={!selectedDataset?.available}
+                  onClick={async () => {
+                    try { setDatasetError(""); setDatasetPreview(await api.portalPreview(vertical)); }
+                    catch (e) { setDatasetError(e.message); }
+                  }}>Preview CSV</button>
+                <button type="button" className="rp-btn-secondary" disabled={!selectedDataset?.available}
+                  onClick={async () => {
+                    try { setDatasetError(""); await api.portalDownload(vertical); }
+                    catch (e) { setDatasetError(e.message); }
+                  }}>Download dataset</button>
+              </div>
+              {datasetError && <p role="alert">{datasetError}</p>}
+              {datasetPreview?.vertical === vertical && (
+                <pre style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere", maxHeight: 200, overflowY: "auto" }}>
+                  {JSON.stringify({ columns: datasetPreview.columns, sample: datasetPreview.sample.slice(0, 2) }, null, 2)}
+                </pre>
+              )}
+              <small>Generated research/control data; not actual shop transactions or live customer records.</small>
+            </div>
             {selSchema.vertical_columns && Object.keys(selSchema.vertical_columns).length > 0 && (
               <div className="rp-schema-hint">
                 <strong>Vertical-specific columns detected:</strong>{" "}
@@ -688,6 +716,7 @@ function NewExpTab({ datasets, schema, onCreated }) {
         </div>
 
         <button type="submit" className="rp-btn-primary" disabled={saving ||
+          (source === "built-in" && !selectedDataset?.available) ||
           (source === "upload" && (!uploadPath || !uploadInfo?.valid))}>
           {saving ? "Creating…" : "Create Experiment"}
         </button>
