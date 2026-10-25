@@ -32,7 +32,7 @@ def test_preview_does_not_claim_full_operational_import_or_trained_models():
     assert dataset["preview_available"] is True
     assert dataset["installed"] is False
     assert dataset["evidence_tier"] == "synthetic_simulation"
-    response = shops()
+    response = shops(search="", division="")
     assert response["preview_only"]
     assert not response["full_dataset_imported"]
     selected = shop_detail("SH001")
