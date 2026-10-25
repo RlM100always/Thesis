@@ -106,6 +106,8 @@ export const api = {
 
   // Research Portal — authenticated to protect experiment uploads and model runs.
   portalDatasets:    () => appRequest("/api/research/portal/datasets"),
+  portalPreview:     (v) => appRequest(`/api/research/portal/datasets/${encodeURIComponent(v)}/preview`),
+  portalDownload:    (v) => appDownload(`/api/research/portal/datasets/${encodeURIComponent(v)}/download`, `${v}_synthetic_research_dataset.csv`),
   portalSchema:      () => appRequest("/api/research/portal/vertical-schema"),
   portalExperiments: () => appRequest("/api/research/portal/experiments"),
   portalGetExp:      (id) => appRequest(`/api/research/portal/experiments/${encodeURIComponent(id)}`),
