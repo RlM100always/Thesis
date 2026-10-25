@@ -4,10 +4,10 @@ from api.main import app
 
 def test_local_storefront_routes_are_mounted():
     registered = {
-        (method, route.path)
-        for route in app.routes
-        if hasattr(route, "methods")
-        for method in route.methods
+        (method.upper(), path)
+        for path, operations in app.openapi()["paths"].items()
+        for method in operations
+        if method.lower() in {"get", "post", "put", "patch", "delete"}
     }
     expected = {
         ("GET", "/api/public/store/"),
@@ -28,7 +28,7 @@ def test_local_storefront_routes_are_mounted():
 
 
 def test_existing_business_apis_and_research_reset_remain_mounted():
-    paths = {route.path for route in app.routes}
+    paths = set(app.openapi()["paths"])
     assert "/api/app/organizations" in paths
     assert "/api/research/portal/shops" in paths
     assert "/api/app/bsmart/run" in paths
