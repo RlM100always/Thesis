@@ -31,6 +31,17 @@ R2_SECRET_ACCESS_KEY=<R2-scoped Secret Access Key>
 
 **Current implementation limit:** Research endpoints authenticate users but do not yet implement full per-researcher isolation for uploaded experiments. Do not upload confidential real-pharmacy or personal data until authorization, retention, and deletion policy have been independently reviewed. R2 does not replace PostgreSQL for permanent operational tenant/user/account records.
 
+## Thesis research dataset decision and submitted report (25 October 2026)
+
+The **latest author-supplied thesis report source** is archived without modification at [`thesis_report/archive/2026-10-25_user_submitted_report.tex`](thesis_report/archive/2026-10-25_user_submitted_report.tex). The 75-page PDF supplied in the conversation is not committed as a binary (see [archive notes](thesis_report/archive/README.md)).
+
+For data-driven, pharmacy-focused research see:
+- [Research dataset selection and provenance decision](docs/RESEARCH_DATASET_DECISION_2026-10-25.md) — compare existing public benchmarks, recommended Complete Journey and FreshRetailNet, and indispensable Bangladesh pharmacy primary data
+- [Implementation and experimental research execution blueprint](docs/IMPLEMENTATION_EXPERIMENTS_EXECUTION_PLAN.md) — RQ1–RQ4 eligibility, experiment registry E01–E11, honest Chapter 4–5 completion path and product architecture
+- [Machine-readable selection registry](research/dataset_selection_2026-10-25.json) — *candidate/not-downloaded vs already documented evidence* states
+
+**No new dataset was downloaded and no new research experiment was claimed complete by these planning commits.** The first empirical vertical remains Bangladeshi pharmacies; the generated seven-sector examples do not establish real-world domain generalization.
+
 ## Live research datasets on Render (25 October 2026)
 
 The Research Portal built-in CSVs are **generated reproducibly during the Docker build** using `00b_generate_multi_vertical_datasets.py` (pharmacy, grocery, clothing, restaurant, electronics) and `00c_generate_additional_datasets.py` (auto_parts, stationery), because `normalized_data/` is gitignored and not present in a GitHub clone. Both generators explicitly label their 30,000-transaction-per-vertical output **synthetic**, not collected from real shops. Deployment fails if any of the seven CSVs is missing.
