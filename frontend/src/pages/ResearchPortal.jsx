@@ -68,7 +68,7 @@ export default function ResearchPortal() {
       .sort((a,b)=>sort==="revenue" ? b.net_sales_bdt-a.net_sales_bdt
         : sort==="orders" ? b.orders-a.orders : a.shop_id.localeCompare(b.shop_id));
   },[state.shops,query,division,sort]);
-  const chosen = state.shops.find(s=>s.shop_id===selectedId)
+  const chosen = filtered.find(s=>s.shop_id===selectedId)
     || filtered[0] || null;
   const total = useMemo(()=>state.shops.reduce((z,s)=>({
     revenue:z.revenue+s.net_sales_bdt,
