@@ -57,6 +57,10 @@ from .health_score_routes import router as health_score_router  # noqa: E402
 from .mission_queue_routes import router as mission_queue_router  # noqa: E402
 from .reservation_routes import router as reservation_router  # noqa: E402
 from .store_routes import router as store_router, public_router as public_store_router  # noqa: E402
+from .store_customer_routes import router as sc_router, biz_router as sc_biz_router
+from .payment_routes import router as payment_router
+from .coupon_routes import router as coupon_router, public_router as public_coupon_router
+from .review_routes import router as review_router
 from .research_portal_routes import router as research_portal_router  # noqa: E402
 from .database import create_schema, SessionLocal  # noqa: E402
 from .schemas import Health  # noqa: E402
@@ -124,6 +128,12 @@ app.include_router(mission_queue_router)
 app.include_router(reservation_router)
 app.include_router(store_router)
 app.include_router(public_store_router)
+app.include_router(sc_router)
+app.include_router(sc_biz_router)
+app.include_router(payment_router)
+app.include_router(coupon_router)
+app.include_router(public_coupon_router)
+app.include_router(review_router)
 app.include_router(team_chat_router)
 app.include_router(assistant_router)
 app.include_router(research_portal_router)
