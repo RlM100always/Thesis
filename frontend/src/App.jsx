@@ -215,7 +215,7 @@ function Shell() {
   if (pathname.startsWith("/platform")) return <PlatformShell />;
   // Platform admins always go to /platform — they have a separate shell.
   // The only exception is if they explicitly navigate to /app themselves.
-  if (!loading && user?.is_platform_admin && !pathname.startsWith("/app")) {
+  if (!loading && user?.is_platform_admin && organizations.length === 0 && !pathname.startsWith("/app")) {
     return <Navigate to="/platform" replace />;
   }
   // Signed in but no business yet (right after signing up): create one first.
@@ -269,6 +269,8 @@ function PlatformShell() {
           <span className="pa-topbar-user">{user.email}</span>
         </div>
         <div className="pa-topbar-right">
+          <Link className="pa-topbar-btn" to="/app" title="Business Owner workspace">ব্যবসা প্যানেল</Link>
+          <Link className="pa-topbar-btn" to="/research" title="Research and thesis evaluation">গবেষণা পোর্টাল</Link>
           <button className="pa-topbar-btn" onClick={() => setDark(d => !d)} title={dark ? "লাইট মোড" : "ডার্ক মোড"}>
             <Icon name={dark ? "sun" : "moon"} size={15} />
           </button>
@@ -295,6 +297,7 @@ function ResearchShell() {
           <div><strong>B-SMART গবেষণা পোর্টাল</strong><small>থিসিস মূল্যায়ন ও যাচাই</small></div>
         </div>
         <div className="platform-topbar-actions">
+          {user?.is_platform_admin && <Link className="platform-exit" to="/platform">অ্যাডমিন প্যানেল</Link>}
           <Link className="platform-exit" to="/app">
             <Icon name="chevronRight" size={14} style={{ transform: "rotate(180deg)" }} /> মূল অ্যাপে ফিরুন
           </Link>
@@ -523,6 +526,9 @@ function SidebarBody({ badges }) {
               {user.is_platform_admin && (
                 <NavLink to="/platform"><Icon name="shield" size={14} />প্ল্যাটফর্ম</NavLink>
               )}
+              {(user.is_platform_admin || role === "evaluator") && (
+                <NavLink to="/research"><Icon name="fileText" size={14} />গবেষণা পোর্টাল</NavLink>
+              )
               <NavLink to="/account"><Icon name="key" size={14} />পাসওয়ার্ড</NavLink>
               <button type="button" onClick={signOut}><Icon name="logout" size={14} />লগআউট</button>
             </div>
