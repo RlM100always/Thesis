@@ -112,3 +112,10 @@ output/*.zip
 frontend/node_modules/
 frontend/dist/
 npm-debug.log*
+
+# Rebuilt Bangladesh-context synthetic research dataset (bulk CSVs live outside Git)
+research/new_dataset/data/
+research/new_dataset/derived/
+research/new_dataset/*.zip
+research/new_dataset/*.joblib
+research/new_dataset/*.pkl
