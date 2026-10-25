@@ -1,38 +1,4 @@
-"""
-=============================================================
-FastAPI APPLICATION
-AI-Powered Business Analytics System — CSE 4th Year Thesis
-=============================================================
-HOW TO RUN:
-    python run_api.py
-
-Use the launcher rather than calling uvicorn directly. `python -m uvicorn
-api.main:app` resolves "api.main" against the current directory, so it
-only works from the project root and fails from inside api/ with
-`ModuleNotFoundError: No module named 'api'`. run_api.py pins the working
-directory first and checks that the pipeline artifacts exist.
-
-Then open:
-    http://127.0.0.1:8000/docs    interactive Swagger UI
-    http://127.0.0.1:8000/health  liveness probe
-
-ARCHITECTURE
-------------
-    React (Vite, :5173)
-        │  fetch / JSON
-        ▼
-    FastAPI (:8000)  ── api/routes.py ── api/schemas.py
-        │
-        ▼
-    predict.py                     ← the only module that loads artifacts
-        │
-        ▼
-    output/models/*.pkl, output/*.csv
-
-The layers are separated so the serving logic can be tested without HTTP
-and the HTTP layer can be inspected without loading a single model.
-"""
-
+"""B-SMART operational FastAPI app; legacy research models retired October 2026."""
 from __future__ import annotations
 
 import sys
@@ -46,9 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-import predict as service  # noqa: E402
 
-from .routes import router  # noqa: E402
 from .app_routes import router as app_router  # noqa: E402
 from .auth_routes import router as auth_router  # noqa: E402
 from .commerce_routes import router as commerce_router  # noqa: E402
@@ -98,20 +62,9 @@ from .database import create_schema, SessionLocal  # noqa: E402
 from .schemas import Health  # noqa: E402
 
 app = FastAPI(
-    title="AI-Powered Business Analytics API",
-    description=(
-        "B-SMART: constraint-aware strategy recommendation for Bangladeshi retail "
-        "pharmacy SMEs, plus the supporting analytics (demand forecasting, customer "
-        "inactivity risk, RFM segmentation) it consumes.\n\n"
-        "**Note on reported accuracy.** The segment model scores ~51% leak-free "
-        "against a 35.2% majority baseline, not the 85.27% a transaction-level split "
-        "with a CLV feature reports. That gap is data leakage, and it is published "
-        "rather than hidden — see `/api/models/metrics` for the full ablation.\n\n"
-        "**Architecture.** See `docs/BSMART_ARCHITECTURE.md`. Layer 5 (Algorithm 1) "
-        "is served read-only at `/api/research/bsmart/latest`; layers 9 and 10 "
-        "(owner decision, outcome and monitoring) live under `/api/app/bsmart/*`."
-    ),
-    version="2.0.0",
+    title="B-SMART Bangladesh SME Business Platform",
+    description="Operational shop software. Previous ML artifacts were archived; no new research model has been trained.",
+    version="3.0.0-reset",
 )
 
 # The Vite dev server runs on a different origin, so the browser needs
@@ -127,7 +80,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(router)
 app.include_router(auth_router)
 app.include_router(app_router)
 app.include_router(commerce_router)
@@ -214,17 +166,8 @@ def _seed_site_defaults():
 
 @app.get("/health", response_model=Health, tags=["system"])
 def health():
-    """
-    Liveness plus an artifact check.
-
-    Reports unhealthy rather than crashing when the pipeline has not been
-    run, so the frontend can show a useful message instead of a blank page.
-    """
-    try:
-        service.get_artifacts()
-        return {"status": "ok", "artifacts_loaded": True, "detail": None}
-    except service.ArtifactsMissingError as e:
-        return {"status": "degraded", "artifacts_loaded": False, "detail": str(e)}
+    return {"status": "ok", "artifacts_loaded": False,
+            "detail": "Research models reset; awaiting new synthetic dataset integration."}
 
 
 @app.get("/", tags=["system"])
