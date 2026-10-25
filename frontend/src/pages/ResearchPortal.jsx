@@ -128,7 +128,7 @@ export default function ResearchPortal() {
         </div>
       </div>
 
-      <div style={{display:"grid",gridTemplateColumns:"minmax(0,1.05fr) minmax(0,1fr)",gap:16,alignItems:"start"}}>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(min(100%, 360px),1fr))",gap:16,alignItems:"start"}}>
         <section style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(230px,1fr))",gap:10}}>
           {filtered.map(s=><button type="button" key={s.shop_id} onClick={()=>setSelectedId(s.shop_id)}
             aria-pressed={chosen?.shop_id===s.shop_id}
