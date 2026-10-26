@@ -108,9 +108,12 @@ async function checkout(env,request,id) {
  const oid=crypto.randomUUID();
  const token=crypto.randomUUID().replaceAll("-","")+crypto.randomUUID().replaceAll("-","");
  const no="DEMO-"+oid.slice(0,8).toUpperCase();
+ const customerId=crypto.randomUUID();
  const statements=[
-  env.DB.prepare("INSERT INTO commerce_orders(id,store_id,order_number,access_token,status,subtotal_bdt,total_bdt,payment_method,shipping_name,shipping_phone,shipping_address) VALUES(?,?,?,?,?,?,?,?,?,?,?)")
-   .bind(oid,id,no,token,"placed",subtotal,subtotal,"demo","Demo customer","",""),
+  env.DB.prepare("INSERT INTO commerce_customers(id,store_id,display_name) VALUES(?,?,?)")
+   .bind(customerId,id,"Anonymous demo customer"),
+  env.DB.prepare("INSERT INTO commerce_orders(id,store_id,order_number,access_token,status,subtotal_bdt,total_bdt,payment_method,shipping_name,shipping_phone,shipping_address,customer_id) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)")
+   .bind(oid,id,no,token,"placed",subtotal,subtotal,"demo","Demo customer","","",customerId),
   ...details.map(({p,qty,price})=>env.DB.prepare("INSERT INTO commerce_order_lines(order_id,product_id,product_name,quantity,price_bdt,line_total_bdt) VALUES(?,?,?,?,?,?)")
    .bind(oid,p.id,p.name,qty,price,qty*price))
  ];
