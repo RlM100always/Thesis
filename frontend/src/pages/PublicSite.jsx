@@ -45,18 +45,18 @@ const NAV = [
 ];
 
 const SOLUTIONS = {
-  pharmacy: { icon: "plus", title: "ফার্মেসি", tagline: "মেয়াদ দেখে আগে বিক্রি হয়, ভুল ওষুধ বিক্রি হবে না", capabilities: ["কোন ব্যাচ কবে আনা হয়েছে, মেয়াদ কবে শেষ হবে — সব মনে রাখে", "মেয়াদ কাছাকাছি এলে সেই ব্যাচ আগে বিক্রি করতে বলে", "মেয়াদ শেষ হওয়ার আগেই জানিয়ে দেয়, সাপ্লায়ারকে ফেরত দেওয়ার হিসাবও রাখে", "বক্স, পাতা বা এক পিস — যেভাবে বিক্রি করেন সেভাবেই হিসাব হয়"], status: "ফার্মেসির জন্য বিশেষভাবে তৈরি" },
-  grocery: { icon: "cart", title: "মুদি ও সুপারশপ", tagline: "একাধিক কাউন্টার থাকলেও দ্রুত বিল করতে পারবেন", capabilities: ["বারকোড স্ক্যান করলেই দাম ও নাম উঠে আসে", "কাস্টমারকে লাইনে দাঁড় করাতে হয় না, এমন দ্রুতগতির বিল ব্যবস্থা", "মেয়াদ শেষ হয়ে নষ্ট হওয়া মাল আলাদা করে হিসাব রাখে", "প্রতিটা কাউন্টারের ক্যাশ আলাদাভাবে মিলিয়ে দেখা যায়"] },
-  fashion: { icon: "tag", title: "ফ্যাশন ও বুটিক", tagline: "সাইজ, রং অনুযায়ী স্টক ও এক্সচেঞ্জ", capabilities: ["একই পোশাকের আলাদা সাইজ-রং আলাদাভাবে ট্র্যাক হয়", "কোন সিজনের কালেকশন কেমন বিক্রি হচ্ছে দেখুন", "এক্সচেঞ্জ করলে দামের পার্থক্য নিজেই হিসাব করে", "কোন সাইজ বেশি চলে সেটা বুঝে নতুন অর্ডার দিন"] },
-  wholesale: { icon: "truck", title: "পাইকারি ও ডিস্ট্রিবিউশন", tagline: "বাকি, চালান ও কালেকশন এক জায়গায়", capabilities: ["কাস্টমার ভেদে আলাদা দামের তালিকা", "কার কত বাকি, কবে দেবে বলেছে — সব মনে রাখে", "মাল বাছাই, প্যাকিং ও ডেলিভারি চালান এক জায়গা থেকে", "সেলসম্যানের মাসিক টার্গেট ও অগ্রগতি দেখুন"] },
-  restaurant: { icon: "card", title: "রেস্টুরেন্ট ও ক্যাফে", tagline: "টেবিল থেকে রান্নাঘর হয়ে বিল পর্যন্ত এক সুতায়", capabilities: ["বসে খাওয়া, পার্সেল বা হোম ডেলিভারি — সব অর্ডার এক জায়গায়", "রান্নাঘরে কোন টেবিলের কী অর্ডার এসেছে সাথে সাথে দেখা যায়", "কোন আইটেমে কত উপকরণ লাগে, তাই লাভ কত বুঝতে পারবেন", "বিল ভাগ করে দেওয়া ও হোম ডেলিভারি রাইডার ট্র্যাকিং"] },
-  electronics: { icon: "zap", title: "ইলেকট্রনিক্স", tagline: "IMEI, ওয়ারেন্টি ও সার্ভিসিং একসাথে", capabilities: ["প্রতিটা ফোন/পণ্যের IMEI বা সিরিয়াল নম্বর ধরে রাখে", "ওয়ারেন্টির মেয়াদ ও বদলে দেওয়ার হিসাব", "সার্ভিসিংয়ে কোন পার্টস লাগলো তার জব কার্ড", "সাপ্লায়ারকে ত্রুটিপূর্ণ মাল ফেরত দেওয়ার হিসাব"] },
-  service: { icon: "sliders", title: "সার্ভিস ও মেরামত", tagline: "মাল জমা নেওয়া থেকে ডেলিভারি পর্যন্ত পুরো হিসাব", capabilities: ["অ্যাপয়েন্টমেন্ট ও কাজের জব কার্ড", "কোন টেকনিশিয়ানকে কোন কাজ দেওয়া হলো", "খরচের এস্টিমেট কাস্টমারকে দেখিয়ে অনুমোদন নিন", "কাজ শেষে যাচাই করে বিল ও ওয়ারেন্টি দিন"] },
-  manufacturing: { icon: "box", title: "ছোট কারখানা", tagline: "কাঁচামাল থেকে তৈরি পণ্য পর্যন্ত হিসাব", capabilities: ["একটা পণ্য বানাতে কী কী কাঁচামাল লাগে তার তালিকা", "কাঁচামাল বের করার ও উৎপাদনের হিসাব", "নষ্ট হওয়া মাল ও মান যাচাইয়ের রেকর্ড", "উৎপাদনে আসলে কত খরচ হলো তার হিসাব"] },
-  salon: { icon: "calendar", title: "সেলুন ও বিউটি পার্লার", tagline: "বুকিং, প্যাকেজ ও স্টাফের কমিশন", capabilities: ["কর্মী ও চেয়ার অনুযায়ী বুকিং ক্যালেন্ডার", "প্যাকেজ ও মেম্বারশিপ অফার করুন", "কোন সার্ভিসে কতটুকু পণ্য খরচ হলো", "কর্মীর কমিশন হিসাব ও পরের অ্যাপয়েন্টমেন্ট মনে করিয়ে দেওয়া"] },
-  education: { icon: "users", title: "কোচিং ও ট্রেনিং সেন্টার", tagline: "ব্যাচ, উপস্থিতি ও বেতন আদায়", capabilities: ["ছাত্র ও অভিভাবকের তথ্য এক জায়গায়", "কোর্স অনুযায়ী ব্যাচ তৈরি করুন", "প্রতিদিনের উপস্থিতি রাখুন", "মাসিক বেতনের ইনভয়েস ও বকেয়ার হিসাব"] },
-  transport: { icon: "truck", title: "কুরিয়ার ও পরিবহন", tagline: "ট্রিপ, প্রমাণ ও ক্যাশ-অন-ডেলিভারি", capabilities: ["কোন পার্সেল কোন রুটে যাচ্ছে তার হিসাব", "রাইডার বা ড্রাইভারকে কাজ ভাগ করে দিন", "ডেলিভারি হয়েছে তার প্রমাণ ও ফেরত আসা পার্সেলের হিসাব", "ক্যাশ-অন-ডেলিভারির টাকা জমা দেওয়ার হিসাব"] },
-  rental: { icon: "calendar", title: "ভাড়া ও ইভেন্ট", tagline: "কোনটা খালি আছে, জামানত ও ফেরত", capabilities: ["কোন জিনিস কবে খালি আছে তার ক্যালেন্ডার", "বুকিং ও জামানতের টাকা হিসাব", "নেওয়া ও ফেরত দেওয়ার সময় চেকলিস্ট মিলিয়ে দেখা", "ক্ষতি হলে বা দেরি হলে জরিমানার হিসাব"] },
+  pharmacy: { icon: "plus", title: "ফার্মেসি", tagline: "ওষুধের মেয়াদ ও ব্যাচভিত্তিক মজুত সহজে পর্যবেক্ষণ করুন", capabilities: ["কোন ব্যাচ কখন এসেছে এবং কবে মেয়াদ শেষ হবে—তার রেকর্ড রাখুন", "মেয়াদ শেষ হওয়ার কাছাকাছি থাকা ব্যাচ শনাক্ত করুন", "মেয়াদসংক্রান্ত সতর্কতা ও সরবরাহকারীকে ফেরতের হিসাব রাখুন", "বাক্স, পাতা ও পিস—একাধিক এককে মজুতের হিসাব রাখুন"], status: "ফার্মেসির জন্য বিশেষভাবে তৈরি" },
+  grocery: { icon: "cart", title: "মুদি ও সুপারশপ", tagline: "একাধিক কাউন্টার থাকলেও দ্রুত বিল করতে পারবেন", capabilities: ["বারকোড স্ক্যান করলেই দাম ও নাম উঠে আসে", "ব্যস্ত সময়ে দ্রুত বিল করার জন্য সাজানো কাউন্টার", "মেয়াদোত্তীর্ণ বা নষ্ট পণ্যের হিসাব আলাদা রাখুন", "প্রতিটি কাউন্টারের নগদ হিসাব আলাদাভাবে মিলিয়ে দেখুন"] },
+  fashion: { icon: "tag", title: "ফ্যাশন ও বুটিক", tagline: "সাইজ ও রং অনুযায়ী মজুত এবং পণ্য বদলের হিসাব", capabilities: ["একই পোশাকের প্রতিটি সাইজ ও রঙের মজুত আলাদাভাবে দেখুন", "কোন মৌসুমের পোশাক বেশি বিক্রি হচ্ছে, তা দেখুন", "পণ্য বদলের সময় দামের পার্থক্য হিসাব করুন", "সবচেয়ে বেশি বিক্রি হওয়া সাইজ দেখে নতুন অর্ডারের পরিকল্পনা করুন"] },
+  wholesale: { icon: "truck", title: "পাইকারি ও ডিস্ট্রিবিউশন", tagline: "বাকি, চালান ও টাকা আদায়ের হিসাব এক জায়গায়", capabilities: ["ক্রেতাভেদে আলাদা মূল্যতালিকা", "কার কাছে কত পাওনা এবং কবে দেওয়ার কথা, তা দেখুন", "পণ্য বাছাই, প্যাকিং ও ডেলিভারি চালানের তথ্য এক জায়গায়", "বিক্রয়কর্মীর মাসিক লক্ষ্য ও অগ্রগতি দেখুন"] },
+  restaurant: { icon: "card", title: "রেস্টুরেন্ট ও ক্যাফে", tagline: "টেবিলের অর্ডার থেকে রান্নাঘর ও বিল পর্যন্ত", capabilities: ["বসে খাওয়া, পার্সেল বা হোম ডেলিভারি — সব অর্ডার এক জায়গায়", "রান্নাঘরে কোন টেবিলের কী অর্ডার এসেছে, তা দেখুন", "প্রতিটি খাবারের উপকরণ ও উৎপাদন খরচের হিসাব রাখুন", "বিল ভাগ করা ও ডেলিভারির অগ্রগতি পর্যবেক্ষণ"] },
+  electronics: { icon: "zap", title: "ইলেকট্রনিক্স", tagline: "IMEI, ওয়ারেন্টি ও মেরামতের হিসাব একসঙ্গে", capabilities: ["প্রতিটি ফোন বা পণ্যের IMEI ও সিরিয়াল নম্বর নথিভুক্ত করুন", "ওয়ারেন্টির মেয়াদ ও বদলে দেওয়ার হিসাব", "মেরামতে ব্যবহৃত যন্ত্রাংশসহ কাজের বিবরণ", "সাপ্লায়ারকে ত্রুটিপূর্ণ মাল ফেরত দেওয়ার হিসাব"] },
+  service: { icon: "sliders", title: "সার্ভিস ও মেরামত", tagline: "মাল জমা নেওয়া থেকে ডেলিভারি পর্যন্ত পুরো হিসাব", capabilities: ["অ্যাপয়েন্টমেন্ট ও কাজের জব কার্ড", "কোন টেকনিশিয়ানকে কোন কাজ দেওয়া হলো", "সম্ভাব্য খরচ ক্রেতাকে জানিয়ে অনুমোদন নিন", "কাজ শেষে যাচাই করে বিল ও ওয়ারেন্টি দিন"] },
+  manufacturing: { icon: "box", title: "ছোট কারখানা", tagline: "কাঁচামাল থেকে তৈরি পণ্য পর্যন্ত হিসাব", capabilities: ["একটা পণ্য বানাতে কী কী কাঁচামাল লাগে তার তালিকা", "কাঁচামাল বের করার ও উৎপাদনের হিসাব", "নষ্ট হওয়া মাল ও মান যাচাইয়ের রেকর্ড", "উৎপাদনের প্রকৃত খরচের হিসাব"] },
+  salon: { icon: "calendar", title: "সেলুন ও বিউটি পার্লার", tagline: "বুকিং, প্যাকেজ ও স্টাফের কমিশন", capabilities: ["কর্মী ও চেয়ার অনুযায়ী বুকিং ক্যালেন্ডার", "প্যাকেজ ও মেম্বারশিপ অফার করুন", "কোন সেবায় কত পণ্য ব্যবহৃত হয়েছে, তার হিসাব", "কর্মীর কমিশন হিসাব ও পরের অ্যাপয়েন্টমেন্ট মনে করিয়ে দেওয়া"] },
+  education: { icon: "users", title: "কোচিং ও ট্রেনিং সেন্টার", tagline: "ব্যাচ, উপস্থিতি ও বেতন আদায়", capabilities: ["ছাত্র ও অভিভাবকের তথ্য এক জায়গায়", "কোর্স অনুযায়ী ব্যাচ তৈরি করুন", "প্রতিদিনের উপস্থিতি রাখুন", "মাসিক ফি, রসিদ ও বকেয়ার হিসাব"] },
+  transport: { icon: "truck", title: "কুরিয়ার ও পরিবহন", tagline: "ট্রিপ, প্রমাণ ও ক্যাশ-অন-ডেলিভারি", capabilities: ["কোন পার্সেল কোন পথে যাচ্ছে, তার হিসাব", "রাইডার বা ড্রাইভারকে কাজ ভাগ করে দিন", "ডেলিভারির প্রমাণ এবং ফেরত আসা পার্সেলের হিসাব", "ক্যাশ-অন-ডেলিভারির টাকা জমা দেওয়ার হিসাব"] },
+  rental: { icon: "calendar", title: "ভাড়া ও ইভেন্ট", tagline: "উপলব্ধ পণ্য, জামানত ও ফেরতের হিসাব", capabilities: ["কোন জিনিস কবে খালি আছে তার ক্যালেন্ডার", "বুকিং ও জামানতের টাকা হিসাব", "হস্তান্তর ও ফেরতের সময় যাচাইতালিকা ব্যবহার করুন", "ক্ষতি হলে বা দেরি হলে জরিমানার হিসাব"] },
 };
 
 const commonsImage = (file, width = 1600) => `https://commons.wikimedia.org/wiki/Special:Redirect/file/${encodeURIComponent(file)}?width=${width}`;
@@ -66,7 +66,7 @@ const REAL_WORK = {
     src: commonsImage("Shopkeeper in BD.jpg"),
     alt: "বাংলাদেশের স্থানীয় বাজারে পণ্য সাজিয়ে বসা একজন দোকানি",
     label: "দোকান ও মুদি ব্যবসা",
-    detail: "বিক্রি, স্টক, বাকির হিসাব ও সাপ্লায়ারের কাছ থেকে কেনা",
+    detail: "বিক্রি, মজুত, বাকির হিসাব ও সরবরাহকারীর কাছ থেকে কেনাকাটা",
     credit: "Masum-al-hasan · CC BY-SA 3.0",
     source: "https://commons.wikimedia.org/wiki/File:Shopkeeper_in_BD.jpg",
   },
@@ -139,7 +139,7 @@ const OWNER_PROBLEMS = [
 ];
 
 const AI_DECISIONS = [
-  { icon: "box", title: "কী কিনবেন তার পরামর্শ", data: "বিক্রির গতি + হাতের স্টক + সাপ্লায়ারের সময় + মৌসুম", output: "কোন পণ্য কত কিনবেন, কতটা নিশ্চিত এবং কারণ সহ" },
+  { icon: "box", title: "কী কিনবেন তার পরামর্শ", data: "বিক্রির গতি + হাতের স্টক + সাপ্লায়ারের সময় + মৌসুম", output: "কোন পণ্য কত কিনবেন, কতটা নিশ্চিত এবং কারণসহ" },
   { icon: "alert", title: "অস্বাভাবিক কিছু হলে সতর্কতা", data: "বাতিল বিল + রিফান্ড + ছাড় + গণনার গরমিল + শিফট", output: "কোথায় কিছু ঠিক নেই মনে হচ্ছে, সম্ভাব্য কারণ ও যাচাই করার কাজ" },
   { icon: "users", title: "কোন কাস্টমারকে কী করবেন", data: "কতদিন আসেনি + কত বাকি + কত কেনে + যোগাযোগের অনুমতি আছে কিনা", output: "কাকে বাকি আদায়ের কল দেবেন, কাকে ফিরিয়ে আনতে অফার দেবেন" },
   { icon: "wallet", title: "সামনে টাকার অবস্থা কেমন হবে", data: "পাওনা + দেনা + খরচ + কেনার পরিকল্পনা", output: "কবে টাকার টান পড়তে পারে, কী করে সামলাবেন" },
@@ -157,35 +157,35 @@ const BANGLADESH_READY = [
 ];
 
 const PRODUCT_TOUR = [
-  { id: "pos", icon: "cart", tab: "দ্রুত বিক্রি", kicker: "কাউন্টারের কাজ", title: "স্ক্যান থেকে রসিদ পর্যন্ত এক জায়গায়", text: "কাস্টমার বাছাই, ছাড় দেওয়ার অনুমতি, ক্যাশ/bKash/কার্ড/বাকি এবং রিটার্নের নিয়ম — সব একই বিক্রির মধ্যে।", metric: "৩ ধাপে বিক্রি শেষ", points: ["বারকোড স্ক্যান করে পণ্য খোঁজা", "ভাগে ভাগে টাকা নেওয়া ও বাকি রাখা", "সার্ভার-নিশ্চিত রসিদ, ভুল হিসাব নেই"], accent: "mint" },
+  { id: "pos", icon: "cart", tab: "দ্রুত বিক্রি", kicker: "কাউন্টারের কাজ", title: "স্ক্যান থেকে রসিদ পর্যন্ত এক জায়গায়", text: "কাস্টমার বাছাই, ছাড় দেওয়ার অনুমতি, ক্যাশ/bKash/কার্ড/বাকি এবং রিটার্নের নিয়ম — সব একই বিক্রির মধ্যে।", metric: "৩ ধাপে বিক্রি শেষ", points: ["বারকোড স্ক্যান করে পণ্য খোঁজা", "ভাগে ভাগে টাকা নেওয়া ও বাকি রাখা", "সার্ভারে সংরক্ষিত লেনদেনের রসিদ"], accent: "mint" },
   { id: "stock", icon: "box", tab: "স্টকের সত্য হিসাব", kicker: "স্টক নিয়ন্ত্রণ", title: "কত আছে এবং কেন বদলেছে — দুটোই দেখুন", text: "ক্রয়, বিক্রি, শাখা বদল, রিটার্ন, নষ্ট হওয়া মাল ও গণনা — প্রতিটা বদল কোথা থেকে এলো তার প্রমাণ সহ।", metric: "প্রতিটা বদলের প্রমাণ থাকে", points: ["ব্যাচ, সিরিয়াল ও মেয়াদ ট্র্যাকিং", "নিজে গুনে মিলিয়ে দেখা (গণনার সময় আগের সংখ্যা দেখায় না)", "নতুন অর্ডার ও সাপ্লায়ার দাবি"], accent: "blue" },
   { id: "cash", icon: "wallet", tab: "টাকার মিল", kicker: "ক্যাশের হিসাব", title: "ক্যাশ, bKash, কার্ড ও COD একসাথে মেলান", text: "শিফট শুরুর ক্যাশ থেকে শেষের গণনা পর্যন্ত — হিসাব আর হাতের টাকার পার্থক্য, কারণ ও অনুমোদন সব দেখা যায়।", metric: "প্রতিটা মাধ্যম আলাদা করে মেলে", points: ["ক্যাশিয়ারের নিজের শিফটের দায়িত্ব", "bKash/Nagad এখনো কনফার্ম হয়নি এমন অবস্থা দেখা যায়", "COD-র টাকা জমা দেওয়ার প্রমাণ"], accent: "amber" },
-  { id: "ai", icon: "zap", tab: "AI পরামর্শ", kicker: "কারণ-সহ বুদ্ধিমত্তা", title: "কী করবেন, কেন করবেন আর তাতে কী হবে", text: "শুধু একটা সংখ্যা বা পূর্বাভাস না — কোন তথ্যের ভিত্তিতে এই পরামর্শ, কতটা নিশ্চিত এবং আপনি কী সিদ্ধান্ত নিলেন সব এক কার্ডে।", metric: "সিদ্ধান্ত সবসময় আপনার হাতে", points: ["বিক্রির ধরন অনুযায়ী নতুন অর্ডারের পরামর্শ", "ক্ষতির ঝুঁকি থাকলে আগেই সংকেত", "পরামর্শ অনুযায়ী কাজ করলে ফলাফল কেমন হলো তার হিসাব"], accent: "violet" },
+  { id: "ai", icon: "zap", tab: "AI পরামর্শ", kicker: "কারণ-সহ বুদ্ধিমত্তা", title: "কী করবেন, কেন করবেন আর তাতে কী হবে", text: "শুধু একটি সংখ্যা বা পূর্বাভাস নয় — কোন তথ্যের ভিত্তিতে এই পরামর্শ, পরামর্শের ভিত্তি এবং আপনার সিদ্ধান্ত একই জায়গায়।", metric: "সিদ্ধান্ত সবসময় আপনার হাতে", points: ["বিক্রির ধরন অনুযায়ী নতুন অর্ডারের পরামর্শ", "ক্ষতির ঝুঁকি থাকলে আগেই সংকেত", "পরামর্শ অনুযায়ী কাজ করলে ফলাফল কেমন হলো তার হিসাব"], accent: "violet" },
 ];
 
 const TRUST = [
-  ["shield", "প্রতিটা ব্যবসার তথ্য আলাদা ও সুরক্ষিত", "আপনার ব্যবসার তথ্য অন্য কোনো ব্যবসা দেখতে পারবে না। প্রতিটা কর্মীও শুধু নিজের ভূমিকা অনুযায়ী যতটুকু দেখার কথা ততটুকুই দেখবে — সার্ভারে যাচাই করা হয়, শুধু বোতাম লুকিয়ে না।"],
-  ["key", "লগইন সেশন ও দুই-ধাপের নিরাপত্তা", "অন্য ডিভাইস থেকে লগআউট করে দেওয়া যায়, চাইলে ফোনের অ্যাপ দিয়ে দুই-ধাপে লগইন চালু করতে পারবেন, আর গুরুত্বপূর্ণ কাজের আগে আবার পাসওয়ার্ড চাওয়া হয়।"],
+  ["shield", "প্রতিটা ব্যবসার তথ্য আলাদা ও সুরক্ষিত", "আপনার ব্যবসার তথ্য অন্য কোনো ব্যবসা দেখতে পারবে না। প্রতিটা কর্মীও শুধু নিজের ভূমিকা অনুযায়ী দায়িত্ব অনুযায়ী অনুমোদিত তথ্যই দেখতে পারবেন — সার্ভারে যাচাই করা হয়, শুধু বোতাম লুকিয়ে না।"],
+  ["key", "লগইন সেশন ও দুই-ধাপের নিরাপত্তা", "প্রয়োজনে অন্য ডিভাইসের সেশন বন্ধ করা যায়, চাইলে ফোনের অ্যাপ দিয়ে দুই-ধাপে লগইন চালু করতে পারবেন, আর গুরুত্বপূর্ণ কাজের আগে আবার পাসওয়ার্ড চাওয়া হয়।"],
   ["fileText", "হিসাব মুছে ফেলা যায় না, শুধু সংশোধন করা যায়", "একবার বিক্রি বা স্টকের হিসাব জমা হয়ে গেলে সেটা মুছে ফেলা যায় না — ভুল হলে উল্টো এন্ট্রি দিয়ে ঠিক করতে হয়, তাই কে কী করেছে সবসময় বোঝা যায়।"],
-  ["refresh", "কোনো কিছু আটকে গেলেও তথ্য হারাবে না", "একই বিল দুইবার জমা হবে না, ইন্টারনেট চলে গেলেও আগের কাজ হারাবে না, এবং bKash/Nagad থেকে উত্তর দেরি হলে সেই অবস্থাও স্পষ্ট দেখা যায়।"],
+  ["refresh", "কোনো কিছু আটকে গেলেও তথ্য হারাবে না", "একই বিল দুইবার জমা হবে না, সংযোগ বিচ্ছিন্ন হলে সংরক্ষিত তথ্যের অবস্থা যাচাই করা যাবে, এবং bKash/Nagad থেকে উত্তর দেরি হলে সেই অবস্থাও স্পষ্ট দেখা যায়।"],
 ];
 
 const FAQ = [
-  ["আমার কম্পিউটার জানা নেই, আমি কি চালাতে পারব?", "হ্যাঁ। B-SMART সাধারণ মোবাইল ফোন বা ট্যাবলেট থেকেই চালানো যায়। আলাদা কম্পিউটার লাগবে না। প্রতিটি বোতাম বাংলায় লেখা, এবং প্রথম তিনটি বিক্রি করার সময় ধাপে ধাপে দেখিয়ে দেওয়া হয়।"],
-  ["আমার স্টাফ ইংরেজি পড়তে পারে না, সমস্যা হবে?", "না। ব্যবসা মোডের বিক্রি, স্টক, হিসাব ও কর্মীর পুরো দৈনিক কাজ সম্পূর্ণ বাংলায়। শুধু গবেষণার জন্য কিছু প্রযুক্তিগত পাতা ইংরেজিতে, যেটা মালিক ছাড়া কারও দেখার দরকার নেই।"],
-  ["আমার দোকানে বার বার ইন্টারনেট চলে যায়, তাহলে?", "ক্যাশে বিক্রি, স্টক গণনা বা ডেলিভারি আপডেট — ইন্টারনেট না থাকলেও জমা থাকে, বিক্রি বন্ধ হয় না। ইন্টারনেট ফিরলেই নিজে থেকে মিলে যায়। ততক্ষণ রসিদে স্পষ্ট লেখা থাকে 'এখনো পাঠানো বাকি', যাতে মিথ্যা করে 'হয়ে গেছে' না দেখায়।"],
+  ["আমার কম্পিউটার জানা নেই, আমি কি চালাতে পারব?", "হ্যাঁ। B-SMART মোবাইল ফোন বা ট্যাবলেটের ব্রাউজার থেকেও ব্যবহার করা যায়। কম্পিউটার ছাড়াও ব্যবহার করা যায়। বেশির ভাগ দৈনন্দিন কাজের নির্দেশনা বাংলায় রয়েছে।"],
+  ["আমার কর্মীরা ইংরেজি পড়তে না পারলে, সমস্যা হবে?", "না। ব্যবসা মোডের বিক্রি, স্টক, হিসাব ও কর্মীর পুরো দৈনিক কাজ সম্পূর্ণ বাংলায়। শুধু গবেষণার জন্য কিছু প্রযুক্তিগত পাতা ইংরেজিতে, যেটা মালিক ছাড়া কারও দেখার দরকার নেই।"],
+  ["আমার দোকানে বারবার ইন্টারনেট চলে যায়, তাহলে?", "ইন্টারনেট সংযোগ না থাকলে কিছু কাজ সীমিত হতে পারে। সংযোগ ফিরে এলে তথ্যের অবস্থা যাচাই করুন। ততক্ষণ রসিদে স্পষ্ট লেখা থাকে 'এখনো পাঠানো বাকি', যাতে মিথ্যা করে 'হয়ে গেছে' না দেখায়।"],
   ["আমি এখন খাতায় হিসাব রাখি। পুরোনো হিসাব কীভাবে আনব?", "শুরুর সময় একবার বর্তমান বাকি, স্টক ও হাতের ক্যাশ 'শুরুর হিসাব' হিসেবে নিজে মিলিয়ে ঢুকিয়ে দিতে পারবেন। এরপর থেকে প্রতিটা নতুন লেনদেন সিস্টেম নিজেই হিসাবে যোগ করবে।"],
   ["এটা কি শুধু ফার্মেসির জন্য?", "না। বিক্রি, স্টক, ক্রয়, হিসাব, কাস্টমার, কর্মী ও ডেলিভারি — এই মূল কাজগুলো সব ধরনের ব্যবসার জন্যই এক। শুধু ব্যবসার ধরন অনুযায়ী (ফার্মেসি, মুদি, রেস্টুরেন্ট ইত্যাদি) কিছু বিশেষ অংশ আলাদাভাবে চালু হয়।"],
-  ["bKash, Nagad বা কার্ড কি সরাসরি কাজ করবে?", "আসল টাকা লেনদেনের জন্য আপনার নিজের bKash/Nagad মার্চেন্ট অ্যাকাউন্ট লাগবে। সেটা যুক্ত না করা পর্যন্ত সিস্টেম শুধু পরীক্ষা করে দেখাবে, মিথ্যা করে 'সফল হয়েছে' কখনো দেখাবে না।"],
+  ["bKash, Nagad বা কার্ড কি সরাসরি কাজ করবে?", "আসল টাকা লেনদেনের জন্য আপনার নিজের bKash/Nagad মার্চেন্ট অ্যাকাউন্ট লাগবে। সেটা যুক্ত না করা পর্যন্ত সিস্টেম শুধু পরীক্ষা করে দেখাবে, পেমেন্টের প্রকৃত অবস্থা যাচাই ছাড়া সফল দেখানো উচিত নয়।"],
   ["একজন কর্মী কি একাধিক শাখায় বা ব্যবসায় কাজ করতে পারে?", "হ্যাঁ। একটা লগইন দিয়ে একাধিক ব্যবসায় যুক্ত থাকতে পারেন, প্রতিটায় আলাদা ভূমিকা নিয়ে। প্রতিটা ব্যবসার তথ্য ও অনুমতি সম্পূর্ণ আলাদা থাকে, একটার তথ্য আরেকটায় দেখা যায় না।"],
   ["মূল্য কত?", "শাখা, কতজন ব্যবহার করবেন এবং কোন কোন সুবিধা চালু রাখবেন তার উপর দাম নির্ভর করবে। এখনো চূড়ান্ত দামের তালিকা ঠিক হয়নি বলে এখানে কাল্পনিক কোনো ফি দেখানো হয়নি।"],
 ];
 
 const BEFORE_AFTER = [
-  ["খাতায় লিখে হিসাব, ভুল হলে কাটাকাটি", "প্রতিটি বিক্রি সঙ্গে সঙ্গে স্টক, ক্যাশ ও হিসাবে যোগ হয়। ভুল হলে reverse entry হয়, খাতা ছেঁড়া লাগে না"],
-  ["স্টক কত আছে বুঝতে গুনে দেখতে হয়", "যেকোনো সময় স্ক্রিনে দেখুন কোনটা কত আছে, কোনটা ফুরিয়ে যাচ্ছে"],
+  ["খাতায় লিখে হিসাব, ভুল হলে কাটাকাটি", "বিক্রির তথ্য থেকে মজুত ও হিসাবের পরিবর্তন দেখুন। ভুল হলে সংশোধনের রেকর্ড রাখুন"],
+  ["মজুত জানতে বারবার পণ্য গুনতে হয়", "মজুতের রেকর্ড এবং কমে আসা পণ্যের তালিকা দেখুন"],
   ["কে কত বাকি দিল মনে রাখা কঠিন", "প্রতিটি কাস্টমারের বাকি, কবেকার এবং কত পুরোনো সব এক তালিকায়"],
-  ["কর্মী কী করল সারাদিন বোঝা যায় না", "প্রতিটি কাজ কে করল এবং কখন করল সব audit এ থেকে যায়"],
+  ["কর্মী কী করল সারাদিন বোঝা যায় না", "কে কখন কাজটি করেছেন, তার পরিবর্তনের ইতিহাস দেখুন"],
   ["মাস শেষে লাভ ও ক্ষতি বসে হিসাব করতে হয়", "যেকোনো দিনের লাভ ও ক্ষতি সঙ্গে সঙ্গে দেখুন, উৎস পর্যন্ত যাচাই করে"],
 ];
 
@@ -297,13 +297,13 @@ const STATUS_COMPONENTS_DEFAULT = [
 const CONTACT_CARDS_DEFAULT = [
   {icon:"zap",title:"নতুন ব্যবসা",text:"নিজেই অ্যাকাউন্ট খুলে ধাপে ধাপে শুরু করুন।",link_label:"অ্যাকাউন্ট খুলুন",link_to:"/signup"},
   {icon:"key",title:"আগে থেকে ব্যবহারকারী",text:"লগইন করে সাহায্য পাতা ও গাইড দেখুন।",link_label:"লগইন করুন",link_to:"/login",ghost:true},
-  {icon:"fileText",title:"কথা বলে জেনে নিতে চান",text:"আপনার ব্যবসার ধরন অনুযায়ী কী লাগবে বুঝে নিন।",link_label:"ব্যবসার ধরন দেখুন",link_to:"/solutions",ghost:true},
+  {icon:"fileText",title:"ব্যবসা অনুযায়ী সুবিধা জানতে চান",text:"আপনার ব্যবসার ধরন অনুযায়ী কী লাগবে বুঝে নিন।",link_label:"ব্যবসার ধরন দেখুন",link_to:"/solutions",ghost:true},
 ];
 
 const ABOUT_VALUES_DEFAULT = [
   {num:"01",title:"সঠিক তথ্য, অতিরঞ্জন নয়",text:"ভুয়া কাস্টমার সংখ্যা, মিথ্যা সাফল্যের গল্প বা এখনো তৈরি না হওয়া ফিচারকে চালু আছে বলে দেখাই না।"},
   {num:"02",title:"মানুষ আগে, মেনু পরে",text:"মালিক, ক্যাশিয়ার, স্টোরকিপার, হিসাবরক্ষক ও রাইডার — প্রত্যেকের কাজ আলাদা করে ভেবে সাজানো।"},
-  {num:"03",title:"পুরো হিসাব এক জায়গায়",text:"শুধু শুধু ফিচারের সংখ্যা বাড়ানো নয়। স্টক, টাকা, খাতা, অনুমোদন — সব একসাথে মিলে কাজ করাই আসল।"},
+  {num:"03",title:"পুরো হিসাব এক জায়গায়",text:"শুধু ফিচারের সংখ্যা বাড়ানোই লক্ষ্য নয়। স্টক, টাকা, খাতা, অনুমোদন — সব একসাথে মিলে কাজ করাই আসল।"},
 ];
 function Brand({ compact = false }) {
   return (
@@ -421,7 +421,7 @@ function ProductPreview() {
       <div className="productshot-layout">
         <aside><strong>আজকের কাজ</strong>{["ড্যাশবোর্ড", "বিক্রি", "স্টক", "ক্রয়", "হিসাব"].map((x, i) => <span className={i === 0 ? "on" : ""} key={x}>{x}</span>)}</aside>
         <div className="productshot-main">
-          <div className="productshot-welcome"><div><small>{site.get("preview.date_label","বুধবার · ১ অক্টোবর")}</small><strong>{site.get("preview.greeting","শুভ সকাল, Rahim")}</strong><span>{site.get("preview.task_subtitle","৩টি কাজ এখন আপনার মনোযোগ চায়")}</span></div><i><Icon name="zap" size={18} /> Today Mission</i></div>
+          <div className="productshot-welcome"><div><small>{site.get("preview.date_label","নমুনা দিন · ডেমো তথ্য")}</small><strong>{site.get("preview.greeting","নমুনা ব্যবসার ড্যাশবোর্ড")}</strong><span>{site.get("preview.task_subtitle","৩টি কাজ এখন আপনার মনোযোগ চায়")}</span></div><i><Icon name="zap" size={18} /> Today Mission</i></div>
           <div className="productshot-stats">{stats.map((s) => <div key={s.label}><span>{s.label}</span><b>{s.value}</b><small>{s.note}</small></div>)}</div>
           <div className="productshot-bottom"><div className="fake-chart"><span>বিক্রির ধারা</span><svg viewBox="0 0 420 100" role="img" aria-label="ঊর্ধ্বমুখী বিক্রির রেখা"><path d="M4 86 C45 80 52 61 88 68 S140 87 170 54 S230 67 264 38 S330 52 416 12" /></svg></div><div className="mission-list"><span>এখন করুন</span>{missionItems.map((label, i) => <b key={label}><i>{i + 1}</i> {label}</b>)}</div></div>
         </div>
@@ -447,8 +447,8 @@ function ProductTour() {
           <div className="tour-window-bar"><span /><span /><span /><b>{active.tab}</b><em>মিরপুর শাখা</em></div>
           {active.id === "pos" && <div className="tour-pos"><div className="tour-search"><Icon name="search" /><span>বারকোড স্ক্যান করুন অথবা পণ্য খুঁজুন</span></div><div className="tour-items"><div><span>Paracetamol 500mg · 2 box</span><b>৳ ১,২০০</b></div><div><span>Vitamin C · 1 box</span><b>৳ ৪৮০</b></div><div><span>Delivery charge</span><b>৳ ৬০</b></div></div><div className="tour-total"><span>সর্বমোট</span><b>৳ ১,৭৪০</b></div><div className="tour-tenders"><span>Cash · ৳১,০০০</span><span>MFS · ৳৭৪০</span></div></div>}
           {active.id === "stock" && <div className="tour-stock"><div className="tour-kpis"><span><small>বর্তমান মজুত</small><b>২৪ বাক্স</b></span><span><small>চলবে</small><b>৫ দিন</b></span><span><small>Lead time</small><b>৭ দিন</b></span></div><div className="tour-ledger"><div><i className="in" /><span>GRN · PO-219</span><b>+ 40</b></div><div><i className="out" /><span>Sale · INV-8821</span><b>− 2</b></div><div><i className="out" /><span>Transfer · Uttara</span><b>− 8</b></div><div><i className="in" /><span>Return · INV-8790</span><b>+ 1</b></div></div></div>}
-          {active.id === "cash" && <div className="tour-cash"><div className="tour-balance"><small>দিন শেষে প্রত্যাশিত নগদ</small><strong>৳ ৩২,৪০০</strong><span>Actual count · ৳ ৩২,২০০</span></div><div className="tour-reconcile"><div><span>Cash sale</span><b>৳ ২৫,৮০০</b></div><div><span>MFS confirmed</span><b>৳ ১৮,৭৫০</b></div><div><span>COD received</span><b>৳ ৬,২০০</b></div><div className="warn"><span>Difference</span><b>− ৳ ২০০</b></div></div><div className="tour-exception"><Icon name="alert" /><span>Reason ও manager review প্রয়োজন</span></div></div>}
-          {active.id === "ai" && <div className="tour-ai"><div className="tour-ai-head"><span><Icon name="zap" /> নতুন করে পণ্য কেনার পরামর্শ</span><em>Confidence 87%</em></div><h3>Paracetamol 500mg · ২৪ বাক্স কিনুন</h3><p>৫ দিনের stock আছে, supplier lead time ৭ দিন এবং আগামী সপ্তাহে demand ১২% বাড়ার সম্ভাবনা।</p><div className="tour-ai-evidence"><span>Budget-এর মধ্যে <b>হ্যাঁ</b></span><span>MOQ পূরণ <b>হ্যাঁ</b></span><span>Expiry risk <b>কম</b></span></div><div className="tour-ai-actions"><span>কারণ দেখুন</span><strong>খসড়া PO তৈরি</strong></div></div>}
+          {active.id === "cash" && <div className="tour-cash"><div className="tour-balance"><small>দিন শেষে প্রত্যাশিত নগদ</small><strong>৳ ৩২,৪০০</strong><span>গণনা করা নগদ · ৳ ৩২,২০০</span></div><div className="tour-reconcile"><div><span>Cash sale</span><b>৳ ২৫,৮০০</b></div><div><span>MFS confirmed</span><b>৳ ১৮,৭৫০</b></div><div><span>COD received</span><b>৳ ৬,২০০</b></div><div className="warn"><span>Difference</span><b>− ৳ ২০০</b></div></div><div className="tour-exception"><Icon name="alert" /><span>Reason ও manager review প্রয়োজন</span></div></div>}
+          {active.id === "ai" && <div className="tour-ai"><div className="tour-ai-head"><span><Icon name="zap" /> নতুন করে পণ্য কেনার পরামর্শ</span><em>নিশ্চয়তা ৮৭%</em></div><h3>Paracetamol 500mg · ২৪ বাক্স কিনুন</h3><p>৫ দিনের stock আছে, supplier lead time ৭ দিন এবং আগামী সপ্তাহে demand ১২% বাড়ার সম্ভাবনা।</p><div className="tour-ai-evidence"><span>Budget-এর মধ্যে <b>হ্যাঁ</b></span><span>MOQ পূরণ <b>হ্যাঁ</b></span><span>Expiry risk <b>কম</b></span></div><div className="tour-ai-actions"><span>কারণ দেখুন</span><strong>খসড়া PO তৈরি</strong></div></div>}
         </div>
       </div>
     </section>
@@ -498,7 +498,7 @@ function HomePage() {
       </section>
 
       <section className="public-section public-tint before-after-section">
-        <SectionHead eyebrow={site.get("before_after.eyebrow", "সহজ ভাষায়")} title={site.get("before_after.title", "খাতা কলমের দোকান থেকে B-SMART এ গেলে কী বদলায়")} text={site.get("before_after.text", "প্রযুক্তির নাম নয়। এটি আপনার প্রতিদিনের বাস্তব সমস্যার তুলনা।")} />
+        <SectionHead eyebrow={site.get("before_after.eyebrow", "সহজ ভাষায়")} title={site.get("before_after.title", "খাতা-কলম থেকে ডিজিটাল হিসাবে কী পরিবর্তন আসে")} text={site.get("before_after.text", "প্রযুক্তির নাম নয়। এটি আপনার প্রতিদিনের বাস্তব সমস্যার তুলনা।")} />
         <div className="before-after-grid">
           <div className="before-after-head"><span>{site.get("before_after.col_before", "এখন যেভাবে চলছে")}</span><span>{site.get("before_after.col_after", "B-SMART দিয়ে যেভাবে চলবে")}</span></div>
           {site.getJson("before_after.items", BEFORE_AFTER).map(([before, after]) => (
@@ -511,7 +511,7 @@ function HomePage() {
       </section>
 
       <section className="public-section">
-        <SectionHead eyebrow={site.get("flow_section.eyebrow","সব এক সুতায় বাঁধা")} title={site.get("flow_section.title","একটা বিক্রি হলেই পুরো হিসাব নিজে থেকে আপডেট হয়")} text={site.get("flow_section.text","আলাদা খাতা বা আলাদা অ্যাপ লাগবে না। প্রতিটা বিক্রি স্টক, টাকা, বাকি ও হিসাবের খাতা — সবখানে একসাথে যোগ হয়ে যায়।")} />
+        <SectionHead eyebrow={site.get("flow_section.eyebrow","সব কাজ একই ব্যবস্থায় যুক্ত")} title={site.get("flow_section.title","একটি বিক্রি থেকে সংশ্লিষ্ট হিসাবের অগ্রগতি দেখুন")} text={site.get("flow_section.text","আলাদা খাতা বা আলাদা অ্যাপ লাগবে না। প্রতিটা বিক্রি স্টক, টাকা, বাকি ও হিসাবের খাতা — সবখানে একসাথে যোগ হয়ে যায়।")} />
         <div className="public-flow">{flowItems.flatMap(([icon, label, sub], i, arr) => [
           <div key={label}><Icon name={icon} /><b>{label}</b><span>{sub}</span></div>,
           ...(i < arr.length - 1 ? [<Icon key={`sep-${i}`} name="chevronRight" />] : [])
@@ -529,13 +529,13 @@ function HomePage() {
       </section>
 
       <section className="public-section real-work-section">
-        <SectionHead eyebrow={site.get("real_work_section.eyebrow","Built for Bangladesh")} title={site.get("real_work_section.title","এক software, বাস্তব ব্যবসার বহু রূপ")} text={site.get("real_work_section.text","ছবির ব্যবসাগুলো আলাদা, কিন্তু প্রতিটির মৌলিক প্রশ্ন একই। কী বিক্রি হলো, কত stock আছে, টাকা কোথায় এবং পরের কাজ কার।")} />
+        <SectionHead eyebrow={site.get("real_work_section.eyebrow","Built for Bangladesh")} title={site.get("real_work_section.title","একটি সফটওয়্যার, বিভিন্ন ধরনের ব্যবসার প্রয়োজন")} text={site.get("real_work_section.text","ছবির ব্যবসাগুলো আলাদা, কিন্তু প্রতিটির মৌলিক প্রশ্ন একই। কী বিক্রি হলো, কত stock আছে, টাকা কোথায় এবং পরের কাজ কার।")} />
         <RealWorkGallery />
-        <div className="real-work-note"><Icon name="info" /><span>{site.get("real_work_section.disclaimer","ছবিগুলো বাস্তব বাংলাদেশি ব্যবসা ও কর্মপরিবেশের ব্যবহারের অনুমতিপ্রাপ্ত বাস্তব ছবি। ছবির ব্যক্তিরা B-SMART-এর গ্রাহক বা সমর্থক, এমন দাবি করা হচ্ছে না।")}</span></div>
+        <div className="real-work-note"><Icon name="info" /><span>{site.get("real_work_section.disclaimer","ছবিগুলো বাস্তব বাংলাদেশি ব্যবসা ও কর্মপরিবেশের বাস্তব ব্যবসার চিত্র। ছবির ব্যক্তি বা প্রতিষ্ঠান B-SMART ব্যবহার করেন—এমন দাবি করা হচ্ছে না।")}</span></div>
       </section>
 
       <section className="public-section public-tint">
-        <SectionHead eyebrow={site.get("actor_section.eyebrow","যার যা কাজ, তার তাই দেখা")} title={site.get("actor_section.title","সবার জন্য একই মেনু না")} text={site.get("actor_section.text","প্রত্যেকে লগইন করে শুধু নিজের কাজটুকুই দেখবেন — বাকি কিছু দেখার দরকার নেই।")} />
+        <SectionHead eyebrow={site.get("actor_section.eyebrow","যার যা কাজ, তার তাই দেখা")} title={site.get("actor_section.title","সবার জন্য এক রকম মেনু নয়")} text={site.get("actor_section.text","প্রত্যেকে লগইন করে শুধু নিজের কাজটুকুই দেখবেন — বাকি কিছু দেখার দরকার নেই।")} />
         <div className="actor-cards">{actorItems.map(([icon, title, text]) => <article key={title}><span><Icon name={icon} /></span><b>{title}</b><p>{text}</p></article>)}</div>
       </section>
 
@@ -563,14 +563,14 @@ function FeaturesPage() {
   const rw = site.getJson("real_work", REAL_WORK);
   return (
     <>
-      <PageHero eyebrow={site.get("features.eyebrow", "সব ফিচার")} title={site.get("features.title", "দৈনিক কাজ থেকে মালিকের সিদ্ধান্ত, সব একটা সিস্টেমে")} text={site.get("features.text", "একই core সব ধরনের ব্যবসার জন্য কাজ করে, আর ব্যবসার ধরন অনুযায়ী বিশেষ অংশগুলো যোগ হয়।")} />
+      <PageHero eyebrow={site.get("features.eyebrow", "সব ফিচার")} title={site.get("features.title", "দৈনিক কাজ থেকে মালিকের সিদ্ধান্ত, সব একটা সিস্টেমে")} text={site.get("features.text", "একই মূল ব্যবস্থা ধরনের ব্যবসার জন্য কাজ করে, আর ব্যবসার ধরন অনুযায়ী বিশেষ অংশগুলো যোগ হয়।")} />
       <section className="public-section"><div className="feature-grid">{features.map((f) => <article key={f.title}><span><Icon name={f.icon} /></span><h3>{f.title}</h3><p>{f.text}</p></article>)}</div></section>
       <section className="public-section feature-photo-story">
         <div className="feature-photo-copy"><SectionHead align="left" eyebrow={site.get("features_photo.eyebrow","একই নিয়ম সব জায়গায়")} title={site.get("features_photo.title","দোকানের কাউন্টার, রান্নাঘর বা কারখানা — সব জায়গায় একই নিয়ম")} text={site.get("features_photo.text","কাজ কে শুরু করলো, কী হলো, টাকায় কী প্রভাব পড়লো আর তার প্রমাণ — এসব একসাথে যুক্ত থাকলেই মালিক আসল নিয়ন্ত্রণ পান।")} /><Link className="public-textlink" to="/guidelines">কে কীভাবে ব্যবহার করবেন <Icon name="chevronRight" /></Link></div>
         {[rw.restaurant, rw.service, rw.electronics].filter(Boolean).map((media) => <figure key={media.label}><img src={media.src} alt={media.alt} loading="lazy" referrerPolicy="no-referrer" /><figcaption><b>{media.label}</b><span>{media.detail}</span></figcaption><PhotoCredit media={media} /></figure>)}
       </section>
       <section className="public-section public-tint"><div className="split-feature"><div><SectionHead align="left" eyebrow={site.get("features_workflow.eyebrow","তথ্য থেকে সরাসরি কাজে")} title={site.get("features_workflow.title","শুধু রিপোর্ট দেখে বসে না থেকে, সরাসরি কাজে নামুন")} text={site.get("features_workflow.text","স্টক কমে গেলে সেখান থেকেই নতুন অর্ডার, বাকি পুরোনো হলে কালেকশনের কাজ, মেয়াদ ফুরালে সাপ্লায়ারের দাবি — এক ক্লিকে তৈরি করুন।")} /><ul className="check-list">{site.getJson("features_workflow.checklist",["যেকোনো সংখ্যার আসল উৎস পর্যন্ত দেখা যায়","কাকে কাজ দেওয়া হলো ও কবের মধ্যে","অনুমোদনের পর আবার যাচাই হয়","ফলাফল পরে মাপা হয়"]).map((item) => <li key={item}><Icon name="check" /> {item}</li>)}</ul></div><div className="public-stack">{site.getJson("features_workflow.tasks",[["আজকের করণীয়","ঠিক মানুষের সামনে জরুরি কাজ"],["ক্যাশ মেলানো","ক্যাশ, bKash, কার্ড ও COD-র গরমিল"],["স্টকের সত্য হিসাব","গণনা থেকে ভুলের ঝুঁকি"],["বাকি আদায়ের পরিকল্পনা","প্রতিশ্রুতি ও বয়স দেখে আদায়ের কাজ"]]).map(([x, desc], i) => <div key={x}><i>{String(i + 1).padStart(2, "0")}</i><b>{x}</b><span>{desc}</span></div>)}</div></div></section>
-      <section className="public-section"><SectionHead eyebrow={site.get("features_status.eyebrow","পরিষ্কার অবস্থা")} title={site.get("features_status.title","কোনটা চালু, কোনটা এখনো বাকি — স্পষ্ট করে বলি")} text={site.get("features_status.text","একটা পূর্ণ সমাধানের সব অংশ সবসময় সব ব্যবসায় একসাথে চালু নাও থাকতে পারে। আপনার নিজের workspace-এ ঠিক কী চালু আছে তা স্পষ্ট দেখা যাবে।")} /><div className="status-row"><div><i className="status-live" /><b>চালু আছে</b><span>আপনার workspace-এ এখনই ব্যবহার করা যায়</span></div><div><i className="status-pilot" /><b>সীমিত আকারে চালু</b><span>নির্দিষ্ট শাখা বা ভূমিকার জন্য</span></div><div><i className="status-roadmap" /><b>সেট করা লাগবে</b><span>প্রয়োজনীয় তথ্য বা অনুমতি এখনো দেওয়া হয়নি</span></div></div></section>
+      <section className="public-section"><SectionHead eyebrow={site.get("features_status.eyebrow","পরিষ্কার অবস্থা")} title={site.get("features_status.title","কোন সুবিধা চালু আর কোনটি প্রস্তুতির পর্যায়ে—তা স্পষ্টভাবে বলি")} text={site.get("features_status.text","একটা পূর্ণ সমাধানের সব অংশ সবসময় সব ব্যবসায় একসাথে চালু নাও থাকতে পারে। আপনার নিজের workspace-এ ঠিক কী চালু আছে তা স্পষ্ট দেখা যাবে।")} /><div className="status-row"><div><i className="status-live" /><b>চালু আছে</b><span>আপনার workspace-এ এখনই ব্যবহার করা যায়</span></div><div><i className="status-pilot" /><b>সীমিত আকারে চালু</b><span>নির্দিষ্ট শাখা বা ভূমিকার জন্য</span></div><div><i className="status-roadmap" /><b>সেট করা লাগবে</b><span>প্রয়োজনীয় তথ্য বা অনুমতি এখনো দেওয়া হয়নি</span></div></div></section>
       <CtaBand />
     </>
   );
@@ -584,7 +584,7 @@ function SolutionsPage({ slug }) {
   if (selected) return <SolutionDetail slug={slug} solution={selected} rw={rw} />;
   return (
     <>
-      <PageHero eyebrow={site.get("solutions.eyebrow", "ব্যবসার ধরন")} title={site.get("solutions.title", "আপনার ব্যবসার মতো করেই সাজানো")} text={site.get("solutions.text", "যেকোনো একটা ধরন বেছে দ্রুত শুরু করুন। পরে আরও প্রয়োজন হলে নতুন সুবিধা যোগ করতে পারবেন।")} />
+      <PageHero eyebrow={site.get("solutions.eyebrow", "ব্যবসার ধরন")} title={site.get("solutions.title", "আপনার ব্যবসার মতো করেই সাজানো")} text={site.get("solutions.text", "আপনার ব্যবসার ধরন বেছে শুরু করুন। পরে আরও প্রয়োজন হলে নতুন সুবিধা যোগ করতে পারবেন।")} />
       <section className="public-section solution-visual-intro"><div><SectionHead align="left" eyebrow={site.get("solutions_intro.eyebrow","আপনার ব্যবসা বুঝে সাজানো")} title={site.get("solutions_intro.title","প্রতিটা ব্যবসার কাজ আলাদা, তাই স্ক্রিনও আলাদা")} text={site.get("solutions_intro.text","মুদি দোকানের স্ক্রিন, রেস্টুরেন্টের রান্নাঘর, আর ওয়ার্কশপের কাজের কার্ড — একরকম না। ভেতরের হিসাব একই থাকলেও, আপনার সামনে যা দেখাবে তা আপনার ব্যবসার মতো করেই সাজানো থাকবে।")} /></div><div className="solution-visual-stack">{[rw.retail, rw.manufacturing, rw.craft].filter(Boolean).map((media, index) => <figure key={media.label} style={{ "--stack-index": index }}><img src={media.src} alt={media.alt} loading="lazy" referrerPolicy="no-referrer" /><figcaption>{media.label}</figcaption></figure>)}</div></section>
       <section className="public-section"><div className="solution-grid full">{Object.entries(solutions).map(([key, s]) => <Link to={`/solutions/${key}`} key={key}><span><Icon name={s.icon} /></span><div><b>{s.title}</b><p>{s.tagline}</p>{s.status && <small>{s.status}</small>}</div><Icon name="chevronRight" /></Link>)}</div></section>
       <section className="public-section public-tint"><SectionHead eyebrow={site.get("solutions_hybrid.eyebrow","একসাথে একাধিক কাজ")} title={site.get("solutions_hybrid.title","এক ব্যবসায় দুই ধরনের কাজ করলেও সমস্যা নেই")} text={site.get("solutions_hybrid.text","যেমন ইলেকট্রনিক্স বিক্রির সাথে সার্ভিসিংও করেন, বা রেস্টুরেন্টের সাথে ডেলিভারিও দেন — কাস্টমার, টাকা, স্টক ও হিসাব সব একই জায়গায় থাকবে, আলাদা করে দুইবার লিখতে হবে না।")} /><div className="hybrid-map"><div><b>{site.get("solutions_hybrid.example_name","রহিম ইলেকট্রনিক্স")}</b><span>একটাই ব্যবসা হিসেবে</span></div>{site.getJson("solutions_hybrid.items",["দোকানে বিক্রি","অনলাইন অর্ডার","সার্ভিসিং সেন্টার","গুদাম","হিসাব"]).map((x) => <article key={x}><Icon name="chevronRight" /><b>{x}</b></article>)}</div></section>
@@ -614,7 +614,7 @@ function PricingPage() {
   ]);
   return (
     <>
-      <PageHero eyebrow={site.get("pricing.eyebrow", "স্বচ্ছ মূল্য পরিকল্পনা")} title={site.get("pricing.title", "আপনার ব্যবসার আকার অনুযায়ী সঠিক প্যাকেজ")} text={site.get("pricing.text", "শাখা কতটা, কতজন ব্যবহার করবেন আর কোন কোন সুবিধা লাগবে তা বুঝে বেছে নিন — কোনো লুকানো খরচ থাকবে না।")} />
+      <PageHero eyebrow={site.get("pricing.eyebrow", "স্বচ্ছ মূল্য পরিকল্পনা")} title={site.get("pricing.title", "আপনার ব্যবসার আকার অনুযায়ী উপযুক্ত প্যাকেজ")} text={site.get("pricing.text", "শাখা কতটা, কতজন ব্যবহার করবেন আর কোন কোন সুবিধা লাগবে তা বুঝে বেছে নিন — কোনো লুকানো খরচ থাকবে না।")} />
       <section className="public-section"><div className="pricing-grid">{plans.map((p) => <article className={p.featured ? "featured" : ""} key={p.name}>{p.featured && <span className="plan-ribbon">সবচেয়ে উপযোগী</span>}<small>{p.label}</small><h2>{p.name}</h2><p>{p.text}</p><div className="price-state">দাম <b>প্রয়োজন বুঝে জানানো হবে</b></div><ul>{p.points.map((x) => <li key={x}><Icon name="check" />{x}</li>)}</ul><Link className={p.featured ? "public-cta" : "public-ghost"} to={p.name === "একাধিক শাখা" ? "/contact" : "/signup"}>{p.action}</Link></article>)}</div><p className="pricing-note"><Icon name="info" /> SMS, WhatsApp বা bKash/Nagad ব্যবহারের নিজস্ব খরচ সেই প্রতিষ্ঠানের নিয়ম অনুযায়ী আলাদা হবে।</p></section>
       <section className="public-section public-tint"><SectionHead eyebrow="সব প্যাকেজেই যা থাকে" title="প্যাকেজ যাই হোক, এই জিনিসগুলো সবসময় থাকবে" /><div className="promise-grid">{[["shield", "তথ্যের নিরাপত্তা"], ["fileText", "কাজের ইতিহাস"], ["download", "নিজের তথ্য ডাউনলোড"], ["refresh", "নিয়মিত ব্যাকআপ"]].map(([icon, x]) => <div key={x}><Icon name={icon} /><b>{x}</b></div>)}</div></section>
       <CtaBand />
