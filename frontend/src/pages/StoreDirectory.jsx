@@ -194,6 +194,69 @@ const DIR_CSS = `
   .sd-hero-wave{height:24px;}
 }
 
+
+/* Premium marketplace refresh: quiet typography, explicit demo states, accessible controls. */
+.sd-page{min-height:100vh}
+.sd-header{background:color-mix(in srgb,var(--sd-surface) 94%,transparent);box-shadow:0 3px 22px rgba(0,0,0,.04)}
+.sd-header-inner{max-width:1200px;min-height:68px}
+.sd-hero{background:linear-gradient(140deg,#073727 0%,#096648 50%,#0a865c 100%);padding:60px 20px 78px}
+.sd-hero h1{font-size:clamp(28px,5vw,48px);letter-spacing:-.6px}
+.sd-hero p{max-width:570px;opacity:.9;margin-bottom:24px}
+.sd-search-wrap{max-width:630px}
+.sd-search{min-height:56px;border-radius:15px}
+.sd-hero-stats{display:inline-flex;gap:0;padding:10px 14px;background:rgba(255,255,255,.09);border:1px solid rgba(255,255,255,.18);border-radius:14px;backdrop-filter:blur(8px);margin-top:20px}
+.sd-hero-stat{padding:0 20px}
+.sd-hero-stat+.sd-hero-stat{border-left:1px solid rgba(255,255,255,.18)}
+.sd-filters-wrap{max-width:1200px}
+.sd-discovery-tools{max-width:1200px;margin:12px auto 4px;padding:0 24px;display:flex;gap:9px;align-items:center;flex-wrap:wrap}
+.sd-discovery-pill,.sd-reset{min-height:39px;padding:8px 14px;border:1px solid var(--sd-line);background:var(--sd-card);color:var(--sd-text);border-radius:999px;font-size:13px;font-family:inherit;font-weight:700;cursor:pointer}
+.sd-discovery-pill:hover,.sd-discovery-pill.active{border-color:var(--sd-accent);background:var(--sd-chip);color:var(--sd-accent)}
+.sd-reset{border:0;text-decoration:underline;color:var(--sd-accent);background:transparent}
+.sd-sort-label{display:flex;align-items:center;gap:7px;color:var(--sd-muted);font-size:12px;margin-left:auto;font-weight:700}
+.sd-sort{min-height:39px;padding:6px 11px;font:inherit;font-size:13px;background:var(--sd-card);color:var(--sd-text);border:1px solid var(--sd-line);border-radius:12px}
+.sd-grid{max-width:1200px;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:18px}
+.sd-card-wrap{position:relative;min-width:0;height:100%}
+.sd-card{height:100%;border-radius:19px;box-shadow:0 5px 24px rgba(0,0,0,.035);border:1px solid var(--sd-line)}
+.sd-card:hover{box-shadow:0 12px 32px rgba(0,0,0,.11);transform:translateY(-3px)}
+.sd-card-cover{height:154px}
+.sd-card-cover img{transition:transform .25s}
+.sd-card:hover .sd-card-cover img{transform:scale(1.035)}
+.sd-card-name{font-size:16px}
+.sd-card-tagline{font-size:13px;line-height:1.5}
+.sd-card-body{padding:30px 17px 18px}
+.sd-card-footer{padding:13px 17px 17px}
+.sd-card-logo{z-index:2;border-radius:15px}
+.sd-favorite{position:absolute;top:11px;right:11px;z-index:5;min-width:38px;height:38px;border-radius:12px;display:grid;place-items:center;border:1px solid rgba(255,255,255,.6);background:rgba(255,255,255,.93);color:#1f2937;font-size:25px;line-height:1;cursor:pointer;box-shadow:0 2px 10px rgba(0,0,0,.14)}
+.sd-favorite:hover,.sd-favorite.active{background:#fff1f4;color:#e11d48}
+.sd-cover-demo{position:absolute;top:12px;left:12px;z-index:3;background:#fff3d5;color:#815300;border:1px solid rgba(146,92,0,.15);font-size:10px;font-weight:800;letter-spacing:.03em;padding:6px 9px;border-radius:8px}
+.sd-card-wrap :is(button,a):focus-visible,.sd-page :is(input,select,button,a):focus-visible{outline:3px solid var(--sd-accent);outline-offset:3px}
+.sd-empty{padding:60px 16px}
+.sd-empty .sd-discovery-pill{margin:12px auto}
+@media(max-width:680px){
+ .sd-hero{padding:38px 15px 65px}
+ .sd-hero p{font-size:13px}
+ .sd-search{min-height:48px;padding:12px 15px 12px 45px}
+ .sd-hero-stats{width:100%;max-width:530px}
+ .sd-hero-stat{padding:0 6px;flex:1}
+ .sd-hero-stat-num{font-size:18px}
+ .sd-hero-stat-label{font-size:10px;line-height:1.2}
+ .sd-discovery-tools{padding:0 12px;gap:7px}
+ .sd-discovery-pill{font-size:12px;padding:7px 10px;min-height:35px}
+ .sd-sort-label{margin-left:0}
+ .sd-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:11px;padding:0 12px 50px}
+ .sd-card-cover{height:115px}
+ .sd-card-body{padding:28px 10px 10px}
+ .sd-card-name{font-size:13px;line-height:1.35}
+ .sd-card-footer{padding:10px}
+ .sd-card-footer .sd-visit-btn{font-size:12px}
+ .sd-card-chips{gap:4px}
+ .sd-chip{font-size:10px;padding:3px 7px}
+ .sd-favorite{min-width:32px;height:32px;font-size:22px}
+ .sd-cover-demo{font-size:9px;padding:4px 6px;top:7px;left:7px}
+ .sd-filter-btn{font-size:12px;padding:7px 11px}
+}
+@media(max-width:350px){.sd-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}.sd-card-name{font-size:12px}}
+@media(prefers-reduced-motion:reduce){.sd-card,.sd-card-cover img{transition:none}.sd-card:hover{transform:none}}
 `;
 
 export default function StoreDirectory() {
