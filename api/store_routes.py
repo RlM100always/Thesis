@@ -228,6 +228,26 @@ def list_public_stores(
     return result
 
 
+@public_router.get("/diagnostics", tags=["public-store"])
+def public_store_diagnostics(db: Db):
+    """Aggregate public catalog availability; no tenant/customer identifiers."""
+    from sqlalchemy import func
+    active = db.scalar(select(func.count(Store.id)).where(Store.is_active.is_(True))) or 0
+    listed = db.scalar(select(func.count(StoreProduct.id)).join(
+        Store, Store.id == StoreProduct.store_id
+    ).where(Store.is_active.is_(True), StoreProduct.is_listed.is_(True))) or 0
+    return {
+        "active_stores": int(active),
+        "listed_products": int(listed),
+        "catalog_ready": bool(active and listed),
+        "empty_reason": (
+            "no_active_stores" if not active else
+            "no_listed_products" if not listed else None
+        ),
+        "source": "operational_database",
+    }
+
+
 @public_router.get("/slug/{slug}", tags=["public-store"])
 def get_public_store_by_slug(slug: str, db: Db):
     """Lookup a store by its slug instead of org UUID."""

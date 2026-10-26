@@ -153,6 +153,28 @@ def initialize_application_database():
     from .presentation_demo import ensure_presentation_demo
     ensure_presentation_demo()
     _seed_site_defaults()
+    # Diagnostic only: do not create or activate storefronts implicitly.
+    _report_storefront_status()
+
+
+def _report_storefront_status():
+    import logging
+    from sqlalchemy import func, select
+    from .database import engine
+    from .domain_models import Organization, Store, StoreProduct, Product
+    log = logging.getLogger("bsmart.storefront")
+    try:
+        with SessionLocal() as db:
+            counts = {
+                "organizations": db.scalar(select(func.count(Organization.id))),
+                "stores": db.scalar(select(func.count(Store.id))),
+                "active_stores": db.scalar(select(func.count(Store.id)).where(Store.is_active.is_(True))),
+                "catalog_products": db.scalar(select(func.count(Product.id))),
+                "listed_store_products": db.scalar(select(func.count(StoreProduct.id)).where(StoreProduct.is_listed.is_(True))),
+            }
+        log.warning("STORE_DIAGNOSTIC db_backend=%s counts=%s (no seed was executed)", engine.dialect.name, counts)
+    except Exception:
+        log.exception("STORE_DIAGNOSTIC failed; check schema and database configuration")
 
 
 def _seed_site_defaults():

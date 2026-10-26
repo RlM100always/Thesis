@@ -1,40 +1,27 @@
-# B-SMART — Bangladesh SME Business Analytics
+# B-SMART — Bangladesh SME Business OS
 
-> **Research reset (25 October 2026).** All previously committed research datasets, trained model binaries, legacy ML pipelines and old experiment results were removed from **main**. They remain recoverable at [archive/pre-new-bsmart-dataset-2026-10-25](https://github.com/RlM100always/Thesis/tree/archive/pre-new-bsmart-dataset-2026-10-25).
+**Active operational marketplace:** [Online Store Directory](https://thesis-j0n8.onrender.com/#/stores). It draws live data only from the operational `Store`/`StoreProduct` tables.
 
-## Original multi-store e-commerce platform restored from local thesis.zip
+## Storefronts and data
 
-**Operational business stores:** `/#/stores` is a public directory reading active `Store` rows from the business database. Every merchant has a separate `/#/store/<slug>` storefront connected to the same organization's inventory, products, checkout, order tracking and owner management. The recovered local frontend includes Store Directory, Store, Store Customer Portal, Store Admin, order status and branded image helpers.
+The original full multi-storefront frontend/backend (store directory, public store pages, customer accounts, cart, checkout, owner management, coupons/reviews and payment adapters) was restored in commit `78a88efd3501fc6aa43b1c9e981535a9ef5c353c`.
 
-**Full customer/merchant features:** account registration/login, profile, previous orders, buyer-owner chat, promo coupons, product variants, reviews, inventory/stock warnings, owner order management, payments (COD and optional bKash/Nagad/SSLCommerz configured with private credentials). Source recovered from the user's supplied ZIP and integrated through `api/main.py` and `frontend/src/api.js`. **Online gateway settlement, security and refunds are not declared verified.**
+**Removed:** the separate 32 synthetic research-shop explorer, its two PSV exports, and its public navigation entry. The dummy research dataset is not an operational storefront seed. No operational customer/order records were deleted.
 
-**Store demo records:** a guarded `seed_10_businesses.py` from local source can populate an isolated empty **development** DB with ten fictional sector-specific owners and products; it is NOT run automatically or on live tenant records. Source code restoration alone cannot recover old operational users/orders without the persisted DB backup.
+**Data availability:** GitHub stores source code, not the Render database rows. The public store API filters `stores.is_active = true` and lists only active store profiles. A populated product catalog also needs associated `store_products.is_listed = true` rows. The 10-business development seed `seed_10_businesses.py` intentionally refuses to run on Render/PostgreSQL and must never be used to overwrite a live business.
 
-**Migration and verification:** additive `migrations/versions/b5f251025a01_restored_full_storefront_schema.py` is provided for deliberate staging upgrade; never upgrade a production DB without a verified snapshot. [Complete restoration notes](docs/FULL_STOREFRONT_LOCAL_RECOVERY.md) and automated build/route tests.
+A public, aggregate-only availability check is provided at `/api/public/store/diagnostics`; startup logs include `STORE_DIAGNOSTIC` to help identify an empty database, missing product listings, or a transient SQLite file. No credentials or personal details are logged.
 
-## Store preview restored
-
-The public website now includes a read-only [**32 simulated stores explorer**](https://thesis-j0n8.onrender.com/#/sample-stores). It shows Bangladesh division/district store cards, 2023–2025 generated revenue, order/customer/purchase/stock summaries, top product and an invoice example for each shop. Source summaries [here](research/new_dataset/shops_overview.psv), examples [here](research/new_dataset/shop_examples.psv) and scope/limitations [here](research/new_dataset/STORE_EXPLORER_README.md). **This is NOT a full operational database import.** The changes must deploy and load to become visible on the hosted website.
-
-## New sole research dataset
-
-**B-SMART Bangladesh SME Integrated Research Simulation v1**: fictional FMCG shops, customers, suppliers and BDT transactions spanning 2023–2025, with 32 shops, 11,000 customers, 480 SKUs and 56 suppliers. **100% synthetic**, not actual collected Bangladesh SME sales. The `63,104,115`-byte source ZIP was shared as a conversation download, **not committed to GitHub and not installed on Render**. Check its [source manifest](research/new_dataset/manifest.json) before importing.
-
-**No new ML model has been trained on main after this reset.** Research Portal exposes 32 simulated shop summary previews while the full transactional dataset and models remain *awaiting import*. Old scoring routes and experiments are retired instead of misleadingly reporting old metrics as new findings.
-
-## Retained software
-
-React frontend + FastAPI application with authenticational/multi-tenant business infrastructure, inventory, sales, supplier and payment workflows, accounting, audit, permissions and Alembic migrations. Operational baseline heuristics are not claims of trained ML. Deployment health reports `artifacts_loaded: false`.
-
-## New research roadmap
-
-[Read the RQ1–RQ4 rebuilding protocol](docs/NEW_DATASET_REBUILD.md). RQ1/RQ2 outcomes will be measured on the synthetic dataset only. RQ3 is an explicitly simulated policy evaluation. RQ4 evaluates technical explanation checks; genuine owner usability cannot be proven without human testing. The [existing thesis report source archive](thesis_report/archive/2026-10-25_user_submitted_report.tex) was preserved; its original pharmacy-oriented scope has not yet been amended.
+See `docs/STOREFRONT_DATABASE_RECOVERY.md` for a safe recovery process and opt-in demo catalogue workflow.
 
 ## Development
 
-- Backend: `pip install -r requirements.render.txt` and `python run_api.py`
-- Frontend: `cd frontend && npm ci && npm run dev`
-- Docker builds the product without re-generating seven legacy datasets.
-- Configure durable PostgreSQL and secure Cloudflare R2 credentials separately before storing real business data.
+```bash
+pip install -r requirements.render.txt
+python run_api.py
+cd frontend && npm ci && npm run dev
+```
 
-**Important:** This GitHub cleanup does **not** purge Render databases, Cloudflare R2 buckets or Git commit history. The new source archive must be uploaded/imported before model development resumes.
+The website must use a **persisted database** (`DATABASE_URL`, Render PostgreSQL) to retain organization, store, customer and order records across deploys. This does not happen merely because a Postgres instance exists.
+
+**Research:** previous ML weights were retired. No new real SME data or trained model is represented by an empty research portal.

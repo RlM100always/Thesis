@@ -346,7 +346,6 @@ function PublicHeader() {
         </button>
         <nav id="public-navigation" className={`public-nav${open ? " is-open" : ""}`} aria-label="প্রধান নেভিগেশন">
           {nav.map(([to, label]) => <NavLink key={to} to={to} className={({ isActive }) => isActive ? "active" : ""}>{label}</NavLink>)}
-          <NavLink to="/sample-stores" className={({ isActive }) => isActive ? "active" : ""}>৩২টি ডেমো দোকান</NavLink>
           <NavLink to="/stores" className={({ isActive }) => isActive ? "active" : ""}>অনলাইন স্টোরসমূহ</NavLink>
           <NavLink to="/help" className={({ isActive }) => isActive ? "active" : ""}>{site.get("header.help_label","সহায়তা")}</NavLink>
         </nav>
