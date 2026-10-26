@@ -1,4 +1,4 @@
-"""Verify fresh D1 v1-v11 schema and stock auditing with stdlib SQLite.
+"""Verify fresh D1 v1-v12 schema and stock auditing with stdlib SQLite.
 
 Runs in CI against an isolated in-memory database, never live Cloudflare data.
 """
@@ -10,7 +10,7 @@ db = sqlite3.connect(":memory:")
 db.execute("PRAGMA foreign_keys = ON")
 for script in sorted(migrations.glob("*.sql")):
     db.executescript(script.read_text(encoding="utf-8"))
-assert db.execute("SELECT value FROM commerce_meta WHERE key='schema_version'").fetchone() == ("11",)
+assert db.execute("SELECT value FROM commerce_meta WHERE key='schema_version'").fetchone() == ("12",)
 
 db.execute("INSERT INTO merchant_accounts(id,email,password_hash,password_salt) VALUES('owner','owner@example.test','ACCESS_KEY_ONLY','DISABLED')")
 db.execute("""INSERT INTO commerce_stores(id,slug,name,category,area,is_demo,is_active,owner_id,real_cod_approved)
@@ -104,5 +104,23 @@ db.execute("""UPDATE commerce_stores SET
 assert db.execute("SELECT announcement_text,about_text,delivery_policy_text,return_policy_text FROM commerce_stores WHERE id='real-shop'").fetchone() == (
  'New arrivals today','We sell quality socks','Dispatch subject to merchant confirmation','Contact merchant for returns')
 assert db.execute("SELECT announcement_text FROM commerce_stores WHERE id='demo-shop'").fetchone() == ('',)
-print("D1 migrations 0001-0011 verified; audit, tenancy, reorder thresholds and atomic inventory corrections OK")
+# v12: user-authored catalog images and Q&A are strictly per store / product.
+db.execute("""UPDATE commerce_products SET gallery_json='["https://example.org/a.webp","https://example.org/b.webp"]' WHERE id='real-item'""")
+assert db.execute("SELECT gallery_json FROM commerce_products WHERE id='real-item'").fetchone() == (
+ '["https://example.org/a.webp","https://example.org/b.webp"]',)
+db.execute("""UPDATE commerce_stores SET faq_json='[{"question":"Do you deliver?","answer":"Please contact us."}]' WHERE id='real-shop'""")
+assert db.execute("SELECT faq_json FROM commerce_stores WHERE id='real-shop'").fetchone() == (
+ '[{"question":"Do you deliver?","answer":"Please contact us."}]',)
+assert db.execute("SELECT gallery_json FROM commerce_products WHERE id='demo-item'").fetchone() == ('[]',)
+assert db.execute("SELECT faq_json FROM commerce_stores WHERE id='demo-shop'").fetchone() == ('[]',)
+for sql in [
+ "UPDATE commerce_stores SET faq_json='broken' WHERE id='real-shop'",
+ "UPDATE commerce_products SET gallery_json='{}' WHERE id='real-item'"
+]:
+ try:
+  db.execute(sql)
+  assert False,"Invalid JSON was accepted"
+ except sqlite3.IntegrityError:
+  pass
+print("D1 migrations 0001-0012 verified; audit, tenancy, reorder thresholds and atomic inventory corrections OK")
 
