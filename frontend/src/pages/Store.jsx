@@ -13,6 +13,8 @@ import { explain } from "../errors";
 import { productImage, storeCoverImage } from "../storeImages";
 import StoreCustomerPortal from "./StoreCustomerPortal";
 import {readFavorites,toggleFavorite} from "../storefrontFavorites";
+import {recentProducts,rememberProduct,toggleCompared,COMPARE_LIMIT} from "../storefrontDiscovery";
+import StoreProductCompare from "../components/StoreProductCompare";
 
 // ─── Utility ─────────────────────────────────────────────────────────────────
 const money = (v) => `৳${Number(v).toLocaleString("bn-BD", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
@@ -560,7 +562,8 @@ function StarRating({ value, count }) {
   );
 }
 
-function ProductCard({ product, cartQty, onAdd, onQtyChange, onView, storeCategory, showStockLevel, isFavorite=false, onFavorite }) {
+function ProductCard({ product, cartQty, onAdd, onQtyChange, onView, storeCategory, showStockLevel,
+  isFavorite=false, onFavorite, isCompared=false, compareDisabled=false, onCompare }) {
   const outOfStock = product.in_stock === false;
   const inCart = (cartQty || 0) > 0;
   const hasFlashSale = product.sale_price != null;
@@ -588,6 +591,10 @@ function ProductCard({ product, cartQty, onAdd, onQtyChange, onView, storeCatego
               {hasFlashSale && product.sale_end && <div><FlashSaleCountdown saleEnd={product.sale_end} /></div>}
             </div>
           ) : <button type="button" className="s-contact-price" onClick={() => document.getElementById("store-contact")?.scrollIntoView({ behavior: "smooth" })}>দাম জানতে যোগাযোগ করুন →</button>}
+          {onCompare&&<button type="button" className={`s-product-compare${isCompared?" selected":""}`}
+            aria-label={isCompared?`${product.name} তুলনা থেকে সরান`:`${product.name} তুলনায় যোগ করুন`}
+            aria-pressed={isCompared} disabled={compareDisabled}
+            onClick={()=>onCompare(product.id)}>{isCompared?"✓ তুলনায় আছে":"⇄ তুলনা করুন"}</button>}
           {product.tags?.length > 0 && (
             <div className="s-product-tags">
               {product.tags.slice(0, 2).map(t => <span key={t} className="s-tag">{t}</span>)}
@@ -1527,6 +1534,9 @@ export default function StorePage() {
   const [onlyAvailable,setOnlyAvailable]=useState(false);
   const [onlyFavorites,setOnlyFavorites]=useState(false);
   const [favoriteProducts,setFavoriteProducts]=useState([]);
+  const [recentIds,setRecentIds]=useState([]);
+  const [compareIds,setCompareIds]=useState([]);
+  const [compareOpen,setCompareOpen]=useState(false);
   const [visibleCount, setVisibleCount] = useState(20);
   const [modalProduct, setModalProduct] = useState(null);
   const [confirmedOrder, setConfirmedOrder] = useState(null);
@@ -1565,6 +1575,9 @@ export default function StorePage() {
       .then(data => {
         setStore(data);
         setFavoriteProducts(readFavorites("products:"+data.organization_id));
+        setRecentIds(recentProducts(data.organization_id));
+        setCompareIds([]);
+        setCompareOpen(false);
         applyTheme(data.theme_color, data.theme_preset);
         // SEO meta tags
         document.title = data.meta_title || data.display_name;
@@ -1632,6 +1645,14 @@ export default function StorePage() {
 
   const orgId = store?.organization_id;
   const favCount=useMemo(()=>favoriteProducts.filter(id=>products.some(p=>String(p.id)===id)).length,[favoriteProducts,products]);
+  const recentVisible=useMemo(()=>recentIds.map(id=>productMap[id]).filter(Boolean).slice(0,6),[recentIds,productMap]);
+  const comparisonProducts=useMemo(()=>compareIds.map(id=>productMap[id]).filter(Boolean),[compareIds,productMap]);
+  function toggleComparison(id){
+    if(compareIds.includes(String(id))&&compareIds.length<=2)setCompareOpen(false);
+    setCompareIds(old=>toggleCompared(old,String(id)));
+  }
+  function clearComparison(){setCompareOpen(false);setCompareIds([]);}
+  function recordRecent(p){if(orgId)setRecentIds(rememberProduct(orgId,p.id));}
   function favoriteProduct(id){
     if(!orgId)return;
     setFavoriteProducts(current=>toggleFavorite("products:"+orgId,current,String(id)));
@@ -1657,8 +1678,8 @@ export default function StorePage() {
     }
   }
 
-  function viewProduct(p) { setModalProduct(p); }
-  function viewProductFull(p) { setSelectedProduct(p); setDetailQty(1); setView("product"); window.scrollTo(0, 0); }
+  function viewProduct(p) { recordRecent(p); setModalProduct(p); }
+  function viewProductFull(p) { recordRecent(p); setSelectedProduct(p); setDetailQty(1); setView("product"); window.scrollTo(0, 0); }
   function goToSection(id) {
     if (view !== "home") {
       setView("home");
