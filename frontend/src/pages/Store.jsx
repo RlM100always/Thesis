@@ -849,7 +849,7 @@ function ProductModal({ product, cartQty, onClose, onAdd, onQtyChange, onViewFul
             <StoreProductGallery product={product} storeCategory={storeCategory} context="modal"/>
           </div>
           <h2 style={{ margin: "0 0 6px", fontSize: 22, fontWeight: 800, lineHeight: 1.2 }}>{product.name}</h2>
-          <div style={{ fontSize: 13, color: "#6b8a7a", marginBottom: 6 }}>{product.unit}</div>
+          <div style={{ fontSize: 13, color: "var(--s-muted)", marginBottom: 6 }}>{product.unit}</div>
           {reviews?.average && <StarRating value={reviews.average} count={reviews.count} />}
           {product.price != null && (
             <div style={{ fontSize: 26, fontWeight: 700, color: hasFlashSale ? "#dc2626" : "var(--sa)", marginBottom: 4 }}>
@@ -860,7 +860,7 @@ function ProductModal({ product, cartQty, onClose, onAdd, onQtyChange, onViewFul
           {hasFlashSale && product.sale_end && <div style={{ marginBottom: 10 }}><FlashSaleCountdown saleEnd={product.sale_end} /></div>}
           {product.price == null && <div className="s-contact-price">দাম জানতে দোকানের সঙ্গে যোগাযোগ করুন</div>}
           {product.description && (
-            <p style={{ fontSize: 14, color: "#4a6358", lineHeight: 1.65, margin: "0 0 14px" }}>{product.description}</p>
+            <p style={{ fontSize: 14, color: "var(--s-ink)", lineHeight: 1.65, margin: "0 0 14px" }}>{product.description}</p>
           )}
           {product.tags?.length > 0 && (
             <div className="s-product-tags" style={{ marginBottom: 16 }}>
@@ -871,7 +871,7 @@ function ProductModal({ product, cartQty, onClose, onAdd, onQtyChange, onViewFul
           {/* Variant picker */}
           {(product.variants || []).map(v => (
             <div key={v.id} style={{ marginBottom: 14 }}>
-              <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 6, color: "var(--ink)" }}>{v.name} বেছে নিন</div>
+              <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 6, color: "var(--s-ink)" }}>{v.name} বেছে নিন</div>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
                 {v.options.map(opt => {
                   const delta = v.price_deltas?.[opt];
@@ -879,7 +879,7 @@ function ProductModal({ product, cartQty, onClose, onAdd, onQtyChange, onViewFul
                   return (
                     <button key={opt} type="button"
                       onClick={() => setSelectedVariants(prev => ({ ...prev, [v.id]: opt }))}
-                      style={{ padding: "6px 14px", borderRadius: 8, border: `2px solid ${sel ? "var(--sa)" : "var(--border)"}`, background: sel ? "var(--sa)" : "var(--card)", color: sel ? "#fff" : "var(--ink)", fontWeight: sel ? 700 : 400, cursor: "pointer", fontSize: 13, fontFamily: "inherit" }}>
+                      style={{ padding: "6px 14px", borderRadius: 8, border: `2px solid ${sel ? "var(--sa)" : "var(--s-border)"}`, background: sel ? "var(--sa)" : "var(--s-card)", color: sel ? "var(--store-accent-on,#fff)" : "var(--s-ink)", fontWeight: sel ? 700 : 400, cursor: "pointer", fontSize: 13, fontFamily: "inherit" }}>
                       {opt}{delta ? ` (+${money(delta)})` : ""}
                     </button>
                   );
@@ -911,7 +911,7 @@ function ProductModal({ product, cartQty, onClose, onAdd, onQtyChange, onViewFul
                 <button className="s-qty-btn" onClick={() => setQty(q => Math.max(1, q - 1))}>−</button>
                 <span className="s-qty-num">{qty}</span>
                 <button className="s-qty-btn" disabled={qty >= maxOrderQuantity(product)} onClick={() => setQty(q => Math.min(maxOrderQuantity(product), q + 1))}>+</button>
-                <span style={{ fontSize: 13, color: "#6b8a7a" }}>{product.unit}</span>
+                <span style={{ fontSize: 13, color: "var(--s-muted)" }}>{product.unit}</span>
               </div>
               {product.variants?.length > 0 && !allVariantsSelected && (
                 <p style={{ fontSize: 13, color: "#dc2626", marginBottom: 8 }}>⚠ সব ভ্যারিয়েন্ট বেছে নিন</p>
@@ -931,12 +931,12 @@ function ProductModal({ product, cartQty, onClose, onAdd, onQtyChange, onViewFul
             <div style={{ marginTop: 20, borderTop: "1px solid var(--border)", paddingTop: 16 }}>
               <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 10 }}>রিভিউ ({reviews.count}টি)</div>
               {reviews.reviews.slice(0, 3).map(r => (
-                <div key={r.id} style={{ marginBottom: 12, padding: "10px 12px", background: "var(--bg)", borderRadius: 8 }}>
+                <div key={r.id} style={{ marginBottom: 12, padding: "10px 12px", background: "var(--s-soft)", borderRadius: 8 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
                     <span style={{ fontWeight: 600, fontSize: 13 }}>{r.reviewer_name}</span>
                     <span>{[1,2,3,4,5].map(i => <span key={i} style={{ color: i <= r.rating ? "#f59e0b" : "#d1d5db", fontSize: 13 }}>★</span>)}</span>
                   </div>
-                  {r.comment && <p style={{ fontSize: 13, color: "#4a6358", margin: 0 }}>{r.comment}</p>}
+                  {r.comment && <p style={{ fontSize: 13, color: "var(--s-muted)", margin: 0 }}>{r.comment}</p>}
                 </div>
               ))}
             </div>
@@ -2069,7 +2069,7 @@ export default function StorePage() {
             </div>
             {(store.payment_cod || store.payment_bkash || store.payment_nagad) && (
               <div className="s-payment-chips" style={{ marginTop: 14 }}>
-                <span style={{ fontSize: 12, color: "#6b8a7a", alignSelf: "center" }}>পেমেন্ট:</span>
+                <span style={{ fontSize: 12, color: "var(--s-muted)", alignSelf: "center" }}>পেমেন্ট:</span>
                 {store.payment_cod && <span className="s-payment-chip">💵 ক্যাশ অন ডেলিভারি</span>}
                 {store.payment_bkash && (
                   <span className="s-payment-chip" style={{padding:"3px 8px",border:"1.5px solid #E2136E",background:"#fff0f6"}}>
@@ -2192,7 +2192,7 @@ export default function StorePage() {
               <div style={{textAlign:"center",marginTop:16}}>
                 <button
                   className="s-load-more-btn"
-                  style={{padding:"10px 28px",background:"var(--surface)",border:"1px solid var(--border)",borderRadius:8,cursor:"pointer",fontFamily:"inherit",fontSize:14,color:"var(--text)"}}
+                  style={{padding:"10px 28px",background:"var(--s-card)",border:"1px solid var(--s-border)",borderRadius:8,cursor:"pointer",fontFamily:"inherit",fontSize:14,color:"var(--s-ink)"}}
                   onClick={() => setVisibleCount(c => c + 20)}
                 >
                   আরও {Math.min(20, sortedProducts.length - visibleCount)} টি পণ্য দেখুন
@@ -2274,7 +2274,7 @@ export default function StorePage() {
                 <button className="s-qty-btn" onClick={() => setDetailQty(q => Math.max(1, q - 1))}>−</button>
                 <span className="s-qty-num">{detailQty}</span>
                 <button className="s-qty-btn" disabled={detailQty >= maxOrderQuantity(selectedProduct)} onClick={() => setDetailQty(q => Math.min(maxOrderQuantity(selectedProduct), q + 1))}>+</button>
-                <span style={{ fontSize: 13, color: "#6b8a7a", marginLeft: 4 }}>{selectedProduct.unit}</span>
+                <span style={{ fontSize: 13, color: "var(--s-muted)", marginLeft: 4 }}>{selectedProduct.unit}</span>
               </div>
               <button
                 className="s-add-to-cart-btn"
@@ -2287,7 +2287,7 @@ export default function StorePage() {
                 const url = `${window.location.origin}${window.location.pathname}#/store/${storeId}?product=${selectedProduct.id}`;
                 if (navigator.share) navigator.share({ title: selectedProduct.name, text: selectedProduct.description || "", url });
                 else { navigator.clipboard?.writeText(url); alert('লিংকটি কপি হয়েছে।'); }
-              }} style={{marginTop:8,background:"none",border:"1px solid var(--border)",borderRadius:8,padding:"8px 14px",cursor:"pointer",fontSize:13,color:"var(--text-muted)",width:"100%"}}>📤 শেয়ার করুন</button>
+              }} style={{marginTop:8,background:"var(--s-card)",border:"1px solid var(--s-border)",borderRadius:8,padding:"8px 14px",cursor:"pointer",fontSize:13,color:"var(--s-muted)",width:"100%"}}>📤 শেয়ার করুন</button>
             </div>
           </div>
           {/* Related products */}
@@ -2299,10 +2299,10 @@ export default function StorePage() {
                 <div style={{fontWeight:700,marginBottom:12,fontSize:15}}>একই বিভাগের পণ্য</div>
                 <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:8}}>
                   {related.map(p => (
-                    <div key={p.id} style={{border:"1px solid var(--border)",borderRadius:10,padding:10,cursor:"pointer",background:"var(--surface)"}} onClick={() => viewProductFull(p)}>
+                    <div key={p.id} style={{border:"1px solid var(--s-border)",borderRadius:10,padding:10,cursor:"pointer",background:"var(--s-card)"}} onClick={() => viewProductFull(p)}>
                       <img src={p.image_data_url || productImage(p, store.category)} alt={p.name} style={{width:"100%",height:80,objectFit:"cover",borderRadius:6,marginBottom:6}} loading="lazy" />
                       <div style={{fontWeight:600,fontSize:13}}>{p.name}</div>
-                      {p.price != null && <div style={{color:"var(--green,#0a8752)",fontSize:13}}>{money(p.price)}</div>}
+                      {p.price != null && <div style={{color:"var(--sa)",fontSize:13}}>{money(p.price)}</div>}
                     </div>
                   ))}
                 </div>
