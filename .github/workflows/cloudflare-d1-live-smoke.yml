@@ -29,3 +29,16 @@ jobs:
         run: |
           curl -fLsS --retry 3 --max-time 18 "$D1_API/api/public/store/slug/demo-bsmart-grocery" > shop.json
           node -e 'const s=require("./shop.json");if(s.slug!=="demo-bsmart-grocery"||s.products.length<20||s.products.some(p=>typeof p.price!=="number"||typeof p.in_stock!=="boolean"))process.exit(1);console.log("Verified "+s.products.length+" product catalog entries")'
+
+      - name: One-time Cloudflare D1 demo checkout + token-status verification
+        if: contains(github.event.head_commit.message, '[checkout-e2e]')
+        run: |
+          cat > /tmp/d1-demo-order.json <<'JSON'
+          {"shipping_name":"TEST ONLY","shipping_phone":"01700000000","shipping_address":"Fictional address","payment_method":"cod","items":[{"product_id":"demo-grocery-RICE5","quantity":1}]}
+          JSON
+          curl -fLsS --max-time 20 -X POST -H 'Content-Type: application/json' \
+            --data-binary @/tmp/d1-demo-order.json "$D1_API/api/public/orders/demo-bsmart-grocery" > order.json
+          node -e 'const o=require("./order.json");if(!o.access_token||o.status!=="placed"||o.organization_id!=="demo-bsmart-grocery"||o.total<=0)process.exit(1);console.log("D1 accepted demo order "+o.order_number)'
+          TOKEN="$(node -p 'require("./order.json").access_token')"
+          curl -fLsS --max-time 20 "$D1_API/api/public/orders/demo-bsmart-grocery/status/$TOKEN" > tracked.json
+          node -e 'const x=require("./tracked.json"),o=require("./order.json");if(x.order_number!==o.order_number||x.total!==o.total||x.items.length!==1)process.exit(1);console.log("D1 durable order tracking verified")'
