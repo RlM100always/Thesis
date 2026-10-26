@@ -583,6 +583,16 @@ button.s-contact-price { background: transparent; border: 0; padding: 4px 0; tex
 .s-detail-gallery{min-width:0;align-self:start}
 .s-gallery-modal-wrap{position:relative;margin:0 0 17px}
 .s-gallery-sale{position:absolute;top:10px;left:10px;background:#dc2626;color:#fff;border-radius:10px;font-weight:800;font-size:12px;z-index:4;padding:5px 9px}
+.s-price-filter{display:flex;align-items:center;flex-wrap:wrap;gap:9px;margin:0 0 13px;background:var(--s-card);border:1px solid var(--s-border);border-radius:14px;padding:10px 12px;font-size:12px;color:var(--s-muted)}
+.s-price-filter>span:first-child{font-weight:800;color:var(--s-ink)}
+.s-price-filter label{display:flex;align-items:center;gap:6px;min-width:0}
+.s-price-filter input{width:115px;min-height:37px;border:1px solid var(--s-border);background:var(--s-bg);color:var(--s-ink);border-radius:10px;padding:8px;font:inherit;font-size:13px}
+.s-store-faq{margin-top:18px;grid-column:1/-1}
+.s-store-faq h3{margin:10px 0 12px;font-size:18px}
+.s-faq-item{background:var(--s-card);border:1px solid var(--s-border);border-radius:12px;padding:11px 14px;margin-bottom:8px}
+.s-faq-item summary{cursor:pointer;font-size:14px;font-weight:800;color:var(--s-ink)}
+.s-faq-item p{white-space:pre-line;overflow-wrap:anywhere;font-size:13px;line-height:1.7;color:var(--s-muted);margin:10px 0 4px}
+@media(max-width:530px){.s-price-filter label{flex:1 1 120px}.s-price-filter input{width:100%;min-width:0}.s-price-filter>span:first-child{flex-basis:100%}}
 `;
 
 function useInjectCSS(css) {
@@ -1604,6 +1614,8 @@ export default function StorePage() {
   const [sortOrder, setSortOrder] = useState("recommended");
   const [onlyAvailable,setOnlyAvailable]=useState(false);
   const [onlyFavorites,setOnlyFavorites]=useState(false);
+  const [minPrice,setMinPrice]=useState("");
+  const [maxPrice,setMaxPrice]=useState("");
   const [favoriteProducts,setFavoriteProducts]=useState([]);
   const [recentIds,setRecentIds]=useState([]);
   const [compareIds,setCompareIds]=useState([]);
@@ -1697,8 +1709,12 @@ export default function StorePage() {
     if (activeCat) list = list.filter(p => p.category===activeCat||p.tags?.includes(activeCat));
     if(onlyAvailable) list=list.filter(p=>p.in_stock!==false && maxOrderQuantity(p)>0);
     if(onlyFavorites)list=list.filter(p=>favoriteProducts.includes(String(p.id)));
+    const min=minPrice.trim()===""?null:Number(minPrice);
+    const max=maxPrice.trim()===""?null:Number(maxPrice);
+    if(min!==null&&Number.isFinite(min))list=list.filter(p=>p.price!=null&&Number(p.sale_price??p.price)>=min);
+    if(max!==null&&Number.isFinite(max))list=list.filter(p=>p.price!=null&&Number(p.sale_price??p.price)<=max);
     return list;
-  }, [products, search, activeCat,onlyAvailable,onlyFavorites,favoriteProducts]);
+  }, [products, search, activeCat,onlyAvailable,onlyFavorites,favoriteProducts,minPrice,maxPrice]);
 
   const featured = useMemo(() => products.filter(p => p.is_featured), [products]);
   const sortedProducts = useMemo(() => {
@@ -1861,7 +1877,7 @@ export default function StorePage() {
           <nav className="s-store-nav" aria-label="স্টোর নেভিগেশন">
             <button onClick={() => goToSection("store-products")}>সব পণ্য</button>
             {allCats.length > 0 && <button onClick={() => goToSection("store-categories")}>বিভাগ</button>}
-            {(store.about_text||store.delivery_policy_text||store.return_policy_text)&&<button onClick={() => goToSection("store-information")}>স্টোর তথ্য</button>}
+            {(store.about_text||store.delivery_policy_text||store.return_policy_text||store.faq_items?.length)&&<button onClick={() => goToSection("store-information")}>স্টোর তথ্য</button>}
             <button onClick={() => goToSection("store-contact")}>যোগাযোগ</button>
           </nav>
           <a href={waShareUrl} target="_blank" rel="noopener noreferrer" className="s-wa-btn" title="WhatsApp-এ শেয়ার করুন">
@@ -2024,7 +2040,7 @@ export default function StorePage() {
             <div className="s-shopping-filters" role="group" aria-label="পণ্যের দ্রুত ফিল্টার">
               <button type="button" className={`s-shopping-filter${onlyAvailable?" active":""}`} aria-pressed={onlyAvailable} onClick={()=>setOnlyAvailable(v=>!v)}>✓ মজুত আছে</button>
               <button type="button" className={`s-shopping-filter${onlyFavorites?" active":""}`} aria-pressed={onlyFavorites} onClick={()=>setOnlyFavorites(v=>!v)}>♥ পছন্দের পণ্য ({favCount})</button>
-              {(search||activeCat||onlyFavorites||onlyAvailable)&&<button type="button" className="s-shopping-clear" onClick={()=>{setSearch("");setActiveCat(null);setOnlyAvailable(false);setOnlyFavorites(false);setVisibleCount(20);}}>সব ফিল্টার মুছুন</button>}
+              {(search||activeCat||onlyFavorites||onlyAvailable||minPrice||maxPrice)&&<button type="button" className="s-shopping-clear" onClick={()=>{setSearch("");setActiveCat(null);setOnlyAvailable(false);setOnlyFavorites(false);setMinPrice("");setMaxPrice("");setVisibleCount(20);}}>সব ফিল্টার মুছুন</button>}
             </div>
             {compareIds.length>0&&<div className="s-compare-tray" aria-live="polite">
               <div><strong>⇄ পণ্য তুলনা ({compareIds.length}/{COMPARE_LIMIT})</strong>
@@ -2036,6 +2052,14 @@ export default function StorePage() {
                   onClick={()=>setCompareOpen(true)}>তুলনা দেখুন</button>
               </div>
             </div>}
+            <div className="s-price-filter" role="group" aria-label="দামের সীমা">
+               <span>৳ দামের সীমা</span>
+               <label>সর্বনিম্ন <input type="number" min="0" max="10000000" step="1" inputMode="numeric" placeholder="৳ ০"
+                  value={minPrice} onChange={e=>setMinPrice(e.target.value)}/></label>
+               <span aria-hidden="true">—</span>
+               <label>সর্বোচ্চ <input type="number" min="0" max="10000000" step="1" inputMode="numeric" placeholder="যেকোনো"
+                  value={maxPrice} onChange={e=>setMaxPrice(e.target.value)}/></label>
+            </div>
             <div className="s-store-toolbar">
               <span className="s-result-count">{sortedProducts.length}টি পণ্য দেখানো হচ্ছে</span>
               <select className="s-sort-select" aria-label="পণ্য সাজান" value={sortOrder} onChange={e => setSortOrder(e.target.value)}>
@@ -2051,7 +2075,7 @@ export default function StorePage() {
               <div style={{ textAlign: "center", padding: "48px 16px" }}>
                 <div style={{ fontSize: 48, marginBottom: 12 }}>🔍</div>
                 <p style={{ color: "var(--s-muted)" }}>এই ফিল্টারে কোনো পণ্য পাওয়া যায়নি। অন্য বিভাগ বা পছন্দের তালিকা দেখুন।</p>
-                <button type="button" className="s-shopping-clear" onClick={()=>{setSearch("");setActiveCat(null);setOnlyFavorites(false);setOnlyAvailable(false);}}>সব পণ্য দেখুন</button>
+                <button type="button" className="s-shopping-clear" onClick={()=>{setSearch("");setActiveCat(null);setOnlyFavorites(false);setOnlyAvailable(false);setMinPrice("");setMaxPrice("");}}>সব পণ্য দেখুন</button>
               </div>
             )}
             <div className="s-product-grid">
@@ -2092,7 +2116,7 @@ export default function StorePage() {
             </div>
           </section>}
 
-          {(store.about_text||store.delivery_policy_text||store.return_policy_text)&&
+          {(store.about_text||store.delivery_policy_text||store.return_policy_text||store.faq_items?.length)&&
             <section id="store-information" className="s-section s-store-information" aria-labelledby="s-info-title">
               <div className="s-section-head"><h2 id="s-info-title">দোকান সম্পর্কে জানুন</h2></div>
               <div className="s-info-grid">
@@ -2100,6 +2124,13 @@ export default function StorePage() {
                 {store.delivery_policy_text&&<article className="s-info-card"><span className="s-info-icon">🚚</span><h3>ডেলিভারি তথ্য</h3><p>{store.delivery_policy_text}</p></article>}
                 {store.return_policy_text&&<article className="s-info-card"><span className="s-info-icon">↩</span><h3>রিটার্ন / এক্সচেঞ্জ</h3><p>{store.return_policy_text}</p></article>}
               </div>
+              {Array.isArray(store.faq_items)&&store.faq_items.length>0&&
+                <section className="s-store-faq" aria-label="দোকান সম্পর্কে সাধারণ প্রশ্ন">
+                  <h3>সাধারণ প্রশ্ন ও উত্তর</h3>
+                  {store.faq_items.map((item,i)=><details key={i} className="s-faq-item">
+                    <summary>{item.question}</summary><p>{item.answer}</p>
+                  </details>)}
+                </section>}
               <p className="s-info-disclaimer">{store.is_demo?"এই দোকান ডেমো। বাস্তব ক্রয়, টাকা লেনদেন বা পণ্য ডেলিভারি করা হয় না।":"এই বিবরণ দোকান কর্তৃক প্রকাশিত; প্ল্যাটফর্ম নিজে ডেলিভারি বা রিটার্ন সম্পন্ন হওয়ার নিশ্চয়তা দেয় না।"}</p>
             </section>}
         </>
