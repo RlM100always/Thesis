@@ -1954,6 +1954,16 @@ export default function StorePage() {
               <button type="button" className={`s-shopping-filter${onlyFavorites?" active":""}`} aria-pressed={onlyFavorites} onClick={()=>setOnlyFavorites(v=>!v)}>♥ পছন্দের পণ্য ({favCount})</button>
               {(search||activeCat||onlyFavorites||onlyAvailable)&&<button type="button" className="s-shopping-clear" onClick={()=>{setSearch("");setActiveCat(null);setOnlyAvailable(false);setOnlyFavorites(false);setVisibleCount(20);}}>সব ফিল্টার মুছুন</button>}
             </div>
+            {compareIds.length>0&&<div className="s-compare-tray" aria-live="polite">
+              <div><strong>⇄ পণ্য তুলনা ({compareIds.length}/{COMPARE_LIMIT})</strong>
+                <span>{compareIds.length===1?"আরেকটি পণ্য বেছে নিন":"নির্বাচিত পণ্যের বৈশিষ্ট্য একসঙ্গে দেখুন"}</span>
+              </div>
+              <div className="s-compare-tray-actions">
+                <button type="button" className="s-shopping-clear" onClick={clearComparison}>মুছুন</button>
+                <button type="button" className="s-compare-open" disabled={comparisonProducts.length<2}
+                  onClick={()=>setCompareOpen(true)}>তুলনা দেখুন</button>
+              </div>
+            </div>}
             <div className="s-store-toolbar">
               <span className="s-result-count">{sortedProducts.length}টি পণ্য দেখানো হচ্ছে</span>
               <select className="s-sort-select" aria-label="পণ্য সাজান" value={sortOrder} onChange={e => setSortOrder(e.target.value)}>
@@ -1994,6 +2004,32 @@ export default function StorePage() {
               </div>
             )}
           </div>
+
+          {recentVisible.length>0&&<section className="s-section s-recent-section" aria-labelledby="s-recent-title">
+            <div className="s-section-head">
+              <h2 id="s-recent-title">সর্বশেষ দেখা পণ্য</h2>
+              <span className="s-badge">এই ডিভাইসে সংরক্ষিত</span>
+            </div>
+            <div className="s-product-grid">
+              {recentVisible.map(p=><ProductCard key={p.id} product={p}
+                storeCategory={store.category} showStockLevel={store.show_stock_level}
+                cartQty={cart[p.id]||0} isFavorite={favoriteProducts.includes(String(p.id))}
+                onFavorite={favoriteProduct} isCompared={compareIds.includes(String(p.id))}
+                compareDisabled={compareIds.length>=COMPARE_LIMIT&&!compareIds.includes(String(p.id))}
+                onCompare={toggleComparison} onAdd={addToCart} onQtyChange={setQty} onView={viewProduct}/>)}
+            </div>
+          </section>}
+
+          {(store.about_text||store.delivery_policy_text||store.return_policy_text)&&
+            <section className="s-section s-store-information" aria-labelledby="s-info-title">
+              <div className="s-section-head"><h2 id="s-info-title">দোকান সম্পর্কে জানুন</h2></div>
+              <div className="s-info-grid">
+                {store.about_text&&<article className="s-info-card"><span className="s-info-icon">🏬</span><h3>আমাদের সম্পর্কে</h3><p>{store.about_text}</p></article>}
+                {store.delivery_policy_text&&<article className="s-info-card"><span className="s-info-icon">🚚</span><h3>ডেলিভারি তথ্য</h3><p>{store.delivery_policy_text}</p></article>}
+                {store.return_policy_text&&<article className="s-info-card"><span className="s-info-icon">↩</span><h3>রিটার্ন / এক্সচেঞ্জ</h3><p>{store.return_policy_text}</p></article>}
+              </div>
+              <p className="s-info-disclaimer">{store.is_demo?"এই দোকান ডেমো। বাস্তব ক্রয়, টাকা লেনদেন বা পণ্য ডেলিভারি করা হয় না।":"এই বিবরণ দোকান কর্তৃক প্রকাশিত; প্ল্যাটফর্ম নিজে ডেলিভারি বা রিটার্ন সম্পন্ন হওয়ার নিশ্চয়তা দেয় না।"}</p>
+            </section>}
         </>
       )}
 
@@ -2060,7 +2096,7 @@ export default function StorePage() {
                 <div style={{fontWeight:700,marginBottom:12,fontSize:15}}>একই বিভাগের পণ্য</div>
                 <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:8}}>
                   {related.map(p => (
-                    <div key={p.id} style={{border:"1px solid var(--border)",borderRadius:10,padding:10,cursor:"pointer",background:"var(--surface)"}} onClick={() => { setSelectedProduct(p); setDetailQty(1); window.scrollTo(0,0); }}>
+                    <div key={p.id} style={{border:"1px solid var(--border)",borderRadius:10,padding:10,cursor:"pointer",background:"var(--surface)"}} onClick={() => viewProductFull(p)}>
                       <img src={p.image_data_url || productImage(p, store.category)} alt={p.name} style={{width:"100%",height:80,objectFit:"cover",borderRadius:6,marginBottom:6}} loading="lazy" />
                       <div style={{fontWeight:600,fontSize:13}}>{p.name}</div>
                       {p.price != null && <div style={{color:"var(--green,#0a8752)",fontSize:13}}>{money(p.price)}</div>}
