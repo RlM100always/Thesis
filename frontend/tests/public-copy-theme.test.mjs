@@ -62,3 +62,19 @@ test("public shopping descriptions distinguish demos from real services",()=>{
  assert.ok(!login.includes("actor-aware operation"));
  assert.ok(!site.includes("শুধু শুধু ফিচারের সংখ্যা"));
 });
+
+test("D1 demo owner is localized without changing secure API action names",()=>{
+ const page=read("pages/D1MerchantCenter.jsx");
+ const css=read("pages/D1MerchantCenter.css");
+ assert.match(page,/ORDER_STATUS_BN/);
+ assert.match(page,/CASH_KIND_BN/);
+ assert.match(page,/নতুন দোকান মালিকের অ্যাকাউন্ট/);
+ assert.match(page,/পরীক্ষামূলক কাউন্টার বিক্রি/);
+ assert.match(page,/পরীক্ষামূলক নগদ হিসাব/);
+ assert.match(page,/toggleTheme/);
+ assert.match(css,/--dm-error-bg/);
+ assert.match(css,/--dm-success-bg/);
+ assert.match(css,/data-theme=dark/);
+ for(const phrase of ["Demo counter POS","Cashbook entry (demo)","Store owner login","Create D1 Store","Owner access key (64 hex characters)"])
+  assert.ok(!page.includes(phrase),phrase);
+});
