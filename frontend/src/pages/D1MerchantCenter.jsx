@@ -22,7 +22,7 @@ export default function D1MerchantCenter(){
   const [token,setToken]=useState(()=>sessionStorage.getItem("bsmart_d1_merchant")||"");
   const [form,setForm]=useState(empty),[mode,setMode]=useState("login"),[view,setView]=useState("dashboard");
   const [data,setData]=useState(null),[busy,setBusy]=useState(false),[error,setError]=useState(""),[note,setNote]=useState("");
-  const [storeForm,setStoreForm]=useState({name:"",category:"মুদি",area:"",tagline:"",theme:"clean",color:"#087e59",logo_image_url:"",cover_image_url:"",public_phone:"",public_address:"",is_active:false});
+  const [storeForm,setStoreForm]=useState({name:"",category:"মুদি",area:"",tagline:"",theme:"clean",color:"#087e59",logo_image_url:"",cover_image_url:"",public_phone:"",public_address:"",announcement_text:"",about_text:"",delivery_policy_text:"",return_policy_text:"",is_active:false});
   const [newProduct,setNewProduct]=useState({sku:"",name:"",category:"",price_bdt:"",stock_qty:"",reorder_point:"5",description:"",image_url:"",is_featured:false,is_listed:true});
   const [edit,setEdit]=useState(null);
   const [posProduct,setPosProduct]=useState("");
@@ -35,7 +35,7 @@ export default function D1MerchantCenter(){
   const load=useCallback(async tk=>{
     const latest=await call("/api/merchant/dashboard",{token:tk});
     setData(latest);
-    if(latest.store)setStoreForm({name:latest.store.name,category:latest.store.category||"মুদি",area:latest.store.area||"",tagline:latest.store.tagline||"",theme:latest.store.theme||"clean",color:latest.store.color||"#087e59",logo_image_url:latest.store.logo_image_url||"",cover_image_url:latest.store.cover_image_url||"",public_phone:latest.store.public_phone||"",public_address:latest.store.public_address||"",is_active:latest.store.is_active});
+    if(latest.store)setStoreForm({name:latest.store.name,category:latest.store.category||"মুদি",area:latest.store.area||"",tagline:latest.store.tagline||"",theme:latest.store.theme||"clean",color:latest.store.color||"#087e59",logo_image_url:latest.store.logo_image_url||"",cover_image_url:latest.store.cover_image_url||"",public_phone:latest.store.public_phone||"",public_address:latest.store.public_address||"",announcement_text:latest.store.announcement_text||"",about_text:latest.store.about_text||"",delivery_policy_text:latest.store.delivery_policy_text||"",return_policy_text:latest.store.return_policy_text||"",is_active:latest.store.is_active});
     return latest;
   },[]);
   useEffect(()=>{if(!token)return;load(token).catch(e=>{setError(e.message);if(e.status===401){sessionStorage.removeItem("bsmart_d1_merchant");setToken("");}});},[token,load]);
@@ -164,6 +164,15 @@ export default function D1MerchantCenter(){
           <Field label="Category"><select style={input} value={storeForm.category} onChange={e=>setStoreForm(v=>({...v,category:e.target.value}))}>{categories.map(c=><option key={c}>{c}</option>)}</select></Field>
           <Field label="Area"><input style={input} required value={storeForm.area} onChange={e=>setStoreForm(v=>({...v,area:e.target.value}))}/></Field>
           <Field label="Store tagline"><input style={input} value={storeForm.tagline} onChange={e=>setStoreForm(v=>({...v,tagline:e.target.value}))}/></Field>
+          <section className="dm-content-edit">
+            <h3>Customer-facing store information</h3>
+            <p className="dm-muted">Publish only accurate business information. These details do not activate payments, a courier, or refunds.</p>
+            <Field label="Announcement strip (optional, up to 180 characters)"><input className="dm-input" maxLength={180} value={storeForm.announcement_text} onChange={e=>setStoreForm(v=>({...v,announcement_text:e.target.value}))} placeholder="New collection available — browse today's arrivals"/></Field>
+            <Field label="About this store"><textarea className="dm-input" maxLength={1800} rows={4} value={storeForm.about_text} onChange={e=>setStoreForm(v=>({...v,about_text:e.target.value}))} placeholder="Tell visitors about your business and products."/></Field>
+            <Field label="Delivery information"><textarea className="dm-input" maxLength={1800} rows={3} value={storeForm.delivery_policy_text} onChange={e=>setStoreForm(v=>({...v,delivery_policy_text:e.target.value}))} placeholder="Only explain delivery terms your business actually supports."/></Field>
+            <Field label="Returns / exchange information"><textarea className="dm-input" maxLength={1800} rows={3} value={storeForm.return_policy_text} onChange={e=>setStoreForm(v=>({...v,return_policy_text:e.target.value}))} placeholder="State your real return and exchange terms."/></Field>
+            {store.is_demo&&<p className="dm-muted">Demo storefronts will continue to show a no-delivery/no-payment disclosure regardless of policy text.</p>}
+          </section>
           <div className="dm-theme-settings">
             <Field label="Store visual theme"><select className="dm-input" value={storeForm.theme} onChange={e=>setStoreForm(v=>({...v,theme:e.target.value}))}>
               {["clean","bold","warm","fresh","purple","ocean"].map(name=><option key={name} value={name}>{name.charAt(0).toUpperCase()+name.slice(1)}</option>)}
