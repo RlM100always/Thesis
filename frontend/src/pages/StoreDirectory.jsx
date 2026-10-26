@@ -5,6 +5,7 @@
 import { useEffect, useState } from "react";
 import { api } from "../api";
 import { storeCoverImage } from "../storeImages";
+import {readFavorites,toggleFavorite} from "../storefrontFavorites";
 
 const PRESET_GRAD = {
   warm:     "linear-gradient(135deg, #f5c06a 0%, #e8895a 100%)",
@@ -193,6 +194,111 @@ const DIR_CSS = `
   .sd-hero-wave{height:24px;}
 }
 
+
+/* Premium marketplace refresh: quiet typography, explicit demo states, accessible controls. */
+.sd-page{min-height:100vh}
+.sd-header{background:color-mix(in srgb,var(--sd-surface) 94%,transparent);box-shadow:0 3px 22px rgba(0,0,0,.04)}
+.sd-header-inner{max-width:1200px;min-height:68px}
+.sd-hero{background:linear-gradient(140deg,#073727 0%,#096648 50%,#0a865c 100%);padding:60px 20px 78px}
+.sd-hero h1{font-size:clamp(28px,5vw,48px);letter-spacing:-.6px}
+.sd-hero p{max-width:570px;opacity:.9;margin-bottom:24px}
+.sd-search-wrap{max-width:630px}
+.sd-search{min-height:56px;border-radius:15px}
+.sd-hero-stats{display:inline-flex;gap:0;padding:10px 14px;background:rgba(255,255,255,.09);border:1px solid rgba(255,255,255,.18);border-radius:14px;backdrop-filter:blur(8px);margin-top:20px}
+.sd-hero-stat{padding:0 20px}
+.sd-hero-stat+.sd-hero-stat{border-left:1px solid rgba(255,255,255,.18)}
+.sd-filters-wrap{max-width:1200px}
+.sd-discovery-tools{max-width:1200px;margin:12px auto 4px;padding:0 24px;display:flex;gap:9px;align-items:center;flex-wrap:wrap}
+.sd-discovery-pill,.sd-reset{min-height:39px;padding:8px 14px;border:1px solid var(--sd-line);background:var(--sd-card);color:var(--sd-text);border-radius:999px;font-size:13px;font-family:inherit;font-weight:700;cursor:pointer}
+.sd-discovery-pill:hover,.sd-discovery-pill.active{border-color:var(--sd-accent);background:var(--sd-chip);color:var(--sd-accent)}
+.sd-reset{border:0;text-decoration:underline;color:var(--sd-accent);background:transparent}
+.sd-sort-label{display:flex;align-items:center;gap:7px;color:var(--sd-muted);font-size:12px;margin-left:auto;font-weight:700}
+.sd-sort{min-height:39px;padding:6px 11px;font:inherit;font-size:13px;background:var(--sd-card);color:var(--sd-text);border:1px solid var(--sd-line);border-radius:12px}
+.sd-grid{max-width:1200px;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:18px}
+.sd-card-wrap{position:relative;min-width:0;height:100%}
+.sd-card{height:100%;border-radius:19px;box-shadow:0 5px 24px rgba(0,0,0,.035);border:1px solid var(--sd-line)}
+.sd-card:hover{box-shadow:0 12px 32px rgba(0,0,0,.11);transform:translateY(-3px)}
+.sd-card-cover{height:154px}
+.sd-card-cover img{transition:transform .25s}
+.sd-card:hover .sd-card-cover img{transform:scale(1.035)}
+.sd-card-name{font-size:16px}
+.sd-card-tagline{font-size:13px;line-height:1.5}
+.sd-card-body{padding:30px 17px 18px}
+.sd-card-footer{padding:13px 17px 17px}
+.sd-card-logo{z-index:2;border-radius:15px}
+.sd-favorite{position:absolute;top:11px;right:11px;z-index:5;min-width:38px;height:38px;border-radius:12px;display:grid;place-items:center;border:1px solid rgba(255,255,255,.6);background:rgba(255,255,255,.93);color:#1f2937;font-size:25px;line-height:1;cursor:pointer;box-shadow:0 2px 10px rgba(0,0,0,.14)}
+.sd-favorite:hover,.sd-favorite.active{background:#fff1f4;color:#e11d48}
+.sd-cover-demo{position:absolute;top:12px;left:12px;z-index:3;background:#fff3d5;color:#815300;border:1px solid rgba(146,92,0,.15);font-size:10px;font-weight:800;letter-spacing:.03em;padding:6px 9px;border-radius:8px}
+.sd-card-wrap :is(button,a):focus-visible,.sd-page :is(input,select,button,a):focus-visible{outline:3px solid var(--sd-accent);outline-offset:3px}
+.sd-empty{padding:60px 16px}
+.sd-empty .sd-discovery-pill{margin:12px auto}
+@media(max-width:680px){
+ .sd-hero{padding:38px 15px 65px}
+ .sd-hero p{font-size:13px}
+ .sd-search{min-height:48px;padding:12px 15px 12px 45px}
+ .sd-hero-stats{width:100%;max-width:530px}
+ .sd-hero-stat{padding:0 6px;flex:1}
+ .sd-hero-stat-num{font-size:18px}
+ .sd-hero-stat-label{font-size:10px;line-height:1.2}
+ .sd-discovery-tools{padding:0 12px;gap:7px}
+ .sd-discovery-pill{font-size:12px;padding:7px 10px;min-height:35px}
+ .sd-sort-label{margin-left:0}
+ .sd-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:11px;padding:0 12px 50px}
+ .sd-card-cover{height:115px}
+ .sd-card-body{padding:28px 10px 10px}
+ .sd-card-name{font-size:13px;line-height:1.35}
+ .sd-card-footer{padding:10px}
+ .sd-card-footer .sd-visit-btn{font-size:12px}
+ .sd-card-chips{gap:4px}
+ .sd-chip{font-size:10px;padding:3px 7px}
+ .sd-favorite{min-width:32px;height:32px;font-size:22px}
+ .sd-cover-demo{font-size:9px;padding:4px 6px;top:7px;left:7px}
+ .sd-filter-btn{font-size:12px;padding:7px 11px}
+}
+@media(max-width:350px){.sd-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}.sd-card-name{font-size:12px}}
+@media(prefers-reduced-motion:reduce){.sd-card,.sd-card-cover img{transition:none}.sd-card:hover{transform:none}}
+
+/* v13 directory accessibility: consistently scoped surfaces and focus colors. */
+.sd-page{background:var(--sd-bg);color:var(--sd-text);color-scheme:light}
+:root[data-theme="dark"] .sd-page{color-scheme:dark}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]):not([data-theme="dark"]) .sd-page{color-scheme:dark}}
+.sd-page :is(.sd-header,.sd-card,.sd-filter-btn,.sd-discovery-pill,.sd-sort,.sd-pay-badge,.sd-search){
+  border-color:var(--sd-line);color:var(--sd-text);
+}
+.sd-page .sd-header{background:var(--sd-surface)}
+.sd-page .sd-card{background:var(--sd-card)}
+.sd-page :is(.sd-card-name,.sd-count strong,.sd-empty h2){color:var(--sd-text)}
+.sd-page :is(.sd-card-tagline,.sd-count,.sd-filters-label,.sd-sort-label,.sd-empty,.sd-loading,.sd-tagline,.sd-back-link){color:var(--sd-muted)}
+.sd-page :is(.sd-filter-btn,.sd-discovery-pill,.sd-sort){background:var(--sd-card);color:var(--sd-text);border:1px solid var(--sd-line)}
+.sd-page :is(.sd-filter-btn.active,.sd-discovery-pill.active){background:var(--sd-accent);color:var(--sd-active-text);border-color:var(--sd-accent)}
+.sd-page :is(.sd-filter-btn:hover,.sd-discovery-pill:hover){border-color:var(--sd-accent)}
+.sd-page .sd-search{background:var(--sd-card);color:var(--sd-text);border:1px solid var(--sd-line)}
+.sd-page .sd-search::placeholder{color:var(--sd-muted);opacity:1}
+.sd-page .sd-filters-wrap{color:var(--sd-text)}
+.sd-page .sd-chip{background:var(--sd-chip);color:var(--sd-text)}
+.sd-page .sd-chip-cat{background:color-mix(in srgb,var(--sd-accent) 15%,var(--sd-card));color:var(--sd-accent)}
+.sd-page .sd-chip-area{color:var(--sd-text);background:var(--sd-chip)}
+.sd-page .sd-card-footer{border-color:var(--sd-line)}
+.sd-page .sd-card-logo,.sd-page .sd-pay-badge{background:var(--sd-surface);color:var(--sd-text);border-color:var(--sd-line)}
+.sd-page .sd-favorite{color:#1f2937;background:#fff;border-color:#ddd}
+.sd-page .sd-favorite.active{color:#be123c;background:#fff1f4}
+.sd-page .sd-hero{color:#fff}
+.sd-page .sd-hero :is(h1,p,.sd-hero-stat-num,.sd-hero-stat-label){color:#fff}
+.sd-page .sd-hero-stat-label{opacity:.92}
+.sd-page .sd-footer{background:var(--sd-footer);color:#d7e9df}
+.sd-page .sd-footer :is(p,a){color:#d7e9df}
+.sd-page .sd-footer a{text-decoration:underline;text-underline-offset:3px}
+.sd-page :is(.sd-card,.sd-discovery-pill,.sd-filter-btn,.sd-search,.sd-sort):focus-visible{
+ outline:3px solid var(--sd-accent);outline-offset:3px;
+}
+.sd-page .sd-count{font-size:14px}
+.sd-page .sd-empty{font-size:14px;line-height:1.7}
+@media(max-width:680px){
+ .sd-page .sd-card-name{font-size:14px;line-height:1.5}
+ .sd-page .sd-chip{font-size:11px}
+ .sd-page .sd-discovery-pill{font-size:12px;line-height:1.5}
+ .sd-page .sd-hero p{opacity:1}
+}
 `;
 
 export default function StoreDirectory() {
@@ -203,6 +309,11 @@ export default function StoreDirectory() {
   const [search, setSearch] = useState("");
   const [activeCategory, setActiveCategory] = useState(null);
   const [activeArea, setActiveArea] = useState(null);
+  const [sortBy,setSortBy]=useState("az");
+  const [showFavorites,setShowFavorites]=useState(false);
+  const [excludeDemo,setExcludeDemo]=useState(false);
+  const [codOnly,setCodOnly]=useState(false);
+  const [favoriteStores,setFavoriteStores]=useState(()=>readFavorites("stores"));
 
   useEffect(() => {
     const el = document.createElement("style");
@@ -239,8 +350,17 @@ export default function StoreDirectory() {
     }
     if (activeCategory && s.category !== activeCategory) return false;
     if (activeArea && s.area !== activeArea) return false;
+    if(showFavorites&&!favoriteStores.includes(s.slug))return false;
+    if(excludeDemo&&s.is_demo)return false;
+    if(codOnly&&(s.is_demo||!s.payment_cod))return false;
     return true;
+  }).sort((a,b)=>{
+    if(sortBy==="za")return String(b.display_name||"").localeCompare(String(a.display_name||""),"bn");
+    if(sortBy==="area")return String(a.area||"").localeCompare(String(b.area||""),"bn")||String(a.display_name||"").localeCompare(String(b.display_name||""),"bn");
+    return String(a.display_name||"").localeCompare(String(b.display_name||""),"bn");
   });
+  function favoriteStore(id){setFavoriteStores(current=>toggleFavorite("stores",current,id));}
+  function clearFilters(){setSearch("");setActiveCategory(null);setActiveArea(null);setShowFavorites(false);setExcludeDemo(false);setCodOnly(false);setSortBy("az");}
 
   return (
     <div className="sd-page">
@@ -250,7 +370,7 @@ export default function StoreDirectory() {
           <a href="#/" className="sd-logo">
             <span className="sd-logo-dot" />B‑SMART
           </a>
-          <span className="sd-tagline">বাংলাদেশের অনলাইন মার্কেটপ্লেস</span>
+          <span className="sd-tagline">বাংলাদেশি ব্যবসার অনলাইন দোকানসমূহ</span>
           <div className="sd-header-space" />
           <a href="#/" className="sd-back-link">← মূল পাতা</a>
         </div>
@@ -258,14 +378,14 @@ export default function StoreDirectory() {
 
       {/* Hero */}
       <div className="sd-hero">
-        <div className="sd-hero-eyebrow">🇧🇩 Made in Bangladesh</div>
-        <h1>সেরা দোকানগুলো এখন অনলাইনে</h1>
-        <p>এলাকা ও ব্যবসার ধরন অনুযায়ী দোকান খুঁজে অর্ডার করুন</p>
+        <div className="sd-hero-eyebrow">🇧🇩 বাংলাদেশের ব্যবসার জন্য</div>
+        <h1>আপনার প্রয়োজনের দোকান খুঁজে নিন</h1>
+        <p>বিভিন্ন দোকান ও তাদের পণ্য দেখুন। পছন্দের দোকান সংরক্ষণ করতে পারবেন। ডেমো দোকানে কোনো বাস্তব লেনদেন বা ডেলিভারি হয় না।</p>
         <div className="sd-search-wrap">
           <span className="sd-search-icon">🔍</span>
           <input
             className="sd-search"
-            placeholder="দোকানের নাম, এলাকা বা ব্যবসার ধরন লিখুন…"
+            placeholder="দোকানের নাম, এলাকা বা ধরন লিখুন…" aria-label="দোকান খুঁজুন"
             value={search}
             onChange={e => setSearch(e.target.value)}
           />
@@ -281,8 +401,8 @@ export default function StoreDirectory() {
               <div className="sd-hero-stat-label">বিভাগ</div>
             </div>
             <div className="sd-hero-stat">
-              <div className="sd-hero-stat-num">{stores.filter(s => s.payment_cod).length}</div>
-              <div className="sd-hero-stat-label">COD সুবিধা</div>
+              <div className="sd-hero-stat-num">{stores.filter(s => !s.is_demo && s.payment_cod).length}</div>
+              <div className="sd-hero-stat-label">যাচাইকৃত COD দোকান</div>
             </div>
           </div>
         )}
@@ -312,12 +432,23 @@ export default function StoreDirectory() {
           {categories.map(c => (
             <button key={c} className={`sd-filter-btn${activeCategory === c ? " active" : ""}`}
               onClick={() => setActiveCategory(activeCategory === c ? null : c)}>
-              {CAT_EMOJI[c]} {c}
+              {CAT_EMOJI[c] || "🏷️"} {c}
             </button>
           ))}
         </div>
       </div>
 
+      <div className="sd-discovery-tools" role="group" aria-label="দোকান বাছাই ও সাজানোর বিকল্প">
+        <button type="button" aria-pressed={showFavorites} className={`sd-discovery-pill${showFavorites?" active":""}`} onClick={()=>setShowFavorites(x=>!x)}>♥ পছন্দের দোকান ({favoriteStores.length})</button>
+        <button type="button" aria-pressed={excludeDemo} className={`sd-discovery-pill${excludeDemo?" active":""}`} onClick={()=>setExcludeDemo(x=>!x)}>শুধু বাস্তব দোকান</button>
+        <button type="button" aria-pressed={codOnly} className={`sd-discovery-pill${codOnly?" active":""}`} onClick={()=>setCodOnly(x=>!x)}>ডেলিভারির সময় মূল্য পরিশোধ</button>
+        <label className="sd-sort-label">সাজান
+          <select className="sd-sort" value={sortBy} onChange={e=>setSortBy(e.target.value)} aria-label="দোকান সাজানোর নিয়ম">
+            <option value="az">নাম A–Z</option><option value="za">নাম Z–A</option><option value="area">এলাকা অনুযায়ী</option>
+          </select>
+        </label>
+        {(search||activeArea||activeCategory||showFavorites||excludeDemo||codOnly)&&<button type="button" className="sd-reset" onClick={clearFilters}>সব ফিল্টার মুছুন</button>}
+      </div>
       {/* Toolbar */}
       {!loading && (
         <div className="sd-toolbar">
@@ -329,11 +460,11 @@ export default function StoreDirectory() {
       {loading ? (
         <div className="sd-loading">
           <div className="sd-spinner" />
-          <span>দোকান লোড হচ্ছে…</span>
+          <span>দোকানের তালিকা আনা হচ্ছে…</span>
         </div>
       ) : loadError ? (
         <div className="sd-empty">
-          <h2>দোকান লোড হয়নি</h2>
+          <h2>দোকানের তালিকা দেখানো যাচ্ছে না</h2>
           <p>{loadError}</p>
           <button className="sd-filter-btn" onClick={loadStores}>আবার চেষ্টা করুন</button>
         </div>
@@ -343,13 +474,12 @@ export default function StoreDirectory() {
           <h2>কোনো দোকান পাওয়া যায়নি</h2>
           {stores.length === 0 ? (
             <>
-              <p>এই মুহূর্তে operational database-এ কোনো সক্রিয় অনলাইন স্টোর নেই।</p>
+              <p>এই মুহূর্তে কোনো সক্রিয় অনলাইন দোকান পাওয়া যায়নি।</p>
               {availability && <p>সক্রিয় স্টোর: {availability.active_stores} · প্রকাশিত পণ্য: {availability.listed_products}</p>}
-              <p>দোকান মালিককে Store Management থেকে স্টোর Activate করে পণ্য Publish করতে হবে।
-                ডাটাবেস সংযোগ/ডেমো সেটআপের জন্য অ্যাডমিনকে জানান।</p>
-              <a href="#/signup" className="sd-filter-btn" style={{display:"inline-flex",textDecoration:"none"}}>নতুন ব্যবসা তৈরি করুন</a>
+              <p>দোকান মালিক তাঁর ব্যবস্থাপনা প্যানেল থেকে দোকানটি প্রকাশ করতে পারবেন। প্রয়োজন হলে সহায়তা দলের সঙ্গে যোগাযোগ করুন।</p>
+              <a href="#/signup" className="sd-filter-btn" style={{display:"inline-flex",textDecoration:"none"}}>নতুন ব্যবসার অ্যাকাউন্ট খুলুন</a>
             </>
-          ) : <p>অন্য কীওয়ার্ড বা বিভাগ চেষ্টা করুন।</p>}
+          ) : <><p>অন্য নাম, এলাকা বা বিভাগ দিয়ে খুঁজুন।</p><button className="sd-discovery-pill" onClick={clearFilters}>সব দোকান দেখুন</button></>}
         </div>
       ) : (
         <div className="sd-grid">
@@ -358,11 +488,13 @@ export default function StoreDirectory() {
             const accent = s.theme_color || "#0a8752";
             const emoji = CAT_EMOJI[s.category] || "🏪";
             return (
-              <a key={s.slug} href={`#/store/${s.slug}`} className="sd-card">
+              <div key={s.slug} className="sd-card-wrap">
+              <a href={`#/store/${s.slug}`} className="sd-card">
                 {/* Cover */}
                 <div className="sd-card-cover" style={{ background: PRESET_GRAD[s.theme_preset] || PRESET_GRAD.clean }}>
                   <img src={storeCoverImage(s)} alt={`${s.display_name} দোকান`} loading="lazy" />
                   <div className="sd-card-cover-overlay" />
+                  {s.is_demo && <span className="sd-cover-demo">DEMO · Sample shop</span>}
                   <div className="sd-card-logo" style={{ color: accent }}>
                     {s.logo_data_url ? <img src={s.logo_data_url} alt={s.display_name} /> : initial}
                   </div>
@@ -379,20 +511,26 @@ export default function StoreDirectory() {
                 </div>
                 {/* Footer */}
                 <div className="sd-card-footer">
-                  <span className="sd-visit-btn">দোকান দেখুন <span>→</span></span>
+                  <span className="sd-visit-btn">{s.is_demo?"ডেমো দোকান দেখুন":"দোকান দেখুন"} <span>→</span></span>
                   <div className="sd-payment-row">
-                    {s.payment_cod && <span className="sd-pay-badge" title="ক্যাশ অন ডেলিভারি">💵</span>}
+                    {!s.is_demo && s.payment_cod && <span className="sd-pay-badge" title="ডেলিভারির সময় মূল্য পরিশোধ">💵</span>}
                     {s.payment_bkash && <span className="sd-pay-badge" title="bKash">📱</span>}
                     {s.payment_nagad && <span className="sd-pay-badge" title="Nagad">💳</span>}
                   </div>
                 </div>
               </a>
+              <button type="button" className={`sd-favorite${favoriteStores.includes(s.slug)?" active":""}`}
+                aria-label={favoriteStores.includes(s.slug)?`${s.display_name} পছন্দের তালিকা থেকে সরান`:`${s.display_name} পছন্দের দোকানে যোগ করুন`}
+                aria-pressed={favoriteStores.includes(s.slug)}
+                title={favoriteStores.includes(s.slug)?"সংরক্ষিত দোকান":"সংরক্ষণ করুন"}
+                onClick={()=>favoriteStore(s.slug)}>{favoriteStores.includes(s.slug)?"♥":"♡"}</button>
+              </div>
             );
           })}
         </div>
       )}
 
-      <section style={{textAlign:"center",padding:"20px 16px",background:"var(--sd-card)",color:"var(--sd-text)"}}><strong>Cloudflare D1-তে নিজের ডেমো দোকান চালু করুন</strong><p style={{color:"var(--sd-muted)"}}>নতুন independent owner account · persistent product ও order management</p><a className="sd-filter-btn" style={{display:"inline-block",textDecoration:"none"}} href="#/d1-owner">Owner Center খুলুন →</a></section>
+      <section style={{textAlign:"center",padding:"20px 16px",background:"var(--sd-card)",color:"var(--sd-text)"}}><strong>নিজের অনলাইন দোকানের ডেমো তৈরি করুন</strong><p style={{color:"var(--sd-muted)"}}>দোকানের তথ্য, পণ্য ও পরীক্ষামূলক অর্ডার একটি জায়গা থেকে পরিচালনা করুন।</p><a className="sd-filter-btn" style={{display:"inline-block",textDecoration:"none"}} href="#/d1-owner">দোকান ব্যবস্থাপনা খুলুন →</a></section>
       {/* Footer */}
       <footer className="sd-footer">
         <p>Powered by <a href="#/">B-SMART</a> — AI-Powered Business Analytics for Bangladeshi SMEs</p>

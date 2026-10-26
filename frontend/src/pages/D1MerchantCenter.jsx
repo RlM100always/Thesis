@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import "./D1MerchantCenter.css";
+import D1MerchantInsights from "../components/D1MerchantInsights";
+import D1InventoryCorrection from "../components/D1InventoryCorrection";
+import D1OrderDetail from "../components/D1OrderDetail";
 
 const BASE=(import.meta.env.VITE_D1_COMMERCE_URL || "https://bsmart-commerce-api.bcs-written-rakib.workers.dev").replace(/\/$/,"");
 const fmt=n=>"৳"+Number(n||0).toLocaleString("en-BD");
@@ -11,6 +14,7 @@ async function call(path,{method="GET",body,token}={}){
   return j;
 }
 const input={minHeight:43,padding:"10px 12px",border:"1px solid var(--dm-line)",background:"var(--dm-surface)",borderRadius:10,color:"var(--dm-text)",font:"inherit",width:"100%"};
+const galleryInputToUrls=value=>String(value||"").split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
 const categories=["মুদি","পোশাক","ইলেকট্রনিক্স","রেস্টুরেন্ট","স্টেশনারি","বিউটি","মোবাইল","ফার্নিচার","হার্ডওয়্যার","অন্যান্য"];
 function Field({label,children}){return <label className="dm-field"><strong>{label}</strong>{children}</label>;}
 function Empty({children}){return <p className="dm-empty">{children}</p>;}
@@ -19,24 +23,27 @@ export default function D1MerchantCenter(){
   const [token,setToken]=useState(()=>sessionStorage.getItem("bsmart_d1_merchant")||"");
   const [form,setForm]=useState(empty),[mode,setMode]=useState("login"),[view,setView]=useState("dashboard");
   const [data,setData]=useState(null),[busy,setBusy]=useState(false),[error,setError]=useState(""),[note,setNote]=useState("");
-  const [storeForm,setStoreForm]=useState({name:"",category:"মুদি",area:"",tagline:"",is_active:false});
-  const [newProduct,setNewProduct]=useState({sku:"",name:"",category:"",price_bdt:"",stock_qty:"",is_listed:true});
+  const [storeForm,setStoreForm]=useState({name:"",category:"মুদি",area:"",tagline:"",theme:"clean",color:"#087e59",logo_image_url:"",cover_image_url:"",public_phone:"",public_address:"",announcement_text:"",about_text:"",delivery_policy_text:"",return_policy_text:"",faq_items:[],is_active:false});
+  const [newProduct,setNewProduct]=useState({sku:"",name:"",category:"",price_bdt:"",stock_qty:"",reorder_point:"5",description:"",image_url:"",gallery_input:"",is_featured:false,is_listed:true});
   const [edit,setEdit]=useState(null);
   const [posProduct,setPosProduct]=useState("");
   const [posQty,setPosQty]=useState("1");
   const [cashForm,setCashForm]=useState({kind:"expense",amount_bdt:"",description:""});
   const [oneTimeKey,setOneTimeKey]=useState("");
+  const [orderDetailId,setOrderDetailId]=useState(null);
+  const [orderSearch,setOrderSearch]=useState("");
+  const [orderFilter,setOrderFilter]=useState("all");
   const load=useCallback(async tk=>{
     const latest=await call("/api/merchant/dashboard",{token:tk});
     setData(latest);
-    if(latest.store)setStoreForm({name:latest.store.name,category:latest.store.category||"মুদি",area:latest.store.area||"",tagline:latest.store.tagline||"",is_active:latest.store.is_active});
+    if(latest.store)setStoreForm({name:latest.store.name,category:latest.store.category||"মুদি",area:latest.store.area||"",tagline:latest.store.tagline||"",theme:latest.store.theme||"clean",color:latest.store.color||"#087e59",logo_image_url:latest.store.logo_image_url||"",cover_image_url:latest.store.cover_image_url||"",public_phone:latest.store.public_phone||"",public_address:latest.store.public_address||"",announcement_text:latest.store.announcement_text||"",about_text:latest.store.about_text||"",delivery_policy_text:latest.store.delivery_policy_text||"",return_policy_text:latest.store.return_policy_text||"",faq_items:latest.store.faq_items||[],is_active:latest.store.is_active});
     return latest;
   },[]);
   useEffect(()=>{if(!token)return;load(token).catch(e=>{setError(e.message);if(e.status===401){sessionStorage.removeItem("bsmart_d1_merchant");setToken("");}});},[token,load]);
   async function run(action,success){
     setBusy(true);setError("");setNote("");
-    try{await action();if(token)await load(token);setNote(success||"Saved to Cloudflare D1");}
-    catch(e){setError(e.message||"Request failed");}
+    try{await action();if(token)await load(token);setNote(success||"Saved to Cloudflare D1");return true;}
+    catch(e){setError(e.message||"Request failed");return false;}
     finally{setBusy(false);}
   }
   async function authenticate(e){
@@ -57,6 +64,14 @@ export default function D1MerchantCenter(){
   }
   const store=data?.store,products=data?.products||[],orders=data?.orders||[],stats=data?.metrics||{};
   const totalProducts=useMemo(()=>products.filter(p=>p.is_listed).length,[products]);
+  const lowStock=useMemo(()=>products.filter(p=>p.is_listed&&p.stock_qty<=Number(p.reorder_point??5)),[products]);
+  const filteredOrders=useMemo(()=>orders.filter(o=>
+    (orderFilter==="all"||o.status===orderFilter)&&
+    (!orderSearch||[o.order_number,o.shipping_name,o.shipping_phone].some(v=>
+      String(v||"").toLowerCase().includes(orderSearch.trim().toLowerCase())))
+  ),[orders,orderFilter,orderSearch]);
+  const loadInsights=useCallback(days=>call("/api/merchant/insights?days="+days,{token}),[token]);
+  const loadOrderDetail=useCallback(id=>call("/api/merchant/orders/"+encodeURIComponent(id),{token}),[token]);
   return <main className="dm-page">
     <header className="dm-header"><a href="#/" className="dm-logo">B-SMART <span>Cloudflare Owner Center</span></a>
       <div className="dm-header-side"><span className="dm-d1">D1 persistent</span><a href="#/stores">সব দোকান</a>{token&&<button className="dm-text-btn" onClick={logout}>Logout</button>}</div>
@@ -89,22 +104,35 @@ export default function D1MerchantCenter(){
         <button disabled={busy} type="submit" className="dm-btn">Create D1 Store</button></form>
       </section>:
       <>
-        <div className="dm-tabs">{[["dashboard","Overview"],["products","Products & Stock"],["pos","Demo POS & Cashbook"],["orders","Orders"],["store","Store Settings"]].map(([k,l])=><button key={k} onClick={()=>setView(k)} className={view===k?"dm-active":""}>{l}</button>)}</div>
+        <div className="dm-tabs">{[["dashboard","Overview"],["products","Products & Stock"],["pos","Demo POS & Cashbook"],["insights","Insights"],["orders","Orders"],["store","Store Settings"]].filter(([k])=>store.is_demo||k!=="pos").map(([k,l])=><button key={k} onClick={()=>setView(k)} className={view===k?"dm-active":""}>{l}</button>)}</div>
         {view==="dashboard"&&<div className="dm-stack">
-          <div className="dm-stats"><Metric title="Demo orders" value={Number(stats.orders||0).toLocaleString("en-BD")}/><Metric title="Sample sales (non-cancelled)" value={fmt(stats.placed_total_bdt)} tip="Not real collected revenue"/><Metric title="Published products" value={totalProducts}/><Metric title="On-hand units" value={Number(stats.inventory_units||0)}/></div>
-          <div className="dm-panel"><h2>{store.name}</h2><p className="dm-muted">{store.area} · {store.category}</p><p>Public demo visibility: <strong>{store.is_active?"On":"Off"}</strong></p><p className="dm-muted">Store URL: <code>/#/store/{store.slug}</code></p>
+          <div className="dm-stats"><Metric title={store.is_demo?"Demo orders":"COD orders"} value={Number(stats.orders||0).toLocaleString("en-BD")}/><Metric title="Order value (uncollected)" value={fmt(stats.placed_total_bdt)} tip="Not real collected revenue"/><Metric title="Published products" value={totalProducts}/><Metric title="On-hand units" value={Number(stats.inventory_units||0)}/></div>
+          <div className="dm-panel"><h2>{store.name}</h2><p className="dm-muted">{store.area} · {store.category}</p><p>Public visibility: <strong>{store.is_active?"On":"Off"}</strong></p><p className="dm-muted">{store.is_demo?"Demo-only store; no money or shipment":store.real_cod_approved?"Approved for gated COD checkout":"Merchant verification required before COD can be enabled"}</p><p className="dm-muted">Store URL: <code>/#/store/{store.slug}</code></p>
           <button className="dm-secondary" onClick={()=>setView("store")}>Manage store profile</button></div>
+          <div className="dm-panel"><h2>Stock alerts</h2><p className="dm-muted">{lowStock.length} published products are at/below their reorder threshold.</p>
+            {lowStock.slice(0,5).map(p=><div key={p.id} className="dm-stock-alert"><span><strong>{p.name}</strong> · {p.stock_qty} units (threshold {p.reorder_point})</span><button className="dm-secondary" onClick={()=>setView("products")}>Adjust stock</button></div>)}
+            {lowStock.length===0&&<p className="dm-muted">No low-stock alerts.</p>}
+            <button className="dm-secondary" onClick={()=>setView("insights")}>View full insights</button>
+          </div>
           <div className="dm-panel"><h2>Recent inventory adjustments</h2>{data.stock_adjustments.length===0?<Empty>No manual adjustments yet</Empty>:
           <div className="dm-scroll"><table><thead><tr><th>Time</th><th>Product</th><th>Before</th><th>After</th><th>Δ</th></tr></thead><tbody>{data.stock_adjustments.map((a,i)=><tr key={i}><td>{a.created_at}</td><td>{products.find(p=>p.id===a.product_id)?.name||a.product_id}</td><td>{a.old_quantity}</td><td>{a.new_quantity}</td><td>{a.delta}</td></tr>)}</tbody></table></div>}</div>
         </div>}
+        {view==="insights"&&<D1MerchantInsights load={loadInsights} onStock={()=>setView("products")}/>}
         {view==="products"&&<div className="dm-stack">
-          <section className="dm-panel"><h2>নতুন পণ্য যোগ করুন</h2><form className="dm-product-form" onSubmit={e=>{e.preventDefault();run(async()=>{await call("/api/merchant/products",{method:"POST",token,body:{...newProduct,price_bdt:Number(newProduct.price_bdt),stock_qty:Number(newProduct.stock_qty)}});setNewProduct({sku:"",name:"",category:"",price_bdt:"",stock_qty:"",is_listed:true});},"Product created in D1");}}>
-          {["sku","name","category","price_bdt","stock_qty"].map(k=><Field key={k} label={{sku:"SKU",name:"Product",category:"Category",price_bdt:"Price BDT",stock_qty:"Stock quantity"}[k]}><input style={input} value={newProduct[k]} required type={["price_bdt","stock_qty"].includes(k)?"number":"text"} min={["price_bdt","stock_qty"].includes(k)?0:undefined} onChange={e=>setNewProduct(v=>({...v,[k]:e.target.value}))}/></Field>)}
-          <label className="dm-check"><input type="checkbox" checked={newProduct.is_listed} onChange={e=>setNewProduct(v=>({...v,is_listed:e.target.checked}))}/>Publish as a demo product</label><button disabled={busy} type="submit" className="dm-btn">Add product</button></form></section>
+          <section className="dm-panel"><h2>নতুন পণ্য যোগ করুন</h2><form className="dm-product-form" onSubmit={e=>{e.preventDefault();run(async()=>{await call("/api/merchant/products",{method:"POST",token,body:{...newProduct,gallery_urls:galleryInputToUrls(newProduct.gallery_input),price_bdt:Number(newProduct.price_bdt),stock_qty:Number(newProduct.stock_qty)}});setNewProduct({sku:"",name:"",category:"",price_bdt:"",stock_qty:"",reorder_point:"5",description:"",image_url:"",gallery_input:"",is_featured:false,is_listed:true});},"Product created in D1");}}>
+          {["sku","name","category","price_bdt","stock_qty","reorder_point"].map(k=><Field key={k} label={{sku:"SKU",name:"Product",category:"Category",price_bdt:"Price BDT",stock_qty:"Stock quantity",reorder_point:"Low-stock alert at"}[k]}><input style={input} value={newProduct[k]} required type={["price_bdt","stock_qty","reorder_point"].includes(k)?"number":"text"} min={["price_bdt","stock_qty"].includes(k)?0:undefined} onChange={e=>setNewProduct(v=>({...v,[k]:e.target.value}))}/></Field>)}
+          <Field label="Product description"><textarea className="dm-input" rows={3} maxLength={1100} value={newProduct.description} onChange={e=>setNewProduct(v=>({...v,description:e.target.value}))} placeholder="Material, features, sizes, care and other real product details" /></Field>
+          <Field label="Product photo HTTPS URL"><input className="dm-input" type="url" maxLength={900} placeholder="https://example.com/item.jpg" value={newProduct.image_url} onChange={e=>setNewProduct(v=>({...v,image_url:e.target.value}))}/></Field>
+          <Field label="Additional gallery photos (up to 4 HTTPS URLs, one per line)"><textarea className="dm-input" rows={4} value={newProduct.gallery_input} onChange={e=>setNewProduct(v=>({...v,gallery_input:e.target.value}))} placeholder={"https://example.com/angle-2.jpg\nhttps://example.com/angle-3.jpg"}/></Field>
+          <label className="dm-check"><input type="checkbox" checked={newProduct.is_featured} onChange={e=>setNewProduct(v=>({...v,is_featured:e.target.checked}))}/>Show as featured product</label>
+          <label className="dm-check"><input type="checkbox" checked={newProduct.is_listed} onChange={e=>setNewProduct(v=>({...v,is_listed:e.target.checked}))}/>{store.is_demo?"Publish a demo product":"Publish product listing"}</label><button disabled={busy} type="submit" className="dm-btn">Add product</button></form></section>
+          <D1InventoryCorrection products={products} busy={busy} onSave={body=>run(()=>call("/api/merchant/inventory/corrections",{method:"POST",token,body}),"Stock correction saved with audit trail")}/>
           <section className="dm-panel"><h2>আপনার পণ্য ({products.length})</h2>
           {products.length===0?<Empty>No products yet</Empty>:<div className="dm-product-list">{products.map(p=><article key={p.id} className="dm-product">
-            <div><strong>{p.name}</strong><p className="dm-muted">{p.sku} · {p.category||"Uncategorised"}</p><p><b>{fmt(p.price_bdt)}</b> · Stock <b>{p.stock_qty}</b> · {p.is_listed?"Published":"Hidden"}</p></div>
-            <button className="dm-secondary" onClick={()=>setEdit({...p})}>Edit</button></article>)}</div>}</section>
+            <div className="dm-product-main">
+               {p.image_url&&<img className="dm-product-thumb" src={p.image_url} alt="" loading="lazy" />}
+               <div><strong>{p.name}</strong>{!!p.is_featured&&<span className="dm-featured-tag">Featured</span>}<p className="dm-muted">{p.sku} · {p.category||"Uncategorised"}</p><p><b>{fmt(p.price_bdt)}</b> · Stock <b>{p.stock_qty}</b> · Alert ≤ {p.reorder_point??5} {p.is_listed&&p.stock_qty<=Number(p.reorder_point??5)?"· ⚠️ Low stock":""} · {p.is_listed?"Published":"Hidden"}</p></div></div>
+            <button className="dm-secondary" onClick={()=>setEdit({...p,gallery_input:(p.gallery_urls||[]).join("\n")})}>Edit</button></article>)}</div>}</section>
         </div>}
         {view==="pos"&&<div className="dm-stack">
           <section className="dm-panel"><h2>Demo counter POS</h2><p className="dm-muted">শুধু simulated sale: D1-তে order ও stock movement persist হবে; বাস্তব cash/payment নয়।</p>
@@ -125,26 +153,74 @@ export default function D1MerchantCenter(){
             <tbody>{data.cashbook.map(row=><tr key={row.id}><td>{row.created_at}</td><td>{row.kind}</td><td>{fmt(row.amount_bdt)}</td><td>{row.description}</td></tr>)}</tbody></table></div>}
           </section>
         </div>}
-        {view==="orders"&&<div className="dm-panel"><h2>Store demo orders ({orders.length})</h2><p className="dm-muted">Orders are persisted in Cloudflare D1; demonstration customers are anonymous.</p>
-          {orders.length===0?<Empty>অর্ডার আসলে এখানে দেখা যাবে।</Empty>:<div className="dm-scroll"><table><thead><tr><th>Order</th><th>Date</th><th>Total</th><th>Status</th><th>Action</th></tr></thead><tbody>{orders.map(o=><tr key={o.id}><td>{o.order_number}</td><td>{o.placed_at}</td><td>{fmt(o.total_bdt)}</td><td>{o.status}</td><td>{o.status==="placed"?<>
+        {view==="orders"&&<div className="dm-panel"><h2>{store.is_demo?"Store demo orders":"Cash-on-delivery orders"} ({orders.length})</h2><p className="dm-muted">{store.is_demo?"Orders are persistent but demo customers are anonymous.":"Only a merchant may see delivery details. The website does not process or confirm COD cash payments."}</p>
+          <div className="dm-order-filters"><input className="dm-input" aria-label="Search orders" placeholder="Search order number, name or phone" value={orderSearch} onChange={e=>setOrderSearch(e.target.value)}/>
+          <select className="dm-input" aria-label="Filter order status" value={orderFilter} onChange={e=>setOrderFilter(e.target.value)}>{["all","placed","confirmed","shipped","fulfilled","cancelled"].map(x=><option key={x} value={x}>{x==="all"?"All statuses":x}</option>)}</select></div>
+          {filteredOrders.length===0?<Empty>এই ফিল্টারে কোনো অর্ডার নেই।</Empty>:<div className="dm-scroll"><table><thead><tr><th>Order</th><th>Date</th><th>Customer / Delivery</th><th>Total</th><th>Status</th><th>Action</th></tr></thead><tbody>{filteredOrders.map(o=><tr key={o.id}><td><button type="button" className="dm-order-link" onClick={()=>setOrderDetailId(o.id)}>{o.order_number}</button></td><td>{o.placed_at}</td><td>{store.is_demo?"Demo customer":<div><strong>{o.shipping_name||"—"}</strong><div><a href={"tel:"+o.shipping_phone}>{o.shipping_phone}</a></div><span style={{whiteSpace:"pre-wrap"}}>{o.shipping_address}</span></div>}</td><td>{fmt(o.total_bdt)}</td><td>{o.status}</td><td>{o.status==="placed"?<>
             <button className="dm-secondary" disabled={busy} onClick={()=>run(()=>call("/api/merchant/orders/"+o.id+"/status",{method:"PATCH",token,body:{status:"confirmed"}}),"Order confirmed")}>Confirm</button> <button className="dm-danger" disabled={busy} onClick={()=>run(()=>call("/api/merchant/orders/"+o.id+"/status",{method:"PATCH",token,body:{status:"cancelled"}}),"Order cancelled and stock restored")}>Cancel</button></>:
-            o.status==="confirmed"?<><button className="dm-secondary" disabled={busy} onClick={()=>run(()=>call("/api/merchant/orders/"+o.id+"/status",{method:"PATCH",token,body:{status:"fulfilled"}}),"Demo order fulfilled")}>Fulfil demo</button> <button className="dm-danger" disabled={busy} onClick={()=>run(()=>call("/api/merchant/orders/"+o.id+"/status",{method:"PATCH",token,body:{status:"cancelled"}}),"Order cancelled")}>Cancel</button></>:<span>—</span>}</td></tr>)}</tbody></table></div>}
+            o.status==="confirmed"?<><button className="dm-secondary" disabled={busy} onClick={()=>run(()=>call("/api/merchant/orders/"+o.id+"/status",{method:"PATCH",token,body:{status:store.is_demo?"fulfilled":"shipped"}}),store.is_demo?"Demo order fulfilled":"Shipment marked dispatched (not carrier verified)")}>{store.is_demo?"Fulfil demo":"Mark shipped"}</button> <button className="dm-danger" disabled={busy} onClick={()=>run(()=>call("/api/merchant/orders/"+o.id+"/status",{method:"PATCH",token,body:{status:"cancelled"}}),"Order cancelled")}>Cancel</button></>:o.status==="shipped"?<button className="dm-secondary" disabled={busy} onClick={()=>run(()=>call("/api/merchant/orders/"+o.id+"/status",{method:"PATCH",token,body:{status:"fulfilled"}}),"Order marked fulfilled; cash collection not verified")}>Mark fulfilled</button>:<span>—</span>}</td></tr>)}</tbody></table></div>}
         </div>}
-        {view==="store"&&<section className="dm-panel"><h2>Store Settings</h2><p className="dm-muted">You may publish this only as a clearly marked demo store. Real payment/delivery is disabled.</p>
+        {view==="store"&&<section className="dm-panel"><h2>Store Settings</h2><p className="dm-muted">{store.is_demo?"Demo stores cannot collect money or ship goods.":"Real COD is enabled only after operator verification, D1 backup, release switch and security review. Advance payments are never accepted."}</p>
         <form className="dm-fields" onSubmit={e=>{e.preventDefault();run(()=>call("/api/merchant/store",{method:"PATCH",token,body:storeForm}),"Store profile saved");}}>
           <Field label="Name"><input style={input} required minLength={3} value={storeForm.name} onChange={e=>setStoreForm(v=>({...v,name:e.target.value}))}/></Field>
           <Field label="Category"><select style={input} value={storeForm.category} onChange={e=>setStoreForm(v=>({...v,category:e.target.value}))}>{categories.map(c=><option key={c}>{c}</option>)}</select></Field>
           <Field label="Area"><input style={input} required value={storeForm.area} onChange={e=>setStoreForm(v=>({...v,area:e.target.value}))}/></Field>
-          <Field label="Description"><input style={input} value={storeForm.tagline} onChange={e=>setStoreForm(v=>({...v,tagline:e.target.value}))}/></Field>
-          <label className="dm-check"><input type="checkbox" checked={storeForm.is_active} onChange={e=>setStoreForm(v=>({...v,is_active:e.target.checked}))}/>Make this labelled demo storefront public</label>
+          <Field label="Store tagline"><input style={input} value={storeForm.tagline} onChange={e=>setStoreForm(v=>({...v,tagline:e.target.value}))}/></Field>
+          <section className="dm-content-edit">
+            <h3>Customer-facing store information</h3>
+            <p className="dm-muted">Publish only accurate business information. These details do not activate payments, a courier, or refunds.</p>
+            <Field label="Announcement strip (optional, up to 180 characters)"><input className="dm-input" maxLength={180} value={storeForm.announcement_text} onChange={e=>setStoreForm(v=>({...v,announcement_text:e.target.value}))} placeholder="New collection available — browse today's arrivals"/></Field>
+            <Field label="About this store"><textarea className="dm-input" maxLength={1800} rows={4} value={storeForm.about_text} onChange={e=>setStoreForm(v=>({...v,about_text:e.target.value}))} placeholder="Tell visitors about your business and products."/></Field>
+            <Field label="Delivery information"><textarea className="dm-input" maxLength={1800} rows={3} value={storeForm.delivery_policy_text} onChange={e=>setStoreForm(v=>({...v,delivery_policy_text:e.target.value}))} placeholder="Only explain delivery terms your business actually supports."/></Field>
+            <Field label="Returns / exchange information"><textarea className="dm-input" maxLength={1800} rows={3} value={storeForm.return_policy_text} onChange={e=>setStoreForm(v=>({...v,return_policy_text:e.target.value}))} placeholder="State your real return and exchange terms."/></Field>
+            <div className="dm-faq-editor">
+              <div className="dm-faq-heading"><h3>Frequently Asked Questions</h3><button className="dm-secondary" type="button" disabled={storeForm.faq_items.length>=6}
+                onClick={()=>setStoreForm(v=>({...v,faq_items:[...v.faq_items,{question:"",answer:""}]}))}>+ Add FAQ</button></div>
+              <p className="dm-muted">Answer up to six genuine customer questions. FAQ text does not activate shipping or payment services.</p>
+              {storeForm.faq_items.map((item,i)=><div key={i} className="dm-faq-edit-row">
+                <Field label={`Question ${i+1}`}><input className="dm-input" minLength={4} maxLength={180} required value={item.question}
+                  onChange={e=>setStoreForm(v=>({...v,faq_items:v.faq_items.map((x,n)=>n===i?{...x,question:e.target.value}:x)}))}/></Field>
+                <Field label="Answer"><textarea className="dm-input" minLength={4} maxLength={900} required rows={2} value={item.answer}
+                  onChange={e=>setStoreForm(v=>({...v,faq_items:v.faq_items.map((x,n)=>n===i?{...x,answer:e.target.value}:x)}))}/></Field>
+                <button type="button" className="dm-secondary" onClick={()=>setStoreForm(v=>({...v,faq_items:v.faq_items.filter((_,n)=>n!==i)}))}>Remove FAQ</button>
+              </div>)}
+            </div>
+            {store.is_demo&&<p className="dm-muted">Demo storefronts will continue to show a no-delivery/no-payment disclosure regardless of policy text.</p>}
+          </section>
+          <div className="dm-theme-settings">
+            <Field label="Store visual theme"><select className="dm-input" value={storeForm.theme} onChange={e=>setStoreForm(v=>({...v,theme:e.target.value}))}>
+              {["clean","bold","warm","fresh","purple","ocean"].map(name=><option key={name} value={name}>{name.charAt(0).toUpperCase()+name.slice(1)}</option>)}
+            </select></Field>
+            <Field label="Brand accent colour"><input type="color" className="dm-color-input" value={storeForm.color} onChange={e=>setStoreForm(v=>({...v,color:e.target.value}))}/></Field>
+          </div>
+          <Field label="Logo image URL (HTTPS)"><input className="dm-input" type="url" value={storeForm.logo_image_url} maxLength={900} onChange={e=>setStoreForm(v=>({...v,logo_image_url:e.target.value}))} placeholder="https://example.com/logo.png"/></Field>
+          <Field label="Banner image URL (HTTPS)"><input className="dm-input" type="url" value={storeForm.cover_image_url} maxLength={900} onChange={e=>setStoreForm(v=>({...v,cover_image_url:e.target.value}))} placeholder="https://example.com/cover.jpg"/></Field>
+          <Field label="Public phone (optional, shown for real approved stores only)"><input className="dm-input" type="tel" maxLength={25} value={storeForm.public_phone} onChange={e=>setStoreForm(v=>({...v,public_phone:e.target.value}))} placeholder="01XXXXXXXXX"/></Field>
+          <Field label="Public business address (optional)"><textarea className="dm-input" maxLength={300} rows={2} value={storeForm.public_address} onChange={e=>setStoreForm(v=>({...v,public_address:e.target.value}))}/></Field>
+          {(storeForm.cover_image_url||storeForm.logo_image_url)&&<div className="dm-store-media">
+             {storeForm.cover_image_url&&<img src={storeForm.cover_image_url} className="dm-cover-preview" loading="lazy" alt="Store banner preview"/>}
+             {storeForm.logo_image_url&&<img src={storeForm.logo_image_url} className="dm-logo-preview" loading="lazy" alt="Store logo preview"/>}
+          </div>}
+          <div className="dm-store-theme-preview" style={{borderColor:storeForm.color}}>
+            <div className="dm-brand-dot" style={{background:storeForm.color}}/>
+            <div><strong>{storeForm.name||"My storefront"}</strong><p className="dm-muted">{storeForm.tagline||"Preview of the store's name, theme and accent"}</p></div>
+            <span className="dm-brand-tag" style={{background:storeForm.color}}>Store preview</span>
+          </div>
+          <label className="dm-check"><input type="checkbox" checked={storeForm.is_active} onChange={e=>setStoreForm(v=>({...v,is_active:e.target.checked}))}/>{store.is_demo?"Make this labelled demo storefront public":"Make approved storefront public"}</label>
           <button className="dm-btn" disabled={busy} type="submit">Save settings</button>
         </form></section>}
         {edit&&<div className="dm-modal-bg" onClick={()=>setEdit(null)}><section role="dialog" aria-modal="true" aria-label="Edit product" className="dm-panel dm-dialog" onClick={e=>e.stopPropagation()}><h2>Edit: {edit.name}</h2>
-          <form className="dm-fields" onSubmit={e=>{e.preventDefault();run(async()=>{await call("/api/merchant/products/"+edit.id,{method:"PATCH",token,body:{name:edit.name,category:edit.category,price_bdt:Number(edit.price_bdt),stock_qty:Number(edit.stock_qty),is_listed:edit.is_listed}});setEdit(null);},"Product updated");}}>
-          {["name","category","price_bdt","stock_qty"].map(k=><Field key={k} label={k}><input style={input} type={["price_bdt","stock_qty"].includes(k)?"number":"text"} min={["price_bdt","stock_qty"].includes(k)?0:undefined} required value={edit[k]} onChange={e=>setEdit(v=>({...v,[k]:e.target.value}))}/></Field>)}
+          <form className="dm-fields" onSubmit={e=>{e.preventDefault();run(async()=>{await call("/api/merchant/products/"+edit.id,{method:"PATCH",token,body:{name:edit.name,category:edit.category,price_bdt:Number(edit.price_bdt),...(store.is_demo?{stock_qty:Number(edit.stock_qty)}:{}),description:edit.description||"",image_url:edit.image_url||"",gallery_urls:galleryInputToUrls(edit.gallery_input),is_featured:!!edit.is_featured,reorder_point:Number(edit.reorder_point),is_listed:edit.is_listed}});setEdit(null);},"Product updated");}}>
+          {["name","category","price_bdt",...(store.is_demo?["stock_qty"]:[]),"reorder_point"].map(k=><Field key={k} label={k}><input style={input} type={["price_bdt","stock_qty","reorder_point"].includes(k)?"number":"text"} min={["price_bdt","stock_qty"].includes(k)?0:undefined} required value={edit[k]} onChange={e=>setEdit(v=>({...v,[k]:e.target.value}))}/></Field>)}
+          <Field label="Description"><textarea className="dm-input" maxLength={1100} rows={3} value={edit.description||""} onChange={e=>setEdit(v=>({...v,description:e.target.value}))}/></Field>
+          <Field label="HTTPS photo URL"><input className="dm-input" type="url" maxLength={900} value={edit.image_url||""} onChange={e=>setEdit(v=>({...v,image_url:e.target.value}))}/></Field>
+          <Field label="Additional gallery images (up to 4 HTTPS URLs, one per line)"><textarea className="dm-input" rows={4} value={edit.gallery_input||""} onChange={e=>setEdit(v=>({...v,gallery_input:e.target.value}))}/></Field>
+          {edit.image_url&&<img src={edit.image_url} alt="Product preview" className="dm-edit-image" loading="lazy"/>}
+          <label className="dm-check"><input type="checkbox" checked={!!edit.is_featured} onChange={e=>setEdit(v=>({...v,is_featured:e.target.checked}))}/>Feature on storefront</label>
           <label className="dm-check"><input type="checkbox" checked={!!edit.is_listed} onChange={e=>setEdit(v=>({...v,is_listed:e.target.checked}))}/>Published</label><div className="dm-actions"><button className="dm-btn" disabled={busy} type="submit">Save to D1</button><button type="button" onClick={()=>setEdit(null)} className="dm-secondary">Close</button></div></form></section></div>}
       </>}
     </div>
-    {token&&store&&<nav className="dm-bottom" aria-label="Owner mobile app navigation">{[["dashboard","Home","⌂"],["products","Products","▣"],["pos","POS","⊞"],["orders","Orders","≡"],["store","Settings","⚙"]].map(([k,t,icon])=><button key={k} className={view===k?"selected":""} onClick={()=>{setView(k);window.scrollTo({top:0,behavior:"smooth"});}}><span>{icon}</span>{t}</button>)}</nav>}
+    {orderDetailId&&token&&<D1OrderDetail id={orderDetailId} load={loadOrderDetail} onClose={()=>setOrderDetailId(null)}/>}
+    {token&&store&&<nav className="dm-bottom" aria-label="Owner mobile app navigation">{[["dashboard","Home","⌂"],["products","Products","▣"],["pos","POS","⊞"],["insights","Insights","▥"],["orders","Orders","≡"],["store","Settings","⚙"]].filter(([k])=>store.is_demo||k!=="pos").map(([k,t,icon])=><button key={k} className={view===k?"selected":""} onClick={()=>{setView(k);window.scrollTo({top:0,behavior:"smooth"});}}><span>{icon}</span>{t}</button>)}</nav>}
   </main>;
 }

@@ -5,6 +5,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { getDistricts, getThanas, BD_DIVISIONS } from "../bd_address";
+import "./StoreCustomerPortal.css";
 
 // ── API helpers ───────────────────────────────────────────────────────────────
 
@@ -93,7 +94,7 @@ function AuthView({ onLogin }) {
         {["login", "register"].map(m => (
           <button key={m} onClick={() => { setMode(m); setErr(""); }}
             style={{ flex: 1, padding: "9px 0", borderRadius: 10, border: "none", cursor: "pointer", fontWeight: 600, fontSize: 13,
-              background: mode === m ? "var(--green)" : "var(--surface)", color: mode === m ? "#fff" : "var(--text-muted)" }}>
+              background: mode === m ? "var(--green)" : "var(--surface)", color: mode === m ? "var(--sc-on-green)" : "var(--text-muted)" }}>
             {m === "login" ? "লগইন" : "নিবন্ধন"}
           </button>
         ))}
@@ -112,7 +113,7 @@ function AuthView({ onLogin }) {
           <input {...inp} placeholder="ইমেইল বা ফোন নম্বর" value={form.email_or_phone} onChange={set("email_or_phone")} required />
         )}
         <input {...inp} type="password" placeholder="পাসওয়ার্ড *" value={form.password} onChange={set("password")} required />
-        <button type="submit" disabled={loading} style={{ width: "100%", padding: "11px 0", borderRadius: 10, border: "none", background: "var(--green)", color: "#fff", fontWeight: 700, fontSize: 14, cursor: loading ? "not-allowed" : "pointer", opacity: loading ? .7 : 1 }}>
+        <button type="submit" disabled={loading} style={{ width: "100%", padding: "11px 0", borderRadius: 10, border: "none", background: "var(--green)", color: "var(--sc-on-green)", fontWeight: 700, fontSize: 14, cursor: loading ? "not-allowed" : "pointer", opacity: loading ? .7 : 1 }}>
           {loading ? "অপেক্ষা করুন…" : mode === "login" ? "লগইন করুন" : "অ্যাকাউন্ট তৈরি করুন"}
         </button>
       </form>
@@ -195,7 +196,7 @@ function ProfileView({ customer, token, onUpdate }) {
         <input {...inp} value={form.address_detail} onChange={set("address_detail")} placeholder="বাড়ি / রোড / এলাকা" />
       </div>
 
-      <button type="submit" disabled={saving} style={{ width: "100%", padding: "11px 0", borderRadius: 10, border: "none", background: "var(--green)", color: "#fff", fontWeight: 700, fontSize: 14, cursor: saving ? "not-allowed" : "pointer", opacity: saving ? .7 : 1 }}>
+      <button type="submit" disabled={saving} style={{ width: "100%", padding: "11px 0", borderRadius: 10, border: "none", background: "var(--green)", color: "var(--sc-on-green)", fontWeight: 700, fontSize: 14, cursor: saving ? "not-allowed" : "pointer", opacity: saving ? .7 : 1 }}>
         {saving ? "সংরক্ষণ হচ্ছে…" : "সংরক্ষণ করুন"}
       </button>
     </form>
@@ -432,7 +433,7 @@ function ChatView({ storeSlug, token, storeName }) {
         <input value={text} onChange={e => setText(e.target.value)} placeholder="মেসেজ লিখুন…"
           style={{ flex: 1, padding: "10px 14px", borderRadius: 12, border: "1px solid var(--border)", background: "var(--bg)", color: "var(--text)", fontSize: 14 }} />
         <button type="submit" disabled={sending || !text.trim()}
-          style={{ padding: "10px 18px", borderRadius: 12, border: "none", background: "var(--green)", color: "#fff", fontWeight: 700, cursor: sending ? "not-allowed" : "pointer", opacity: sending ? .7 : 1 }}>
+          style={{ padding: "10px 18px", borderRadius: 12, border: "none", background: "var(--green)", color: "var(--sc-on-green)", fontWeight: 700, cursor: sending ? "not-allowed" : "pointer", opacity: sending ? .7 : 1 }}>
           পাঠান
         </button>
       </form>
@@ -468,7 +469,7 @@ export default function StoreCustomerPortal({ storeSlug, storeName, onClose, onA
   function handleLogout() { clearToken(); setToken(null); setCustomer(null); onAuthChange?.(null); }
 
   return (
-    <div style={{ position: "fixed", inset: 0, zIndex: 1200, display: "flex", alignItems: "flex-end", justifyContent: "flex-end", pointerEvents: "none" }}>
+    <div className="store-customer-portal" style={{ position: "fixed", inset: 0, zIndex: 1200, display: "flex", alignItems: "flex-end", justifyContent: "flex-end", pointerEvents: "none" }}>
       {/* Backdrop */}
       <div onClick={onClose} style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,.4)", pointerEvents: "all" }} />
 
@@ -478,7 +479,7 @@ export default function StoreCustomerPortal({ storeSlug, storeName, onClose, onA
         <div style={{ padding: "16px 18px 12px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text)" }}>
-              {customer ? `স্বাগতম, ${customer.display_name}` : "কাস্টমার পোর্টাল"}
+              {customer ? `স্বাগতম, ${customer.display_name}` : "ক্রেতার অ্যাকাউন্ট"}
             </div>
             <div style={{ fontSize: 11, color: "var(--text-muted)" }}>{storeName}</div>
           </div>
@@ -502,7 +503,7 @@ export default function StoreCustomerPortal({ storeSlug, storeName, onClose, onA
                   <button key={t.id} onClick={() => setTab(t.id)}
                     style={{ flex: 1, padding: "8px 4px", borderRadius: 9, border: "none", cursor: "pointer", fontWeight: 600, fontSize: 12, transition: "all .15s",
                       background: tab === t.id ? "var(--green)" : "transparent",
-                      color: tab === t.id ? "#fff" : "var(--text-muted)" }}>
+                      color: tab === t.id ? "var(--sc-on-green)" : "var(--text-muted)" }}>
                     {t.icon} {t.label}
                   </button>
                 ))}
