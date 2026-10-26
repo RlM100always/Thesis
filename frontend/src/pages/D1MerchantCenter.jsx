@@ -22,6 +22,9 @@ export default function D1MerchantCenter(){
   const [storeForm,setStoreForm]=useState({name:"",category:"মুদি",area:"",tagline:"",is_active:false});
   const [newProduct,setNewProduct]=useState({sku:"",name:"",category:"",price_bdt:"",stock_qty:"",is_listed:true});
   const [edit,setEdit]=useState(null);
+  const [posProduct,setPosProduct]=useState("");
+  const [posQty,setPosQty]=useState("1");
+  const [cashForm,setCashForm]=useState({kind:"expense",amount_bdt:"",description:""});
   const [oneTimeKey,setOneTimeKey]=useState("");
   const load=useCallback(async tk=>{
     const latest=await call("/api/merchant/dashboard",{token:tk});
@@ -86,7 +89,7 @@ export default function D1MerchantCenter(){
         <button disabled={busy} type="submit" className="dm-btn">Create D1 Store</button></form>
       </section>:
       <>
-        <div className="dm-tabs">{[["dashboard","Overview"],["products","Products & Stock"],["orders","Orders"],["store","Store Settings"]].map(([k,l])=><button key={k} onClick={()=>setView(k)} className={view===k?"dm-active":""}>{l}</button>)}</div>
+        <div className="dm-tabs">{[["dashboard","Overview"],["products","Products & Stock"],["pos","Demo POS & Cashbook"],["orders","Orders"],["store","Store Settings"]].map(([k,l])=><button key={k} onClick={()=>setView(k)} className={view===k?"dm-active":""}>{l}</button>)}</div>
         {view==="dashboard"&&<div className="dm-stack">
           <div className="dm-stats"><Metric title="Demo orders" value={Number(stats.orders||0).toLocaleString("en-BD")}/><Metric title="Sample sales (non-cancelled)" value={fmt(stats.placed_total_bdt)} tip="Not real collected revenue"/><Metric title="Published products" value={totalProducts}/><Metric title="On-hand units" value={Number(stats.inventory_units||0)}/></div>
           <div className="dm-panel"><h2>{store.name}</h2><p className="dm-muted">{store.area} · {store.category}</p><p>Public demo visibility: <strong>{store.is_active?"On":"Off"}</strong></p><p className="dm-muted">Store URL: <code>/#/store/{store.slug}</code></p>
@@ -102,6 +105,25 @@ export default function D1MerchantCenter(){
           {products.length===0?<Empty>No products yet</Empty>:<div className="dm-product-list">{products.map(p=><article key={p.id} className="dm-product">
             <div><strong>{p.name}</strong><p className="dm-muted">{p.sku} · {p.category||"Uncategorised"}</p><p><b>{fmt(p.price_bdt)}</b> · Stock <b>{p.stock_qty}</b> · {p.is_listed?"Published":"Hidden"}</p></div>
             <button className="dm-secondary" onClick={()=>setEdit({...p})}>Edit</button></article>)}</div>}</section>
+        </div>}
+        {view==="pos"&&<div className="dm-stack">
+          <section className="dm-panel"><h2>Demo counter POS</h2><p className="dm-muted">শুধু simulated sale: D1-তে order ও stock movement persist হবে; বাস্তব cash/payment নয়।</p>
+            <form className="dm-product-form" onSubmit={e=>{e.preventDefault();const selected=posProduct||products.find(p=>p.is_listed&&p.stock_qty>0)?.id;if(!selected){setError("No available published product");return;}run(()=>call("/api/merchant/pos",{method:"POST",token,body:{items:[{product_id:selected,quantity:Number(posQty)}]}}),"Demo POS entry saved with stock reduction");}}>
+              <Field label="Product"><select style={input} required value={posProduct||products.find(p=>p.is_listed&&p.stock_qty>0)?.id||""} onChange={e=>setPosProduct(e.target.value)}>{products.filter(p=>p.is_listed&&p.stock_qty>0).map(p=><option value={p.id} key={p.id}>{p.name} · {fmt(p.price_bdt)} · Stock {p.stock_qty}</option>)}</select></Field>
+              <Field label="Quantity"><input style={input} type="number" min={1} max={30} value={posQty} onChange={e=>setPosQty(e.target.value)}/></Field>
+              <button type="submit" className="dm-btn" disabled={busy||!products.some(p=>p.is_listed&&p.stock_qty>0)}>Record demo POS sale</button>
+            </form></section>
+          <section className="dm-panel"><h2>Cashbook entry (demo)</h2><p className="dm-muted">এটি পূর্ণ double-entry accounting নয়। হাতে দেওয়া receipt/expense-এর নমুনা হিসাব।</p>
+            <form className="dm-product-form" onSubmit={e=>{e.preventDefault();run(async()=>{await call("/api/merchant/cashbook",{method:"POST",token,body:{...cashForm,amount_bdt:Number(cashForm.amount_bdt)}});setCashForm({kind:"expense",amount_bdt:"",description:""});},"Cashbook entry saved in D1");}}>
+              <Field label="Type"><select style={input} value={cashForm.kind} onChange={e=>setCashForm(v=>({...v,kind:e.target.value}))}><option value="expense">Expense</option><option value="receipt">Receipt</option></select></Field>
+              <Field label="Amount BDT"><input style={input} type="number" min={1} max={500000} required value={cashForm.amount_bdt} onChange={e=>setCashForm(v=>({...v,amount_bdt:e.target.value}))}/></Field>
+              <Field label="Note"><input style={input} minLength={3} required value={cashForm.description} onChange={e=>setCashForm(v=>({...v,description:e.target.value}))}/></Field>
+              <button className="dm-btn" disabled={busy} type="submit">Save demo cashbook</button></form>
+          </section>
+          <section className="dm-panel"><h2>Recent cashbook entries</h2>
+            {!(data.cashbook||[]).length?<Empty>No entries yet</Empty>:<div className="dm-scroll"><table><thead><tr><th>Date</th><th>Kind</th><th>Amount</th><th>Description</th></tr></thead>
+            <tbody>{data.cashbook.map(row=><tr key={row.id}><td>{row.created_at}</td><td>{row.kind}</td><td>{fmt(row.amount_bdt)}</td><td>{row.description}</td></tr>)}</tbody></table></div>}
+          </section>
         </div>}
         {view==="orders"&&<div className="dm-panel"><h2>Store demo orders ({orders.length})</h2><p className="dm-muted">Orders are persisted in Cloudflare D1; demonstration customers are anonymous.</p>
           {orders.length===0?<Empty>অর্ডার আসলে এখানে দেখা যাবে।</Empty>:<div className="dm-scroll"><table><thead><tr><th>Order</th><th>Date</th><th>Total</th><th>Status</th><th>Action</th></tr></thead><tbody>{orders.map(o=><tr key={o.id}><td>{o.order_number}</td><td>{o.placed_at}</td><td>{fmt(o.total_bdt)}</td><td>{o.status}</td><td>{o.status==="placed"?<>
@@ -123,6 +145,6 @@ export default function D1MerchantCenter(){
           <label className="dm-check"><input type="checkbox" checked={!!edit.is_listed} onChange={e=>setEdit(v=>({...v,is_listed:e.target.checked}))}/>Published</label><div className="dm-actions"><button className="dm-btn" disabled={busy} type="submit">Save to D1</button><button type="button" onClick={()=>setEdit(null)} className="dm-secondary">Close</button></div></form></section></div>}
       </>}
     </div>
-    {token&&store&&<nav className="dm-bottom" aria-label="Owner mobile app navigation">{[["dashboard","Home","⌂"],["products","Products","▣"],["orders","Orders","≡"],["store","Settings","⚙"]].map(([k,t,icon])=><button key={k} className={view===k?"selected":""} onClick={()=>{setView(k);window.scrollTo({top:0,behavior:"smooth"});}}><span>{icon}</span>{t}</button>)}</nav>}
+    {token&&store&&<nav className="dm-bottom" aria-label="Owner mobile app navigation">{[["dashboard","Home","⌂"],["products","Products","▣"],["pos","POS","⊞"],["orders","Orders","≡"],["store","Settings","⚙"]].map(([k,t,icon])=><button key={k} className={view===k?"selected":""} onClick={()=>{setView(k);window.scrollTo({top:0,behavior:"smooth"});}}><span>{icon}</span>{t}</button>)}</nav>}
   </main>;
 }
