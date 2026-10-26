@@ -16,6 +16,18 @@ async function json(request,error,max=10000){
 const short=(value,n=120)=>String(value??"").trim().slice(0,n);
 const validEmail=email=>/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)&&email.length<=180;
 const integer=(value,min,max)=>Number.isInteger(Number(value))&&Number(value)>=min&&Number(value)<=max;
+const cleanImage=value=>{
+ if(value===null||value===undefined||String(value).trim()==="")return null;
+ const v=String(value).trim();
+ if(v.length>900)throw new Error("Image URL too long");
+ let u;
+ try{u=new URL(v);}catch{throw new Error("Invalid product image URL");}
+ if(u.protocol!=="https:"||u.username||u.password||!u.hostname||u.hostname==="localhost"||
+    /(?:^|\\.)(?:local|internal)$/.test(u.hostname)||/^(?:127\\.|10\\.|192\\.168\\.|169\\.254\\.|172\\.(?:1[6-9]|2\\d|3[01])\\.)/.test(u.hostname))
+  throw new Error("Product image must use a public HTTPS URL");
+ return u.href;
+};
+const safeColor=value=>/^#[0-9a-f]{6}$/i.test(String(value||""))?String(value):null;
 async function viewer(req,env){
  const bearer=req.headers.get("Authorization")||"";
  const match=/^Bearer ([a-f0-9]{64})$/.exec(bearer);
@@ -27,12 +39,12 @@ async function myStore(env,owner){
  return env.DB.prepare("SELECT * FROM commerce_stores WHERE owner_id=? ORDER BY created_at LIMIT 1").bind(owner.id).first();
 }
 async function storeOnly(env,owner){const row=await myStore(env,owner);if(!row)throw new Error("Create a store first");return row;}
-function stripStore(s){return {id:s.id,slug:s.slug,name:s.name,tagline:s.tagline||"",category:s.category||"",area:s.area||"",is_active:!!s.is_active,is_demo:!!s.is_demo,created_at:s.created_at,real_cod_approved:!!s.real_cod_approved};}
+function stripStore(s){return {id:s.id,slug:s.slug,name:s.name,tagline:s.tagline||"",category:s.category||"",area:s.area||"",is_active:!!s.is_active,is_demo:!!s.is_demo,created_at:s.created_at,real_cod_approved:!!s.real_cod_approved,theme:s.theme||"clean",color:s.color||"#087e59"};}
 async function dashboard(env,owner){
  const store=await myStore(env,owner);
  if(!store)return {account:{email:owner.email},store:null,products:[],orders:[],metrics:{orders:0,inventory_units:0,placed_total_bdt:0},stock_adjustments:[],cashbook:[]};
  const [products,orders,stats,adjustments,cashbook]=await Promise.all([
-  env.DB.prepare("SELECT id,sku,name,category,price_bdt,stock_qty,reorder_point,is_listed,created_at FROM commerce_products WHERE store_id=? ORDER BY created_at DESC LIMIT 200").bind(store.id).all(),
+  env.DB.prepare("SELECT id,sku,name,category,description,image_url,is_featured,price_bdt,stock_qty,reorder_point,is_listed,created_at FROM commerce_products WHERE store_id=? ORDER BY created_at DESC LIMIT 200").bind(store.id).all(),
   env.DB.prepare("SELECT id,order_number,status,total_bdt,placed_at,payment_method,shipping_name,shipping_phone,shipping_address FROM commerce_orders WHERE store_id=? ORDER BY placed_at DESC LIMIT 150").bind(store.id).all(),
   env.DB.prepare("SELECT (SELECT COUNT(*) FROM commerce_orders WHERE store_id=?) AS orders,(SELECT COALESCE(SUM(stock_qty),0) FROM commerce_products WHERE store_id=?) AS inventory_units,(SELECT COALESCE(SUM(total_bdt),0) FROM commerce_orders WHERE store_id=? AND status!='cancelled') AS placed_total_bdt").bind(store.id,store.id,store.id).first(),
   env.DB.prepare("SELECT product_id,old_quantity,new_quantity,delta,reason,created_at FROM commerce_stock_adjustments WHERE store_id=? ORDER BY created_at DESC LIMIT 25").bind(store.id).all(),
@@ -154,8 +166,10 @@ export async function merchantRouter(req,env,path,output,error){
    const name=short(b.name??store.name,110),tagline=short(b.tagline??store.tagline,160);
    const area=short(b.area??store.area,100),category=short(b.category??store.category,50);
    const activate=b.is_active===undefined?store.is_active:(b.is_active===true?1:0);
-   if(name.length<3||!area||!category)return bad(req,error,422,"Invalid store profile");
-   await env.DB.prepare("UPDATE commerce_stores SET name=?,tagline=?,category=?,area=?,is_active=? WHERE id=? AND owner_id=?").bind(name,tagline,category,area,activate,store.id,owner.id).run();
+   const theme=short(b.theme??store.theme,20);
+   const color=safeColor(b.color??store.color);
+   if(name.length<3||!area||!category||!["clean","bold","warm","fresh","purple","ocean"].includes(theme)||!color)return bad(req,error,422,"Invalid store profile, theme or color");
+   await env.DB.prepare("UPDATE commerce_stores SET name=?,tagline=?,category=?,area=?,theme=?,color=?,is_active=? WHERE id=? AND owner_id=?").bind(name,tagline,category,area,theme,color,activate,store.id,owner.id).run();
    return output(req,{store:stripStore(await myStore(env,owner))});
   }
   if(method==="POST"&&path==="/api/merchant/cashbook"){
@@ -196,11 +210,12 @@ export async function merchantRouter(req,env,path,output,error){
   if(method==="POST"&&path==="/api/merchant/products"){
    const store=await storeOnly(env,owner),b=await json(req,error);
    const sku=short(b.sku,45),name=short(b.name,140),cat=short(b.category,65),reorder=Number(b.reorder_point??5);
+   const description=short(b.description,1100),featured=b.is_featured===true?1:0,imageUrl=cleanImage(b.image_url);
    if(!sku||name.length<2||!integer(b.price_bdt,0,10000000)||!integer(b.stock_qty,0,1000000)||!integer(reorder,0,1000000))
     return bad(req,error,422,"Invalid SKU, name, price or quantity");
    const id=crypto.randomUUID(),price=Number(b.price_bdt),qty=Number(b.stock_qty);
    try{
-    await env.DB.prepare("INSERT INTO commerce_products(id,store_id,sku,name,category,price_bdt,stock_qty,is_listed,reorder_point) VALUES(?,?,?,?,?,?,?,?,?)").bind(id,store.id,sku,name,cat,price,qty,b.is_listed===true?1:0,reorder).run();
+    await env.DB.prepare("INSERT INTO commerce_products(id,store_id,sku,name,category,price_bdt,stock_qty,is_listed,reorder_point,description,image_url,is_featured) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)").bind(id,store.id,sku,name,cat,price,qty,b.is_listed===true?1:0,reorder,description,imageUrl,featured).run();
    }catch(e){return bad(req,error,errorCode(e),"Product SKU must be unique");}
    return output(req,{created:true,product_id:id},201);
   }
@@ -214,13 +229,16 @@ export async function merchantRouter(req,env,path,output,error){
    const price=b.price_bdt===undefined?p.price_bdt:Number(b.price_bdt);
    const qty=b.stock_qty===undefined?p.stock_qty:Number(b.stock_qty);
    const reorder=b.reorder_point===undefined?p.reorder_point:Number(b.reorder_point);
+   const description=b.description===undefined?p.description:short(b.description,1100);
+   const imageUrl=b.image_url===undefined?p.image_url:cleanImage(b.image_url);
+   const featured=b.is_featured===undefined?p.is_featured:(b.is_featured===true?1:0);
    if(!name||!integer(price,0,10000000)||!integer(qty,0,1000000)||!integer(reorder,0,1000000))
     return bad(req,error,422,"Invalid product fields");
    const listed=b.is_listed===undefined?p.is_listed:(b.is_listed===true?1:0);
    if(!store.is_demo && qty!==p.stock_qty)
     return bad(req,error,409,"Use the auditable inventory correction action for real stores");
    const diff=qty-p.stock_qty;
-   const update=env.DB.prepare("UPDATE commerce_products SET name=?,category=?,price_bdt=?,stock_qty=?,is_listed=?,reorder_point=? WHERE store_id=? AND id=?").bind(name,cat,price,qty,listed,reorder,store.id,p.id);
+   const update=env.DB.prepare("UPDATE commerce_products SET name=?,category=?,price_bdt=?,stock_qty=?,is_listed=?,reorder_point=?,description=?,image_url=?,is_featured=? WHERE store_id=? AND id=?").bind(name,cat,price,qty,listed,reorder,description,imageUrl,featured,store.id,p.id);
    if(diff) {
     await env.DB.batch([update,env.DB.prepare("INSERT INTO commerce_stock_adjustments(id,store_id,product_id,old_quantity,new_quantity,delta,reason) VALUES(?,?,?,?,?,?,?)").bind(crypto.randomUUID(),store.id,p.id,p.stock_qty,qty,diff,"Owner manual inventory correction")]);
    } else await update.run();
