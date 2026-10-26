@@ -1,4 +1,4 @@
-"""Verify fresh D1 v1-v6 schema and stock auditing with stdlib SQLite.
+"""Verify fresh D1 v1-v7 schema and stock auditing with stdlib SQLite.
 
 Runs in CI against an isolated in-memory database, never live Cloudflare data.
 """
@@ -10,7 +10,7 @@ db = sqlite3.connect(":memory:")
 db.execute("PRAGMA foreign_keys = ON")
 for script in sorted(migrations.glob("*.sql")):
     db.executescript(script.read_text(encoding="utf-8"))
-assert db.execute("SELECT value FROM commerce_meta WHERE key='schema_version'").fetchone() == ("6",)
+assert db.execute("SELECT value FROM commerce_meta WHERE key='schema_version'").fetchone() == ("7",)
 
 db.execute("INSERT INTO merchant_accounts(id,email,password_hash,password_salt) VALUES('owner','owner@example.test','ACCESS_KEY_ONLY','DISABLED')")
 db.execute("""INSERT INTO commerce_stores(id,slug,name,category,area,is_demo,is_active,owner_id,real_cod_approved)
@@ -41,4 +41,33 @@ db.execute("INSERT INTO commerce_orders(id,store_id,order_number,access_token,su
 db.execute("INSERT INTO commerce_order_lines(order_id,product_id,product_name,quantity,price_bdt,line_total_bdt) VALUES('demo-order','demo-item','Sample',1,99,99)")
 assert db.execute("SELECT reason FROM commerce_inventory_movements WHERE order_id='demo-order'").fetchone() == ("demo_sale",)
 assert db.execute("SELECT stock_qty FROM commerce_products WHERE id='demo-item'").fetchone() == (2,)
-print("D1 migrations 0001-0006 verified; real & demo stock audit and cancellation OK")
+
+# v7: transactional owner-side adjustments, threshold values, immutable event audit.
+assert db.execute("SELECT reorder_point FROM commerce_products WHERE id='real-item'").fetchone() == (5,)
+db.execute("""INSERT INTO commerce_inventory_corrections(id,store_id,product_id,delta,reason,note)
+              VALUES('correction-1','real-shop','real-item',8,'restock','Received sealed boxes')""")
+assert db.execute("SELECT stock_qty FROM commerce_products WHERE id='real-item'").fetchone() == (10,)
+assert db.execute("SELECT old_quantity,new_quantity,delta,reason FROM commerce_stock_adjustments WHERE store_id='real-shop'").fetchone() == (2,10,8,"restock: Received sealed boxes")
+db.execute("INSERT INTO commerce_inventory_corrections(id,store_id,product_id,delta,reason) VALUES('correction-2','real-shop','real-item',-3,'damage')")
+assert db.execute("SELECT stock_qty FROM commerce_products WHERE id='real-item'").fetchone() == (7,)
+for bad in [
+    ("bad-negative","real-shop","real-item",-8,"damage"),
+    ("bad-store","demo-shop","real-item",1,"restock"),
+    ("bad-limit","real-shop","real-item",1000001,"restock")
+]:
+    try:
+        db.execute("INSERT INTO commerce_inventory_corrections(id,store_id,product_id,delta,reason) VALUES(?,?,?,?,?)",bad)
+        assert False, "Invalid inventory correction unexpectedly succeeded"
+    except sqlite3.IntegrityError:
+        pass
+assert db.execute("SELECT stock_qty FROM commerce_products WHERE id='real-item'").fetchone() == (7,)
+events=[row[0] for row in db.execute("SELECT new_status FROM commerce_order_events WHERE order_id='real-order' ORDER BY created_at,id")]
+assert sorted(events)==["cancelled","placed"], events
+try:
+    db.execute("DELETE FROM commerce_order_events WHERE order_id='real-order'")
+    assert False, "Immutable order event deletion unexpectedly succeeded"
+except sqlite3.IntegrityError:
+    pass
+assert db.execute("SELECT COUNT(*) FROM commerce_order_events WHERE order_id='demo-order'").fetchone()==(1,)
+print("D1 migrations 0001-0007 verified; audit, tenancy, reorder thresholds and atomic inventory corrections OK")
+
