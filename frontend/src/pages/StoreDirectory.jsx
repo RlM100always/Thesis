@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { api } from "../api";
 import { useUi } from "../UiContext";
 import { readableAccent } from "../storeContrast";
+import { displayStoreCategory, displayStoreTagline, displayStoreArea } from "../storeDisplayText";
 import { storeCoverImage } from "../storeImages";
 
 const PRESET_GRAD = {
@@ -307,7 +308,8 @@ export default function StoreDirectory() {
       if (!s.display_name?.toLowerCase().includes(q) &&
           !s.tagline?.toLowerCase().includes(q) &&
           !s.area?.toLowerCase().includes(q) &&
-          !s.category?.toLowerCase().includes(q)) return false;
+          !s.category?.toLowerCase().includes(q) &&
+          !displayStoreCategory(s.category)?.toLowerCase().includes(q)) return false;
     }
     if (activeCategory && s.category !== activeCategory) return false;
     if (activeArea && s.area !== activeArea) return false;
@@ -373,7 +375,7 @@ export default function StoreDirectory() {
           <div className="sd-filters-label">এলাকা বেছে নিন</div>
           <div className="sd-filters">
             <button className={`sd-filter-btn${!activeArea ? " active" : ""}`} onClick={() => setActiveArea(null)}>সব এলাকা</button>
-            {areas.map(area => <button key={area} className={`sd-filter-btn${activeArea === area ? " active" : ""}`} onClick={() => setActiveArea(activeArea === area ? null : area)}>📍 {area}</button>)}
+            {areas.map(area => <button key={area} className={`sd-filter-btn${activeArea === area ? " active" : ""}`} onClick={() => setActiveArea(activeArea === area ? null : area)}>📍 {displayStoreArea(area, true)}</button>)}
           </div>
         </div>
       )}
@@ -388,7 +390,7 @@ export default function StoreDirectory() {
           {categories.map(c => (
             <button key={c} className={`sd-filter-btn${activeCategory === c ? " active" : ""}`}
               onClick={() => setActiveCategory(activeCategory === c ? null : c)}>
-              {CAT_EMOJI[c] || "🏷️"} {c}
+              {CAT_EMOJI[c] || "🏷️"} {displayStoreCategory(c)}
             </button>
           ))}
         </div>
@@ -431,7 +433,7 @@ export default function StoreDirectory() {
           {filtered.map(s => {
             const initial = s.display_name?.[0]?.toUpperCase() || "S";
             const accent = s.theme_color || "#0a8752";
-            const emoji = CAT_EMOJI[s.category] || "🏪";
+            const emoji = CAT_EMOJI[s.category] || CAT_EMOJI[displayStoreCategory(s.category)] || "🏪";
             return (
               <a key={s.slug} href={`#/store/${s.slug}`} className="sd-card">
                 {/* Cover */}
@@ -446,10 +448,10 @@ export default function StoreDirectory() {
                 <div className="sd-card-body">
                   <div className="sd-card-name">{s.display_name}</div>
                   {s.is_demo && <span className="sd-demo-label">শুধু পরীক্ষামূলক দোকান</span>}
-                  <div className="sd-card-tagline">{s.tagline || " "}</div>
+                  <div className="sd-card-tagline">{displayStoreTagline(s.tagline, s.is_demo) || " "}</div>
                   <div className="sd-card-chips">
-                    {s.category && <span className="sd-chip sd-chip-cat">{emoji} {s.category}</span>}
-                    {s.area && <span className="sd-chip sd-chip-area">📍 {s.area}</span>}
+                    {s.category && <span className="sd-chip sd-chip-cat">{emoji} {displayStoreCategory(s.category)}</span>}
+                    {s.area && <span className="sd-chip sd-chip-area">📍 {displayStoreArea(s.area, s.is_demo)}</span>}
                   </div>
                 </div>
                 {/* Footer */}
