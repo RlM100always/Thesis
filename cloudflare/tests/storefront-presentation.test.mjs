@@ -7,7 +7,9 @@ const real={
  name:"Real example shop",tagline:"Quality everyday essentials",category:"Clothing",
  area:"Rajshahi",theme:"purple",color:"#774499",
  logo_image_url:"https://example.org/logo.png",cover_image_url:"https://example.org/cover.jpg",
- public_phone:"01712345678",public_address:"Rajshahi Bangladesh"
+ public_phone:"01712345678",public_address:"Rajshahi Bangladesh",
+ announcement_text:"Fresh collection now available",about_text:"Independent shop",
+ delivery_policy_text:"Dispatch after merchant confirmation",return_policy_text:"Contact seller for returns"
 };
 function envFor(store){
  return {ENABLE_REAL_COD:"false",DB:{prepare(sql){
@@ -30,6 +32,10 @@ test("real merchant storefront uses brand, contact and accurate product category
  assert.equal(s.cover_data_url,"https://example.org/cover.jpg");
  assert.equal(s.phone,"01712345678");
  assert.equal(s.address,"Rajshahi Bangladesh");
+ assert.equal(s.announcement_text,"Fresh collection now available");
+ assert.equal(s.about_text,"Independent shop");
+ assert.equal(s.delivery_policy_text,"Dispatch after merchant confirmation");
+ assert.equal(s.return_policy_text,"Contact seller for returns");
  assert.equal(s.checkout_available,false);
  assert.equal(s.payment_cod,false);
  assert.equal(s.products[0].description,"Soft breathable cotton");
@@ -45,5 +51,7 @@ test("demo shop contact stays private and product never masquerades as real",asy
  assert.equal(s.cover_data_url,null);
  assert.equal(s.phone,null);
  assert.equal(s.address,null);
+ assert.equal(s.delivery_policy_text,"Demo only; no delivery is performed");
+ assert.equal(s.return_policy_text,"Demo only; no actual purchases or returns");
  assert.equal(s.products[0].description,"Soft breathable cotton");
 });
