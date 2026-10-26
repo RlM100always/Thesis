@@ -12,7 +12,10 @@ function ProductCell({product,storeCategory,onRemove,onView,onAdd}){
    </button>
    <strong>{product.name}</strong>
    <span className="s-compare-price">{bdMoney(product.sale_price??product.price)}</span>
-   <button type="button" className="s-add-btn" disabled={!sellable} onClick={()=>onAdd(product)}>{sellable?"কার্টে যোগ করুন":"এখন পাওয়া যাচ্ছে না"}</button>
+   <button type="button" className="s-add-btn" disabled={!sellable}
+     onClick={()=>product.variants?.length?onView(product):onAdd(product)}>
+     {!sellable?"এখন পাওয়া যাচ্ছে না":product.variants?.length?"অপশন বেছে নিন":"কার্টে যোগ করুন"}
+   </button>
  </article>;
 }
 export default function StoreProductCompare({items,storeCategory,onClose,onRemove,onView,onAdd}){
