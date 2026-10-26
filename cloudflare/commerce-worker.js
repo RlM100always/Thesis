@@ -41,16 +41,16 @@ const baseView=(s,env)=>({
   show_stock_level:"available_only",payment_cod:!!s.is_demo||realCODReady(s,env),payment_bkash:false,
   payment_nagad:false,bkash_number:null,nagad_number:null,
   sslcz_store_id:null,bkash_app_key:null,nagad_merchant_id:null,
-  min_order_bdt:null,delivery_note:s.is_demo?(s.delivery_note||"Demo only"):
-    (realCODReady(s,env)?"Cash on delivery; fulfilled by the merchant. No advance payment.":"Checkout is not yet enabled for this merchant"),
+  min_order_bdt:null,delivery_note:s.is_demo?(s.delivery_note||"শুধু পরীক্ষামূলক ব্যবহার"):
+    (realCODReady(s,env)?"ক্যাশ অন ডেলিভারি। দোকান নিজ দায়িত্বে ডেলিভারির ব্যবস্থা করবে। অগ্রিম টাকা পাঠাবেন না।":"এই দোকানে এখনো অনলাইনে অর্ডার দেওয়া চালু হয়নি।"),
   delivery_inside_dhaka:0,delivery_outside_dhaka:0,delivery_free_above:null,
   allow_zone_restriction:false,allowed_divisions:null,
   meta_title:s.name,meta_desc:s.tagline,
   announcement_text:s.announcement_text||"",
   about_text:s.about_text||"",
   // Demo policies are informational, never evidence of actual dispatch/returns.
-  delivery_policy_text:s.is_demo?"Demo only; no delivery is performed":(s.delivery_policy_text||""),
-  return_policy_text:s.is_demo?"Demo only; no actual purchases or returns":(s.return_policy_text||""),
+  delivery_policy_text:s.is_demo?"এটি ডেমো দোকান। কোনো বাস্তব ডেলিভারি করা হয় না।":(s.delivery_policy_text||""),
+  return_policy_text:s.is_demo?"এটি ডেমো দোকান। এখানে বাস্তব কেনাকাটা বা পণ্য ফেরত নেওয়া হয় না।":(s.return_policy_text||""),
   faq_items:readArray(s.faq_json,6)
 });
 const readArray=(raw,limit)=>{try{const result=JSON.parse(raw||"[]");return Array.isArray(result)?result.slice(0,limit):[];}catch{return [];}};
@@ -81,7 +81,7 @@ async function orderDetails(env,request,id,token) {
  return output(request,{
   id:order.id,order_number:order.order_number,access_token:order.access_token,
   status:order.status,payment_status:isDemo?"demo_no_payment":"cod_unpaid",
-  status_note:isDemo?"Synthetic demonstration order; no delivery":"Cash on delivery requested. Seller must confirm and arrange shipment; no payment has been collected by this website.",
+  status_note:isDemo?"এটি পরীক্ষামূলক অর্ডার। কোনো বাস্তব ডেলিভারি বা পেমেন্ট হবে না।":"ক্যাশ অন ডেলিভারি অর্ডারটি দোকানের নিশ্চিতকরণের অপেক্ষায় আছে। এই ওয়েবসাইটে কোনো টাকা গ্রহণ করা হয়নি।",
   placed_at:order.placed_at,shipping_name:isDemo?"Demo customer":order.shipping_name,
   shipping_phone:isDemo?"":order.shipping_phone,shipping_address:isDemo?"":order.shipping_address,
   subtotal:order.subtotal_bdt,tax_amount:0,delivery_fee:0,discount_amount:0,
@@ -109,7 +109,7 @@ async function checkout(env,request,id) {
  if(!store)return error(request,404,"Store not active");
  const isDemo=!!store.is_demo;
  if(!isDemo && !realCODReady(store,env))
-   return error(request,409,"Real checkout is not enabled for this merchant. No payment should be sent.");
+   return error(request,409,"এই দোকানে বাস্তব অর্ডার দেওয়া এখনো চালু হয়নি। কাউকে টাকা পাঠাবেন না।");
  const raw=await request.text();
  if(raw.length>10000)return error(request,413,"Order request too large");
  let data;
