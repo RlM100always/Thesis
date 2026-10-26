@@ -1,59 +1,48 @@
-# B-SMART Cloudflare-first commerce slice
+# Cloudflare D1 — B-SMART demo commerce and merchant console
 
-**Deployed and verified 26 October 2026**
+**Verified:** 26 October 2026. Database **`bsmart-commerce`** (Cloudflare D1, APAC), Worker **`bsmart-commerce-api`**, URL https://bsmart-commerce-api.bcs-written-rakib.workers.dev .
 
-| Resource | Cloudflare |
-|---|---|
-| D1 database | `bsmart-commerce` (APAC), id `887fa347-9c22-46b1-a7cf-91a7dbdfc311` |
-| Worker | `bsmart-commerce-api` |
-| Worker URL | `https://bsmart-commerce-api.bcs-written-rakib.workers.dev` |
-| Main React site | `https://thesis-j0n8.onrender.com/#/stores` |
-| Code | `cloudflare/commerce-worker.js`, `frontend/src/api.js` |
-| Migrations | `cloudflare/migrations/0001_commerce.sql` + `0002_customer_inventory.sql` |
-| Verification | GitHub Actions `B-SMART Cloudflare D1 Live Smoke` |
+Frontend site https://thesis-j0n8.onrender.com uses a dual adapter in `frontend/src/api.js`:
 
-## Live functional scope
+- Cloudflare D1 for `demo-bsmart-*` legacy demonstration stores and for newly created `merchant-*` owner-store IDs / `shop-*` slugs.
+- Existing FastAPI for all prior business records, legacy auth and original operational modules. **These have NOT been migrated.** No login/identity synchronization exists between systems.
 
-- **10 fictional, conspicuously labelled demo stores** spanning pharmacy, grocery, fashion, restaurant, electronics, hardware, beauty, stationery, mobile and furniture, currently with 259 published sample products. These are *not* the previously removed 32 synthetic research shops and not recovered real tenant records.
-- Persistent D1 public store directory, product catalogue, example prices, available demo inventory.
-- Guest demonstration order checkout (**no actual payment or delivery**): inventory is checked in D1, prices are read from D1, order header and lines are written atomically via D1.batch; SQLite triggers enforce stock/price, decrement stock and log stock movements.
-- Anonymized demo customer reference is created for each order. Real names, phones and shipping addresses entered into the demonstration are **discarded**, not saved.
-- Order token-based status lookup and cancellation. On cancellation, an SQL trigger returns units to stock and logs reversal movement.
-- Frontend routes the demo org IDs (`demo-bsmart-*`) to Cloudflare while preserving existing FastAPI operational-store routes. Thus no old merchant storefronts, customer accounts, orders or payments are overwritten in the Render SQLite app.
-- Secure versioning: Worker uses a scoped D1 binding. GitHub Actions verifies remote Worker /health, 10-store directory, product catalogue, demo checkout, order lookup, cancellation and returned stock. The checkout tests run **once per marked commit** to avoid spamming persistent data.
+## D1 features implemented
 
-## Endpoints
+- 10 labelled synthetic business demo stores plus 259 example products, and persistent D1 product/stock listing via Worker.
+- Guest **demo-only** checkout with transactional D1 batch and stock/price-check triggers, order lines, order status token, cancellation and stock return to inventory.
+- Anonymous demo customer reference (real entered phone/address not retained).
+- New owner onboarding and login via **one-time cryptographically random 256-bit owner access key**, stored as SHA-256 digest in D1; 12-hour hashed bearer sessions. PBKDF2 was unavailable in this particular Worker runtime, so password authentication is intentionally **not** used. Email is *unverified*. Owner access key must be saved; lost-key recovery not implemented. Avoid using this as a production identity system.
+- Owner store creation (draft until explicitly made public), product publishing/editing, stock adjustment logs and owner-scoped order status workflow.
+- Demo counter POS, recorded atomically with inventory and order rows in D1, and a small example **cashbook**. Not double-entry accounting or actual cash collection.
+- React Owner Center page at `/#/d1-owner` with a compact Android-style bottom navigation on mobile.
 
-```
-GET /health
-GET /api/public/store/
-GET /api/public/store/diagnostics
-GET /api/public/store/slug/demo-bsmart-grocery
-GET /api/public/store/demo-bsmart-grocery
-GET /api/public/orders/demo-bsmart-grocery/products
-POST /api/public/orders/demo-bsmart-grocery
-GET /api/public/orders/demo-bsmart-grocery/status/{token}
-POST /api/public/orders/demo-bsmart-grocery/cancel/{token}
-```
+## D1 schema
 
-Only synthetic examples can be ordered. Workers CORS allows the hosted website and local development origins. For a full production launch add robust rate limits / bot controls, fraud/consent workflows, audit logs, actual merchant account authorization, payment verification, consumer privacy and retention controls.
+`migrations/0001_commerce.sql` through `migrations/0005_demo_cashbook.sql`, source Worker `commerce-worker.js` importing `merchant-routes.js`, config `wrangler.toml`. The existing remote database schema has been advanced to `commerce_meta.schema_version=5` by Cloudflare REST calls.
 
-## Critical migration gap — not silently hidden
+**Do not blindly run `wrangler d1 migrations apply --remote` on this existing database.** Migrations were applied manually via Cloudflare API, not registered in Wrangler's `d1_migrations` table. One-time `ALTER TABLE` statements would fail if replayed. These migrations are source-controlled for application to a *fresh* new D1 instance once, in order. Before any future changes, align the Wrangler migration ledger or use independently reviewed idempotent migrations, take a backup, and verify `commerce_meta`.
 
-**This is a live persistent demo ecommerce vertical slice, NOT the entire original FastAPI system migrated to D1.**
+## Verification
 
-The current operational user authentication, tenant POS, store owner management, coupons/reviews/customer-chat, transaction history and real business finance records still run through their existing SQLAlchemy database (currently ephemeral SQLite in Render logs). Those are **not** synced to D1. Demo stores are not connected to a genuine store owner login and do not accept payments/ship goods. To make D1 the production primary store for *real* businesses requires a separately tested data-access architecture with owner-scoped authentication, D1 SQL schema/migration of all required operational tables, order idempotency and concurrency guarantees, password/identity migration, owner admin CRUD and restoreable backups. Do not claim otherwise.
+- [Owner-created store, demo POS and cashbook reconciliation](https://github.com/RlM100always/Thesis/actions/runs/40326438876)
+- [Owner signup/login, product editing, inventory audit and logout/cleanup](https://github.com/RlM100always/Thesis/actions/runs/40325162409)
+- [Guest order placement, cancellation and stock reversal](https://github.com/RlM100always/Thesis/actions/runs/40318406288)
 
-The original user-supplied source ZIP had only `bsmart.db-wal` and `bsmart.db-shm`, **not** the primary `bsmart.db`; the research R2 bucket contained setup metadata rather than live tenant transaction backup. It is not possible to resurrect unavailable real records by making these demo stores.
+GitHub frontend build and API live smoke workflows have passed. The Worker's code has been deployed directly through the Cloudflare API; GitHub commits alone do **not** automatically redeploy Worker script changes unless Cloudflare CI secrets / automatic deploy are configured. The last source-only change improving safe deletion after cashbook entries may not be in the last deployed Worker binary.
 
-## Deployment
+## Critical NOT YET migrated
 
-A source-backed Wrangler configuration is at `wrangler.toml`, with migrations under `migrations/`. **The remote D1 database was already created and SQL v1+v2 was manually applied and verified using the Cloudflare API** (v2 is registered in `commerce_meta`, version `2`). Do NOT rerun `0002_customer_inventory.sql` manually against this same database; the ALTER TABLE is not designed to be repeated. On a **fresh** empty D1 instance, run migrations once in order using Wrangler and check the resulting schema.
+Previous B-SMART business login, true merchant tenant memberships, original POS and full cashflow, stock purchasing, live inventory, receivables, accounting journals, invoicing, supplier/customer CRM, chats, promotional coupons, reviews, fulfillment, app reporting, permission controls and historical customers/orders. All remain in FastAPI's old operational SQLite system. They are **not** Cloudflare D1 primary and not kept in sync with this D1 demo store.
 
-Build frontend on Render from GitHub main; its `api.js` has a Worker URL fallback but it is also configurable at build time using `VITE_D1_COMMERCE_URL`. Production auth and payments stay disabled for demo stores.
+No real payment gateways, credential verification, merchant identity validation, email recovery, abuse protection (Turnstile/rate limits), full privacy compliance, DB restore plan or production backup automation have been completed. Do not collect live money or sensitive shopper data here.
 
-## Evidence
+**Temporary CI fixture:** The POS live test created `ci-pos-5b716399edab183e@example.invalid` with an isolated `shop-752c1d2b-b92` demo store and one simulated order. After the test, deletion through the connector was blocked by safety checks, so the fixture remains in D1. It is not a real merchant. Remove it only after checking its exact account/store IDs and dependencies in the Cloudflare dashboard; never run broad deletes against actual merchants.
 
-- [Read-only live Worker smoke tests](https://github.com/RlM100always/Thesis/actions/runs/40317971723)
-- [Guest demo order / status persistence test](https://github.com/RlM100always/Thesis/actions/runs/40318100597)
-- [Demo checkout, cancellation and restock test](https://github.com/RlM100always/Thesis/actions/runs/40318406288)
+## Architecture migration path
+
+1. Preserve original database/backup or explicitly accept that unavailable historic data cannot be recreated.
+2. Port legacy operational tables and transaction-safe order/stock flows into a D1-native repository/Worker/DO model **with regression and concurrency tests**, and owner-scoped membership authentication.
+3. Add privacy-preserving verified merchant login, customer identity, chat, coupons, true accounting double-entry journals, payments and reporting.
+4. Implement reliable backups to R2 and tested D1 point-in-time restore before any cutover.
+5. Only after verification, switch legacy FastAPI owner modules to the new D1 backend and retire ephemeral SQLite without losing real records.
