@@ -2732,3 +2732,106 @@ a.btn-primary, a.btn-secondary { text-decoration: none; display: inline-block; }
 /* Export */
 .rp-export-actions { display: flex; gap: 10px; margin: 14px 0; flex-wrap: wrap; }
 
+
+
+/* ================= B-SMART THEME CONTRAST PATCH V2 =================
+   Fix mixed light/dark backgrounds on the marketing site.
+   Theme is controlled by <html data-theme>; system preference is used only
+   when no explicit theme is selected. No business logic is changed.
+*/
+.public-site {
+  --pub-before-bg: #fff6f5;
+  --pub-before-color: #803e42;
+  --pub-after-bg: #f0faf5;
+  --pub-after-color: #164b35;
+  --pub-before-head-bg: #fdeeee;
+  --pub-before-head-ink: #903636;
+  --pub-after-head-bg: #dcf5e7;
+  --pub-after-head-ink: #08683f;
+  --pub-comparison-divider: #d9e8de;
+}
+:root[data-theme="dark"] .public-site {
+  --pub-before-bg: #211b20;
+  --pub-before-color: #f3bbbc;
+  --pub-after-bg: #10251d;
+  --pub-after-color: #d7f0e2;
+  --pub-before-head-bg: #382327;
+  --pub-before-head-ink: #ffc7c4;
+  --pub-after-head-bg: #173a2a;
+  --pub-after-head-ink: #b5f8d1;
+  --pub-comparison-divider: #2c4439;
+  --public-muted: #b5c9bd;
+  --public-ink: #edf7f0;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="dark"]):not([data-theme="light"]) .public-site {
+    --pub-before-bg: #211b20;
+    --pub-before-color: #f3bbbc;
+    --pub-after-bg: #10251d;
+    --pub-after-color: #d7f0e2;
+    --pub-before-head-bg: #382327;
+    --pub-before-head-ink: #ffc7c4;
+    --pub-after-head-bg: #173a2a;
+    --pub-after-head-ink: #b5f8d1;
+    --pub-comparison-divider: #2c4439;
+    --public-muted: #b5c9bd;
+    --public-ink: #edf7f0;
+  }
+}
+.public-site .owner-problem-section {
+  background: linear-gradient(180deg,var(--public-surface),var(--public-cream));
+}
+.public-site .owner-problem-grid article {
+  background: var(--pub-card);
+  border-color: var(--pub-card-border);
+}
+.public-site .owner-problem-grid article > div {
+  border-top-color: var(--pub-card-border);
+}
+.public-site .owner-problem-grid h3,
+.public-site .public-sectionhead h2,
+.public-site .public-pagehero h1,
+.public-site .owner-problem-grid article h3 { color: var(--public-ink); }
+.public-site .owner-problem-grid p,
+.public-site .owner-problem-grid article > div small,
+.public-site .public-sectionhead > p,
+.public-site .public-pagehero > p { color: var(--public-muted); }
+.public-site .owner-problem-grid article > div b { color: var(--public-green); }
+.public-site .before-after-grid { border-color: var(--pub-comparison-divider); }
+.public-site .before-after-head span:first-child {
+  background: var(--pub-before-head-bg);
+  color: var(--pub-before-head-ink);
+}
+.public-site .before-after-head span:last-child {
+  background: var(--pub-after-head-bg);
+  color: var(--pub-after-head-ink);
+}
+.public-site .before-after-row {
+  background: var(--pub-card);
+  border-top-color: var(--pub-comparison-divider);
+}
+.public-site .before-after-cell.before {
+  background: var(--pub-before-bg);
+  color: var(--pub-before-color);
+}
+.public-site .before-after-cell.after {
+  background: var(--pub-after-bg);
+  color: var(--pub-after-color);
+  border-top-color: var(--pub-comparison-divider);
+}
+.public-site .before-after-cell.before .ui-icon { color: var(--pub-before-head-ink); }
+.public-site .before-after-cell.after .ui-icon { color: var(--public-green); }
+.public-site .public-section.public-tint { background: var(--public-cream); }
+.public-site .public-pagehero { background-color: var(--public-cream); }
+.public-site .ai-decision-head .public-sectionhead h2,
+.public-site .feature-photo-copy .public-sectionhead h2 { color: #fff; }
+.public-site .ai-decision-head .public-sectionhead > p,
+.public-site .feature-photo-copy .public-sectionhead > p { color: #d2e4d8; }
+@media (max-width: 680px) {
+  .public-site .before-after-grid { border-radius: 14px; }
+  .public-site .before-after-head span:last-child { padding: 13px 16px; }
+  .public-site .before-after-row { gap: 0; }
+  .public-site .before-after-cell.before,
+  .public-site .before-after-cell.after { padding: 12px 14px; }
+}
+/* ================= END THEME CONTRAST PATCH V2 ================= */
