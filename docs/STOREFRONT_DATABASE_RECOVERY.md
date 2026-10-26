@@ -56,3 +56,37 @@ orders, initiate payment, send communications or overwrite live businesses.
 If any Store row exists, the seed is skipped. A single transaction rolls back
 on error. Demo shops are marked in both the Store Directory and individual
 storefront; never provide real contact/address/payment details.
+
+
+## New read-only-first store reconciliation helper (26 October 2026)
+
+Run `python scripts/reconcile_existing_stores.py` on a **trusted database copy**
+to inventory all existing organizations, storefronts, active products and
+published listings. It does not write anything by default.
+
+After separately verifying the durable database and business owner approval,
+select a single organization via `--organization-id UUID --apply`, adding
+`--activate` or `--publish-new-products` only when that owner authorizes
+publication. Existing deliberately unpublished products remain unpublished.
+Pharmacy product bulk-publication is refused pending manual licensing review.
+The script refuses writes to production or Render-hosted SQLite.
+
+**Do not use this helper as a replacement for restoring old business data.**
+It can only link rows that already exist in the selected operational database.
+
+### Cloudflare-first architecture safety
+
+Cloudflare R2 bucket `bsmart-thesis-research` exists but is research object
+storage, not a relational store/order database. Cloudflare D1 would require a
+new schema and migration plus a Worker-native transactional adapter for order
+placement: the D1 REST SQLAlchemy dialect cannot preserve the existing
+FastAPI Session transaction/rollback semantics across multiple HTTP SQL calls.
+Do not cut over checkout, payments, inventory or customer sessions without an
+end-to-end migration and concurrent-order tests.
+
+The user's `thesis.zip` included `bsmart.db-wal` and `bsmart.db-shm`,
+but not the necessary `bsmart.db` SQLite database file. The Cloudflare
+R2 research bucket contained only `thesis/research/setup.json` at the time
+of verification, not a complete operating database snapshot. Recreate only
+a clearly labelled demo after separate consent, not a fake recovery of real
+customer/order history.
