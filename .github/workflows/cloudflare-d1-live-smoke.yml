@@ -42,3 +42,20 @@ jobs:
           TOKEN="$(node -p 'require("./order.json").access_token')"
           curl -fLsS --max-time 20 "$D1_API/api/public/orders/demo-bsmart-grocery/status/$TOKEN" > tracked.json
           node -e 'const x=require("./tracked.json"),o=require("./order.json");if(x.order_number!==o.order_number||x.total!==o.total||x.items.length!==1)process.exit(1);console.log("D1 durable order tracking verified")'
+
+      - name: One-time D1 v2 customer, inventory and cancellation E2E test
+        if: contains(github.event.head_commit.message, '[d1-v2-e2e]')
+        run: |
+          curl -fLsS --max-time 20 "$D1_API/api/public/store/slug/demo-bsmart-grocery" > before.json
+          cat > /tmp/d1-v2-order.json <<'JSON'
+          {"shipping_name":"FAKE TEST","shipping_phone":"01700000000","shipping_address":"Not an actual address","payment_method":"cod","items":[{"product_id":"demo-grocery-DAL1","quantity":1}]}
+          JSON
+          curl -fLsS --max-time 20 -X POST -H 'Content-Type: application/json' \
+            --data-binary @/tmp/d1-v2-order.json "$D1_API/api/public/orders/demo-bsmart-grocery" > created.json
+          node -e 'const o=require("./created.json");if(o.status!=="placed"||!o.access_token||o.items.length!==1)process.exit(1);console.log("D1 v2 transactional order created")'
+          TOKEN="$(node -p 'require("./created.json").access_token')"
+          curl -fLsS --max-time 20 -X POST \
+            "$D1_API/api/public/orders/demo-bsmart-grocery/cancel/$TOKEN" > cancelled.json
+          node -e 'const o=require("./cancelled.json");if(o.status!=="cancelled")process.exit(1);console.log("D1 cancellation persisted")'
+          curl -fLsS --max-time 20 "$D1_API/api/public/store/slug/demo-bsmart-grocery" > after.json
+          node -e 'const a=require("./before.json").products.find(x=>x.id==="demo-grocery-DAL1"),b=require("./after.json").products.find(x=>x.id==="demo-grocery-DAL1");if(!a||!b||a.quantity!==b.quantity)process.exit(1);console.log("D1 restock trigger confirmed: "+a.quantity+"->"+b.quantity)'
