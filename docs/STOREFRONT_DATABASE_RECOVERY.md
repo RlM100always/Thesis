@@ -25,3 +25,20 @@ On deployment startup, check Render Logs for `STORE_DIAGNOSTIC db_backend=...`. 
 - Use a **clearly labelled synthetic demo seed** only under a dedicated explicit flag, with an idempotent mode and isolated demo organization IDs, never by deleting/renaming real tenants.
 - The old `seed_10_businesses.py` is a development-only high-volume generator, guarded to refuse Render/PostgreSQL. Do not remove those safeguards.
 - After configuring persistence and any demo catalog, check `/api/public/store/`, `/api/public/store/diagnostics`, an individual `/api/public/store/slug/<slug>`, and a test COD checkout in a non-production sandbox.
+
+
+## New safe demo catalogue bootstrap
+
+The app now has `api/demo_catalog_bootstrap.py`: on startup, and **only** when
+`BSMART_BOOTSTRAP_DEMO_CATALOG=YES` *and* `DATABASE_URL` points to PostgreSQL,
+and the database has **zero stores, including inactive stores**, it may create
+10 isolated and clearly labelled demo organizations (pharmacy, grocery, clothing,
+restaurant, electronics, hardware, beauty, stationery, mobile, furniture) with
+literal sample products from `seed_10_businesses.py`, positive **simulated** inventory,
+active storefront rows and store-product listings.
+
+It DOES NOT restore original merchant/shop/customer/order records, create real
+orders, initiate payment, send communications or overwrite live businesses.
+If any Store row exists, the seed is skipped. A single transaction rolls back
+on error. Demo shops are marked in both the Store Directory and individual
+storefront; never provide real contact/address/payment details.

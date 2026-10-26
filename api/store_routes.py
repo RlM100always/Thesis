@@ -111,6 +111,7 @@ def _store_public_view(store: Store, org: Organization) -> dict:
     return {
         "organization_id": store.organization_id,
         "slug": store.slug,
+        "is_demo": store.slug.startswith("demo-bsmart-"),
         "is_active": store.is_active,
         "display_name": store.display_name,
         "tagline": store.tagline,
@@ -213,6 +214,7 @@ def list_public_stores(
         result.append({
             "organization_id": store.organization_id,
             "slug": store.slug,
+            "is_demo": store.slug.startswith("demo-bsmart-"),
             "display_name": store.display_name,
             "tagline": store.tagline,
             "logo_data_url": store.logo_data_url,

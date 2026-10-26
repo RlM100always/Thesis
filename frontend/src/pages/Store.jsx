@@ -1601,6 +1601,9 @@ export default function StorePage() {
 
   return (
     <div className="s-site">
+      {store.is_demo && <div role="status" style={{position:"relative",zIndex:50,padding:"12px 16px",background:"#fef3c7",color:"#78350f",fontWeight:700,textAlign:"center"}}>
+        ডেমো দোকান — পণ্য, মূল্য ও স্টক উদাহরণ মাত্র। অর্ডার দিলে বাস্তব ডেলিভারি হবে না; আসল ব্যক্তিগত তথ্য বা টাকা দেবেন না।
+      </div>}
       {/* Floating cart button (mobile) */}
       {cartCount > 0 && (
         <button className="s-float-cart" onClick={() => setCartOpen(true)} aria-label="কার্ট খুলুন">

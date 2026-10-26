@@ -303,6 +303,7 @@ export default function StoreDirectory() {
                 {/* Body */}
                 <div className="sd-card-body">
                   <div className="sd-card-name">{s.display_name}</div>
+                  {s.is_demo && <div style={{fontSize:11,fontWeight:700,color:"#92400e",background:"#fffbeb",borderRadius:6,padding:"3px 8px",display:"inline-block",marginBottom:6}}>সিমুলেটেড ডেমো · বাস্তব দোকান নয়</div>}
                   <div className="sd-card-tagline">{s.tagline || " "}</div>
                   <div className="sd-card-chips">
                     {s.category && <span className="sd-chip sd-chip-cat">{emoji} {s.category}</span>}

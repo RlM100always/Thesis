@@ -153,6 +153,10 @@ def initialize_application_database():
     from .presentation_demo import ensure_presentation_demo
     ensure_presentation_demo()
     _seed_site_defaults()
+    # Only creates clearly labelled demonstration storefronts on an explicitly
+    # configured PostgreSQL database. Never runs on the SQLite Render fallback.
+    from .demo_catalog_bootstrap import seed_demo_catalogue
+    seed_demo_catalogue()
     # Diagnostic only: do not create or activate storefronts implicitly.
     _report_storefront_status()
 
