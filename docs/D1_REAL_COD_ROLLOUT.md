@@ -90,3 +90,21 @@ staging and real-device end-to-end testing.
 - Add reliable notification delivery, actual carrier tracking integrations,
   payment gateway credentials and verified callbacks, accounting, refund
   workflows and secure key recovery as separate audited releases.
+
+
+## Safe retry handling (D1 v8)
+
+A third **unapplied** migration, `0008_checkout_idempotency.sql`,
+introduces a merchant-scoped unique checkout request key. Real COD checkout
+requires a UUID v4 supplied by the browser and returns the original order on
+repeated requests with the same ID and matching customer name/phone, rather
+than reserving inventory again. Concurrent duplicate inserts are stopped by a
+unique index; the error handler retrieves the first order if its contact
+matches. Demo requests remain unchanged. No gateway payment is charged.
+A lost browser state or deliberate different request ID is still a new order,
+so refund/support and manual duplicate review must remain available.
+
+**Current staging schema sequence is now 0001 through 0008**. Source-only
+merge, PR approval or passing local tests do not apply these migrations to
+remote Cloudflare D1. Obtain an operator-reviewed backup and apply them only
+after reconciliation of the existing migration ledger.
