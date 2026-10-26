@@ -50,12 +50,14 @@ const baseView=(s,env)=>({
   about_text:s.about_text||"",
   // Demo policies are informational, never evidence of actual dispatch/returns.
   delivery_policy_text:s.is_demo?"Demo only; no delivery is performed":(s.delivery_policy_text||""),
-  return_policy_text:s.is_demo?"Demo only; no actual purchases or returns":(s.return_policy_text||"")
+  return_policy_text:s.is_demo?"Demo only; no actual purchases or returns":(s.return_policy_text||""),
+  faq_items:readArray(s.faq_json,6)
 });
+const readArray=(raw,limit)=>{try{const result=JSON.parse(raw||"[]");return Array.isArray(result)?result.slice(0,limit):[];}catch{return [];}};
 const productView=(p,isDemo=true)=>({
   id:p.id,name:p.name,sku:p.sku,unit:"pcs",price:p.price_bdt,
   selling_price:p.price_bdt,description:isDemo?(p.description||"Demo product; not a real merchant listing"):(p.description||""),
-  sale_price:null,sale_end:null,image_data_url:p.image_url||null,
+  sale_price:null,sale_end:null,image_data_url:p.image_url||null,gallery_urls:readArray(p.gallery_json,4),
   tags:p.category?[p.category]:[],is_featured:!!p.is_featured,sort_order:0,max_order_qty:Math.min(p.stock_qty,10),
   variants:[],in_stock:p.stock_qty>0,quantity:p.stock_qty,category:p.category
 });
