@@ -392,6 +392,7 @@ export default function StoreDirectory() {
         </div>
       )}
 
+      <section style={{textAlign:"center",padding:"20px 16px",background:"var(--sd-card)",color:"var(--sd-text)"}}><strong>Cloudflare D1-তে নিজের ডেমো দোকান চালু করুন</strong><p style={{color:"var(--sd-muted)"}}>নতুন independent owner account · persistent product ও order management</p><a className="sd-filter-btn" style={{display:"inline-block",textDecoration:"none"}} href="#/d1-owner">Owner Center খুলুন →</a></section>
       {/* Footer */}
       <footer className="sd-footer">
         <p>Powered by <a href="#/">B-SMART</a> — AI-Powered Business Analytics for Bangladeshi SMEs</p>
