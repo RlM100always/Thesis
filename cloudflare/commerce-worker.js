@@ -69,6 +69,7 @@ async function orderDetails(env,request,id,token) {
  if(!order)return error(request,404,"Order not found");
  const {results}=await env.DB.prepare("SELECT product_name,quantity,price_bdt,line_total_bdt FROM commerce_order_lines WHERE order_id=?").bind(order.id).all();
  const store=await env.DB.prepare("SELECT is_demo FROM commerce_stores WHERE id=?").bind(id).first();
+ const history=await env.DB.prepare("SELECT new_status AS status,created_at FROM commerce_order_events WHERE store_id=? AND order_id=? ORDER BY created_at,id LIMIT 50").bind(id,order.id).all();
  const isDemo=!!store?.is_demo;
  return output(request,{
   id:order.id,order_number:order.order_number,access_token:order.access_token,
@@ -79,6 +80,7 @@ async function orderDetails(env,request,id,token) {
   subtotal:order.subtotal_bdt,tax_amount:0,delivery_fee:0,discount_amount:0,
   coupon_code:null,coupon_discount:0,total:order.total_bdt,organization_id:id,
   payment_method:isDemo?"demo":"cod",
+  status_events:history.results,
   items:results.map(p=>({product_name:p.product_name,quantity:p.quantity,unit_price:p.price_bdt,line_total:p.line_total_bdt,variant_label:null})),
   whatsapp_notify_url:null,coupon_applied:false,referral_discount:0
  });
