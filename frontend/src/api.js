@@ -11,7 +11,7 @@ const BASE = import.meta.env.VITE_API_URL ?? (import.meta.env.PROD ? "" : "http:
    database until their audited migration; never represent demo stores as real. */
 const D1_COMMERCE = (import.meta.env.VITE_D1_COMMERCE_URL ||
   "https://bsmart-commerce-api.bcs-written-rakib.workers.dev").replace(/\/$/, "");
-const isD1Store = (id) => String(id || "").startsWith("demo-bsmart-");
+const isD1Store = (id) => /^(demo-bsmart-|merchant-|shop-)/.test(String(id || ""));
 async function d1Commerce(path, { method = "GET", body } = {}) {
   const response = await fetch(D1_COMMERCE + path, {
     method,
