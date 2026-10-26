@@ -29,14 +29,15 @@ async function storeOnly(env,owner){const row=await myStore(env,owner);if(!row)t
 function stripStore(s){return {id:s.id,slug:s.slug,name:s.name,tagline:s.tagline||"",category:s.category||"",area:s.area||"",is_active:!!s.is_active,is_demo:!!s.is_demo,created_at:s.created_at};}
 async function dashboard(env,owner){
  const store=await myStore(env,owner);
- if(!store)return {account:{email:owner.email},store:null,products:[],orders:[],metrics:{orders:0,inventory_units:0,placed_total_bdt:0},stock_adjustments:[]};
- const [products,orders,stats,adjustments]=await Promise.all([
+ if(!store)return {account:{email:owner.email},store:null,products:[],orders:[],metrics:{orders:0,inventory_units:0,placed_total_bdt:0},stock_adjustments:[],cashbook:[]};
+ const [products,orders,stats,adjustments,cashbook]=await Promise.all([
   env.DB.prepare("SELECT id,sku,name,category,price_bdt,stock_qty,is_listed,created_at FROM commerce_products WHERE store_id=? ORDER BY created_at DESC LIMIT 200").bind(store.id).all(),
   env.DB.prepare("SELECT id,order_number,status,total_bdt,placed_at,payment_method FROM commerce_orders WHERE store_id=? ORDER BY placed_at DESC LIMIT 150").bind(store.id).all(),
   env.DB.prepare("SELECT (SELECT COUNT(*) FROM commerce_orders WHERE store_id=?) AS orders,(SELECT COALESCE(SUM(stock_qty),0) FROM commerce_products WHERE store_id=?) AS inventory_units,(SELECT COALESCE(SUM(total_bdt),0) FROM commerce_orders WHERE store_id=? AND status!='cancelled') AS placed_total_bdt").bind(store.id,store.id,store.id).first(),
-  env.DB.prepare("SELECT product_id,old_quantity,new_quantity,delta,reason,created_at FROM commerce_stock_adjustments WHERE store_id=? ORDER BY created_at DESC LIMIT 25").bind(store.id).all()
+  env.DB.prepare("SELECT product_id,old_quantity,new_quantity,delta,reason,created_at FROM commerce_stock_adjustments WHERE store_id=? ORDER BY created_at DESC LIMIT 25").bind(store.id).all(),
+  env.DB.prepare("SELECT id,kind,amount_bdt,description,created_at,related_order_id FROM commerce_cashbook WHERE store_id=? ORDER BY created_at DESC LIMIT 75").bind(store.id).all()
  ]);
- return {account:{email:owner.email},store:stripStore(store),products:products.results,orders:orders.results,metrics:stats,stock_adjustments:adjustments.results};
+ return {account:{email:owner.email},store:stripStore(store),products:products.results,orders:orders.results,metrics:stats,stock_adjustments:adjustments.results,cashbook:cashbook.results};
 }
 const errorCode=e=>/UNIQUE constraint failed/.test(e.message||"")?409:500;
 export async function merchantRouter(req,env,path,output,error){
@@ -133,6 +134,39 @@ export async function merchantRouter(req,env,path,output,error){
    if(name.length<3||!area||!category)return bad(req,error,422,"Invalid store profile");
    await env.DB.prepare("UPDATE commerce_stores SET name=?,tagline=?,category=?,area=?,is_active=? WHERE id=? AND owner_id=?").bind(name,tagline,category,area,activate,store.id,owner.id).run();
    return output(req,{store:stripStore(await myStore(env,owner))});
+  }
+  if(method==="POST"&&path==="/api/merchant/cashbook"){
+   const store=await storeOnly(env,owner),b=await json(req,error);
+   const kind=short(b.kind,15),amount=Number(b.amount_bdt),description=short(b.description,140);
+   if(!["receipt","expense"].includes(kind)||!integer(amount,1,500000)||description.length<3)
+    return bad(req,error,422,"Valid kind, demo amount and note required");
+   await env.DB.prepare("INSERT INTO commerce_cashbook(id,store_id,kind,amount_bdt,description) VALUES(?,?,?,?,?)").bind(crypto.randomUUID(),store.id,kind,amount,description).run();
+   return output(req,{created:true,note:"Demo cashbook only; not a certified accounting ledger"});
+  }
+  if(method==="POST"&&path==="/api/merchant/pos"){
+   const store=await storeOnly(env,owner);
+   if(!store.is_demo)return bad(req,error,409,"Only demonstration POS is supported");
+   const b=await json(req,error);
+   if(!Array.isArray(b.items)||!b.items.length||b.items.length>12)return bad(req,error,422,"1-12 demo POS products required");
+   const details=[],seen=new Set();let total=0;
+   for(const item of b.items){
+    const productId=String(item.product_id||""),qty=Number(item.quantity);
+    if(!productId||seen.has(productId)||!integer(qty,1,30))return bad(req,error,422,"Invalid POS line");
+    seen.add(productId);
+    const p=await env.DB.prepare("SELECT * FROM commerce_products WHERE id=? AND store_id=? AND is_listed=1").bind(productId,store.id).first();
+    if(!p||p.stock_qty<qty)return bad(req,error,409,"Demo product unavailable or stock insufficient");
+    total+=p.price_bdt*qty;details.push({p,qty});
+   }
+   if(!integer(total,1,500000))return bad(req,error,422,"Invalid POS amount");
+   const oid=crypto.randomUUID(),cid=crypto.randomUUID(),token=newSession(),number="POS-"+oid.slice(0,8).toUpperCase();
+   const stmts=[
+    env.DB.prepare("INSERT INTO commerce_customers(id,store_id,display_name) VALUES(?,?,?)").bind(cid,store.id,"Anonymous demo counter customer"),
+    env.DB.prepare("INSERT INTO commerce_orders(id,store_id,order_number,access_token,status,subtotal_bdt,total_bdt,payment_method,shipping_name,shipping_phone,shipping_address,customer_id) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)").bind(oid,store.id,number,token,"fulfilled",total,total,"demo_pos","Demo counter customer","","",cid),
+    ...details.map(({p,qty})=>env.DB.prepare("INSERT INTO commerce_order_lines(order_id,product_id,product_name,quantity,price_bdt,line_total_bdt) VALUES(?,?,?,?,?,?)").bind(oid,p.id,p.name,qty,p.price_bdt,p.price_bdt*qty)),
+    env.DB.prepare("INSERT INTO commerce_cashbook(id,store_id,kind,amount_bdt,description,related_order_id) VALUES(?,?,?,?,?,?)").bind(crypto.randomUUID(),store.id,"receipt",total,"Simulated demo POS receipt",oid)
+   ];
+   try{await env.DB.batch(stmts);}catch(e){return bad(req,error,409,"Stock or product price changed; refresh and retry");}
+   return output(req,{created:true,order_number:number,total_bdt:total,note:"Demo cash sale; no actual customer payment"},201);
   }
   if(method==="POST"&&path==="/api/merchant/products"){
    const store=await storeOnly(env,owner),b=await json(req,error);
