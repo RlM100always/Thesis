@@ -1,0 +1,58 @@
+/* Public tracking status: contrast-safe under light, dark and OS theme. */
+.public-order-status {
+  --order-success:#08613b;
+  --order-success-text:#fff;
+  --order-link:#08613b;
+  --order-focus:rgba(8,97,59,.25);
+  --order-danger:#b42331;
+  color:var(--text);
+  line-height:1.65;
+  padding:22px 16px 55px;
+}
+:root[data-theme="dark"] .public-order-status {
+  --order-success:#9ff4c8;
+  --order-success-text:#061b11;
+  --order-link:#9ff4c8;
+  --order-focus:rgba(159,244,200,.25);
+  --order-danger:#ffabb1;
+}
+@media(prefers-color-scheme:dark) {
+ :root:not([data-theme="light"]):not([data-theme="dark"]) .public-order-status {
+  --order-success:#9ff4c8;
+  --order-success-text:#061b11;
+  --order-link:#9ff4c8;
+  --order-focus:rgba(159,244,200,.25);
+  --order-danger:#ffabb1;
+ }
+}
+.public-order-status :is(h1,h2,h3,p,strong){overflow-wrap:anywhere}
+.public-order-status .order-status-timeline {
+  padding:10px 0 16px;scrollbar-width:thin;
+}
+.public-order-status .order-status-timeline>div{min-width:105px!important;flex:1 0 105px!important}
+.public-order-status .order-status-timeline>div>div:first-child{min-width:75px}
+.public-order-status .order-status-upload-btn {
+  padding:10px 17px;border:1px solid var(--order-link);color:var(--order-link);
+  background:var(--surface-2);border-radius:10px;cursor:pointer;font-size:13px;font-weight:700;
+}
+.public-order-status .order-status-cancel-btn {
+  margin-top:14px;width:100%;padding:11px;border-radius:10px;border:2px solid var(--order-danger);
+  background:transparent;color:var(--order-danger);font-size:14px;font-weight:700;cursor:pointer;
+}
+.public-order-status .order-status-return {
+  color:var(--order-link);font-size:14px;font-weight:700;
+  text-decoration:underline;text-underline-offset:4px;
+}
+.public-order-status :is(button,a,input):focus-visible {
+  outline:3px solid var(--order-link);outline-offset:3px;
+}
+.public-order-status .order-status-upload-btn:disabled,.public-order-status .order-status-cancel-btn:disabled{opacity:.55}
+.public-order-status input[type=file]{max-width:100%;color:var(--text)}
+.public-order-status input[type=file]::file-selector-button {
+  border:1px solid var(--border);border-radius:8px;background:var(--surface-2);
+  color:var(--text);padding:8px 10px;margin-right:8px;
+}
+@media(max-width:500px){
+ .public-order-status{padding:16px 12px 45px}
+ .public-order-status .order-status-timeline{gap:0}
+}

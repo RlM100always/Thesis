@@ -1,0 +1,34 @@
+/* Keep the legacy customer portal visually aligned with the public shop.
+   Local token mapping leaves the rest of the B-SMART dashboard untouched. */
+.s-site .store-customer-portal {
+ --bg:var(--s-bg);--surface:var(--s-card);--surface-2:var(--s-soft);
+ --border:var(--s-border);--text:var(--s-ink);--text-muted:var(--s-muted);
+ --green:var(--sa);--sc-on-green:var(--store-accent-on,#fff);
+ color:var(--s-ink);color-scheme:light;
+ font-family:'Hind Siliguri',system-ui,sans-serif;
+}
+:root[data-store-preset="bold"] .s-site .store-customer-portal,
+:root[data-theme="dark"] .s-site .store-customer-portal{
+ --sc-on-green:#06180e;color-scheme:dark;
+}
+@media(prefers-color-scheme:dark){
+ :root:not([data-theme="light"]):not([data-theme="dark"]) .s-site .store-customer-portal{
+   --sc-on-green:#06180e;color-scheme:dark;
+ }
+}
+.s-site .store-customer-portal input,
+.s-site .store-customer-portal select,
+.s-site .store-customer-portal textarea{
+ color:var(--text);background:var(--surface);border-color:var(--border);
+}
+.s-site .store-customer-portal input::placeholder,
+.s-site .store-customer-portal textarea::placeholder{color:var(--text-muted);opacity:1}
+.s-site .store-customer-portal button:focus-visible,
+.s-site .store-customer-portal input:focus-visible,
+.s-site .store-customer-portal select:focus-visible{
+ outline:3px solid var(--green);outline-offset:2px;
+}
+.s-site .store-customer-portal button:disabled{opacity:.55;cursor:not-allowed}
+.s-site .store-customer-portal strong,
+.s-site .store-customer-portal h2,
+.s-site .store-customer-portal h3{color:var(--text)}
