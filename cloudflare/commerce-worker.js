@@ -45,7 +45,12 @@ const baseView=(s,env)=>({
     (realCODReady(s,env)?"Cash on delivery; fulfilled by the merchant. No advance payment.":"Checkout is not yet enabled for this merchant"),
   delivery_inside_dhaka:0,delivery_outside_dhaka:0,delivery_free_above:null,
   allow_zone_restriction:false,allowed_divisions:null,
-  meta_title:s.name,meta_desc:s.tagline
+  meta_title:s.name,meta_desc:s.tagline,
+  announcement_text:s.announcement_text||"",
+  about_text:s.about_text||"",
+  // Demo policies are informational, never evidence of actual dispatch/returns.
+  delivery_policy_text:s.is_demo?"Demo only; no delivery is performed":(s.delivery_policy_text||""),
+  return_policy_text:s.is_demo?"Demo only; no actual purchases or returns":(s.return_policy_text||"")
 });
 const productView=(p,isDemo=true)=>({
   id:p.id,name:p.name,sku:p.sku,unit:"pcs",price:p.price_bdt,
