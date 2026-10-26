@@ -17,7 +17,7 @@ async function json(request,error,max=10000){
 const short=(value,n=120)=>String(value??"").trim().slice(0,n);
 const validEmail=email=>/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)&&email.length<=180;
 const integer=(value,min,max)=>Number.isInteger(Number(value))&&Number(value)>=min&&Number(value)<=max;
-const cleanImage=value=>{
+export const cleanImage=value=>{
  if(value===null||value===undefined||String(value).trim()==="")return null;
  const v=String(value).trim();
  if(v.length>900)throw new Error("Image URL too long");
