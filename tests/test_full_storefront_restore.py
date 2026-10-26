@@ -30,6 +30,7 @@ def test_local_storefront_routes_are_mounted():
 def test_existing_business_apis_and_research_reset_remain_mounted():
     paths = set(app.openapi()["paths"])
     assert "/api/app/organizations" in paths
-    assert "/api/research/portal/shops" in paths
+    assert "/api/public/store/diagnostics" in paths
+    assert "/api/research/portal/shops" not in paths  # requested 32-store preview removed
     assert "/api/app/bsmart/run" in paths
     assert "/health" in paths
