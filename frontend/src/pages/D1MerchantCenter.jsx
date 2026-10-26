@@ -3,7 +3,7 @@ import "./D1MerchantCenter.css";
 
 const BASE=(import.meta.env.VITE_D1_COMMERCE_URL || "https://bsmart-commerce-api.bcs-written-rakib.workers.dev").replace(/\/$/,"");
 const fmt=n=>"৳"+Number(n||0).toLocaleString("en-BD");
-const empty={email:"",password:""};
+const empty={email:"",access_key:""};
 async function call(path,{method="GET",body,token}={}){
   const response=await fetch(BASE+path,{method,headers:{"Content-Type":"application/json",...(token?{Authorization:"Bearer "+token}:{})},...(body?{body:JSON.stringify(body)}:{})});
   const j=await response.json().catch(()=>({}));
@@ -22,6 +22,7 @@ export default function D1MerchantCenter(){
   const [storeForm,setStoreForm]=useState({name:"",category:"মুদি",area:"",tagline:"",is_active:false});
   const [newProduct,setNewProduct]=useState({sku:"",name:"",category:"",price_bdt:"",stock_qty:"",is_listed:true});
   const [edit,setEdit]=useState(null);
+  const [oneTimeKey,setOneTimeKey]=useState("");
   const load=useCallback(async tk=>{
     const latest=await call("/api/merchant/dashboard",{token:tk});
     setData(latest);
@@ -39,11 +40,12 @@ export default function D1MerchantCenter(){
     e.preventDefault();
     await run(async()=>{
       if(mode==="register"){
-        await call("/api/merchant/register",{method:"POST",body:form});
-        setMode("login");setForm(old=>({...old,password:""}));setNote("Account created. Please sign in.");return;
+        const registered=await call("/api/merchant/register",{method:"POST",body:{email:form.email}});
+        setOneTimeKey(registered.owner_access_key);
+        setMode("login");setForm(old=>({...old,access_key:registered.owner_access_key}));return;
       }
       const result=await call("/api/merchant/login",{method:"POST",body:form});
-      sessionStorage.setItem("bsmart_d1_merchant",result.token);setToken(result.token);setForm(empty);
+      sessionStorage.setItem("bsmart_d1_merchant",result.token);setToken(result.token);setOneTimeKey("");setForm(empty);
     },mode==="login"?"Logged in to Cloudflare D1 Owner Center":"");
   }
   async function logout(){
@@ -63,10 +65,15 @@ export default function D1MerchantCenter(){
       <div className="dm-warning" role="note">পরীক্ষামূলক ecommerce: এখানে real payment, delivery, পুরোনো POS/accounts এবং FastAPI customer login যুক্ত নয়। বাস্তব গ্রাহকের তথ্য ব্যবহার করবেন না।</div>
       {error&&<p className="dm-error" role="alert">{error}</p>}{note&&<p className="dm-success" role="status">{note}</p>}
       {!token?<div className="dm-auth"><h2>{mode==="login"?"Store owner login":"Create D1 owner account"}</h2>
-        <p>পুরোনো B-SMART business login নয়—এটি Cloudflare-এ নতুন স্বতন্ত্র account। Email verification/password reset এখনো চালু নেই।</p>
+        <p>এটি পুরোনো B-SMART login নয়। এখানে ২৫৬-bit owner access key দিয়ে লগইন হয়। Email verification বা হারিয়ে যাওয়া key ফেরানোর ব্যবস্থা এখনো নেই।</p>
+        {oneTimeKey&&<div className="dm-warning" role="status"><strong>আপনার access key একবারই দেখানো হচ্ছে—এখনই নিরাপদ জায়গায় সংরক্ষণ করুন।</strong>
+          <p style={{overflowWrap:"anywhere",fontFamily:"monospace",userSelect:"all"}}>{oneTimeKey}</p>
+          <button className="dm-secondary" type="button" onClick={()=>navigator.clipboard?.writeText(oneTimeKey)}>Copy access key</button>
+          <p>এটি কারও সঙ্গে share করবেন না। হারিয়ে গেলে এই account ফিরে পাওয়ার ব্যবস্থা নেই।</p></div>}
+
         <form onSubmit={authenticate} className="dm-fields">
           <Field label="Email"><input style={input} type="email" autoComplete="email" required value={form.email} onChange={e=>setForm(v=>({...v,email:e.target.value}))}/></Field>
-          <Field label="Password"><input style={input} type="password" minLength={mode==="register"?12:1} autoComplete={mode==="register"?"new-password":"current-password"} required value={form.password} onChange={e=>setForm(v=>({...v,password:e.target.value}))}/></Field>
+          {mode==="login"&&<Field label="Owner access key (64 hex characters)"><input style={input} type="password" minLength={64} maxLength={64} autoComplete="off" required value={form.access_key} onChange={e=>setForm(v=>({...v,access_key:e.target.value}))}/></Field>}
           <button className="dm-btn" disabled={busy} type="submit">{busy?"Processing…":mode==="login"?"Sign in":"Create account"}</button>
         </form>
         <button className="dm-text-btn" onClick={()=>{setMode(v=>v==="login"?"register":"login");setError("");setNote("");}}>{mode==="login"?"Create a new D1 owner account":"Back to login"}</button>
