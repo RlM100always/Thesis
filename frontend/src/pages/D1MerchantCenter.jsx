@@ -14,6 +14,7 @@ async function call(path,{method="GET",body,token}={}){
   return j;
 }
 const input={minHeight:43,padding:"10px 12px",border:"1px solid var(--dm-line)",background:"var(--dm-surface)",borderRadius:10,color:"var(--dm-text)",font:"inherit",width:"100%"};
+const galleryInputToUrls=value=>String(value||"").split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
 const categories=["মুদি","পোশাক","ইলেকট্রনিক্স","রেস্টুরেন্ট","স্টেশনারি","বিউটি","মোবাইল","ফার্নিচার","হার্ডওয়্যার","অন্যান্য"];
 function Field({label,children}){return <label className="dm-field"><strong>{label}</strong>{children}</label>;}
 function Empty({children}){return <p className="dm-empty">{children}</p>;}
@@ -22,8 +23,8 @@ export default function D1MerchantCenter(){
   const [token,setToken]=useState(()=>sessionStorage.getItem("bsmart_d1_merchant")||"");
   const [form,setForm]=useState(empty),[mode,setMode]=useState("login"),[view,setView]=useState("dashboard");
   const [data,setData]=useState(null),[busy,setBusy]=useState(false),[error,setError]=useState(""),[note,setNote]=useState("");
-  const [storeForm,setStoreForm]=useState({name:"",category:"মুদি",area:"",tagline:"",theme:"clean",color:"#087e59",logo_image_url:"",cover_image_url:"",public_phone:"",public_address:"",announcement_text:"",about_text:"",delivery_policy_text:"",return_policy_text:"",is_active:false});
-  const [newProduct,setNewProduct]=useState({sku:"",name:"",category:"",price_bdt:"",stock_qty:"",reorder_point:"5",description:"",image_url:"",is_featured:false,is_listed:true});
+  const [storeForm,setStoreForm]=useState({name:"",category:"মুদি",area:"",tagline:"",theme:"clean",color:"#087e59",logo_image_url:"",cover_image_url:"",public_phone:"",public_address:"",announcement_text:"",about_text:"",delivery_policy_text:"",return_policy_text:"",faq_items:[],is_active:false});
+  const [newProduct,setNewProduct]=useState({sku:"",name:"",category:"",price_bdt:"",stock_qty:"",reorder_point:"5",description:"",image_url:"",gallery_input:"",is_featured:false,is_listed:true});
   const [edit,setEdit]=useState(null);
   const [posProduct,setPosProduct]=useState("");
   const [posQty,setPosQty]=useState("1");
@@ -35,7 +36,7 @@ export default function D1MerchantCenter(){
   const load=useCallback(async tk=>{
     const latest=await call("/api/merchant/dashboard",{token:tk});
     setData(latest);
-    if(latest.store)setStoreForm({name:latest.store.name,category:latest.store.category||"মুদি",area:latest.store.area||"",tagline:latest.store.tagline||"",theme:latest.store.theme||"clean",color:latest.store.color||"#087e59",logo_image_url:latest.store.logo_image_url||"",cover_image_url:latest.store.cover_image_url||"",public_phone:latest.store.public_phone||"",public_address:latest.store.public_address||"",announcement_text:latest.store.announcement_text||"",about_text:latest.store.about_text||"",delivery_policy_text:latest.store.delivery_policy_text||"",return_policy_text:latest.store.return_policy_text||"",is_active:latest.store.is_active});
+    if(latest.store)setStoreForm({name:latest.store.name,category:latest.store.category||"মুদি",area:latest.store.area||"",tagline:latest.store.tagline||"",theme:latest.store.theme||"clean",color:latest.store.color||"#087e59",logo_image_url:latest.store.logo_image_url||"",cover_image_url:latest.store.cover_image_url||"",public_phone:latest.store.public_phone||"",public_address:latest.store.public_address||"",announcement_text:latest.store.announcement_text||"",about_text:latest.store.about_text||"",delivery_policy_text:latest.store.delivery_policy_text||"",return_policy_text:latest.store.return_policy_text||"",faq_items:latest.store.faq_items||[],is_active:latest.store.is_active});
     return latest;
   },[]);
   useEffect(()=>{if(!token)return;load(token).catch(e=>{setError(e.message);if(e.status===401){sessionStorage.removeItem("bsmart_d1_merchant");setToken("");}});},[token,load]);
@@ -118,10 +119,11 @@ export default function D1MerchantCenter(){
         </div>}
         {view==="insights"&&<D1MerchantInsights load={loadInsights} onStock={()=>setView("products")}/>}
         {view==="products"&&<div className="dm-stack">
-          <section className="dm-panel"><h2>নতুন পণ্য যোগ করুন</h2><form className="dm-product-form" onSubmit={e=>{e.preventDefault();run(async()=>{await call("/api/merchant/products",{method:"POST",token,body:{...newProduct,price_bdt:Number(newProduct.price_bdt),stock_qty:Number(newProduct.stock_qty)}});setNewProduct({sku:"",name:"",category:"",price_bdt:"",stock_qty:"",reorder_point:"5",description:"",image_url:"",is_featured:false,is_listed:true});},"Product created in D1");}}>
+          <section className="dm-panel"><h2>নতুন পণ্য যোগ করুন</h2><form className="dm-product-form" onSubmit={e=>{e.preventDefault();run(async()=>{await call("/api/merchant/products",{method:"POST",token,body:{...newProduct,gallery_urls:galleryInputToUrls(newProduct.gallery_input),price_bdt:Number(newProduct.price_bdt),stock_qty:Number(newProduct.stock_qty)}});setNewProduct({sku:"",name:"",category:"",price_bdt:"",stock_qty:"",reorder_point:"5",description:"",image_url:"",gallery_input:"",is_featured:false,is_listed:true});},"Product created in D1");}}>
           {["sku","name","category","price_bdt","stock_qty","reorder_point"].map(k=><Field key={k} label={{sku:"SKU",name:"Product",category:"Category",price_bdt:"Price BDT",stock_qty:"Stock quantity",reorder_point:"Low-stock alert at"}[k]}><input style={input} value={newProduct[k]} required type={["price_bdt","stock_qty","reorder_point"].includes(k)?"number":"text"} min={["price_bdt","stock_qty"].includes(k)?0:undefined} onChange={e=>setNewProduct(v=>({...v,[k]:e.target.value}))}/></Field>)}
           <Field label="Product description"><textarea className="dm-input" rows={3} maxLength={1100} value={newProduct.description} onChange={e=>setNewProduct(v=>({...v,description:e.target.value}))} placeholder="Material, features, sizes, care and other real product details" /></Field>
           <Field label="Product photo HTTPS URL"><input className="dm-input" type="url" maxLength={900} placeholder="https://example.com/item.jpg" value={newProduct.image_url} onChange={e=>setNewProduct(v=>({...v,image_url:e.target.value}))}/></Field>
+          <Field label="Additional gallery photos (up to 4 HTTPS URLs, one per line)"><textarea className="dm-input" rows={4} value={newProduct.gallery_input} onChange={e=>setNewProduct(v=>({...v,gallery_input:e.target.value}))} placeholder={"https://example.com/angle-2.jpg\nhttps://example.com/angle-3.jpg"}/></Field>
           <label className="dm-check"><input type="checkbox" checked={newProduct.is_featured} onChange={e=>setNewProduct(v=>({...v,is_featured:e.target.checked}))}/>Show as featured product</label>
           <label className="dm-check"><input type="checkbox" checked={newProduct.is_listed} onChange={e=>setNewProduct(v=>({...v,is_listed:e.target.checked}))}/>{store.is_demo?"Publish a demo product":"Publish product listing"}</label><button disabled={busy} type="submit" className="dm-btn">Add product</button></form></section>
           <D1InventoryCorrection products={products} busy={busy} onSave={body=>run(()=>call("/api/merchant/inventory/corrections",{method:"POST",token,body}),"Stock correction saved with audit trail")}/>
@@ -130,7 +132,7 @@ export default function D1MerchantCenter(){
             <div className="dm-product-main">
                {p.image_url&&<img className="dm-product-thumb" src={p.image_url} alt="" loading="lazy" />}
                <div><strong>{p.name}</strong>{!!p.is_featured&&<span className="dm-featured-tag">Featured</span>}<p className="dm-muted">{p.sku} · {p.category||"Uncategorised"}</p><p><b>{fmt(p.price_bdt)}</b> · Stock <b>{p.stock_qty}</b> · Alert ≤ {p.reorder_point??5} {p.is_listed&&p.stock_qty<=Number(p.reorder_point??5)?"· ⚠️ Low stock":""} · {p.is_listed?"Published":"Hidden"}</p></div></div>
-            <button className="dm-secondary" onClick={()=>setEdit({...p})}>Edit</button></article>)}</div>}</section>
+            <button className="dm-secondary" onClick={()=>setEdit({...p,gallery_input:(p.gallery_urls||[]).join("\n")})}>Edit</button></article>)}</div>}</section>
         </div>}
         {view==="pos"&&<div className="dm-stack">
           <section className="dm-panel"><h2>Demo counter POS</h2><p className="dm-muted">শুধু simulated sale: D1-তে order ও stock movement persist হবে; বাস্তব cash/payment নয়।</p>
@@ -171,6 +173,18 @@ export default function D1MerchantCenter(){
             <Field label="About this store"><textarea className="dm-input" maxLength={1800} rows={4} value={storeForm.about_text} onChange={e=>setStoreForm(v=>({...v,about_text:e.target.value}))} placeholder="Tell visitors about your business and products."/></Field>
             <Field label="Delivery information"><textarea className="dm-input" maxLength={1800} rows={3} value={storeForm.delivery_policy_text} onChange={e=>setStoreForm(v=>({...v,delivery_policy_text:e.target.value}))} placeholder="Only explain delivery terms your business actually supports."/></Field>
             <Field label="Returns / exchange information"><textarea className="dm-input" maxLength={1800} rows={3} value={storeForm.return_policy_text} onChange={e=>setStoreForm(v=>({...v,return_policy_text:e.target.value}))} placeholder="State your real return and exchange terms."/></Field>
+            <div className="dm-faq-editor">
+              <div className="dm-faq-heading"><h3>Frequently Asked Questions</h3><button className="dm-secondary" type="button" disabled={storeForm.faq_items.length>=6}
+                onClick={()=>setStoreForm(v=>({...v,faq_items:[...v.faq_items,{question:"",answer:""}]}))}>+ Add FAQ</button></div>
+              <p className="dm-muted">Answer up to six genuine customer questions. FAQ text does not activate shipping or payment services.</p>
+              {storeForm.faq_items.map((item,i)=><div key={i} className="dm-faq-edit-row">
+                <Field label={`Question ${i+1}`}><input className="dm-input" minLength={4} maxLength={180} required value={item.question}
+                  onChange={e=>setStoreForm(v=>({...v,faq_items:v.faq_items.map((x,n)=>n===i?{...x,question:e.target.value}:x)}))}/></Field>
+                <Field label="Answer"><textarea className="dm-input" minLength={4} maxLength={900} required rows={2} value={item.answer}
+                  onChange={e=>setStoreForm(v=>({...v,faq_items:v.faq_items.map((x,n)=>n===i?{...x,answer:e.target.value}:x)}))}/></Field>
+                <button type="button" className="dm-secondary" onClick={()=>setStoreForm(v=>({...v,faq_items:v.faq_items.filter((_,n)=>n!==i)}))}>Remove FAQ</button>
+              </div>)}
+            </div>
             {store.is_demo&&<p className="dm-muted">Demo storefronts will continue to show a no-delivery/no-payment disclosure regardless of policy text.</p>}
           </section>
           <div className="dm-theme-settings">
@@ -196,10 +210,11 @@ export default function D1MerchantCenter(){
           <button className="dm-btn" disabled={busy} type="submit">Save settings</button>
         </form></section>}
         {edit&&<div className="dm-modal-bg" onClick={()=>setEdit(null)}><section role="dialog" aria-modal="true" aria-label="Edit product" className="dm-panel dm-dialog" onClick={e=>e.stopPropagation()}><h2>Edit: {edit.name}</h2>
-          <form className="dm-fields" onSubmit={e=>{e.preventDefault();run(async()=>{await call("/api/merchant/products/"+edit.id,{method:"PATCH",token,body:{name:edit.name,category:edit.category,price_bdt:Number(edit.price_bdt),...(store.is_demo?{stock_qty:Number(edit.stock_qty)}:{}),description:edit.description||"",image_url:edit.image_url||"",is_featured:!!edit.is_featured,reorder_point:Number(edit.reorder_point),is_listed:edit.is_listed}});setEdit(null);},"Product updated");}}>
+          <form className="dm-fields" onSubmit={e=>{e.preventDefault();run(async()=>{await call("/api/merchant/products/"+edit.id,{method:"PATCH",token,body:{name:edit.name,category:edit.category,price_bdt:Number(edit.price_bdt),...(store.is_demo?{stock_qty:Number(edit.stock_qty)}:{}),description:edit.description||"",image_url:edit.image_url||"",gallery_urls:galleryInputToUrls(edit.gallery_input),is_featured:!!edit.is_featured,reorder_point:Number(edit.reorder_point),is_listed:edit.is_listed}});setEdit(null);},"Product updated");}}>
           {["name","category","price_bdt",...(store.is_demo?["stock_qty"]:[]),"reorder_point"].map(k=><Field key={k} label={k}><input style={input} type={["price_bdt","stock_qty","reorder_point"].includes(k)?"number":"text"} min={["price_bdt","stock_qty"].includes(k)?0:undefined} required value={edit[k]} onChange={e=>setEdit(v=>({...v,[k]:e.target.value}))}/></Field>)}
           <Field label="Description"><textarea className="dm-input" maxLength={1100} rows={3} value={edit.description||""} onChange={e=>setEdit(v=>({...v,description:e.target.value}))}/></Field>
           <Field label="HTTPS photo URL"><input className="dm-input" type="url" maxLength={900} value={edit.image_url||""} onChange={e=>setEdit(v=>({...v,image_url:e.target.value}))}/></Field>
+          <Field label="Additional gallery images (up to 4 HTTPS URLs, one per line)"><textarea className="dm-input" rows={4} value={edit.gallery_input||""} onChange={e=>setEdit(v=>({...v,gallery_input:e.target.value}))}/></Field>
           {edit.image_url&&<img src={edit.image_url} alt="Product preview" className="dm-edit-image" loading="lazy"/>}
           <label className="dm-check"><input type="checkbox" checked={!!edit.is_featured} onChange={e=>setEdit(v=>({...v,is_featured:e.target.checked}))}/>Feature on storefront</label>
           <label className="dm-check"><input type="checkbox" checked={!!edit.is_listed} onChange={e=>setEdit(v=>({...v,is_listed:e.target.checked}))}/>Published</label><div className="dm-actions"><button className="dm-btn" disabled={busy} type="submit">Save to D1</button><button type="button" onClick={()=>setEdit(null)} className="dm-secondary">Close</button></div></form></section></div>}
