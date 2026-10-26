@@ -12,6 +12,7 @@ import { api } from "../api";
 import { explain } from "../errors";
 import { productImage, storeCoverImage } from "../storeImages";
 import StoreCustomerPortal from "./StoreCustomerPortal";
+import {contrastColor,readableAccent} from "../storeContrast";
 
 // ─── Utility ─────────────────────────────────────────────────────────────────
 const money = (v) => `৳${Number(v).toLocaleString("bn-BD", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
@@ -34,17 +35,11 @@ function hexToRgb(hex) {
   return `${r} ${g} ${b}`;
 }
 
-function contrastColor(hex) {
-  const channels = [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16) / 255).map(c => c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
-  const luminance = 0.2126 * channels[0] + 0.7152 * channels[1] + 0.0722 * channels[2];
-  return luminance > 0.42 ? "#13231b" : "#ffffff";
-}
-
 // ─── Theme injection ──────────────────────────────────────────────────────────
 function applyTheme(color = "#0a8752", preset = "clean") {
   const root = document.documentElement;
-  const safeColor = /^#[0-9a-f]{6}$/i.test(color) ? color : "#0a8752";
   const palette = STORE_PALETTES[preset] || STORE_PALETTES.clean;
+  const safeColor = readableAccent(color, palette.bg);
   root.style.setProperty("--store-accent", safeColor);
   root.style.setProperty("--store-accent-on", contrastColor(safeColor));
   root.style.setProperty("--store-accent-rgb", hexToRgb(safeColor));
@@ -439,6 +434,110 @@ button.s-contact-price { background: transparent; border: 0; padding: 4px 0; tex
 }
 .s-product-card:hover { box-shadow: 0 4px 14px rgba(13,31,22,.09); transform: translateY(-1px); }
 .s-add-to-cart-btn:hover, .s-place-order-btn:hover, .s-track-btn:hover { box-shadow: none; transform: none; }
+/* v13 public storefront contrast pass. Local tokens override the owner preset
+   inherited from html, preserving light/bold palettes and browser dark mode. */
+.s-site {
+  --s-field:var(--s-card,#fff);
+  --s-soft:color-mix(in srgb,var(--s-card,#fff) 85%,var(--s-bg,#f7faf8));
+  --s-negative:#b42330;
+  --s-positive:#076f42;
+  --s-focus:var(--sa);
+  color-scheme:light;
+  color:var(--s-ink);
+}
+:root[data-store-preset="bold"] .s-site,
+:root[data-theme="dark"] .s-site {
+  --s-bg:#091710;--s-card:#13251b;--s-ink:#f2f8f3;
+  --s-muted:#bed4c5;--s-border:#365241;--s-field:#182e22;
+  --s-soft:#1d3427;--s-negative:#ff9caa;--s-positive:#83edac;
+  --sa:color-mix(in srgb,var(--store-accent,#0a8752) 45%,#a4f4c8);
+  --sa-bg:color-mix(in srgb,var(--sa) 12%,transparent);
+  --sa-bg2:color-mix(in srgb,var(--sa) 20%,transparent);
+  --s-focus:var(--sa);
+  color-scheme:dark;
+}
+@media(prefers-color-scheme:dark) {
+  :root:not([data-theme="light"]):not([data-theme="dark"]) .s-site {
+    --s-bg:#091710;--s-card:#13251b;--s-ink:#f2f8f3;
+    --s-muted:#bed4c5;--s-border:#365241;--s-field:#182e22;
+    --s-soft:#1d3427;--s-negative:#ff9caa;--s-positive:#83edac;
+    --sa:color-mix(in srgb,var(--store-accent,#0a8752) 45%,#a4f4c8);
+    --sa-bg:color-mix(in srgb,var(--sa) 12%,transparent);
+    --sa-bg2:color-mix(in srgb,var(--sa) 20%,transparent);
+    --s-focus:var(--sa);
+    color-scheme:dark;
+  }
+}
+.s-site :is(.s-header,.s-hero,.s-product-card,.s-modal,.s-cart-drawer,.s-order-summary,.s-payment-option,.s-store-benefit,.s-store-toolbar,.s-compare-dialog,.s-info-card,.s-faq-item,.s-checkout-policies) {
+  color:var(--s-ink);border-color:var(--s-border);
+}
+.s-site .s-header{background:var(--s-card);border-bottom:1px solid var(--s-border)}
+.s-site .s-hero{background:linear-gradient(180deg,var(--s-card),var(--s-bg))}
+.s-site :is(.s-store-name,.s-hero h1,.s-hero p,.s-detail-name,.s-product-name,.s-product-name-button,.s-product-card,.s-product-unit,.s-detail-desc,.s-cart-item-name,.s-cart-header h3,.s-checkout h2,.s-confirm h2,.s-confirm p,.s-not-found h2,.s-not-found p,.s-form-group label,.s-product-price,.s-order-row,.s-section-head h2) {
+  color:var(--s-ink);
+}
+.s-site :is(.s-product-unit,.s-detail-desc,.s-hero p,.s-cart-item-price,.s-cart-subtotal-row,.s-payment-option-desc,.s-confirm p,.s-not-found p,.s-empty-cart,.s-loading,.s-result-count) {color:var(--s-muted)}
+.s-site :is(.s-product-price,.s-detail-price,.s-cart-item-total,.s-cart-total-row strong,.s-back-btn,.s-track-btn + .s-continue-btn,.s-confirm-token) {color:var(--sa)}
+.s-site :is(.s-product-card,.s-modal,.s-cart-drawer) {background:var(--s-card);border-color:var(--s-border)}
+.s-site :is(.s-product-img-button,.s-cart-qty-row,.s-modal-close,.s-cart-close,.s-product-img-placeholder,.s-payment-option-icon,.s-search-icon-inner) {background:var(--s-soft);color:var(--s-ink)}
+.s-site :is(.s-qty-btn,.s-cart-qty-btn,.s-search,.s-filter-btn,.s-cat-tab,.s-sort-select,.s-input,.s-textarea,.s-payment-option,.s-provider-mark) {
+  background:var(--s-field);border-color:var(--s-border);color:var(--s-ink);
+}
+.s-site :is(.s-search,.s-input,.s-textarea)::placeholder{color:var(--s-muted);opacity:1}
+.s-site :is(.s-qty-num,.s-cart-qty-num,.s-cart-total-row,.s-checkout,.s-confirm,.s-modal-inner,.s-cart-body,.s-cart-footer,.s-modal-full-btn) {color:var(--s-ink)}
+.s-site :is(.s-cart-footer,.s-cart-header,.s-cart-item,.s-payment-options,.s-cart-drawer) {border-color:var(--s-border)}
+.s-site .s-payment-option.selected {border-color:var(--sa);background:var(--sa-bg)}
+.s-site :is(.s-order-summary,.s-delivery-note,.s-min-order-note,.s-payment-chip,.s-info-card,.s-store-benefit,.s-hero-metrics) {
+  background:var(--s-soft);color:var(--s-ink);border-color:var(--s-border);
+}
+.s-site :is(.s-info-card p,.s-info-disclaimer,.s-faq-item p,.s-order-summary p,.s-compare-note,.s-product-unit) {color:var(--s-muted)}
+.s-site :is(.s-chip-open,.s-chip-closed) {border:1px solid var(--s-border)}
+.s-site :is(.s-tag,.s-badge,.s-trust-chip,.s-section-head .s-badge,.s-shopping-filter.active,.s-min-order-note) {background:var(--sa-bg);color:var(--sa);border-color:var(--s-border)}
+.s-site :is(.s-add-btn:disabled,.s-add-to-cart-btn:disabled,.s-checkout-btn:disabled,.s-place-order-btn:disabled) {
+  background:var(--s-soft);color:var(--s-muted);opacity:.72;box-shadow:none;
+}
+.s-site :is(.s-error-box) {background:color-mix(in srgb,var(--s-negative) 12%,var(--s-card));border:1px solid var(--s-negative);color:var(--s-negative)}
+.s-site .s-stock-ok{color:var(--s-positive)}
+.s-site .s-stock-out{color:var(--s-negative)}
+.s-site :is(.s-search,.s-input,.s-textarea,.s-sort-select,.s-filter-btn,.s-qty-btn,.s-cat-tab,.s-payment-option):focus-visible{
+  outline:3px solid var(--s-focus);outline-offset:2px;
+}
+.s-site .s-footer{background:#07140d;color:#d4e6d9}
+.s-site .s-footer h3{color:#fff}
+.s-site .s-footer :is(p,li,summary,.s-footer-bottom) {color:#d4e6d9}
+.s-site .s-footer a{color:#9fe8b9;text-decoration:underline;text-underline-offset:3px}
+.s-site .s-footer a:hover{color:#fff}
+.s-site .s-footer-badge{background:#172c1e;border:1px solid #3e654d;color:#f2f8f3}
+.s-site .s-footer-badge strong{color:#e4f5e7}
+.s-site .s-payment-option.bkash-selected{background:color-mix(in srgb,#d12053 12%,var(--s-card));border-color:#ee5b84}
+.s-site .s-payment-option.nagad-selected{background:color-mix(in srgb,#f15a24 12%,var(--s-card));border-color:#f78a53}
+.s-site :is(.bkash-instruction,.nagad-instruction){color:#371522}
+.s-site :is(.bkash-instruction-body,.nagad-instruction-body){color:#45231d}
+.s-site :is(.s-compare-open,.s-shopping-filter,.s-shopping-clear,.s-continue-btn,.s-qty-btn,.s-cart-qty-btn){border-color:var(--s-border)}
+.s-site .s-shopping-filter{background:var(--s-card);color:var(--s-ink)}
+.s-site .s-shopping-filter.active{background:var(--sa-bg);color:var(--sa);border-color:var(--sa)}
+.s-site .s-compare-item{background:var(--s-soft);border-color:var(--s-border)}
+.s-site .s-compare-table :is(th,td){border-color:var(--s-border);color:var(--s-ink)}
+.s-site .s-compare-table th{color:var(--s-muted)}
+.s-site :is(.s-compare-heading p,.s-compare-note,.s-compare-tray span){color:var(--s-muted)}
+.s-site .s-modal-backdrop,.s-site .s-compare-overlay{backdrop-filter:blur(4px)}
+.s-site .s-product-favorite{color:#142019;background:#fff}
+.s-site :is(.s-product-favorite.selected,.s-detail-favorite.selected){color:#be123c;background:#ffeaf0}
+.s-site :is(.s-modal-close,.s-cart-close){border:1px solid var(--s-border)}
+.s-site .s-payment-option-icon{border:1px solid var(--s-border)}
+.s-site .s-cart-badge,.s-site .s-float-cart-count{background:#fff;color:#06452a}
+.s-site :is(.s-sticky-bar,.s-add-to-cart-btn,.s-checkout-btn,.s-track-btn,.s-filter-btn.active) {color:var(--store-accent-on,#fff)}
+:root[data-theme="dark"] .s-site :is(.s-sticky-bar,.s-cart-btn,.s-add-btn,.s-add-to-cart-btn,.s-checkout-btn,.s-place-order-btn,.s-track-btn,.s-filter-btn.active,.s-compare-open),
+:root[data-store-preset="bold"] .s-site :is(.s-sticky-bar,.s-cart-btn,.s-add-btn,.s-add-to-cart-btn,.s-checkout-btn,.s-place-order-btn,.s-track-btn,.s-filter-btn.active,.s-compare-open){
+ color:#06180e;background:var(--sa);
+}
+@media(prefers-color-scheme:dark){
+ :root:not([data-theme="light"]):not([data-theme="dark"]) .s-site :is(.s-sticky-bar,.s-cart-btn,.s-add-btn,.s-add-to-cart-btn,.s-checkout-btn,.s-place-order-btn,.s-track-btn,.s-filter-btn.active,.s-compare-open){color:#06180e;background:var(--sa)}
+}
+.s-site :is(.s-modal-inner [style*="color: #6b8a7a"],.s-detail-info [style*="color: #6b8a7a"]) {color:var(--s-muted) !important}
+.s-site [style*="background: var(--surface)"] {background:var(--s-card) !important}
+.s-site [style*="color: var(--text-muted)"] {color:var(--s-muted) !important}
+.s-site [style*="color: var(--text)"] {color:var(--s-ink) !important}
 `;
 
 function useInjectCSS(css) {
@@ -513,11 +612,11 @@ function ProductCard({ product, cartQty, onAdd, onQtyChange, onView, storeCatego
           )}
           {showStockLevel === "quantity" && product.quantity !== undefined && !inCart && (
             <span className={product.quantity > 0 && product.quantity <= 5 ? "s-stock-low" : product.quantity > 0 ? "s-stock-ok" : "s-stock-out"}>
-              {product.quantity > 0 ? `${product.quantity} ${product.unit} মজুত` : "স্টক নেই"}
+              {product.quantity > 0 ? `${product.quantity} ${product.unit} মজুত` : "মজুত নেই"}
             </span>
           )}
-          {showStockLevel !== "hide" && showStockLevel !== "quantity" && product.in_stock === false && !inCart && <span className="s-stock-out">স্টক নেই</span>}
-          {showStockLevel !== "hide" && showStockLevel !== "quantity" && product.in_stock === true && !inCart && <span className="s-stock-ok">পাওয়া যাচ্ছে</span>}
+          {showStockLevel !== "hide" && showStockLevel !== "quantity" && product.in_stock === false && !inCart && <span className="s-stock-out">মজুত নেই</span>}
+          {showStockLevel !== "hide" && showStockLevel !== "quantity" && product.in_stock === true && !inCart && <span className="s-stock-ok">মজুত আছে</span>}
           {inCart && product.price != null ? (
             <div className="s-card-qty-row" onClick={e => e.stopPropagation()}>
               <button className="s-card-qty-btn" onClick={() => onQtyChange(product.id, cartQty - 1)}>−</button>
@@ -586,7 +685,7 @@ function ProductModal({ product, cartQty, onClose, onAdd, onQtyChange, onViewFul
             <img src={product.image_data_url || productImage(product, storeCategory)} alt={product.name} loading="lazy" />
           </div>
           <h2 style={{ margin: "0 0 6px", fontSize: 22, fontWeight: 800, lineHeight: 1.2 }}>{product.name}</h2>
-          <div style={{ fontSize: 13, color: "#6b8a7a", marginBottom: 6 }}>{product.unit}</div>
+          <div style={{ fontSize: 13, color: "var(--s-muted)", marginBottom: 6 }}>{product.unit}</div>
           {reviews?.average && <StarRating value={reviews.average} count={reviews.count} />}
           {product.price != null && (
             <div style={{ fontSize: 26, fontWeight: 700, color: hasFlashSale ? "#dc2626" : "var(--sa)", marginBottom: 4 }}>
@@ -595,9 +694,9 @@ function ProductModal({ product, cartQty, onClose, onAdd, onQtyChange, onViewFul
             </div>
           )}
           {hasFlashSale && product.sale_end && <div style={{ marginBottom: 10 }}><FlashSaleCountdown saleEnd={product.sale_end} /></div>}
-          {product.price == null && <div className="s-contact-price">দাম জানতে দোকানের সাথে যোগাযোগ করুন</div>}
+          {product.price == null && <div className="s-contact-price">দাম জানতে দোকানের সঙ্গে যোগাযোগ করুন</div>}
           {product.description && (
-            <p style={{ fontSize: 14, color: "#4a6358", lineHeight: 1.65, margin: "0 0 14px" }}>{product.description}</p>
+            <p style={{ fontSize: 14, color: "var(--s-ink)", lineHeight: 1.65, margin: "0 0 14px" }}>{product.description}</p>
           )}
           {product.tags?.length > 0 && (
             <div className="s-product-tags" style={{ marginBottom: 16 }}>
@@ -608,7 +707,7 @@ function ProductModal({ product, cartQty, onClose, onAdd, onQtyChange, onViewFul
           {/* Variant picker */}
           {(product.variants || []).map(v => (
             <div key={v.id} style={{ marginBottom: 14 }}>
-              <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 6, color: "var(--ink)" }}>{v.name} বেছে নিন</div>
+              <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 6, color: "var(--s-ink)" }}>{v.name} বেছে নিন</div>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
                 {v.options.map(opt => {
                   const delta = v.price_deltas?.[opt];
@@ -616,7 +715,7 @@ function ProductModal({ product, cartQty, onClose, onAdd, onQtyChange, onViewFul
                   return (
                     <button key={opt} type="button"
                       onClick={() => setSelectedVariants(prev => ({ ...prev, [v.id]: opt }))}
-                      style={{ padding: "6px 14px", borderRadius: 8, border: `2px solid ${sel ? "var(--sa)" : "var(--border)"}`, background: sel ? "var(--sa)" : "var(--card)", color: sel ? "#fff" : "var(--ink)", fontWeight: sel ? 700 : 400, cursor: "pointer", fontSize: 13, fontFamily: "inherit" }}>
+                      style={{ padding: "6px 14px", borderRadius: 8, border: `2px solid ${sel ? "var(--sa)" : "var(--s-border)"}`, background: sel ? "var(--sa)" : "var(--s-card)", color: sel ? "var(--store-accent-on,#fff)" : "var(--s-ink)", fontWeight: sel ? 700 : 400, cursor: "pointer", fontSize: 13, fontFamily: "inherit" }}>
                       {opt}{delta ? ` (+${money(delta)})` : ""}
                     </button>
                   );
@@ -627,10 +726,10 @@ function ProductModal({ product, cartQty, onClose, onAdd, onQtyChange, onViewFul
 
           <button type="button" className="s-modal-full-btn" onClick={() => onViewFull(product)}>পূর্ণ বিবরণ দেখুন →</button>
           {showStockLevel === "quantity" && product.quantity !== undefined ? (
-            <div style={{ marginBottom: 16 }}><span className={product.quantity <= 0 ? "s-stock-out" : product.quantity <= 5 ? "s-stock-low" : "s-stock-ok"}>{product.quantity > 0 ? `${product.quantity} ${product.unit} মজুত` : "স্টক নেই"}</span></div>
+            <div style={{ marginBottom: 16 }}><span className={product.quantity <= 0 ? "s-stock-out" : product.quantity <= 5 ? "s-stock-low" : "s-stock-ok"}>{product.quantity > 0 ? `${product.quantity} ${product.unit} মজুত` : "মজুত নেই"}</span></div>
           ) : showStockLevel !== "hide" && product.in_stock !== undefined && (
             <div style={{ marginBottom: 16 }}>
-              <span className={outOfStock ? "s-stock-out" : "s-stock-ok"}>{outOfStock ? "✗ স্টকে নেই" : "✓ পাওয়া যাচ্ছে"}</span>
+              <span className={outOfStock ? "s-stock-out" : "s-stock-ok"}>{outOfStock ? "✗ স্টকে নেই" : "✓ মজুত আছে"}</span>
             </div>
           )}
           {product.price == null ? null : inCart ? (
@@ -648,7 +747,7 @@ function ProductModal({ product, cartQty, onClose, onAdd, onQtyChange, onViewFul
                 <button className="s-qty-btn" onClick={() => setQty(q => Math.max(1, q - 1))}>−</button>
                 <span className="s-qty-num">{qty}</span>
                 <button className="s-qty-btn" disabled={qty >= maxOrderQuantity(product)} onClick={() => setQty(q => Math.min(maxOrderQuantity(product), q + 1))}>+</button>
-                <span style={{ fontSize: 13, color: "#6b8a7a" }}>{product.unit}</span>
+                <span style={{ fontSize: 13, color: "var(--s-muted)" }}>{product.unit}</span>
               </div>
               {product.variants?.length > 0 && !allVariantsSelected && (
                 <p style={{ fontSize: 13, color: "#dc2626", marginBottom: 8 }}>⚠ সব ভ্যারিয়েন্ট বেছে নিন</p>
@@ -668,12 +767,12 @@ function ProductModal({ product, cartQty, onClose, onAdd, onQtyChange, onViewFul
             <div style={{ marginTop: 20, borderTop: "1px solid var(--border)", paddingTop: 16 }}>
               <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 10 }}>রিভিউ ({reviews.count}টি)</div>
               {reviews.reviews.slice(0, 3).map(r => (
-                <div key={r.id} style={{ marginBottom: 12, padding: "10px 12px", background: "var(--bg)", borderRadius: 8 }}>
+                <div key={r.id} style={{ marginBottom: 12, padding: "10px 12px", background: "var(--s-soft)", borderRadius: 8 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
                     <span style={{ fontWeight: 600, fontSize: 13 }}>{r.reviewer_name}</span>
                     <span>{[1,2,3,4,5].map(i => <span key={i} style={{ color: i <= r.rating ? "#f59e0b" : "#d1d5db", fontSize: 13 }}>★</span>)}</span>
                   </div>
-                  {r.comment && <p style={{ fontSize: 13, color: "#4a6358", margin: 0 }}>{r.comment}</p>}
+                  {r.comment && <p style={{ fontSize: 13, color: "var(--s-muted)", margin: 0 }}>{r.comment}</p>}
                 </div>
               ))}
             </div>
@@ -877,7 +976,7 @@ function CheckoutView({ store, cart, products, onBack, onDone, scCustomer, varia
       return;
     }
     if (!meetsMin) {
-      setError(`সর্বনিম্ন অর্ডার ${money(store.min_order_bdt)} হতে হবে।`);
+      setError(`ন্যূনতম অর্ডার ${money(store.min_order_bdt)} হতে হবে।`);
       return;
     }
     if (zoneBlocked) {
@@ -906,7 +1005,7 @@ function CheckoutView({ store, cart, products, onBack, onDone, scCustomer, varia
       setSubmitCooldown(30);
       onDone({ ...order, payment_method: form.payment });
     } catch (err) {
-      setError(explain(err, { 404: "একটি পণ্য এখন পাওয়া যাচ্ছে না।", 409: "এই দোকান এখন অর্ডার নিচ্ছে না।" }));
+      setError(explain(err, { 404: "একটি পণ্য এখন মজুত আছে না।", 409: "এই দোকান এখন অর্ডার নিচ্ছে না।" }));
     } finally {
       setBusy(false);
     }
@@ -964,7 +1063,7 @@ function CheckoutView({ store, cart, products, onBack, onDone, scCustomer, varia
       )}
 
       {!meetsMin && (
-        <div className="s-min-order-note">সর্বনিম্ন অর্ডার: {money(store.min_order_bdt)}</div>
+        <div className="s-min-order-note">ন্যূনতম অর্ডার: {money(store.min_order_bdt)}</div>
       )}
 
       {error && <div className="s-error-box">{error}</div>}
@@ -1095,8 +1194,8 @@ function CheckoutView({ store, cart, products, onBack, onDone, scCustomer, varia
                       reader.readAsDataURL(file);
                     }} />
                     {form.payment_screenshot
-                      ? <><img src={form.payment_screenshot} alt="screenshot" className="s-screenshot-preview" /><div style={{fontSize:12,color:"#d12053",marginTop:4,fontWeight:700}}>✓ স্ক্রিনশট আপলোড হয়েছে</div></>
-                      : <div style={{fontSize:13,color:"#d12053"}}>📷 পেমেন্ট স্ক্রিনশট ছবি যোগ করুন</div>
+                      ? <><img src={form.payment_screenshot} alt="screenshot" className="s-screenshot-preview" /><div style={{fontSize:12,color:"#d12053",marginTop:4,fontWeight:700}}>✓ স্ক্রিনশট যুক্ত হয়েছে</div></>
+                      : <div style={{fontSize:13,color:"#d12053"}}>📷 পেমেন্টের স্ক্রিনশট যুক্ত করুন</div>
                     }
                   </label>
                 </div>
@@ -1157,8 +1256,8 @@ function CheckoutView({ store, cart, products, onBack, onDone, scCustomer, varia
                       reader.readAsDataURL(file);
                     }} />
                     {form.payment_screenshot
-                      ? <><img src={form.payment_screenshot} alt="screenshot" className="s-screenshot-preview" /><div style={{fontSize:12,color:"#f15a24",marginTop:4,fontWeight:700}}>✓ স্ক্রিনশট আপলোড হয়েছে</div></>
-                      : <div style={{fontSize:13,color:"#f15a24"}}>📷 পেমেন্ট স্ক্রিনশট ছবি যোগ করুন</div>
+                      ? <><img src={form.payment_screenshot} alt="screenshot" className="s-screenshot-preview" /><div style={{fontSize:12,color:"#f15a24",marginTop:4,fontWeight:700}}>✓ স্ক্রিনশট যুক্ত হয়েছে</div></>
+                      : <div style={{fontSize:13,color:"#f15a24"}}>📷 পেমেন্টের স্ক্রিনশট যুক্ত করুন</div>
                     }
                   </label>
                 </div>
@@ -1226,7 +1325,7 @@ function ConfirmationView({ order, store, orgId, onContinue }) {
   return (
     <div className="s-confirm">
       <div className="s-confirm-lottie">✅</div>
-      <h2>অর্ডার পেয়েছি!</h2>
+      <h2>আপনার অর্ডারটি গ্রহণ করা হয়েছে</h2>
       <p>আপনার অর্ডার নম্বর: <strong style={{color:"var(--sa)",fontSize:20}}>#{order.order_number}</strong></p>
 
       {payErr && <div style={{background:"#fee2e2",color:"#b91c1c",borderRadius:10,padding:"10px 14px",fontSize:13,margin:"8px 0"}}>{payErr}</div>}
@@ -1238,11 +1337,11 @@ function ConfirmationView({ order, store, orgId, onContinue }) {
           <p style={{fontSize:14,color:"#7a1a40",margin:"0 0 6px",lineHeight:1.6}}>
             অর্ডার <strong style={{color:"#E2136E"}}>#{order.order_number}</strong> — পরিমাণ <strong style={{color:"#E2136E"}}>৳{Number(order.total).toLocaleString("bn-BD")}</strong>
           </p>
-          <p style={{fontSize:12,color:"#9a3055",margin:"0 0 16px"}}>বাটনে ক্লিক করলে official bKash payment page-এ যাবেন</p>
+          <p style={{fontSize:12,color:"#9a3055",margin:"0 0 16px"}}>বোতামটি চাপলে bKash-এর পেমেন্ট পাতায় যাবেন।</p>
           <button onClick={redirectToBkash} disabled={busy} style={{background:"#E2136E",color:"#fff",border:"none",borderRadius:12,padding:"14px 32px",fontSize:16,fontWeight:800,cursor:"pointer",width:"100%",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",gap:10}}>
-            {busy ? "রিডাইরেক্ট হচ্ছে…" : <><BkashLogo size={16} /><span>bKash-এ পেমেন্ট করুন</span></>}
+            {busy ? "পেমেন্ট পাতায় নেওয়া হচ্ছে…" : <><BkashLogo size={16} /><span>bKash-এ পেমেন্ট করুন</span></>}
           </button>
-          <p style={{fontSize:11,color:"#c06080",marginTop:8}}>🔒 আপনি bKash-এর নিরাপদ পেজে যাবেন</p>
+          <p style={{fontSize:11,color:"#c06080",marginTop:8}}>🔒 আপনাকে bKash-এর পেমেন্ট পাতায় নেওয়া হবে।</p>
         </div>
       )}
 
@@ -1253,11 +1352,11 @@ function ConfirmationView({ order, store, orgId, onContinue }) {
           <p style={{fontSize:14,color:"#7a3a10",margin:"0 0 6px",lineHeight:1.6}}>
             অর্ডার <strong style={{color:"#F7941D"}}>#{order.order_number}</strong> — পরিমাণ <strong style={{color:"#F7941D"}}>৳{Number(order.total).toLocaleString("bn-BD")}</strong>
           </p>
-          <p style={{fontSize:12,color:"#9a4020",margin:"0 0 16px"}}>বাটনে ক্লিক করলে official Nagad payment page-এ যাবেন</p>
+          <p style={{fontSize:12,color:"#9a4020",margin:"0 0 16px"}}>বোতামটি চাপলে Nagad-এর পেমেন্ট পাতায় যাবেন।</p>
           <button onClick={redirectToNagad} disabled={busy} style={{background:"linear-gradient(135deg,#F7941D,#EF3A22)",color:"#fff",border:"none",borderRadius:12,padding:"14px 32px",fontSize:16,fontWeight:800,cursor:"pointer",width:"100%",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",gap:10}}>
-            {busy ? "রিডাইরেক্ট হচ্ছে…" : <><NagadLogo size={16} /><span>Nagad-এ পেমেন্ট করুন</span></>}
+            {busy ? "পেমেন্ট পাতায় নেওয়া হচ্ছে…" : <><NagadLogo size={16} /><span>Nagad-এ পেমেন্ট করুন</span></>}
           </button>
-          <p style={{fontSize:11,color:"#c06030",marginTop:8}}>🔒 আপনি Nagad-এর নিরাপদ পেজে যাবেন</p>
+          <p style={{fontSize:11,color:"#c06030",marginTop:8}}>🔒 আপনাকে Nagad-এর পেমেন্ট পাতায় নেওয়া হবে।</p>
         </div>
       )}
 
@@ -1354,8 +1453,8 @@ function ConfirmationView({ order, store, orgId, onContinue }) {
         <div style={{background:"linear-gradient(135deg,#f0f7ff,#e8f2ff)",border:"2px solid #0a6ebd",borderRadius:16,padding:"20px 22px",margin:"16px 0",textAlign:"center"}}>
           <div style={{marginBottom:12}}><SSLCommerzLogo size={22} /></div>
           <p style={{fontSize:14,color:"#1a4a7a",margin:"0 0 16px",lineHeight:1.6}}>
-            অর্ডার নম্বর <strong>#{order.order_number}</strong> পেয়েছি।<br/>
-            নিচের বাটনে ক্লিক করে bKash / Nagad / Card দিয়ে পেমেন্ট সম্পন্ন করুন।
+            আপনার অর্ডার নম্বর: <strong>#{order.order_number}</strong>।<br/>
+            নিচের বোতাম থেকে উপলব্ধ পেমেন্ট পদ্ধতি বেছে নিন।
           </p>
           {payErr && <div style={{color:"#dc2626",fontSize:13,marginBottom:10}}>{payErr}</div>}
           <button
@@ -1363,7 +1462,7 @@ function ConfirmationView({ order, store, orgId, onContinue }) {
             disabled={busy}
             style={{background:"#0a6ebd",color:"#fff",border:"none",borderRadius:12,padding:"14px 32px",fontSize:16,fontWeight:800,cursor:"pointer",width:"100%",fontFamily:"inherit",boxShadow:"0 4px 16px rgba(10,110,189,.35)"}}
           >
-            {busy ? "রিডাইরেক্ট হচ্ছে…" : "💳 এখনই পেমেন্ট করুন"}
+            {busy ? "পেমেন্ট পাতায় নেওয়া হচ্ছে…" : "💳 এখনই পেমেন্ট করুন"}
           </button>
           <p style={{fontSize:12,color:"#5a8ab0",marginTop:10}}>
             🔒 SSL Secured · bKash · Nagad · Visa · Mastercard
@@ -1377,7 +1476,7 @@ function ConfirmationView({ order, store, orgId, onContinue }) {
       {order.coupon_discount > 0 && (
         <p style={{fontSize:14,color:"#16a34a"}}>🎟 কুপন ছাড়: <strong>-৳{Number(order.coupon_discount).toLocaleString("bn-BD")}</strong></p>
       )}
-      <p>দোকান থেকে নিশ্চিত হলে জানানো হবে। এই লিংক দিয়ে যেকোনো সময় অর্ডারের অবস্থা জানুন:</p>
+      <p>দোকান থেকে অর্ডার নিশ্চিত হলে তার অবস্থা এই লিংকে দেখতে পারবেন।</p>
       <div className="s-confirm-token">#{order.order_number}</div>
       <br />
       <a className="s-track-btn" href={`#/order-status/${order.organization_id}/${order.access_token}`}>
@@ -1393,7 +1492,7 @@ function ConfirmationView({ order, store, orgId, onContinue }) {
         </div>
       )}
       <br />
-      <button className="s-continue-btn" onClick={onContinue}>আরও কেনাকাটা করুন</button>
+      <button className="s-continue-btn" onClick={onContinue}>আরও পণ্য দেখুন</button>
     </div>
   );
 }
@@ -1483,7 +1582,7 @@ export default function StorePage() {
         setCart(validCart);
         saveCart(data.organization_id, validCart);
       })
-      .catch(e => setErr(explain(e, { 404: "এই স্টোরটি পাওয়া যায়নি বা এখন বন্ধ।" })))
+      .catch(e => setErr(explain(e, { 404: "দোকানটি পাওয়া যায়নি অথবা বর্তমানে বন্ধ আছে।" })))
       .finally(() => setLoading(false));
     return () => { clearTheme(); document.title = 'B-SMART'; };
   }, [storeId]);
@@ -1560,13 +1659,13 @@ export default function StorePage() {
   }
 
   if (loading) return (
-    <div className="s-site"><div className="s-loading"><div className="s-spinner" /><p>স্টোর লোড হচ্ছে…</p></div></div>
+    <div className="s-site"><div className="s-loading"><div className="s-spinner" /><p>দোকানের তথ্য আনা হচ্ছে…</p></div></div>
   );
   if (err) return (
     <div className="s-site">
       <div className="s-not-found">
         <div style={{ fontSize: 56, marginBottom: 16 }}>🏪</div>
-        <h2>স্টোর পাওয়া যায়নি</h2>
+        <h2>দোকানটি পাওয়া যায়নি</h2>
         <p>{err}</p>
       </div>
     </div>
@@ -1602,7 +1701,7 @@ export default function StorePage() {
   return (
     <div className="s-site">
       {store.is_demo && <div role="status" style={{position:"relative",zIndex:50,padding:"12px 16px",background:"#fef3c7",color:"#78350f",fontWeight:700,textAlign:"center"}}>
-        Cloudflare D1-তে চালু ডেমো দোকান — অর্ডার রেকর্ড হবে, কিন্তু বাস্তব ডেলিভারি বা পেমেন্ট নেই। নাম/ফোন/ঠিকানায় নমুনা তথ্য ব্যবহার করুন; আসল টাকা পাঠাবেন না।
+        এটি একটি পরীক্ষামূলক দোকান। এখানে দেওয়া অর্ডার শুধু ডেমো হিসেবে সংরক্ষিত হবে; কোনো বাস্তব পেমেন্ট বা ডেলিভারি হবে না। অনুগ্রহ করে নমুনা নাম, ফোন নম্বর ও ঠিকানা ব্যবহার করুন। কাউকে টাকা পাঠাবেন না।
       </div>}
       {/* Floating cart button (mobile) */}
       {cartCount > 0 && (
@@ -1750,9 +1849,9 @@ export default function StorePage() {
           </section>
 
           <div className="s-store-benefits" aria-label="দোকানের তথ্য">
-            <div className="s-store-benefit"><span>🚚</span><div><strong>ডেলিভারি</strong>{store.delivery_note || "ডেলিভারির বিস্তারিত অর্ডার নিশ্চিতের সময় জানানো হবে"}</div></div>
-            <div className="s-store-benefit"><span>🧾</span><div><strong>সর্বনিম্ন অর্ডার</strong>{store.min_order_bdt ? money(store.min_order_bdt) : "কোনো ন্যূনতম অর্ডার নেই"}</div></div>
-            <div className="s-store-benefit"><span>🕘</span><div><strong>আজকের সময়</strong>{todayHours?.label || "ব্যবসার সময় দেওয়া নেই"}</div></div>
+            <div className="s-store-benefit"><span>🚚</span><div><strong>ডেলিভারি</strong>{store.delivery_note || "ডেলিভারির বিস্তারিত তথ্য দোকান থেকে জানানো হবে।"}</div></div>
+            <div className="s-store-benefit"><span>🧾</span><div><strong>ন্যূনতম অর্ডার</strong>{store.min_order_bdt ? money(store.min_order_bdt) : "ন্যূনতম অর্ডারের শর্ত নেই"}</div></div>
+            <div className="s-store-benefit"><span>🕘</span><div><strong>আজকের সময়</strong>{todayHours?.label || "দোকানের সময়সূচি দেওয়া হয়নি"}</div></div>
           </div>
 
           {/* Featured */}
@@ -1829,7 +1928,7 @@ export default function StorePage() {
                   style={{padding:"10px 28px",background:"var(--surface)",border:"1px solid var(--border)",borderRadius:8,cursor:"pointer",fontFamily:"inherit",fontSize:14,color:"var(--text)"}}
                   onClick={() => setVisibleCount(c => c + 20)}
                 >
-                  আরো {Math.min(20, sortedProducts.length - visibleCount)} টি পণ্য দেখুন
+                  আরও {Math.min(20, sortedProducts.length - visibleCount)} টি পণ্য দেখুন
                 </button>
               </div>
             )}
@@ -1860,11 +1959,11 @@ export default function StorePage() {
               )}
               {store.show_stock_level === "quantity" && selectedProduct.quantity !== undefined ? (
                 <span className={selectedProduct.quantity <= 0 ? "s-stock-out" : selectedProduct.quantity <= 5 ? "s-stock-low" : "s-stock-ok"}>
-                  {selectedProduct.quantity > 0 ? `${selectedProduct.quantity} ${selectedProduct.unit} মজুত` : "স্টক নেই"}
+                  {selectedProduct.quantity > 0 ? `${selectedProduct.quantity} ${selectedProduct.unit} মজুত` : "মজুত নেই"}
                 </span>
               ) : store.show_stock_level !== "hide" && selectedProduct.in_stock !== undefined && (
                 <span className={selectedProduct.in_stock ? "s-stock-ok" : "s-stock-out"}>
-                  {selectedProduct.in_stock ? "পাওয়া যাচ্ছে" : "স্টক নেই"}
+                  {selectedProduct.in_stock ? "মজুত আছে" : "মজুত নেই"}
                 </span>
               )}
               <div className="s-qty-row">
@@ -1883,7 +1982,7 @@ export default function StorePage() {
               <button onClick={() => {
                 const url = `${window.location.origin}${window.location.pathname}#/store/${storeId}?product=${selectedProduct.id}`;
                 if (navigator.share) navigator.share({ title: selectedProduct.name, text: selectedProduct.description || "", url });
-                else { navigator.clipboard?.writeText(url); alert('লিংক কপি হয়েছে!'); }
+                else { navigator.clipboard?.writeText(url); alert('লিংকটি কপি হয়েছে।'); }
               }} style={{marginTop:8,background:"none",border:"1px solid var(--border)",borderRadius:8,padding:"8px 14px",cursor:"pointer",fontSize:13,color:"var(--text-muted)",width:"100%"}}>📤 শেয়ার করুন</button>
             </div>
           </div>
@@ -1956,9 +2055,9 @@ export default function StorePage() {
           </div>
           <div className="s-footer-column">
             <h3>অর্ডার ও পেমেন্ট</h3>
-            <p>{store.delivery_note || "ডেলিভারির তথ্য অর্ডার নিশ্চিত করার সময় জানানো হবে।"}</p>
-            <p>{store.payment_cod ? "ক্যাশ অন ডেলিভারি" : "পেমেন্টের নির্দেশনা দোকান থেকে জানানো হবে"}</p>
-            {store.min_order_bdt ? <p>সর্বনিম্ন অর্ডার: {money(store.min_order_bdt)}</p> : null}
+            <p>{store.delivery_note || "অর্ডার নিশ্চিত হলে দোকান থেকে ডেলিভারি সম্পর্কে জানানো হবে।"}</p>
+            <p>{store.payment_cod ? "ক্যাশ অন ডেলিভারি" : "এই দোকানের অনলাইন পেমেন্ট চালু নেই"}</p>
+            {store.min_order_bdt ? <p>ন্যূনতম অর্ডার: {money(store.min_order_bdt)}</p> : null}
           </div>
         </div>
         <div className="s-footer-bottom">
