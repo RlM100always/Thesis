@@ -5,6 +5,7 @@
 import { useEffect, useState } from "react";
 import { api } from "../api";
 import { storeCoverImage } from "../storeImages";
+import {readFavorites,toggleFavorite} from "../storefrontFavorites";
 
 const PRESET_GRAD = {
   warm:     "linear-gradient(135deg, #f5c06a 0%, #e8895a 100%)",
@@ -203,6 +204,11 @@ export default function StoreDirectory() {
   const [search, setSearch] = useState("");
   const [activeCategory, setActiveCategory] = useState(null);
   const [activeArea, setActiveArea] = useState(null);
+  const [sortBy,setSortBy]=useState("az");
+  const [showFavorites,setShowFavorites]=useState(false);
+  const [excludeDemo,setExcludeDemo]=useState(false);
+  const [codOnly,setCodOnly]=useState(false);
+  const [favoriteStores,setFavoriteStores]=useState(()=>readFavorites("stores"));
 
   useEffect(() => {
     const el = document.createElement("style");
@@ -239,8 +245,17 @@ export default function StoreDirectory() {
     }
     if (activeCategory && s.category !== activeCategory) return false;
     if (activeArea && s.area !== activeArea) return false;
+    if(showFavorites&&!favoriteStores.includes(s.slug))return false;
+    if(excludeDemo&&s.is_demo)return false;
+    if(codOnly&&(s.is_demo||!s.payment_cod))return false;
     return true;
+  }).sort((a,b)=>{
+    if(sortBy==="za")return String(b.display_name||"").localeCompare(String(a.display_name||""),"bn");
+    if(sortBy==="area")return String(a.area||"").localeCompare(String(b.area||""),"bn")||String(a.display_name||"").localeCompare(String(b.display_name||""),"bn");
+    return String(a.display_name||"").localeCompare(String(b.display_name||""),"bn");
   });
+  function favoriteStore(id){setFavoriteStores(current=>toggleFavorite("stores",current,id));}
+  function clearFilters(){setSearch("");setActiveCategory(null);setActiveArea(null);setShowFavorites(false);setExcludeDemo(false);setCodOnly(false);setSortBy("az");}
 
   return (
     <div className="sd-page">
@@ -259,13 +274,13 @@ export default function StoreDirectory() {
       {/* Hero */}
       <div className="sd-hero">
         <div className="sd-hero-eyebrow">🇧🇩 Made in Bangladesh</div>
-        <h1>সেরা দোকানগুলো এখন অনলাইনে</h1>
-        <p>এলাকা ও ব্যবসার ধরন অনুযায়ী দোকান খুঁজে অর্ডার করুন</p>
+        <h1>পছন্দের দোকান খুঁজুন সহজেই</h1>
+        <p>দোকান ও পণ্য ঘুরে দেখুন, পছন্দের দোকান সংরক্ষণ করুন। ডেমো দোকানে বাস্তব পেমেন্ট বা ডেলিভারি নেই।</p>
         <div className="sd-search-wrap">
           <span className="sd-search-icon">🔍</span>
           <input
             className="sd-search"
-            placeholder="দোকানের নাম, এলাকা বা ব্যবসার ধরন লিখুন…"
+            placeholder="দোকান, এলাকা অথবা ক্যাটাগরি খুঁজুন…" aria-label="দোকান খুঁজুন"
             value={search}
             onChange={e => setSearch(e.target.value)}
           />
@@ -281,8 +296,8 @@ export default function StoreDirectory() {
               <div className="sd-hero-stat-label">বিভাগ</div>
             </div>
             <div className="sd-hero-stat">
-              <div className="sd-hero-stat-num">{stores.filter(s => s.payment_cod).length}</div>
-              <div className="sd-hero-stat-label">COD সুবিধা</div>
+              <div className="sd-hero-stat-num">{stores.filter(s => !s.is_demo && s.payment_cod).length}</div>
+              <div className="sd-hero-stat-label">ডেমো ছাড়া COD স্টোর</div>
             </div>
           </div>
         )}
@@ -318,6 +333,17 @@ export default function StoreDirectory() {
         </div>
       </div>
 
+      <div className="sd-discovery-tools" role="group" aria-label="দোকান ফিল্টার ও সাজানো">
+        <button type="button" aria-pressed={showFavorites} className={`sd-discovery-pill${showFavorites?" active":""}`} onClick={()=>setShowFavorites(x=>!x)}>♥ পছন্দের দোকান ({favoriteStores.length})</button>
+        <button type="button" aria-pressed={excludeDemo} className={`sd-discovery-pill${excludeDemo?" active":""}`} onClick={()=>setExcludeDemo(x=>!x)}>ডেমো বাদ দিন</button>
+        <button type="button" aria-pressed={codOnly} className={`sd-discovery-pill${codOnly?" active":""}`} onClick={()=>setCodOnly(x=>!x)}>ক্যাশ অন ডেলিভারি</button>
+        <label className="sd-sort-label">সাজান
+          <select className="sd-sort" value={sortBy} onChange={e=>setSortBy(e.target.value)} aria-label="দোকান সাজানোর নিয়ম">
+            <option value="az">নাম A–Z</option><option value="za">নাম Z–A</option><option value="area">এলাকা অনুযায়ী</option>
+          </select>
+        </label>
+        {(search||activeArea||activeCategory||showFavorites||excludeDemo||codOnly)&&<button type="button" className="sd-reset" onClick={clearFilters}>সব ফিল্টার মুছুন</button>}
+      </div>
       {/* Toolbar */}
       {!loading && (
         <div className="sd-toolbar">
@@ -349,7 +375,7 @@ export default function StoreDirectory() {
                 ডাটাবেস সংযোগ/ডেমো সেটআপের জন্য অ্যাডমিনকে জানান।</p>
               <a href="#/signup" className="sd-filter-btn" style={{display:"inline-flex",textDecoration:"none"}}>নতুন ব্যবসা তৈরি করুন</a>
             </>
-          ) : <p>অন্য কীওয়ার্ড বা বিভাগ চেষ্টা করুন।</p>}
+          ) : <><p>অন্য কীওয়ার্ড বা বিভাগ চেষ্টা করুন।</p><button className="sd-discovery-pill" onClick={clearFilters}>সব দোকান দেখুন</button></>}
         </div>
       ) : (
         <div className="sd-grid">
@@ -358,11 +384,13 @@ export default function StoreDirectory() {
             const accent = s.theme_color || "#0a8752";
             const emoji = CAT_EMOJI[s.category] || "🏪";
             return (
-              <a key={s.slug} href={`#/store/${s.slug}`} className="sd-card">
+              <div key={s.slug} className="sd-card-wrap">
+              <a href={`#/store/${s.slug}`} className="sd-card">
                 {/* Cover */}
                 <div className="sd-card-cover" style={{ background: PRESET_GRAD[s.theme_preset] || PRESET_GRAD.clean }}>
                   <img src={storeCoverImage(s)} alt={`${s.display_name} দোকান`} loading="lazy" />
                   <div className="sd-card-cover-overlay" />
+                  {s.is_demo && <span className="sd-cover-demo">DEMO · Sample shop</span>}
                   <div className="sd-card-logo" style={{ color: accent }}>
                     {s.logo_data_url ? <img src={s.logo_data_url} alt={s.display_name} /> : initial}
                   </div>
@@ -379,14 +407,20 @@ export default function StoreDirectory() {
                 </div>
                 {/* Footer */}
                 <div className="sd-card-footer">
-                  <span className="sd-visit-btn">দোকান দেখুন <span>→</span></span>
+                  <span className="sd-visit-btn">{s.is_demo?"ডেমো দেখুন":"দোকান দেখুন"} <span>→</span></span>
                   <div className="sd-payment-row">
-                    {s.payment_cod && <span className="sd-pay-badge" title="ক্যাশ অন ডেলিভারি">💵</span>}
+                    {!s.is_demo && s.payment_cod && <span className="sd-pay-badge" title="ক্যাশ অন ডেলিভারি">💵</span>}
                     {s.payment_bkash && <span className="sd-pay-badge" title="bKash">📱</span>}
                     {s.payment_nagad && <span className="sd-pay-badge" title="Nagad">💳</span>}
                   </div>
                 </div>
               </a>
+              <button type="button" className={`sd-favorite${favoriteStores.includes(s.slug)?" active":""}`}
+                aria-label={favoriteStores.includes(s.slug)?`${s.display_name} পছন্দের তালিকা থেকে সরান`:`${s.display_name} পছন্দের দোকানে যোগ করুন`}
+                aria-pressed={favoriteStores.includes(s.slug)}
+                title={favoriteStores.includes(s.slug)?"সংরক্ষিত দোকান":"সংরক্ষণ করুন"}
+                onClick={()=>favoriteStore(s.slug)}>{favoriteStores.includes(s.slug)?"♥":"♡"}</button>
+              </div>
             );
           })}
         </div>
