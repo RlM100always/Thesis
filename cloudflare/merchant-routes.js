@@ -1,3 +1,4 @@
+import {merchantInsights} from "./merchant-insights.js";
 /* Authenticated Cloudflare D1 merchant console (separate from legacy FastAPI).
    Public demo checkout does not accept any real payment or delivery.
    IMPORTANT: This owner identity is not imported from ephemeral SQLite.
@@ -31,7 +32,7 @@ async function dashboard(env,owner){
  const store=await myStore(env,owner);
  if(!store)return {account:{email:owner.email},store:null,products:[],orders:[],metrics:{orders:0,inventory_units:0,placed_total_bdt:0},stock_adjustments:[],cashbook:[]};
  const [products,orders,stats,adjustments,cashbook]=await Promise.all([
-  env.DB.prepare("SELECT id,sku,name,category,price_bdt,stock_qty,is_listed,created_at FROM commerce_products WHERE store_id=? ORDER BY created_at DESC LIMIT 200").bind(store.id).all(),
+  env.DB.prepare("SELECT id,sku,name,category,price_bdt,stock_qty,reorder_point,is_listed,created_at FROM commerce_products WHERE store_id=? ORDER BY created_at DESC LIMIT 200").bind(store.id).all(),
   env.DB.prepare("SELECT id,order_number,status,total_bdt,placed_at,payment_method,shipping_name,shipping_phone,shipping_address FROM commerce_orders WHERE store_id=? ORDER BY placed_at DESC LIMIT 150").bind(store.id).all(),
   env.DB.prepare("SELECT (SELECT COUNT(*) FROM commerce_orders WHERE store_id=?) AS orders,(SELECT COALESCE(SUM(stock_qty),0) FROM commerce_products WHERE store_id=?) AS inventory_units,(SELECT COALESCE(SUM(total_bdt),0) FROM commerce_orders WHERE store_id=? AND status!='cancelled') AS placed_total_bdt").bind(store.id,store.id,store.id).first(),
   env.DB.prepare("SELECT product_id,old_quantity,new_quantity,delta,reason,created_at FROM commerce_stock_adjustments WHERE store_id=? ORDER BY created_at DESC LIMIT 25").bind(store.id).all(),
@@ -117,6 +118,27 @@ export async function merchantRouter(req,env,path,output,error){
    return output(req,{deleted:true});
   }
   if(method==="GET"&&path==="/api/merchant/dashboard")return output(req,await dashboard(env,owner));
+  if(method==="GET"&&path==="/api/merchant/insights"){
+   const store=await storeOnly(env,owner);
+   const daysRaw=new URL(req.url).searchParams.get("days")||"30";
+   if(!["7","30","90"].includes(daysRaw))return bad(req,error,422,"Available windows: 7, 30 or 90 days");
+   return output(req,await merchantInsights(env.DB,store.id,Number(daysRaw)));
+  }
+  if(method==="POST"&&path==="/api/merchant/inventory/corrections"){
+   const store=await storeOnly(env,owner),b=await json(req,error);
+   const productId=short(b.product_id,90),delta=Number(b.delta);
+   const reason=short(b.reason,20),note=short(b.note,120);
+   if(!productId||!integer(delta,-10000,10000)||delta===0||
+     !["restock","damage","stocktake","return","other"].includes(reason))
+    return bad(req,error,422,"Product, nonzero quantity delta and valid reason required");
+   const product=await env.DB.prepare("SELECT id FROM commerce_products WHERE id=? AND store_id=?").bind(productId,store.id).first();
+   if(!product)return bad(req,error,404,"Product not found in this store");
+   const id=crypto.randomUUID();
+   try{await env.DB.prepare("INSERT INTO commerce_inventory_corrections(id,store_id,product_id,delta,reason,note) VALUES(?,?,?,?,?,?)").bind(id,store.id,productId,delta,reason,note).run();}
+   catch{return bad(req,error,409,"Inventory changed or quantity exceeds available stock / limit");}
+   const latest=await env.DB.prepare("SELECT stock_qty FROM commerce_products WHERE id=? AND store_id=?").bind(productId,store.id).first();
+   return output(req,{created:true,correction_id:id,product_id:productId,quantity:latest.stock_qty},201);
+  }
   if(method==="POST"&&path==="/api/merchant/store"){
    if(await myStore(env,owner))return bad(req,error,409,"Account already has a store");
    const b=await json(req,error);
@@ -173,12 +195,12 @@ export async function merchantRouter(req,env,path,output,error){
   }
   if(method==="POST"&&path==="/api/merchant/products"){
    const store=await storeOnly(env,owner),b=await json(req,error);
-   const sku=short(b.sku,45),name=short(b.name,140),cat=short(b.category,65);
-   if(!sku||name.length<2||!integer(b.price_bdt,0,10000000)||!integer(b.stock_qty,0,1000000))
+   const sku=short(b.sku,45),name=short(b.name,140),cat=short(b.category,65),reorder=Number(b.reorder_point??5);
+   if(!sku||name.length<2||!integer(b.price_bdt,0,10000000)||!integer(b.stock_qty,0,1000000)||!integer(reorder,0,1000000))
     return bad(req,error,422,"Invalid SKU, name, price or quantity");
    const id=crypto.randomUUID(),price=Number(b.price_bdt),qty=Number(b.stock_qty);
    try{
-    await env.DB.prepare("INSERT INTO commerce_products(id,store_id,sku,name,category,price_bdt,stock_qty,is_listed) VALUES(?,?,?,?,?,?,?,?)").bind(id,store.id,sku,name,cat,price,qty,b.is_listed===true?1:0).run();
+    await env.DB.prepare("INSERT INTO commerce_products(id,store_id,sku,name,category,price_bdt,stock_qty,is_listed,reorder_point) VALUES(?,?,?,?,?,?,?,?,?)").bind(id,store.id,sku,name,cat,price,qty,b.is_listed===true?1:0,reorder).run();
    }catch(e){return bad(req,error,errorCode(e),"Product SKU must be unique");}
    return output(req,{created:true,product_id:id},201);
   }
@@ -191,15 +213,29 @@ export async function merchantRouter(req,env,path,output,error){
    const name=short(b.name??p.name,140),cat=short(b.category??p.category,65);
    const price=b.price_bdt===undefined?p.price_bdt:Number(b.price_bdt);
    const qty=b.stock_qty===undefined?p.stock_qty:Number(b.stock_qty);
-   if(!name||!integer(price,0,10000000)||!integer(qty,0,1000000))
+   const reorder=b.reorder_point===undefined?p.reorder_point:Number(b.reorder_point);
+   if(!name||!integer(price,0,10000000)||!integer(qty,0,1000000)||!integer(reorder,0,1000000))
     return bad(req,error,422,"Invalid product fields");
    const listed=b.is_listed===undefined?p.is_listed:(b.is_listed===true?1:0);
+   if(!store.is_demo && qty!==p.stock_qty)
+    return bad(req,error,409,"Use the auditable inventory correction action for real stores");
    const diff=qty-p.stock_qty;
-   const update=env.DB.prepare("UPDATE commerce_products SET name=?,category=?,price_bdt=?,stock_qty=?,is_listed=? WHERE store_id=? AND id=?").bind(name,cat,price,qty,listed,store.id,p.id);
+   const update=env.DB.prepare("UPDATE commerce_products SET name=?,category=?,price_bdt=?,stock_qty=?,is_listed=?,reorder_point=? WHERE store_id=? AND id=?").bind(name,cat,price,qty,listed,reorder,store.id,p.id);
    if(diff) {
     await env.DB.batch([update,env.DB.prepare("INSERT INTO commerce_stock_adjustments(id,store_id,product_id,old_quantity,new_quantity,delta,reason) VALUES(?,?,?,?,?,?,?)").bind(crypto.randomUUID(),store.id,p.id,p.stock_qty,qty,diff,"Owner manual inventory correction")]);
    } else await update.run();
    return output(req,{updated:true,stock_change:diff});
+  }
+  const orderDetail=/^\/api\/merchant\/orders\/([a-zA-Z0-9-]{2,90})$/.exec(path);
+  if(method==="GET"&&orderDetail){
+   const store=await storeOnly(env,owner);
+   const order=await env.DB.prepare("SELECT id,order_number,status,subtotal_bdt,total_bdt,payment_method,shipping_name,shipping_phone,shipping_address,placed_at FROM commerce_orders WHERE id=? AND store_id=?").bind(orderDetail[1],store.id).first();
+   if(!order)return bad(req,error,404,"Order not found");
+   const [items,events]=await Promise.all([
+    env.DB.prepare("SELECT product_id,product_name,quantity,price_bdt,line_total_bdt FROM commerce_order_lines WHERE order_id=?").bind(order.id).all(),
+    env.DB.prepare("SELECT old_status,new_status,created_at FROM commerce_order_events WHERE store_id=? AND order_id=? ORDER BY created_at ASC,id ASC LIMIT 100").bind(store.id,order.id).all()
+   ]);
+   return output(req,{order:store.is_demo?{...order,shipping_name:"Demo customer",shipping_phone:"",shipping_address:""}:order,items:items.results,events:events.results});
   }
   const oo=/^\/api\/merchant\/orders\/([a-zA-Z0-9-]{2,90})\/status$/.exec(path);
   if(method==="PATCH"&&oo){
@@ -207,7 +243,7 @@ export async function merchantRouter(req,env,path,output,error){
    const order=await env.DB.prepare("SELECT * FROM commerce_orders WHERE store_id=? AND id=?").bind(store.id,oo[1]).first();
    if(!order)return bad(req,error,404,"Order not found");
    const status=short(b.status,30);
-   const next={placed:["confirmed","cancelled"],confirmed:["shipped","fulfilled","cancelled"],shipped:["fulfilled"],fulfilled:[],cancelled:[]};
+   const next=store.is_demo?{placed:["confirmed","cancelled"],confirmed:["fulfilled","cancelled"],fulfilled:[],cancelled:[]}:{placed:["confirmed","cancelled"],confirmed:["shipped","cancelled"],shipped:["fulfilled"],fulfilled:[],cancelled:[]};
    if(!next[order.status]?.includes(status))return bad(req,error,409,"Invalid order status transition");
    const changed=await env.DB.prepare("UPDATE commerce_orders SET status=? WHERE id=? AND store_id=? AND status=?").bind(status,order.id,store.id,order.status).run();
    if(!changed.meta?.changes)return bad(req,error,409,"Order was modified by another request. Refresh and retry.");
