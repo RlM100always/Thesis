@@ -1,4 +1,4 @@
-"""Verify fresh D1 v1-v10 schema and stock auditing with stdlib SQLite.
+"""Verify fresh D1 v1-v11 schema and stock auditing with stdlib SQLite.
 
 Runs in CI against an isolated in-memory database, never live Cloudflare data.
 """
@@ -10,7 +10,7 @@ db = sqlite3.connect(":memory:")
 db.execute("PRAGMA foreign_keys = ON")
 for script in sorted(migrations.glob("*.sql")):
     db.executescript(script.read_text(encoding="utf-8"))
-assert db.execute("SELECT value FROM commerce_meta WHERE key='schema_version'").fetchone() == ("10",)
+assert db.execute("SELECT value FROM commerce_meta WHERE key='schema_version'").fetchone() == ("11",)
 
 db.execute("INSERT INTO merchant_accounts(id,email,password_hash,password_salt) VALUES('owner','owner@example.test','ACCESS_KEY_ONLY','DISABLED')")
 db.execute("""INSERT INTO commerce_stores(id,slug,name,category,area,is_demo,is_active,owner_id,real_cod_approved)
@@ -94,5 +94,15 @@ db.execute("""UPDATE commerce_stores SET cover_image_url='https://example.org/ba
 assert db.execute("SELECT logo_image_url,cover_image_url,public_phone FROM commerce_stores WHERE id='real-shop'").fetchone() == (
     "https://example.org/logo.webp","https://example.org/banner.webp","01712345678")
 assert db.execute("SELECT logo_image_url FROM commerce_stores WHERE id='demo-shop'").fetchone() == (None,)
-print("D1 migrations 0001-0010 verified; audit, tenancy, reorder thresholds and atomic inventory corrections OK")
+# v11: merchant controls transparent store copy, without modifying sales data.
+db.execute("""UPDATE commerce_stores SET
+ announcement_text='New arrivals today',
+ about_text='We sell quality socks',
+ delivery_policy_text='Dispatch subject to merchant confirmation',
+ return_policy_text='Contact merchant for returns'
+ WHERE id='real-shop'""")
+assert db.execute("SELECT announcement_text,about_text,delivery_policy_text,return_policy_text FROM commerce_stores WHERE id='real-shop'").fetchone() == (
+ 'New arrivals today','We sell quality socks','Dispatch subject to merchant confirmation','Contact merchant for returns')
+assert db.execute("SELECT announcement_text FROM commerce_stores WHERE id='demo-shop'").fetchone() == ('',)
+print("D1 migrations 0001-0011 verified; audit, tenancy, reorder thresholds and atomic inventory corrections OK")
 
