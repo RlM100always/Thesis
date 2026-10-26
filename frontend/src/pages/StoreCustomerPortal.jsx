@@ -21,7 +21,7 @@ async function scFetch(path, opts = {}, token = null) {
     headers: { ...scHeaders(token), ...(opts.headers || {}) },
   });
   const json = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(json.detail || "অনুরোধ ব্যর্থ হয়েছে");
+  if (!res.ok) throw new Error(json.detail || "অনুরোধটি সম্পন্ন করা যায়নি। আবার চেষ্টা করুন।");
   return json;
 }
 
@@ -40,12 +40,12 @@ function Spinner() {
 
 function Err({ msg }) {
   if (!msg) return null;
-  return <div style={{ background: "#fee2e2", color: "#b91c1c", borderRadius: 10, padding: "10px 14px", fontSize: 13, marginBottom: 12 }}>{msg}</div>;
+  return <div className="sc-alert sc-alert-error" role="alert">{msg}</div>;
 }
 
 function Ok({ msg }) {
   if (!msg) return null;
-  return <div style={{ background: "#dcfce7", color: "#166534", borderRadius: 10, padding: "10px 14px", fontSize: 13, marginBottom: 12 }}>{msg}</div>;
+  return <div className="sc-alert sc-alert-success" role="status">{msg}</div>;
 }
 
 // ── Auth View ─────────────────────────────────────────────────────────────────
@@ -66,7 +66,7 @@ function AuthView({ onLogin }) {
       if (mode === "login") {
         data = await scFetch("/login", { method: "POST", body: JSON.stringify({ email_or_phone: form.email_or_phone, password: form.password }) });
       } else {
-        if (!form.email && !form.phone) { setErr("ইমেইল বা ফোন নম্বর দিতে হবে"); setLoading(false); return; }
+        if (!form.email && !form.phone) { setErr("ইমেইল অথবা ফোন নম্বর লিখুন।"); setLoading(false); return; }
         data = await scFetch("/register", { method: "POST", body: JSON.stringify({ display_name: form.display_name, email: form.email || undefined, phone: form.phone || undefined, password: form.password }) });
       }
       saveToken(data.token);
@@ -86,7 +86,7 @@ function AuthView({ onLogin }) {
         <div style={{ fontSize: 32, marginBottom: 6 }}>🛍️</div>
         <h2 style={{ margin: 0, fontSize: 20, color: "var(--text)" }}>ক্রেতার অ্যাকাউন্ট</h2>
         <p style={{ margin: "6px 0 0", fontSize: 13, color: "var(--text-muted)" }}>
-          {mode === "login" ? "লগইন করুন অর্ডার ট্র্যাক করতে ও চ্যাট করতে" : "নতুন অ্যাকাউন্ট খুলুন"}
+          {mode === "login" ? "আপনার অর্ডার দেখুন এবং দোকানের সঙ্গে যোগাযোগ করুন" : "নতুন অ্যাকাউন্ট খুলুন"}
         </p>
       </div>
 
@@ -264,12 +264,12 @@ function OrdersView({ storeSlug, token, onReorder }) {
   }, [storeSlug, page, statusFilter, token]);
 
   async function cancelOrder(o) {
-    if (!o.organization_id || !o.access_token) { setErr("অর্ডার বাতিল করতে পারা যাচ্ছে না।"); return; }
+    if (!o.organization_id || !o.access_token) { setErr("এই অর্ডারটি বাতিল করা যাচ্ছে না।"); return; }
     if (!window.confirm("এই অর্ডারটি বাতিল করতে চান?")) return;
     setCancelling(o.id);
     try {
       const res = await fetch(`/api/public/orders/${o.organization_id}/cancel/${o.access_token}`, { method: "POST" });
-      if (!res.ok) { const d = await res.json(); throw new Error(d.detail || "বাতিল ব্যর্থ"); }
+      if (!res.ok) { const d = await res.json(); throw new Error(d.detail || "অর্ডার বাতিল করা যায়নি।"); }
       // Refresh orders
       const d = await scFetch(`/orders/${storeSlug}?page=${page}${statusFilter ? `&status=${statusFilter}` : ""}`, {}, token);
       setOrders(d.orders || []);
@@ -284,7 +284,7 @@ function OrdersView({ storeSlug, token, onReorder }) {
 
   return (
     <div>
-      <h3 style={{ fontSize: 15, fontWeight: 700, marginBottom: 14, color: "var(--text)" }}>অর্ডার ইতিহাস</h3>
+      <h3 style={{ fontSize: 15, fontWeight: 700, marginBottom: 14, color: "var(--text)" }}>আগের অর্ডারগুলো</h3>
       <div style={{ display: "flex", gap: 8, marginBottom: 14, flexWrap: "wrap" }}>
         <input value={search} onChange={e => setSearch(e.target.value)} placeholder="অর্ডার নম্বর / পণ্য খুঁজুন"
           style={{ flex: 1, minWidth: 140, padding: "8px 12px", borderRadius: 10, border: "1px solid var(--border)", background: "var(--bg)", color: "var(--text)", fontSize: 13 }} />
@@ -325,7 +325,7 @@ function OrdersView({ storeSlug, token, onReorder }) {
                   {o.items?.map((item, i) => (
                     <div key={i} style={{ display: "flex", justifyContent: "space-between", fontSize: 13, padding: "5px 0", color: "var(--text)", borderBottom: i < o.items.length - 1 ? "1px solid var(--border)" : "none" }}>
                       <span>{item.description} <span style={{ color: "var(--text-muted)" }}>× {Number(item.quantity)}</span></span>
-                      <span style={{ fontWeight: 600 }}>৳{Number(item.line_total).toLocaleString()}</span>
+                      <span style={{ fontWeight: 600 }}>৳{Number(item.line_total).toLocaleString("bn-BD")}</span>
                     </div>
                   ))}
                 </div>
@@ -407,7 +407,7 @@ function ChatView({ storeSlug, token, storeName }) {
       <div style={{ flex: 1, overflowY: "auto", paddingRight: 4, minHeight: 200, maxHeight: 380 }}>
         {loading ? <Spinner /> : msgs.length === 0 ? (
           <div style={{ textAlign: "center", padding: 32, color: "var(--text-muted)", fontSize: 13 }}>
-            দোকানকে মেসেজ পাঠান — আপনার প্রশ্ন জিজ্ঞেস করুন
+            দোকানে বার্তা পাঠিয়ে আপনার প্রশ্ন জানাতে পারেন।
           </div>
         ) : msgs.map(m => (
           <div key={m.id} style={{ display: "flex", justifyContent: m.sender === "customer" ? "flex-end" : "flex-start", marginBottom: 8 }}>
