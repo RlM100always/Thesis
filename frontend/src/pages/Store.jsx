@@ -12,6 +12,7 @@ import { api } from "../api";
 import { explain } from "../errors";
 import { productImage, storeCoverImage } from "../storeImages";
 import StoreCustomerPortal from "./StoreCustomerPortal";
+import {readFavorites,toggleFavorite} from "../storefrontFavorites";
 
 // ─── Utility ─────────────────────────────────────────────────────────────────
 const money = (v) => `৳${Number(v).toLocaleString("bn-BD", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
@@ -482,7 +483,7 @@ function StarRating({ value, count }) {
   );
 }
 
-function ProductCard({ product, cartQty, onAdd, onQtyChange, onView, storeCategory, showStockLevel }) {
+function ProductCard({ product, cartQty, onAdd, onQtyChange, onView, storeCategory, showStockLevel, isFavorite=false, onFavorite }) {
   const outOfStock = product.in_stock === false;
   const inCart = (cartQty || 0) > 0;
   const hasFlashSale = product.sale_price != null;
@@ -490,6 +491,10 @@ function ProductCard({ product, cartQty, onAdd, onQtyChange, onView, storeCatego
   return (
     <div className="s-product-card-wrap">
       {product.is_featured && <span className="s-featured-badge">⭐ বিশেষ</span>}
+      <button type="button" className={`s-product-favorite${isFavorite?" selected":""}`}
+        aria-label={isFavorite?`${product.name} পছন্দের তালিকা থেকে সরান`:`${product.name} পছন্দের তালিকায় রাখুন`}
+        aria-pressed={isFavorite} title={isFavorite?"পছন্দের তালিকায় আছে":"পছন্দের তালিকায় রাখুন"}
+        onClick={()=>onFavorite?.(product.id)}>{isFavorite?"♥":"♡"}</button>
       {hasFlashSale && <span className="s-featured-badge" style={{ background: "#dc2626", right: 8, left: "auto" }}>🔥 সেল</span>}
       <div className="s-product-card">
         {product.price != null ? <button type="button" className="s-product-img-button" onClick={() => onView(product)} aria-label={`${product.name} বিস্তারিত দেখুন`}>
@@ -1441,6 +1446,9 @@ export default function StorePage() {
   const [search, setSearch] = useState("");
   const [activeCat, setActiveCat] = useState(null);
   const [sortOrder, setSortOrder] = useState("recommended");
+  const [onlyAvailable,setOnlyAvailable]=useState(false);
+  const [onlyFavorites,setOnlyFavorites]=useState(false);
+  const [favoriteProducts,setFavoriteProducts]=useState([]);
   const [visibleCount, setVisibleCount] = useState(20);
   const [modalProduct, setModalProduct] = useState(null);
   const [confirmedOrder, setConfirmedOrder] = useState(null);
@@ -1478,6 +1486,7 @@ export default function StorePage() {
     fetch
       .then(data => {
         setStore(data);
+        setFavoriteProducts(readFavorites("products:"+data.organization_id));
         applyTheme(data.theme_color, data.theme_preset);
         // SEO meta tags
         document.title = data.meta_title || data.display_name;
@@ -1507,7 +1516,7 @@ export default function StorePage() {
   const cartTotal = useMemo(() => Object.entries(cart).reduce((s, [id, q]) => s + q * (productMap[id]?.price || 0), 0), [cart, productMap]);
   const allCats = useMemo(() => {
     const cats = new Set();
-    products.forEach(p => { const category = p.tags?.[0]?.trim(); if (category) cats.add(category); });
+    products.forEach(p => { const category = String(p.category||p.tags?.[0]||"").trim(); if (category) cats.add(category); });
     return [...cats].sort((a, b) => a.localeCompare(b, "bn"));
   }, [products]);
 
@@ -1515,11 +1524,13 @@ export default function StorePage() {
     let list = [...products];
     if (search) {
       const q = search.toLowerCase();
-      list = list.filter(p => `${p.name} ${p.sku || ""} ${(p.tags || []).join(" ")} ${p.description || ""}`.toLowerCase().includes(q));
+      list = list.filter(p => `${p.name} ${p.sku || ""} ${p.category || ""} ${(p.tags || []).join(" ")} ${p.description || ""}`.toLowerCase().includes(q));
     }
-    if (activeCat) list = list.filter(p => p.tags?.includes(activeCat));
+    if (activeCat) list = list.filter(p => p.category===activeCat||p.tags?.includes(activeCat));
+    if(onlyAvailable) list=list.filter(p=>p.in_stock!==false && maxOrderQuantity(p)>0);
+    if(onlyFavorites)list=list.filter(p=>favoriteProducts.includes(String(p.id)));
     return list;
-  }, [products, search, activeCat]);
+  }, [products, search, activeCat,onlyAvailable,onlyFavorites,favoriteProducts]);
 
   const featured = useMemo(() => products.filter(p => p.is_featured), [products]);
   const sortedProducts = useMemo(() => {
@@ -1530,10 +1541,17 @@ export default function StorePage() {
       return sortOrder === "price-low" ? a.price - b.price : b.price - a.price;
     });
     if (sortOrder === "name") list.sort((a, b) => a.name.localeCompare(b.name, "bn"));
+    if (sortOrder === "available") list.sort((a,b)=>Number(b.in_stock!==false)-Number(a.in_stock!==false));
+    if (sortOrder === "featured") list.sort((a,b)=>Number(!!b.is_featured)-Number(!!a.is_featured));
     return list;
   }, [filtered, sortOrder]);
 
   const orgId = store?.organization_id;
+  const favCount=useMemo(()=>favoriteProducts.filter(id=>products.some(p=>String(p.id)===id)).length,[favoriteProducts,products]);
+  function favoriteProduct(id){
+    if(!orgId)return;
+    setFavoriteProducts(current=>toggleFavorite("products:"+orgId,current,String(id)));
+  }
 
   function addToCart(product, qty = 1, variantLabel) {
     const max = maxOrderQuantity(product);
