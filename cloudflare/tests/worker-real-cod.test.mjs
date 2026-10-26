@@ -20,7 +20,7 @@ test("unapproved real merchant never accepts a payment order",async()=>{
  for(const enabled of [false,true]){
   const result=await worker.fetch(req("/api/public/orders/merchant-safe","POST"),fakeEnv(nonDemo,enabled));
   assert.equal(result.status,409);
-  assert.match((await result.json()).detail,/not enabled/i);
+  assert.match((await result.json()).detail,/বাস্তব অর্ডার দেওয়া এখনো চালু হয়নি/);
  }
 });
 test("enabled flag alone is not enough for merchant approval",async()=>{
