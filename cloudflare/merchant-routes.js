@@ -48,6 +48,12 @@ export async function merchantRouter(req,env,path,output,error){
  if(!path.startsWith("/api/merchant/"))return null;
  const method=req.method;
  try{
+  if(method==="GET"&&path==="/api/merchant/health"){
+   const start=Date.now(); let crypto_ok=false, crypto_error=null;
+   try{ const salt=newSalt();const passwordHash=await derive("bsmart-health-test",salt);crypto_ok=passwordHash.length===64; }
+   catch(e){crypto_error=e.name||"CryptoError";}
+   return output(req,{status:"ok",db:"D1",auth_kdf_ok:crypto_ok,auth_kdf_error:crypto_error,kdf_time_ms:Date.now()-start});
+  }
   if(method==="POST"&&path==="/api/merchant/register"){
    const b=await json(req,error);
    const email=short(b.email,200).toLowerCase();
