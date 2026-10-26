@@ -39,3 +39,54 @@
 7. Roll out per merchant behind kill switches, check totals against original DB, then remove dual backend routing only after parity tests pass.
 
 For now the existing real FastAPI modules and the new D1 system must remain separated. This staged PR is a foundation, not a production release.
+
+
+## Advanced operations, D1 v7 (staging, not deployed)
+
+The same feature branch now includes a second additive migration,
+`cloudflare/migrations/0007_merchant_insights_inventory_audit.sql`. Run it
+**only after v6**, a verified backup, Cloudflare migration ledger review and CI.
+Do not run these source-controlled migrations blindly against an existing DB.
+The live connected D1 was last read at schema version 5.
+
+- **Read-only merchant analytics**: `GET /api/merchant/insights?days=7|30|90`.
+  Returns days, order breakdown, daily booked amounts, top products and up to
+  50 published low-stock SKUs. All SQL filters by the logged-in merchant's
+  store; totals are *orders booked*, never verified payment, cash or profit.
+- **Reorder threshold**: `commerce_products.reorder_point` defaults to 5 and
+  can be edited per SKU. Owner dashboard shows threshold-based alerts.
+- **Atomic inventory correction**:
+  `POST /api/merchant/inventory/corrections` requires auth and accepts
+  `{product_id,delta,reason,note}`, signed integer quantity with range
+  ±10000, reason restock/damage/stocktake/return/other, and a note of up to
+  120 characters. An insert trigger enforces store ownership, prevents negative
+  or excessive stock and writes a before/after audit row in the same SQLite
+  transaction. On real stores, direct stock edits through product PATCH are
+  deliberately rejected, so corrections must be audited. This is not an
+  invoice, supplier purchase, physical stock verification, or payment.
+- **Immutable status events**: existing order statuses are imported as *one
+  baseline event*, not fabricated timelines; new order creation and every
+  status change append timestamped events via triggers. Owner order detail
+  endpoint is tenant-authenticated; public status tokens show only
+  status/timestamps, never another merchant's private notes or login data.
+- **Merchant UI**: insights, daily bars, top products, low-stock panel,
+  auditable stock corrections, order filtering/search and customer-facing
+  status history. Mobile navigation and keyboard focus are improved.
+
+CI must pass **Node unit tests, API gate tests, React build, Python existing
+integration tests, and in-memory D1 migrations 0001–0007 tests**, including
+stock underflow, cross-store correction, cancel/reversal and event immutability.
+A success in isolated in-memory SQLite is NOT a substitute for Cloudflare D1
+staging and real-device end-to-end testing.
+
+## Before any production promotion
+
+- Verify buyer/privacy disclosures and a retention/deletion process for names,
+  phone numbers, addresses and order tracking links.
+- Restore and reconcile a genuine operational database backup; do not claim
+  old FastAPI customer/orders have moved to D1.
+- Verify merchant identity; use independent administrative approval only. No
+  merchant-side self-approval and no live checkout flag enabled by default.
+- Add reliable notification delivery, actual carrier tracking integrations,
+  payment gateway credentials and verified callbacks, accounting, refund
+  workflows and secure key recovery as separate audited releases.
