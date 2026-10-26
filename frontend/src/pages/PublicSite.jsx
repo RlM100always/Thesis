@@ -270,26 +270,26 @@ const ACTOR_ITEMS_DEFAULT = [
 ];
 const PREVIEW_STATS_DEFAULT = [
   {label:"আজকের বিক্রি",value:"৳ ৮৪,৬৫০",note:"গত বুধবারের চেয়ে ১২% বেশি"},
-  {label:"হাতে ক্যাশ",value:"৳ ৩২,৪০০",note:"২টি shift চলছে"},
-  {label:"আদায়যোগ্য বাকি",value:"৳ ১,১৮,২০০",note:"আজ promise ৪টি"},
+  {label:"হাতে ক্যাশ",value:"৳ ৩২,৪০০",note:"২টি শিফট চলছে"},
+  {label:"আদায়যোগ্য বাকি",value:"৳ ১,১৮,২০০",note:"আজ ৪টি পরিশোধের প্রতিশ্রুতি আছে"},
 ];
-const PREVIEW_MISSION_DEFAULT = ["PO-234 অনুমোদন","২টি payment যাচাই","Expiry claim পাঠান"];
+const PREVIEW_MISSION_DEFAULT = ["PO-234 অনুমোদন","২টি পেমেন্ট যাচাই","মেয়াদসংক্রান্ত দাবি পাঠান"];
 const PRIVACY_SECTIONS_DEFAULT = [
   {heading:"কী তথ্য লাগে",body:"আপনার অ্যাকাউন্টের তথ্য, ব্যবসার সদস্যপদ, বিক্রি-ক্রয়ের লেনদেন, এবং কাজের জন্য প্রয়োজনীয় কাস্টমার-সাপ্লায়ার-কর্মীর তথ্য। পাসওয়ার্ড খোলামেলা, OTP বা কার্ডের পুরো তথ্য কখনো সংরক্ষণ বা AI-কে দেখানো হয় না।"},
   {heading:"কেন ব্যবহার হয়",body:"লগইন, বিক্রি-ক্রয়-স্টক-হিসাবের কাজ, কাস্টমার সার্ভিস, নিরাপত্তা, ব্যাকআপ, রিপোর্ট এবং আপনার অনুমতি নিয়ে বিশ্লেষণের জন্য।"},
-  {heading:"কে দেখতে পারে",body:"শুধু আপনার ব্যবসার সদস্য, এবং যার যতটুকু ভূমিকা ততটুকু অনুমতি। সাপোর্টের জন্য কেউ দেখলে তার সময় ও কারণ লেখা থাকবে।"},
+  {heading:"কে দেখতে পারে",body:"শুধু আপনার ব্যবসার সদস্য, এবং প্রত্যেকে তাঁর দায়িত্ব অনুযায়ী অনুমতি পাবেন। সাপোর্টের জন্য কেউ দেখলে তার সময় ও কারণ লেখা থাকবে।"},
   {heading:"তথ্য রাখা ও আপনার অধিকার",body:"আইনি/হিসাবের প্রয়োজনে কিছু তথ্য একটা সময় পর্যন্ত রাখা হয়। নিজের প্রোফাইল ঠিক করা, তথ্য ডাউনলোড করা ও অ্যাকাউন্ট বন্ধের অনুরোধ করা যাবে।"},
 ];
 const TERMS_SECTIONS_DEFAULT = [
   {heading:"কীভাবে ব্যবহার করা যাবে",body:"ব্যবসার মালিক নিশ্চিত করবেন যে তার কর্মী, কাস্টমার-সাপ্লায়ারের তথ্য ও যুক্ত পেমেন্ট অ্যাকাউন্ট ব্যবহারের অধিকার তার আছে।"},
   {heading:"ব্যবসার নিজের দায়িত্ব",body:"পণ্যের দাম, কর, কর্মী-কাস্টমারের অনুমতি, শুরুর হিসাব এবং পেমেন্ট অ্যাকাউন্টের তথ্য ঠিক রাখা ব্যবসার নিজের দায়িত্ব।"},
   {heading:"সেবার সীমা",body:"পেমেন্ট সফল হবে যখন bKash/Nagad-এর মতো প্রতিষ্ঠান নিশ্চিত করবে। AI পরামর্শ শুধু পরামর্শ, মানুষ অনুমোদন না দিলে কোনো টাকা বা বার্তা যায় না।"},
-  {heading:"চূড়ান্ত চুক্তি",body:"প্যাকেজ, ব্যবহারের সীমা, সাপোর্টের সময়, তথ্য রপ্তানি, বন্ধ করার নিয়ম — এসব আসল ব্যবহারের চুক্তিতে স্পষ্ট করে লেখা থাকবে।"},
+  {heading:"চূড়ান্ত চুক্তি",body:"প্যাকেজ, ব্যবহারের সীমা, সাপোর্টের সময়, তথ্য রপ্তানি, বন্ধ করার নিয়ম — সেবার চুক্তিতে এসব শর্ত স্পষ্টভাবে উল্লেখ থাকবে।"},
 ];
 const STATUS_COMPONENTS_DEFAULT = [
   ["ওয়েব অ্যাপ","এখন আপনি যা দেখছেন সেটাই চলছে"],
   ["ব্যবসার API","সার্ভারের স্বাস্থ্য যাচাই করা যায়"],
-  ["ডেটাবেজ ও ব্যাকআপ","ব্যাকআপ কত পুরোনো তা নিয়মিত যাচাই করা হয়"],
+  ["ডেটাবেস ও ব্যাকআপ","ব্যাকআপ কত পুরোনো তা নিয়মিত যাচাই করা হয়"],
   ["bKash/Nagad সংযোগ","প্রতিটা আলাদাভাবে পরীক্ষা করতে হয়"],
   ["SMS / WhatsApp","পাঠানো বার্তার অবস্থা আলাদা দেখা যায়"],
   ["ব্যাকগ্রাউন্ড সিংক","আটকে থাকা কাজের উপর নজর দরকার"],
@@ -301,9 +301,9 @@ const CONTACT_CARDS_DEFAULT = [
 ];
 
 const ABOUT_VALUES_DEFAULT = [
-  {num:"01",title:"সত্যি কথা বলি, বাড়িয়ে না",text:"ভুয়া কাস্টমার সংখ্যা, মিথ্যা সাফল্যের গল্প বা এখনো তৈরি না হওয়া ফিচারকে চালু আছে বলে দেখাই না।"},
+  {num:"01",title:"সঠিক তথ্য, অতিরঞ্জন নয়",text:"ভুয়া কাস্টমার সংখ্যা, মিথ্যা সাফল্যের গল্প বা এখনো তৈরি না হওয়া ফিচারকে চালু আছে বলে দেখাই না।"},
   {num:"02",title:"মানুষ আগে, মেনু পরে",text:"মালিক, ক্যাশিয়ার, স্টোরকিপার, হিসাবরক্ষক ও রাইডার — প্রত্যেকের কাজ আলাদা করে ভেবে সাজানো।"},
-  {num:"03",title:"পুরো হিসাব এক জায়গায়",text:"শুধু ফিচারের সংখ্যা বাড়ানো না। স্টক, টাকা, খাতা, অনুমোদন — সব একসাথে মিলে কাজ করাই আসল।"},
+  {num:"03",title:"পুরো হিসাব এক জায়গায়",text:"শুধু শুধু ফিচারের সংখ্যা বাড়ানো নয়। স্টক, টাকা, খাতা, অনুমোদন — সব একসাথে মিলে কাজ করাই আসল।"},
 ];
 function Brand({ compact = false }) {
   return (
@@ -323,7 +323,7 @@ function ThemeToggleBtn({ small }) {
       aria-label="থিম পরিবর্তন করুন"
       className="public-theme-toggle"
       style={small ? { padding: "6px 8px", fontSize: 14 } : {}}
-      title={theme === "dark" ? "Light mode এ যান" : "Dark mode এ যান"}
+      title={theme === "dark" ? "লাইট মোড চালু করুন" : "ডার্ক মোড চালু করুন"}
     >
       {theme === "dark" ? "☀️" : "🌙"}
     </button>
@@ -361,7 +361,7 @@ function PublicHeader() {
 
 const FOOTER_COL1 = [["/features","ফিচার"],["/solutions","ব্যবসার ধরন"],["/pricing","মূল্য পরিকল্পনা"]];
 const FOOTER_COL2 = [["/security","নিরাপত্তা"],["/guidelines","ব্যবহারবিধি"],["/about","আমাদের কথা"],["/help","সহায়তা"]];
-const FOOTER_COL3 = [["/signup","Owner account"],["/login","Business login"],["/contact","যোগাযোগ"]];
+const FOOTER_COL3 = [["/signup","মালিকের অ্যাকাউন্ট"],["/login","ব্যবসার অ্যাকাউন্টে প্রবেশ"],["/contact","যোগাযোগ"]];
 
 function PublicFooter() {
   const site = useSiteContent();
@@ -437,7 +437,7 @@ function ProductTour() {
   const active = tourItems.find((item) => item.id === activeId) || tourItems[0];
   return (
     <section className="public-section product-tour-section">
-      <SectionHead eyebrow="বাস্তবে কাজ করে দেখুন" title="আপনার টিম কাজ করবে, সিস্টেম নিজে সব মিলিয়ে রাখবে" text="একটা অংশ বেছে নিন। দেখুন একই বিক্রি কীভাবে কাউন্টার থেকে মালিকের হিসাব পর্যন্ত যায়।" />
+      <SectionHead eyebrow="বাস্তবে কাজ করে দেখুন" title="আপনার দলের কাজ ও হিসাব এক জায়গায় দেখুন" text="নিচের একটি কাজ বেছে নিন। দেখুন বিক্রির তথ্য কীভাবে কাউন্টার থেকে হিসাবের পাতায় পৌঁছায়।" />
       <div className="product-tour-tabs" role="tablist" aria-label="Product workflow">
         {tourItems.map((item) => <button type="button" role="tab" aria-selected={item.id === activeId} className={item.id === activeId ? "active" : ""} onClick={() => setActiveId(item.id)} key={item.id}><Icon name={item.icon} /><span>{item.tab}</span></button>)}
       </div>
@@ -445,10 +445,10 @@ function ProductTour() {
         <div className="product-tour-copy"><small>{active.kicker}</small><h2>{active.title}</h2><p>{active.text}</p><strong><Icon name="check" /> {active.metric}</strong><ul>{active.points.map((point) => <li key={point}><Icon name="chevronRight" />{point}</li>)}</ul><Link className="public-textlink" to="/features">সব capability দেখুন <Icon name="chevronRight" /></Link></div>
         <div className="tour-window" aria-label={`${active.tab} interface preview`}>
           <div className="tour-window-bar"><span /><span /><span /><b>{active.tab}</b><em>মিরপুর শাখা</em></div>
-          {active.id === "pos" && <div className="tour-pos"><div className="tour-search"><Icon name="search" /><span>Barcode scan অথবা পণ্য খুঁজুন</span></div><div className="tour-items"><div><span>Paracetamol 500mg · 2 box</span><b>৳ ১,২০০</b></div><div><span>Vitamin C · 1 box</span><b>৳ ৪৮০</b></div><div><span>Delivery charge</span><b>৳ ৬০</b></div></div><div className="tour-total"><span>সর্বমোট</span><b>৳ ১,৭৪০</b></div><div className="tour-tenders"><span>Cash · ৳১,০০০</span><span>MFS · ৳৭৪০</span></div></div>}
-          {active.id === "stock" && <div className="tour-stock"><div className="tour-kpis"><span><small>বর্তমান মজুত</small><b>২৪ box</b></span><span><small>চলবে</small><b>৫ দিন</b></span><span><small>Lead time</small><b>৭ দিন</b></span></div><div className="tour-ledger"><div><i className="in" /><span>GRN · PO-219</span><b>+ 40</b></div><div><i className="out" /><span>Sale · INV-8821</span><b>− 2</b></div><div><i className="out" /><span>Transfer · Uttara</span><b>− 8</b></div><div><i className="in" /><span>Return · INV-8790</span><b>+ 1</b></div></div></div>}
-          {active.id === "cash" && <div className="tour-cash"><div className="tour-balance"><small>Expected closing cash</small><strong>৳ ৩২,৪০০</strong><span>Actual count · ৳ ৩২,২০০</span></div><div className="tour-reconcile"><div><span>Cash sale</span><b>৳ ২৫,৮০০</b></div><div><span>MFS confirmed</span><b>৳ ১৮,৭৫০</b></div><div><span>COD received</span><b>৳ ৬,২০০</b></div><div className="warn"><span>Difference</span><b>− ৳ ২০০</b></div></div><div className="tour-exception"><Icon name="alert" /><span>Reason ও manager review প্রয়োজন</span></div></div>}
-          {active.id === "ai" && <div className="tour-ai"><div className="tour-ai-head"><span><Icon name="zap" /> Reorder recommendation</span><em>Confidence 87%</em></div><h3>Paracetamol 500mg · ২৪ box কিনুন</h3><p>৫ দিনের stock আছে, supplier lead time ৭ দিন এবং আগামী সপ্তাহে demand ১২% বাড়ার সম্ভাবনা।</p><div className="tour-ai-evidence"><span>Budget-এর মধ্যে <b>হ্যাঁ</b></span><span>MOQ পূরণ <b>হ্যাঁ</b></span><span>Expiry risk <b>কম</b></span></div><div className="tour-ai-actions"><span>কারণ দেখুন</span><strong>খসড়া PO তৈরি</strong></div></div>}
+          {active.id === "pos" && <div className="tour-pos"><div className="tour-search"><Icon name="search" /><span>বারকোড স্ক্যান করুন অথবা পণ্য খুঁজুন</span></div><div className="tour-items"><div><span>Paracetamol 500mg · 2 box</span><b>৳ ১,২০০</b></div><div><span>Vitamin C · 1 box</span><b>৳ ৪৮০</b></div><div><span>Delivery charge</span><b>৳ ৬০</b></div></div><div className="tour-total"><span>সর্বমোট</span><b>৳ ১,৭৪০</b></div><div className="tour-tenders"><span>Cash · ৳১,০০০</span><span>MFS · ৳৭৪০</span></div></div>}
+          {active.id === "stock" && <div className="tour-stock"><div className="tour-kpis"><span><small>বর্তমান মজুত</small><b>২৪ বাক্স</b></span><span><small>চলবে</small><b>৫ দিন</b></span><span><small>Lead time</small><b>৭ দিন</b></span></div><div className="tour-ledger"><div><i className="in" /><span>GRN · PO-219</span><b>+ 40</b></div><div><i className="out" /><span>Sale · INV-8821</span><b>− 2</b></div><div><i className="out" /><span>Transfer · Uttara</span><b>− 8</b></div><div><i className="in" /><span>Return · INV-8790</span><b>+ 1</b></div></div></div>}
+          {active.id === "cash" && <div className="tour-cash"><div className="tour-balance"><small>দিন শেষে প্রত্যাশিত নগদ</small><strong>৳ ৩২,৪০০</strong><span>Actual count · ৳ ৩২,২০০</span></div><div className="tour-reconcile"><div><span>Cash sale</span><b>৳ ২৫,৮০০</b></div><div><span>MFS confirmed</span><b>৳ ১৮,৭৫০</b></div><div><span>COD received</span><b>৳ ৬,২০০</b></div><div className="warn"><span>Difference</span><b>− ৳ ২০০</b></div></div><div className="tour-exception"><Icon name="alert" /><span>Reason ও manager review প্রয়োজন</span></div></div>}
+          {active.id === "ai" && <div className="tour-ai"><div className="tour-ai-head"><span><Icon name="zap" /> নতুন করে পণ্য কেনার পরামর্শ</span><em>Confidence 87%</em></div><h3>Paracetamol 500mg · ২৪ বাক্স কিনুন</h3><p>৫ দিনের stock আছে, supplier lead time ৭ দিন এবং আগামী সপ্তাহে demand ১২% বাড়ার সম্ভাবনা।</p><div className="tour-ai-evidence"><span>Budget-এর মধ্যে <b>হ্যাঁ</b></span><span>MOQ পূরণ <b>হ্যাঁ</b></span><span>Expiry risk <b>কম</b></span></div><div className="tour-ai-actions"><span>কারণ দেখুন</span><strong>খসড়া PO তৈরি</strong></div></div>}
         </div>
       </div>
     </section>
@@ -468,7 +468,7 @@ function HomePage() {
         <div className="public-hero-copy">
           <span className="public-kicker"><i /> {site.get("hero.kicker", "বাংলাদেশের ছোট ও মাঝারি ব্যবসার জন্য তৈরি")}</span>
           <h1>{site.get("hero.title", "আপনার দোকানের প্রতিদিনের হিসাব, এখন হাতের মুঠোয়")}</h1>
-          <p>{site.get("hero.subtitle", "বিক্রি, স্টক, ক্যাশ, বাকি, কর্মী ও ডেলিভারি — সব এখন একটা অ্যাপ থেকেই চালান। আলাদা খাতা-কলম বা একাধিক হিসাবের ঝামেলা লাগবে না।")}</p>
+          <p>{site.get("hero.subtitle", "বিক্রি, মজুত, নগদ লেনদেন, বাকির হিসাব ও দৈনন্দিন কাজ একই জায়গায় পরিচালনার জন্য তৈরি B-SMART।")}</p>
           <div className="public-hero-actions"><Link className="public-cta large" to="/signup">{site.get("hero.cta_primary", "ব্যবসা শুরু করুন")} <Icon name="chevronRight" /></Link><Link className="public-ghost large" to="/features"><Icon name="zap" /> {site.get("hero.cta_secondary", "কীভাবে কাজ করে")}</Link></div>
           <div className="public-assurances"><span><Icon name="check" /> {site.get("hero.assurance_1", "সম্পূর্ণ বাংলায়")}</span><span><Icon name="check" /> {site.get("hero.assurance_2", "যার যতটুকু দরকার ততটুকুই দেখবে")}</span><span><Icon name="check" /> {site.get("hero.assurance_3", "প্রতিটা কাজের প্রমাণ থাকে")}</span></div>
         </div>
@@ -531,7 +531,7 @@ function HomePage() {
       <section className="public-section real-work-section">
         <SectionHead eyebrow={site.get("real_work_section.eyebrow","Built for Bangladesh")} title={site.get("real_work_section.title","এক software, বাস্তব ব্যবসার বহু রূপ")} text={site.get("real_work_section.text","ছবির ব্যবসাগুলো আলাদা, কিন্তু প্রতিটির মৌলিক প্রশ্ন একই। কী বিক্রি হলো, কত stock আছে, টাকা কোথায় এবং পরের কাজ কার।")} />
         <RealWorkGallery />
-        <div className="real-work-note"><Icon name="info" /><span>{site.get("real_work_section.disclaimer","ছবিগুলো বাস্তব বাংলাদেশি ব্যবসা ও কর্মপরিবেশের licensed editorial photograph; এগুলো B-SMART customer endorsement নয়।")}</span></div>
+        <div className="real-work-note"><Icon name="info" /><span>{site.get("real_work_section.disclaimer","ছবিগুলো বাস্তব বাংলাদেশি ব্যবসা ও কর্মপরিবেশের ব্যবহারের অনুমতিপ্রাপ্ত বাস্তব ছবি। ছবির ব্যক্তিরা B-SMART-এর গ্রাহক বা সমর্থক, এমন দাবি করা হচ্ছে না।")}</span></div>
       </section>
 
       <section className="public-section public-tint">
