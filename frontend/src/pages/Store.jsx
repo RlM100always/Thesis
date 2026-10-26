@@ -1662,7 +1662,7 @@ export default function StorePage() {
     const requested=new URLSearchParams(location.search).get("product");
     if(!requested||!store)return;
     const match=products.find(p=>String(p.id)===requested);
-    if(match){setModalProduct(match);setView("home");}
+    if(match){setRecentIds(rememberProduct(store.organization_id,match.id));setModalProduct(match);setView("home");}
   },[location.search,store?.organization_id,products]);
   const productMap = useMemo(() => Object.fromEntries(products.map(p => [p.id, p])), [products]);
   const cartCount = useMemo(() => Object.entries(cart).reduce((s, [id, qty]) => s + (productMap[id]?.price != null ? qty : 0), 0), [cart, productMap]);
@@ -1846,6 +1846,7 @@ export default function StorePage() {
           <nav className="s-store-nav" aria-label="স্টোর নেভিগেশন">
             <button onClick={() => goToSection("store-products")}>সব পণ্য</button>
             {allCats.length > 0 && <button onClick={() => goToSection("store-categories")}>বিভাগ</button>}
+            {(store.about_text||store.delivery_policy_text||store.return_policy_text)&&<button onClick={() => goToSection("store-information")}>স্টোর তথ্য</button>}
             <button onClick={() => goToSection("store-contact")}>যোগাযোগ</button>
           </nav>
           <a href={waShareUrl} target="_blank" rel="noopener noreferrer" className="s-wa-btn" title="WhatsApp-এ শেয়ার করুন">
@@ -2077,7 +2078,7 @@ export default function StorePage() {
           </section>}
 
           {(store.about_text||store.delivery_policy_text||store.return_policy_text)&&
-            <section className="s-section s-store-information" aria-labelledby="s-info-title">
+            <section id="store-information" className="s-section s-store-information" aria-labelledby="s-info-title">
               <div className="s-section-head"><h2 id="s-info-title">দোকান সম্পর্কে জানুন</h2></div>
               <div className="s-info-grid">
                 {store.about_text&&<article className="s-info-card"><span className="s-info-icon">🏬</span><h3>আমাদের সম্পর্কে</h3><p>{store.about_text}</p></article>}
