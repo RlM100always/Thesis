@@ -114,8 +114,11 @@ async function checkout(env,request,id) {
   if(!/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(requestId))
    return error(request,422,"A valid unique checkout request id is required");
   // Return the first receipt before re-reading stock. Retry must not reserve twice.
-  const existing=await env.DB.prepare("SELECT id,access_token FROM commerce_orders WHERE store_id=? AND checkout_request_id=?").bind(id,requestId).first();
-  if(existing)return orderDetails(env,request,id,existing.access_token);
+  const existing=await env.DB.prepare("SELECT access_token,shipping_name,shipping_phone FROM commerce_orders WHERE store_id=? AND checkout_request_id=?").bind(id,requestId).first();
+  if(existing){
+   if(existing.shipping_name!==contact.name||existing.shipping_phone!==contact.phone)return error(request,409,"Checkout request id was already used for another contact");
+   return orderDetails(env,request,id,existing.access_token);
+  }
   try{if(!await limitCOD(env,request,id))return error(request,429,"Too many checkout attempts. Try again later.");}
   catch{return error(request,503,"Checkout protection unavailable. Please try later.");}
  } else if(data.payment_method && !["cod","demo"].includes(data.payment_method)) {
@@ -158,8 +161,11 @@ async function checkout(env,request,id) {
  try{await env.DB.batch(statements);}
  catch{
   if(requestId){
-   const existing=await env.DB.prepare("SELECT access_token FROM commerce_orders WHERE store_id=? AND checkout_request_id=?").bind(id,requestId).first();
-   if(existing)return orderDetails(env,request,id,existing.access_token);
+   const existing=await env.DB.prepare("SELECT access_token,shipping_name,shipping_phone FROM commerce_orders WHERE store_id=? AND checkout_request_id=?").bind(id,requestId).first();
+   if(existing){
+    if(existing.shipping_name!==contact.name||existing.shipping_phone!==contact.phone)return error(request,409,"Checkout request id was already used for another contact");
+    return orderDetails(env,request,id,existing.access_token);
+   }
   }
   return error(request,409,"Stock or product price changed. Refresh the catalogue and retry.");
  }
