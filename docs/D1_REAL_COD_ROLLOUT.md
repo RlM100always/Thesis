@@ -149,3 +149,41 @@ frontend build, staging D1 create/edit/read/checkout, tenant isolation,
 mobile accessibility, HTTP image failure handling and order regression.
 `ENABLE_REAL_COD` stays disabled until independent merchant approval
 and privacy/payment/courier reviews.
+
+
+## Storefront experience upgrade — schema v11 (staging only, October 26, 2026)
+
+This release adds an optional communication layer and consumer-side comparison tools;
+it does **not** enable checkout on unapproved real merchants or real transfers on
+demo stores.
+
+- **Store owner** can edit: announcement headline (180 characters),
+  "About" statement, delivery information and return/exchange information
+  (1800 characters each). D1 v11 is additive, no existing metadata is removed.
+  These are *merchant-authored information*, not an activated delivery service,
+  courier promise, verified refund flow, SLA or payment state.
+- **Public storefront** can display a branded announcement stripe and mobile-
+  responsive About/Delivery/Returns sections, with easy navigation to the
+  information section. Demo stores always state that no actual delivery,
+  payment or purchase/return exists regardless of their owner-authored copy.
+- **Customer product comparison** compares 2 or 3 catalogue products on real
+  fields only: unit price, category, unit, availability, featured flag and
+  description. Selection is transient in the current store session. Product
+  options/variants still require selection in product detail before add-to-cart.
+- **Recently viewed** stores only up to 8 product IDs in device-local
+  localStorage, scoped per store. No personal tracking identity and no backend
+  profile integration; cleared browser storage also clears this list.
+- All new UI controls include accessible labels, focus states and compact
+  mobile layouts. No fake review counts, payment badges or stock guarantees
+  are added.
+
+**Schema progression is now v5 (last verified live state) → v6 → v7 → v8
+→ v9 → v10 → v11**, once each and only after a verified backup, remote
+migration-ledger reconciliation and tested recovery. Fresh in-memory
+schema tests are not substitutes for a production migration rehearsal.
+
+Acceptance before deployment: pass Worker policy/security tests, v1–v11 SQL
+migration tests, frontend production build, backend integration suite; stage
+two- and three-product comparisons on Android/iOS/desktop, stale product IDs,
+private browsing storage failures, demo disclosure, seller information
+updates, and checkout regression tests. This branch remains a **draft PR**.
