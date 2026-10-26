@@ -1898,7 +1898,7 @@ export default function StorePage() {
 
   const logoInitial = store.display_name?.[0]?.toUpperCase() || "S";
   const storeUrl = typeof window !== "undefined" ? window.location.href : "";
-  const waShareUrl = `https://wa.me/?text=${encodeURIComponent(`${store.display_name} - অনলাইনে অর্ডার করুন: ${storeUrl}`)}`;
+  const waShareUrl = `https://wa.me/?text=${encodeURIComponent(`${store.display_name} — ${store.is_demo ? "ডেমো দোকানটি দেখুন" : "দোকানটি দেখুন"}: ${storeUrl}`)}`;
 
   // Business hours: check if open now
   function getTodayOpenStatus() {
