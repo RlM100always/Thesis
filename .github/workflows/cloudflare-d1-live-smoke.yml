@@ -78,8 +78,10 @@ jobs:
           PASSWORD="BsmartTmpTest-$RUN_SHA-xY!"
           export EMAIL PASSWORD
           node -e 'require("fs").writeFileSync("reg.json",JSON.stringify({email:process.env.EMAIL,password:process.env.PASSWORD}))'
-          curl -fLsS --max-time 30 -H 'Content-Type: application/json' -d @reg.json \
-            "$D1_API/api/merchant/register" > registered.json
+          curl -fLsS --max-time 30 "$D1_API/api/merchant/health" > merchanthealth.json
+          node -e 'const x=require("./merchanthealth.json");console.log("D1 auth crypto check:",x.auth_kdf_ok,"duration:",x.kdf_time_ms,"error:",x.auth_kdf_error);if(!x.auth_kdf_ok)process.exit(1)'
+          REGISTER_STATUS="$(curl -sS --max-time 30 -o registered.json -w '%{http_code}' -H 'Content-Type: application/json' -d @reg.json "$D1_API/api/merchant/register")"
+          if [ "$REGISTER_STATUS" != "201" ]; then node -e 'console.log("Registration failure:",require("./registered.json").detail)'; exit 1; fi
           node -e 'const x=require("./registered.json");if(!x.created)process.exit(1)'
           curl -fLsS --max-time 30 -H 'Content-Type: application/json' -d @reg.json \
             "$D1_API/api/merchant/login" > login.json
