@@ -108,3 +108,44 @@ so refund/support and manual duplicate review must remain available.
 merge, PR approval or passing local tests do not apply these migrations to
 remote Cloudflare D1. Obtain an operator-reviewed backup and apply them only
 after reconciliation of the existing migration ledger.
+
+
+## Premium marketplace and storefront merchandising (D1 v9-v10)
+
+**Not deployed.** Development-only changes to the same guarded release:
+
+- Migration `0009_storefront_merchandising.sql`: add product descriptions.
+  The existing `commerce_products.image_url`, `category`, and `is_featured`
+  are editable through owner-scoped product endpoints. All owner images must
+  be remote public HTTPS URLs; they are not uploaded to Cloudflare R2.
+- Migration `0010_merchant_brand_identity.sql`: store logo/banner image URL
+  and optional public phone/address, independently scoped to the owner.
+  Public contact/media fields are hidden for synthetic demonstration stores.
+- Store appearance: six merchant-controlled themes and accent colours,
+  hero banner, storefront metrics, responsive product cards, clear demo
+  notice, category search and featured-product presentation.
+- Shopping discovery: saved products and saved stores with localStorage.
+  **These favorites are device-local, not synchronized, and can disappear
+  if the browser clears site data.** No marketing/tracking or external
+  customer profile is created.
+- Marketplace: favorites-only, hide demos, COD store filtering, area/category
+  filters and alphabetical sorting. COD icons exclude demo shops.
+- Buyer storefront: favorites, available-stock filter, sorting, copy/share
+  product deep links, category support for D1, accessible cart opening,
+  mobile-layout improvements.
+- Owner editor: product SKU/name, description, category, featured state,
+  HTTPS image URL, price, visibility, threshold and audited stock changes;
+  store business tagline, brand colour/theme, banner/logo and optional
+  contact. Never invent verified reviews, delivery, carrier tracking,
+  collected revenue or transactions for synthetic stores.
+
+**Full schema review order:** `0006`, `0007`, `0008`, `0009`,
+`0010` after version 5 on the connected D1, once each and only after
+a verified backup and reviewed D1 migration ledger reconciliation.
+The existing D1 v5 schema has **not** been upgraded in production.
+
+Launch and acceptance: all Python migrations (fresh DB) and Node tests,
+frontend build, staging D1 create/edit/read/checkout, tenant isolation,
+mobile accessibility, HTTP image failure handling and order regression.
+`ENABLE_REAL_COD` stays disabled until independent merchant approval
+and privacy/payment/courier reviews.
