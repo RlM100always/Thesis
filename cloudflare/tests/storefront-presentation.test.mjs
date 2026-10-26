@@ -9,14 +9,15 @@ const real={
  logo_image_url:"https://example.org/logo.png",cover_image_url:"https://example.org/cover.jpg",
  public_phone:"01712345678",public_address:"Rajshahi Bangladesh",
  announcement_text:"Fresh collection now available",about_text:"Independent shop",
- delivery_policy_text:"Dispatch after merchant confirmation",return_policy_text:"Contact seller for returns"
+ delivery_policy_text:"Dispatch after merchant confirmation",return_policy_text:"Contact seller for returns",
+ faq_json:'[{"question":"What sizes?","answer":"Please check current stock."}]'
 };
 function envFor(store){
  return {ENABLE_REAL_COD:"false",DB:{prepare(sql){
   return {bind(){return this;},async first(){if(sql.includes("FROM commerce_stores"))return store;throw Error("Unexpected SQL "+sql);},
    async all(){if(sql.includes("FROM commerce_products"))return {results:[{
     id:"product-1",sku:"SOCK-01",name:"Cotton socks",category:"Socks",description:"Soft breathable cotton",
-    price_bdt:250,stock_qty:4,image_url:"https://example.org/socks.jpg",is_featured:1,is_listed:1
+    price_bdt:250,stock_qty:4,image_url:"https://example.org/socks.jpg",is_featured:1,is_listed:1,gallery_json:'["https://example.org/angle-2.jpg"]'
    }]};throw Error("Unexpected SQL "+sql);}};
  }}};
 }
@@ -36,11 +37,13 @@ test("real merchant storefront uses brand, contact and accurate product category
  assert.equal(s.about_text,"Independent shop");
  assert.equal(s.delivery_policy_text,"Dispatch after merchant confirmation");
  assert.equal(s.return_policy_text,"Contact seller for returns");
+ assert.deepEqual(s.faq_items,[{question:"What sizes?",answer:"Please check current stock."}]);
  assert.equal(s.checkout_available,false);
  assert.equal(s.payment_cod,false);
  assert.equal(s.products[0].description,"Soft breathable cotton");
  assert.deepEqual(s.products[0].tags,["Socks"]);
  assert.equal(s.products[0].is_featured,true);
+ assert.deepEqual(s.products[0].gallery_urls,["https://example.org/angle-2.jpg"]);
 });
 test("demo shop contact stays private and product never masquerades as real",async()=>{
  const response=await worker.fetch(request,envFor({...real,is_demo:1,tagline:"Demo only",delivery_note:"Do not pay"}));
