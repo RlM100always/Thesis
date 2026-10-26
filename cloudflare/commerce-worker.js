@@ -108,8 +108,14 @@ async function checkout(env,request,id) {
  let data;
  try{data=JSON.parse(raw);}catch{return error(request,400,"Invalid JSON");}
  let contact=null;
+ const requestId=isDemo?null:String(data.checkout_request_id||"").trim().toLowerCase();
  if(!isDemo){
   try{contact=normalizeCODContact(data);}catch(e){return error(request,422,e.message);}
+  if(!/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(requestId))
+   return error(request,422,"A valid unique checkout request id is required");
+  // Return the first receipt before re-reading stock. Retry must not reserve twice.
+  const existing=await env.DB.prepare("SELECT id,access_token FROM commerce_orders WHERE store_id=? AND checkout_request_id=?").bind(id,requestId).first();
+  if(existing)return orderDetails(env,request,id,existing.access_token);
   try{if(!await limitCOD(env,request,id))return error(request,429,"Too many checkout attempts. Try again later.");}
   catch{return error(request,503,"Checkout protection unavailable. Please try later.");}
  } else if(data.payment_method && !["cod","demo"].includes(data.payment_method)) {
@@ -141,16 +147,22 @@ async function checkout(env,request,id) {
  const statements=[
   env.DB.prepare("INSERT INTO commerce_customers(id,store_id,display_name) VALUES(?,?,?)")
    .bind(customerId,id,customerName),
-  env.DB.prepare("INSERT INTO commerce_orders(id,store_id,order_number,access_token,status,subtotal_bdt,total_bdt,payment_method,shipping_name,shipping_phone,shipping_address,customer_id) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)")
+  env.DB.prepare("INSERT INTO commerce_orders(id,store_id,order_number,access_token,status,subtotal_bdt,total_bdt,payment_method,shipping_name,shipping_phone,shipping_address,customer_id,checkout_request_id) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)")
    .bind(oid,id,no,token,"placed",subtotal,subtotal,isDemo?"demo":"cod",
-    isDemo?"Demo customer":contact.name,isDemo?"":contact.phone,isDemo?"":contact.address,customerId),
+    isDemo?"Demo customer":contact.name,isDemo?"":contact.phone,isDemo?"":contact.address,customerId,requestId),
   ...details.map(({p,qty,price})=>env.DB.prepare("INSERT INTO commerce_order_lines(order_id,product_id,product_name,quantity,price_bdt,line_total_bdt) VALUES(?,?,?,?,?,?)")
    .bind(oid,p.id,p.name,qty,price,qty*price))
  ];
  // The existing D1 order-line triggers validate stock/price and decrement
  // inventory as part of this single transactional batch.
  try{await env.DB.batch(statements);}
- catch{return error(request,409,"Stock or product price changed. Refresh the catalogue and retry.");}
+ catch{
+  if(requestId){
+   const existing=await env.DB.prepare("SELECT access_token FROM commerce_orders WHERE store_id=? AND checkout_request_id=?").bind(id,requestId).first();
+   if(existing)return orderDetails(env,request,id,existing.access_token);
+  }
+  return error(request,409,"Stock or product price changed. Refresh the catalogue and retry.");
+ }
  return orderDetails(env,request,id,token);
 }
 
