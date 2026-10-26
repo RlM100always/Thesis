@@ -13,6 +13,7 @@ import { explain } from "../errors";
 import { productImage, storeCoverImage } from "../storeImages";
 import StoreCustomerPortal from "./StoreCustomerPortal";
 import { useUi } from "../UiContext";
+import { displayStoreCategory, displayProductUnit, displayStoreTagline, displayStoreDelivery, displayStoreArea, isSyntheticDemoArea } from "../storeDisplayText";
 import {contrastColor,readableAccent} from "../storeContrast";
 
 // ─── Utility ─────────────────────────────────────────────────────────────────
@@ -582,6 +583,14 @@ button.s-contact-price { background: transparent; border: 0; padding: 4px 0; tex
   .s-site .s-header-inner{gap:7px;padding-inline:8px}
   .s-site .s-store-name{max-width:min(32vw,165px);overflow:hidden;text-overflow:ellipsis}
 }
+
+.s-site .s-demo-checkout-note {
+  margin:0 0 20px;padding:13px 16px;border-radius:12px;
+  border:1px solid var(--s-border);background:var(--s-soft);
+  color:var(--s-ink);font-size:14px;line-height:1.65;
+}
+.s-site .s-payment-option.selected .s-payment-option-label{color:var(--s-ink)}
+.s-site .s-delivery-note{color:var(--s-ink)}
 `;
 
 function useInjectCSS(css) {
@@ -640,7 +649,7 @@ function ProductCard({ product, cartQty, onAdd, onQtyChange, onView, storeCatego
         </button> : <img src={product.image_data_url || productImage(product, storeCategory)} alt={product.name} className="s-product-img" loading="lazy" />}
         <div className="s-product-body">
           {product.price != null ? <button type="button" className="s-product-name-button" onClick={() => onView(product)}>{product.name}</button> : <div className="s-product-name">{product.name}</div>}
-          <div className="s-product-unit">{product.unit}</div>
+          <div className="s-product-unit">{displayProductUnit(product.unit)}</div>
           {product.review_avg && <StarRating value={product.review_avg} count={product.review_count || 0} />}
           {product.price != null ? (
             <div className="s-product-price">
@@ -656,7 +665,7 @@ function ProductCard({ product, cartQty, onAdd, onQtyChange, onView, storeCatego
           )}
           {showStockLevel === "quantity" && product.quantity !== undefined && !inCart && (
             <span className={product.quantity > 0 && product.quantity <= 5 ? "s-stock-low" : product.quantity > 0 ? "s-stock-ok" : "s-stock-out"}>
-              {product.quantity > 0 ? `${product.quantity} ${product.unit} মজুত` : "মজুত নেই"}
+              {product.quantity > 0 ? `${product.quantity} ${displayProductUnit(product.unit)} মজুত` : "মজুত নেই"}
             </span>
           )}
           {showStockLevel !== "hide" && showStockLevel !== "quantity" && product.in_stock === false && !inCart && <span className="s-stock-out">মজুত নেই</span>}
@@ -729,7 +738,7 @@ function ProductModal({ product, cartQty, onClose, onAdd, onQtyChange, onViewFul
             <img src={product.image_data_url || productImage(product, storeCategory)} alt={product.name} loading="lazy" />
           </div>
           <h2 style={{ margin: "0 0 6px", fontSize: 22, fontWeight: 800, lineHeight: 1.2 }}>{product.name}</h2>
-          <div style={{ fontSize: 13, color: "var(--s-muted)", marginBottom: 6 }}>{product.unit}</div>
+          <div style={{ fontSize: 13, color: "var(--s-muted)", marginBottom: 6 }}>{displayProductUnit(product.unit)}</div>
           {reviews?.average && <StarRating value={reviews.average} count={reviews.count} />}
           {product.price != null && (
             <div style={{ fontSize: 26, fontWeight: 700, color: hasFlashSale ? "#dc2626" : "var(--sa)", marginBottom: 4 }}>
@@ -770,7 +779,7 @@ function ProductModal({ product, cartQty, onClose, onAdd, onQtyChange, onViewFul
 
           <button type="button" className="s-modal-full-btn" onClick={() => onViewFull(product)}>পূর্ণ বিবরণ দেখুন →</button>
           {showStockLevel === "quantity" && product.quantity !== undefined ? (
-            <div style={{ marginBottom: 16 }}><span className={product.quantity <= 0 ? "s-stock-out" : product.quantity <= 5 ? "s-stock-low" : "s-stock-ok"}>{product.quantity > 0 ? `${product.quantity} ${product.unit} মজুত` : "মজুত নেই"}</span></div>
+            <div style={{ marginBottom: 16 }}><span className={product.quantity <= 0 ? "s-stock-out" : product.quantity <= 5 ? "s-stock-low" : "s-stock-ok"}>{product.quantity > 0 ? `${product.quantity} ${displayProductUnit(product.unit)} মজুত` : "মজুত নেই"}</span></div>
           ) : showStockLevel !== "hide" && product.in_stock !== undefined && (
             <div style={{ marginBottom: 16 }}>
               <span className={outOfStock ? "s-stock-out" : "s-stock-ok"}>{outOfStock ? "✗ স্টকে নেই" : "✓ মজুত আছে"}</span>
@@ -791,7 +800,7 @@ function ProductModal({ product, cartQty, onClose, onAdd, onQtyChange, onViewFul
                 <button className="s-qty-btn" onClick={() => setQty(q => Math.max(1, q - 1))}>−</button>
                 <span className="s-qty-num">{qty}</span>
                 <button className="s-qty-btn" disabled={qty >= maxOrderQuantity(product)} onClick={() => setQty(q => Math.min(maxOrderQuantity(product), q + 1))}>+</button>
-                <span style={{ fontSize: 13, color: "var(--s-muted)" }}>{product.unit}</span>
+                <span style={{ fontSize: 13, color: "var(--s-muted)" }}>{displayProductUnit(product.unit)}</span>
               </div>
               {product.variants?.length > 0 && !allVariantsSelected && (
                 <p style={{ fontSize: 13, color: "#dc2626", marginBottom: 8 }}>⚠ সব ভ্যারিয়েন্ট বেছে নিন</p>
@@ -936,7 +945,7 @@ function NagadLogo({ size = 32 }) {
 
 function CheckoutView({ store, cart, products, onBack, onDone, scCustomer, variantSelections }) {
   const orgId = store.organization_id;
-  const defaultPayment = store.payment_cod ? "cod" : store.payment_bkash ? "bkash" : store.payment_nagad ? "nagad" : "cod";
+  const defaultPayment = store.is_demo ? "cod" : store.payment_cod ? "cod" : store.payment_bkash ? "bkash" : store.payment_nagad ? "nagad" : "cod";
   const prefillDiv = scCustomer?.division || "";
 
   // Auto-fill from logged-in customer profile
@@ -1058,7 +1067,8 @@ function CheckoutView({ store, cart, products, onBack, onDone, scCustomer, varia
   return (
     <div className="s-checkout">
       <button className="s-back-btn" onClick={onBack}>← কার্টে ফিরুন</button>
-      <h2>ডেলিভারি তথ্য দিন</h2>
+      <h2>{store.is_demo ? "পরীক্ষামূলক অর্ডারের তথ্য দিন" : "ডেলিভারি তথ্য দিন"}</h2>
+      {store.is_demo && <p role="note" className="s-demo-checkout-note">এটি ডেমো অর্ডার। কোনো টাকা পাঠাতে হবে না এবং পণ্য ডেলিভারি করা হবে না। অনুগ্রহ করে নমুনা তথ্য ব্যবহার করুন।</p>}
       {scCustomer && (
         <div style={{ background: "color-mix(in srgb,var(--sa,#0a8752) 10%,transparent)", border: "1px solid color-mix(in srgb,var(--sa,#0a8752) 30%,transparent)", borderRadius: 10, padding: "10px 14px", marginBottom: 18, fontSize: 13, display: "flex", alignItems: "center", gap: 8 }}>
           <span style={{ fontSize: 16 }}>✅</span>
@@ -1103,7 +1113,7 @@ function CheckoutView({ store, cart, products, onBack, onDone, scCustomer, varia
       {couponResult && <div style={{color:"#16a34a",fontSize:13,marginBottom:8}}>✅ কুপন সফল! {money(couponDiscount)} ছাড় পেলেন</div>}
 
       {store.delivery_note && (
-        <div className="s-delivery-note">📦 {store.delivery_note}</div>
+        <div className="s-delivery-note">📦 {displayStoreDelivery(store.delivery_note, store.is_demo)}</div>
       )}
 
       {!meetsMin && (
@@ -1141,17 +1151,17 @@ function CheckoutView({ store, cart, products, onBack, onDone, scCustomer, varia
         <div className="s-form-group">
           <label>পেমেন্ট পদ্ধতি <span>*</span></label>
           <div className="s-payment-options" role="radiogroup" aria-label="পেমেন্ট পদ্ধতি">
-            {store.payment_cod && (
+            {(store.is_demo || store.payment_cod) && (
               <button type="button" role="radio" aria-checked={form.payment === "cod"} className={`s-payment-option${form.payment === "cod" ? " selected" : ""}`} onClick={() => setForm(f => ({ ...f, payment: "cod" }))}>
                 <span className="s-payment-cod-icon">💵</span>
                 <div>
-                  <div className="s-payment-option-label">ক্যাশ অন ডেলিভারি</div>
-                  <div className="s-payment-option-desc">ডেলিভারির সময় নগদে পেমেন্ট করুন</div>
+                  <div className="s-payment-option-label">{store.is_demo ? "ডেমো অর্ডার—কোনো টাকা নয়" : "ক্যাশ অন ডেলিভারি"}</div>
+                  <div className="s-payment-option-desc">{store.is_demo ? "অর্ডারটি শুধু পরীক্ষার জন্য সংরক্ষিত হবে।" : "ডেলিভারির সময় নগদে মূল্য পরিশোধ করুন"}</div>
                 </div>
                 {form.payment === "cod" && <span style={{marginLeft:"auto",color:"#10b981",fontSize:20}}>✓</span>}
               </button>
             )}
-            {store.payment_bkash && (
+            {!store.is_demo && store.payment_bkash && (
               <button type="button" role="radio" aria-checked={form.payment === "bkash"} className={`s-payment-option${form.payment === "bkash" ? " bkash-selected" : ""}`} onClick={() => setForm(f => ({ ...f, payment: "bkash" }))}>
                 <BkashLogo size={20} />
                 <div>
@@ -1161,7 +1171,7 @@ function CheckoutView({ store, cart, products, onBack, onDone, scCustomer, varia
                 {form.payment === "bkash" && <span style={{marginLeft:"auto",color:"#E2136E",fontSize:20}}>✓</span>}
               </button>
             )}
-            {store.payment_nagad && (
+            {!store.is_demo && store.payment_nagad && (
               <button type="button" role="radio" aria-checked={form.payment === "nagad"} className={`s-payment-option${form.payment === "nagad" ? " nagad-selected" : ""}`} onClick={() => setForm(f => ({ ...f, payment: "nagad" }))}>
                 <NagadLogo size={20} />
                 <div>
@@ -1171,7 +1181,7 @@ function CheckoutView({ store, cart, products, onBack, onDone, scCustomer, varia
                 {form.payment === "nagad" && <span style={{marginLeft:"auto",color:"#F7941D",fontSize:20}}>✓</span>}
               </button>
             )}
-            {store.sslcz_store_id && (
+            {!store.is_demo && store.sslcz_store_id && (
               <button type="button" role="radio" aria-checked={form.payment === "sslcommerz"} className={`s-payment-option${form.payment === "sslcommerz" ? " selected" : ""}`} onClick={() => setForm(f => ({ ...f, payment: "sslcommerz" }))}>
                 <SSLCommerzLogo size={20} />
                 <div>
@@ -1873,26 +1883,26 @@ export default function StorePage() {
               </div>
             </div>
             <h1>{store.display_name}</h1>
-            {store.tagline && <p>{store.tagline}</p>}
+            {store.tagline && <p>{displayStoreTagline(store.tagline, store.is_demo)}</p>}
             <div className="s-trust-row">
-              {store.category && <span className="s-trust-chip">🏷️ {store.category}</span>}
-              {store.area && <span className="s-trust-chip">📍 {store.area}</span>}
+              {store.category && <span className="s-trust-chip">🏷️ {displayStoreCategory(store.category)}</span>}
+              {store.area && <span className="s-trust-chip">📍 {displayStoreArea(store.area, store.is_demo)}</span>}
               {todayHours && (
                 <span className={`s-trust-chip ${todayHours.open ? "s-chip-open" : "s-chip-closed"}`}>
                   {todayHours.open ? "🟢" : "🔴"} {todayHours.label}
                 </span>
               )}
             </div>
-            {(store.payment_cod || store.payment_bkash || store.payment_nagad) && (
+            {(store.is_demo || store.payment_cod || store.payment_bkash || store.payment_nagad) && (
               <div className="s-payment-chips" style={{ marginTop: 14 }}>
-                <span style={{ fontSize: 12, color: "#6b8a7a", alignSelf: "center" }}>পেমেন্ট:</span>
-                {store.payment_cod && <span className="s-payment-chip">💵 ক্যাশ অন ডেলিভারি</span>}
-                {store.payment_bkash && (
+                <span style={{ fontSize: 12, color: "var(--s-muted)", alignSelf: "center" }}>{store.is_demo ? "পরীক্ষার ধরন:" : "পেমেন্ট:"}</span>
+                {store.is_demo ? <span className="s-payment-chip">🧪 নমুনা অর্ডার · টাকা লাগবে না</span> : store.payment_cod && <span className="s-payment-chip">💵 ক্যাশ অন ডেলিভারি</span>}
+                {!store.is_demo && store.payment_bkash && (
                   <span className="s-payment-chip" style={{padding:"3px 8px",border:"1.5px solid #E2136E",background:"#fff0f6"}}>
                     <BkashLogo size={16} />
                   </span>
                 )}
-                {store.payment_nagad && (
+                {!store.is_demo && store.payment_nagad && (
                   <span className="s-payment-chip" style={{padding:"3px 8px",border:"1.5px solid #F7941D",background:"#fff8f0"}}>
                     <NagadLogo size={16} />
                   </span>
@@ -1902,7 +1912,7 @@ export default function StorePage() {
           </section>
 
           <div className="s-store-benefits" aria-label="দোকানের তথ্য">
-            <div className="s-store-benefit"><span>🚚</span><div><strong>ডেলিভারি</strong>{store.delivery_note || "ডেলিভারির বিস্তারিত তথ্য দোকান থেকে জানানো হবে।"}</div></div>
+            <div className="s-store-benefit"><span>🚚</span><div><strong>{store.is_demo ? "ডেমো অবস্থা" : "ডেলিভারি"}</strong>{store.is_demo ? (displayStoreDelivery(store.delivery_note, true) || "বাস্তব পেমেন্ট বা ডেলিভারি নেই।") : (displayStoreDelivery(store.delivery_note) || "ডেলিভারির বিস্তারিত তথ্য দোকান থেকে জানানো হবে।")}</div></div>
             <div className="s-store-benefit"><span>🧾</span><div><strong>ন্যূনতম অর্ডার</strong>{store.min_order_bdt ? money(store.min_order_bdt) : "ন্যূনতম অর্ডারের শর্ত নেই"}</div></div>
             <div className="s-store-benefit"><span>🕘</span><div><strong>আজকের সময়</strong>{todayHours?.label || "দোকানের সময়সূচি দেওয়া হয়নি"}</div></div>
           </div>
@@ -1998,7 +2008,7 @@ export default function StorePage() {
             </div>
             <div className="s-detail-info">
               <h1 className="s-detail-name">{selectedProduct.name}</h1>
-              <div className="s-product-unit">{selectedProduct.unit}</div>
+              <div className="s-product-unit">{displayProductUnit(selectedProduct.unit)}</div>
               {selectedProduct.price != null && (
                 <div className="s-detail-price">{money(selectedProduct.price)}</div>
               )}
@@ -2012,7 +2022,7 @@ export default function StorePage() {
               )}
               {store.show_stock_level === "quantity" && selectedProduct.quantity !== undefined ? (
                 <span className={selectedProduct.quantity <= 0 ? "s-stock-out" : selectedProduct.quantity <= 5 ? "s-stock-low" : "s-stock-ok"}>
-                  {selectedProduct.quantity > 0 ? `${selectedProduct.quantity} ${selectedProduct.unit} মজুত` : "মজুত নেই"}
+                  {selectedProduct.quantity > 0 ? `${selectedProduct.quantity} ${displayProductUnit(selectedProduct.unit)} মজুত` : "মজুত নেই"}
                 </span>
               ) : store.show_stock_level !== "hide" && selectedProduct.in_stock !== undefined && (
                 <span className={selectedProduct.in_stock ? "s-stock-ok" : "s-stock-out"}>
@@ -2023,7 +2033,7 @@ export default function StorePage() {
                 <button className="s-qty-btn" onClick={() => setDetailQty(q => Math.max(1, q - 1))}>−</button>
                 <span className="s-qty-num">{detailQty}</span>
                 <button className="s-qty-btn" disabled={detailQty >= maxOrderQuantity(selectedProduct)} onClick={() => setDetailQty(q => Math.min(maxOrderQuantity(selectedProduct), q + 1))}>+</button>
-                <span style={{ fontSize: 13, color: "#6b8a7a", marginLeft: 4 }}>{selectedProduct.unit}</span>
+                <span style={{ fontSize: 13, color: "#6b8a7a", marginLeft: 4 }}>{displayProductUnit(selectedProduct.unit)}</span>
               </div>
               <button
                 className="s-add-to-cart-btn"
@@ -2087,14 +2097,14 @@ export default function StorePage() {
         <div className="s-footer-inner">
           <div className="s-footer-column">
             <h3>{store.display_name}</h3>
-            {store.tagline && <p>{store.tagline}</p>}
-            <p>{[store.category, store.area].filter(Boolean).join(" · ")}</p>
+            {store.tagline && <p>{displayStoreTagline(store.tagline, store.is_demo)}</p>}
+            <p>{[displayStoreCategory(store.category), displayStoreArea(store.area, store.is_demo)].filter(Boolean).join(" · ")}</p>
             {store.phone && <p><a href={`tel:${store.phone.replace(/[^+\d]/g, "")}`}>ফোন করুন: {store.phone}</a></p>}
           </div>
           <div className="s-footer-column">
             <h3>দোকানে আসুন</h3>
-            {store.address ? <p>{store.address}</p> : <p>{store.area || "ঠিকানা প্রকাশ করা হয়নি"}</p>}
-            {(store.address || store.area) && <a href={`https://maps.google.com/?q=${encodeURIComponent(store.address || store.area)}`} target="_blank" rel="noopener noreferrer">মানচিত্রে খুলুন ↗</a>}
+            {store.address ? <p>{store.address}</p> : <p>{displayStoreArea(store.area, store.is_demo) || "ঠিকানা প্রকাশ করা হয়নি"}</p>}
+            {!isSyntheticDemoArea(store.area, store.is_demo) && (store.address || store.area) && <a href={`https://maps.google.com/?q=${encodeURIComponent(store.address || store.area)}`} target="_blank" rel="noopener noreferrer">মানচিত্রে খুলুন ↗</a>}
             {store.show_hours && store.hours_json && <details className="s-footer-details">
               <summary>সাপ্তাহিক সময়সূচি</summary>
               <ul>{[["mon","monday","সোমবার"],["tue","tuesday","মঙ্গলবার"],["wed","wednesday","বুধবার"],["thu","thursday","বৃহস্পতিবার"],["fri","friday","শুক্রবার"],["sat","saturday","শনিবার"],["sun","sunday","রবিবার"]].map(([shortKey, fullKey, label]) => {
@@ -2108,15 +2118,15 @@ export default function StorePage() {
           </div>
           <div className="s-footer-column">
             <h3>অর্ডার ও পেমেন্ট</h3>
-            <p>{store.delivery_note || "অর্ডার নিশ্চিত হলে দোকান থেকে ডেলিভারি সম্পর্কে জানানো হবে।"}</p>
-            <p>{store.payment_cod ? "ক্যাশ অন ডেলিভারি" : "এই দোকানের অনলাইন পেমেন্ট চালু নেই"}</p>
+            <p>{store.is_demo ? (displayStoreDelivery(store.delivery_note, true) || "এটি শুধু পরীক্ষামূলক দোকান। বাস্তব অর্ডার ও ডেলিভারি নেই।") : (displayStoreDelivery(store.delivery_note) || "অর্ডার নিশ্চিত হলে দোকান থেকে ডেলিভারি সম্পর্কে জানানো হবে।")}</p>
+            <p>{store.is_demo ? "শুধু ডেমো · টাকা পাঠাবেন না" : store.payment_cod ? "ক্যাশ অন ডেলিভারি" : "এই দোকানের অনলাইন পেমেন্ট চালু নেই"}</p>
             {store.min_order_bdt ? <p>ন্যূনতম অর্ডার: {money(store.min_order_bdt)}</p> : null}
           </div>
         </div>
         <div className="s-footer-bottom">
           <span>© {new Date().getFullYear()} {store.display_name}</span>
           <a href="#/stores" className="s-footer-badge" style={{ textDecoration: "none" }}>
-            <span>Powered by</span><strong style={{ color: "#8aaa97" }}>B-SMART</strong>
+            <span>প্রযুক্তি সহায়তায়</span><strong style={{ color: "#8aaa97" }}>B-SMART</strong>
           </a>
         </div>
       </footer>
