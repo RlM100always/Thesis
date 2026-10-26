@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import "./D1MerchantCenter.css";
+import D1MerchantInsights from "../components/D1MerchantInsights";
+import D1InventoryCorrection from "../components/D1InventoryCorrection";
+import D1OrderDetail from "../components/D1OrderDetail";
 
 const BASE=(import.meta.env.VITE_D1_COMMERCE_URL || "https://bsmart-commerce-api.bcs-written-rakib.workers.dev").replace(/\/$/,"");
 const fmt=n=>"৳"+Number(n||0).toLocaleString("en-BD");
@@ -20,12 +23,15 @@ export default function D1MerchantCenter(){
   const [form,setForm]=useState(empty),[mode,setMode]=useState("login"),[view,setView]=useState("dashboard");
   const [data,setData]=useState(null),[busy,setBusy]=useState(false),[error,setError]=useState(""),[note,setNote]=useState("");
   const [storeForm,setStoreForm]=useState({name:"",category:"মুদি",area:"",tagline:"",is_active:false});
-  const [newProduct,setNewProduct]=useState({sku:"",name:"",category:"",price_bdt:"",stock_qty:"",is_listed:true});
+  const [newProduct,setNewProduct]=useState({sku:"",name:"",category:"",price_bdt:"",stock_qty:"",reorder_point:"5",is_listed:true});
   const [edit,setEdit]=useState(null);
   const [posProduct,setPosProduct]=useState("");
   const [posQty,setPosQty]=useState("1");
   const [cashForm,setCashForm]=useState({kind:"expense",amount_bdt:"",description:""});
   const [oneTimeKey,setOneTimeKey]=useState("");
+  const [orderDetailId,setOrderDetailId]=useState(null);
+  const [orderSearch,setOrderSearch]=useState("");
+  const [orderFilter,setOrderFilter]=useState("all");
   const load=useCallback(async tk=>{
     const latest=await call("/api/merchant/dashboard",{token:tk});
     setData(latest);
@@ -35,8 +41,8 @@ export default function D1MerchantCenter(){
   useEffect(()=>{if(!token)return;load(token).catch(e=>{setError(e.message);if(e.status===401){sessionStorage.removeItem("bsmart_d1_merchant");setToken("");}});},[token,load]);
   async function run(action,success){
     setBusy(true);setError("");setNote("");
-    try{await action();if(token)await load(token);setNote(success||"Saved to Cloudflare D1");}
-    catch(e){setError(e.message||"Request failed");}
+    try{await action();if(token)await load(token);setNote(success||"Saved to Cloudflare D1");return true;}
+    catch(e){setError(e.message||"Request failed");return false;}
     finally{setBusy(false);}
   }
   async function authenticate(e){
@@ -57,6 +63,14 @@ export default function D1MerchantCenter(){
   }
   const store=data?.store,products=data?.products||[],orders=data?.orders||[],stats=data?.metrics||{};
   const totalProducts=useMemo(()=>products.filter(p=>p.is_listed).length,[products]);
+  const lowStock=useMemo(()=>products.filter(p=>p.is_listed&&p.stock_qty<=Number(p.reorder_point??5)),[products]);
+  const filteredOrders=useMemo(()=>orders.filter(o=>
+    (orderFilter==="all"||o.status===orderFilter)&&
+    (!orderSearch||[o.order_number,o.shipping_name,o.shipping_phone].some(v=>
+      String(v||"").toLowerCase().includes(orderSearch.trim().toLowerCase())))
+  ),[orders,orderFilter,orderSearch]);
+  const loadInsights=useCallback(days=>call("/api/merchant/insights?days="+days,{token}),[token]);
+  const loadOrderDetail=useCallback(id=>call("/api/merchant/orders/"+encodeURIComponent(id),{token}),[token]);
   return <main className="dm-page">
     <header className="dm-header"><a href="#/" className="dm-logo">B-SMART <span>Cloudflare Owner Center</span></a>
       <div className="dm-header-side"><span className="dm-d1">D1 persistent</span><a href="#/stores">সব দোকান</a>{token&&<button className="dm-text-btn" onClick={logout}>Logout</button>}</div>
@@ -89,21 +103,28 @@ export default function D1MerchantCenter(){
         <button disabled={busy} type="submit" className="dm-btn">Create D1 Store</button></form>
       </section>:
       <>
-        <div className="dm-tabs">{[["dashboard","Overview"],["products","Products & Stock"],["pos","Demo POS & Cashbook"],["orders","Orders"],["store","Store Settings"]].filter(([k])=>store.is_demo||k!=="pos").map(([k,l])=><button key={k} onClick={()=>setView(k)} className={view===k?"dm-active":""}>{l}</button>)}</div>
+        <div className="dm-tabs">{[["dashboard","Overview"],["products","Products & Stock"],["pos","Demo POS & Cashbook"],["insights","Insights"],["orders","Orders"],["store","Store Settings"]].filter(([k])=>store.is_demo||k!=="pos").map(([k,l])=><button key={k} onClick={()=>setView(k)} className={view===k?"dm-active":""}>{l}</button>)}</div>
         {view==="dashboard"&&<div className="dm-stack">
           <div className="dm-stats"><Metric title={store.is_demo?"Demo orders":"COD orders"} value={Number(stats.orders||0).toLocaleString("en-BD")}/><Metric title="Order value (uncollected)" value={fmt(stats.placed_total_bdt)} tip="Not real collected revenue"/><Metric title="Published products" value={totalProducts}/><Metric title="On-hand units" value={Number(stats.inventory_units||0)}/></div>
           <div className="dm-panel"><h2>{store.name}</h2><p className="dm-muted">{store.area} · {store.category}</p><p>Public visibility: <strong>{store.is_active?"On":"Off"}</strong></p><p className="dm-muted">{store.is_demo?"Demo-only store; no money or shipment":store.real_cod_approved?"Approved for gated COD checkout":"Merchant verification required before COD can be enabled"}</p><p className="dm-muted">Store URL: <code>/#/store/{store.slug}</code></p>
           <button className="dm-secondary" onClick={()=>setView("store")}>Manage store profile</button></div>
+          <div className="dm-panel"><h2>Stock alerts</h2><p className="dm-muted">{lowStock.length} published products are at/below their reorder threshold.</p>
+            {lowStock.slice(0,5).map(p=><div key={p.id} className="dm-stock-alert"><span><strong>{p.name}</strong> · {p.stock_qty} units (threshold {p.reorder_point})</span><button className="dm-secondary" onClick={()=>setView("products")}>Adjust stock</button></div>)}
+            {lowStock.length===0&&<p className="dm-muted">No low-stock alerts.</p>}
+            <button className="dm-secondary" onClick={()=>setView("insights")}>View full insights</button>
+          </div>
           <div className="dm-panel"><h2>Recent inventory adjustments</h2>{data.stock_adjustments.length===0?<Empty>No manual adjustments yet</Empty>:
           <div className="dm-scroll"><table><thead><tr><th>Time</th><th>Product</th><th>Before</th><th>After</th><th>Δ</th></tr></thead><tbody>{data.stock_adjustments.map((a,i)=><tr key={i}><td>{a.created_at}</td><td>{products.find(p=>p.id===a.product_id)?.name||a.product_id}</td><td>{a.old_quantity}</td><td>{a.new_quantity}</td><td>{a.delta}</td></tr>)}</tbody></table></div>}</div>
         </div>}
+        {view==="insights"&&<D1MerchantInsights load={loadInsights} onStock={()=>setView("products")}/>}
         {view==="products"&&<div className="dm-stack">
-          <section className="dm-panel"><h2>নতুন পণ্য যোগ করুন</h2><form className="dm-product-form" onSubmit={e=>{e.preventDefault();run(async()=>{await call("/api/merchant/products",{method:"POST",token,body:{...newProduct,price_bdt:Number(newProduct.price_bdt),stock_qty:Number(newProduct.stock_qty)}});setNewProduct({sku:"",name:"",category:"",price_bdt:"",stock_qty:"",is_listed:true});},"Product created in D1");}}>
-          {["sku","name","category","price_bdt","stock_qty"].map(k=><Field key={k} label={{sku:"SKU",name:"Product",category:"Category",price_bdt:"Price BDT",stock_qty:"Stock quantity"}[k]}><input style={input} value={newProduct[k]} required type={["price_bdt","stock_qty"].includes(k)?"number":"text"} min={["price_bdt","stock_qty"].includes(k)?0:undefined} onChange={e=>setNewProduct(v=>({...v,[k]:e.target.value}))}/></Field>)}
+          <section className="dm-panel"><h2>নতুন পণ্য যোগ করুন</h2><form className="dm-product-form" onSubmit={e=>{e.preventDefault();run(async()=>{await call("/api/merchant/products",{method:"POST",token,body:{...newProduct,price_bdt:Number(newProduct.price_bdt),stock_qty:Number(newProduct.stock_qty)}});setNewProduct({sku:"",name:"",category:"",price_bdt:"",stock_qty:"",reorder_point:"5",is_listed:true});},"Product created in D1");}}>
+          {["sku","name","category","price_bdt","stock_qty","reorder_point"].map(k=><Field key={k} label={{sku:"SKU",name:"Product",category:"Category",price_bdt:"Price BDT",stock_qty:"Stock quantity",reorder_point:"Low-stock alert at"}[k]}><input style={input} value={newProduct[k]} required type={["price_bdt","stock_qty","reorder_point"].includes(k)?"number":"text"} min={["price_bdt","stock_qty"].includes(k)?0:undefined} onChange={e=>setNewProduct(v=>({...v,[k]:e.target.value}))}/></Field>)}
           <label className="dm-check"><input type="checkbox" checked={newProduct.is_listed} onChange={e=>setNewProduct(v=>({...v,is_listed:e.target.checked}))}/>{store.is_demo?"Publish a demo product":"Publish product listing"}</label><button disabled={busy} type="submit" className="dm-btn">Add product</button></form></section>
+          <D1InventoryCorrection products={products} busy={busy} onSave={body=>run(()=>call("/api/merchant/inventory/corrections",{method:"POST",token,body}),"Stock correction saved with audit trail")}/>
           <section className="dm-panel"><h2>আপনার পণ্য ({products.length})</h2>
           {products.length===0?<Empty>No products yet</Empty>:<div className="dm-product-list">{products.map(p=><article key={p.id} className="dm-product">
-            <div><strong>{p.name}</strong><p className="dm-muted">{p.sku} · {p.category||"Uncategorised"}</p><p><b>{fmt(p.price_bdt)}</b> · Stock <b>{p.stock_qty}</b> · {p.is_listed?"Published":"Hidden"}</p></div>
+            <div><strong>{p.name}</strong><p className="dm-muted">{p.sku} · {p.category||"Uncategorised"}</p><p><b>{fmt(p.price_bdt)}</b> · Stock <b>{p.stock_qty}</b> · Alert ≤ {p.reorder_point??5} {p.is_listed&&p.stock_qty<=Number(p.reorder_point??5)?"· ⚠️ Low stock":""} · {p.is_listed?"Published":"Hidden"}</p></div>
             <button className="dm-secondary" onClick={()=>setEdit({...p})}>Edit</button></article>)}</div>}</section>
         </div>}
         {view==="pos"&&<div className="dm-stack">
@@ -126,7 +147,9 @@ export default function D1MerchantCenter(){
           </section>
         </div>}
         {view==="orders"&&<div className="dm-panel"><h2>{store.is_demo?"Store demo orders":"Cash-on-delivery orders"} ({orders.length})</h2><p className="dm-muted">{store.is_demo?"Orders are persistent but demo customers are anonymous.":"Only a merchant may see delivery details. The website does not process or confirm COD cash payments."}</p>
-          {orders.length===0?<Empty>অর্ডার আসলে এখানে দেখা যাবে।</Empty>:<div className="dm-scroll"><table><thead><tr><th>Order</th><th>Date</th><th>Customer / Delivery</th><th>Total</th><th>Status</th><th>Action</th></tr></thead><tbody>{orders.map(o=><tr key={o.id}><td>{o.order_number}</td><td>{o.placed_at}</td><td>{store.is_demo?"Demo customer":<div><strong>{o.shipping_name||"—"}</strong><div><a href={"tel:"+o.shipping_phone}>{o.shipping_phone}</a></div><span style={{whiteSpace:"pre-wrap"}}>{o.shipping_address}</span></div>}</td><td>{fmt(o.total_bdt)}</td><td>{o.status}</td><td>{o.status==="placed"?<>
+          <div className="dm-order-filters"><input className="dm-input" aria-label="Search orders" placeholder="Search order number, name or phone" value={orderSearch} onChange={e=>setOrderSearch(e.target.value)}/>
+          <select className="dm-input" aria-label="Filter order status" value={orderFilter} onChange={e=>setOrderFilter(e.target.value)}>{["all","placed","confirmed","shipped","fulfilled","cancelled"].map(x=><option key={x} value={x}>{x==="all"?"All statuses":x}</option>)}</select></div>
+          {filteredOrders.length===0?<Empty>এই ফিল্টারে কোনো অর্ডার নেই।</Empty>:<div className="dm-scroll"><table><thead><tr><th>Order</th><th>Date</th><th>Customer / Delivery</th><th>Total</th><th>Status</th><th>Action</th></tr></thead><tbody>{filteredOrders.map(o=><tr key={o.id}><td><button type="button" className="dm-order-link" onClick={()=>setOrderDetailId(o.id)}>{o.order_number}</button></td><td>{o.placed_at}</td><td>{store.is_demo?"Demo customer":<div><strong>{o.shipping_name||"—"}</strong><div><a href={"tel:"+o.shipping_phone}>{o.shipping_phone}</a></div><span style={{whiteSpace:"pre-wrap"}}>{o.shipping_address}</span></div>}</td><td>{fmt(o.total_bdt)}</td><td>{o.status}</td><td>{o.status==="placed"?<>
             <button className="dm-secondary" disabled={busy} onClick={()=>run(()=>call("/api/merchant/orders/"+o.id+"/status",{method:"PATCH",token,body:{status:"confirmed"}}),"Order confirmed")}>Confirm</button> <button className="dm-danger" disabled={busy} onClick={()=>run(()=>call("/api/merchant/orders/"+o.id+"/status",{method:"PATCH",token,body:{status:"cancelled"}}),"Order cancelled and stock restored")}>Cancel</button></>:
             o.status==="confirmed"?<><button className="dm-secondary" disabled={busy} onClick={()=>run(()=>call("/api/merchant/orders/"+o.id+"/status",{method:"PATCH",token,body:{status:store.is_demo?"fulfilled":"shipped"}}),store.is_demo?"Demo order fulfilled":"Shipment marked dispatched (not carrier verified)")}>{store.is_demo?"Fulfil demo":"Mark shipped"}</button> <button className="dm-danger" disabled={busy} onClick={()=>run(()=>call("/api/merchant/orders/"+o.id+"/status",{method:"PATCH",token,body:{status:"cancelled"}}),"Order cancelled")}>Cancel</button></>:o.status==="shipped"?<button className="dm-secondary" disabled={busy} onClick={()=>run(()=>call("/api/merchant/orders/"+o.id+"/status",{method:"PATCH",token,body:{status:"fulfilled"}}),"Order marked fulfilled; cash collection not verified")}>Mark fulfilled</button>:<span>—</span>}</td></tr>)}</tbody></table></div>}
         </div>}
@@ -140,11 +163,12 @@ export default function D1MerchantCenter(){
           <button className="dm-btn" disabled={busy} type="submit">Save settings</button>
         </form></section>}
         {edit&&<div className="dm-modal-bg" onClick={()=>setEdit(null)}><section role="dialog" aria-modal="true" aria-label="Edit product" className="dm-panel dm-dialog" onClick={e=>e.stopPropagation()}><h2>Edit: {edit.name}</h2>
-          <form className="dm-fields" onSubmit={e=>{e.preventDefault();run(async()=>{await call("/api/merchant/products/"+edit.id,{method:"PATCH",token,body:{name:edit.name,category:edit.category,price_bdt:Number(edit.price_bdt),stock_qty:Number(edit.stock_qty),is_listed:edit.is_listed}});setEdit(null);},"Product updated");}}>
-          {["name","category","price_bdt","stock_qty"].map(k=><Field key={k} label={k}><input style={input} type={["price_bdt","stock_qty"].includes(k)?"number":"text"} min={["price_bdt","stock_qty"].includes(k)?0:undefined} required value={edit[k]} onChange={e=>setEdit(v=>({...v,[k]:e.target.value}))}/></Field>)}
+          <form className="dm-fields" onSubmit={e=>{e.preventDefault();run(async()=>{await call("/api/merchant/products/"+edit.id,{method:"PATCH",token,body:{name:edit.name,category:edit.category,price_bdt:Number(edit.price_bdt),...(store.is_demo?{stock_qty:Number(edit.stock_qty)}:{}),reorder_point:Number(edit.reorder_point),is_listed:edit.is_listed}});setEdit(null);},"Product updated");}}>
+          {["name","category","price_bdt",...(store.is_demo?["stock_qty"]:[]),"reorder_point"].map(k=><Field key={k} label={k}><input style={input} type={["price_bdt","stock_qty","reorder_point"].includes(k)?"number":"text"} min={["price_bdt","stock_qty"].includes(k)?0:undefined} required value={edit[k]} onChange={e=>setEdit(v=>({...v,[k]:e.target.value}))}/></Field>)}
           <label className="dm-check"><input type="checkbox" checked={!!edit.is_listed} onChange={e=>setEdit(v=>({...v,is_listed:e.target.checked}))}/>Published</label><div className="dm-actions"><button className="dm-btn" disabled={busy} type="submit">Save to D1</button><button type="button" onClick={()=>setEdit(null)} className="dm-secondary">Close</button></div></form></section></div>}
       </>}
     </div>
-    {token&&store&&<nav className="dm-bottom" aria-label="Owner mobile app navigation">{[["dashboard","Home","⌂"],["products","Products","▣"],["pos","POS","⊞"],["orders","Orders","≡"],["store","Settings","⚙"]].filter(([k])=>store.is_demo||k!=="pos").map(([k,t,icon])=><button key={k} className={view===k?"selected":""} onClick={()=>{setView(k);window.scrollTo({top:0,behavior:"smooth"});}}><span>{icon}</span>{t}</button>)}</nav>}
+    {orderDetailId&&token&&<D1OrderDetail id={orderDetailId} load={loadOrderDetail} onClose={()=>setOrderDetailId(null)}/>}
+    {token&&store&&<nav className="dm-bottom" aria-label="Owner mobile app navigation">{[["dashboard","Home","⌂"],["products","Products","▣"],["pos","POS","⊞"],["insights","Insights","▥"],["orders","Orders","≡"],["store","Settings","⚙"]].filter(([k])=>store.is_demo||k!=="pos").map(([k,t,icon])=><button key={k} className={view===k?"selected":""} onClick={()=>{setView(k);window.scrollTo({top:0,behavior:"smooth"});}}><span>{icon}</span>{t}</button>)}</nav>}
   </main>;
 }
