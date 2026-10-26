@@ -817,6 +817,9 @@ function CheckoutView({ store, cart, products, onBack, onDone, scCustomer, varia
   const [couponResult, setCouponResult] = useState(null);   // { discount_amount, code } | null
   const [couponErr, setCouponErr] = useState("");
   const [couponBusy, setCouponBusy] = useState(false);
+  const [privacyConsent, setPrivacyConsent] = useState(false);
+  const isD1RealCOD = store.real_cod_enabled === true;
+  const checkoutBlocked = store.checkout_available === false;
   const set = (k) => (e) => setForm(f => ({ ...f, [k]: e.target.value }));
 
   const items = Object.entries(cart).filter(([, q]) => q > 0);
@@ -863,6 +866,8 @@ function CheckoutView({ store, cart, products, onBack, onDone, scCustomer, varia
   async function place(e) {
     e.preventDefault();
     if (submitCooldown > 0) return;
+    if (checkoutBlocked) { setError("এই দোকানের বাস্তব অর্ডার এখনো চালু হয়নি।"); return; }
+    if (isD1RealCOD && !privacyConsent) { setError("ডেলিভারির জন্য তথ্য শেয়ার করার সম্মতি দিন।"); return; }
     if (!form.name.trim() || !form.phone.trim() || !form.address.trim()) {
       setError("নাম, ফোন নম্বর ও ঠিকানা দিতে হবে।");
       return;
@@ -893,6 +898,7 @@ function CheckoutView({ store, cart, products, onBack, onDone, scCustomer, varia
         shipping_address: form.address + (form.note ? `\nনোট: ${form.note}` : ""),
         notes: form.note || null,
         payment_method: form.payment,
+        privacy_consent: isD1RealCOD && privacyConsent,
         delivery_division: form.division || undefined,
         payment_screenshot: form.payment_screenshot || undefined,
         items: items.map(([product_id, quantity]) => ({
@@ -1178,8 +1184,13 @@ function CheckoutView({ store, cart, products, onBack, onDone, scCustomer, varia
           </div>
         )}
 
-        <button className="s-place-order-btn" type="submit" disabled={busy || !meetsMin || zoneBlocked || submitCooldown > 0}>
-          {busy ? "অর্ডার দেওয়া হচ্ছে…" : submitCooldown > 0 ? `অপেক্ষা করুন (${submitCooldown}s)` : `অর্ডার করুন — ${money(grandTotal)}`}
+        {isD1RealCOD && <label style={{display:"flex",gap:10,alignItems:"flex-start",lineHeight:1.6,margin:"16px 0",fontSize:13}}>
+          <input type="checkbox" checked={privacyConsent} onChange={e=>setPrivacyConsent(e.target.checked)} required />
+          আমি সম্মতি দিচ্ছি যে ডেলিভারি ও অর্ডার নিশ্চিত করার জন্য আমার নাম, ফোন ও ঠিকানা এই দোকানের মালিকের সঙ্গে শেয়ার হবে। অগ্রিম টাকা পাঠাতে হবে না।
+        </label>}
+        {checkoutBlocked && <div className="s-error-box">এই দোকান এখনো যাচাইকৃত real COD checkout চালু করেনি। কোনো টাকা পাঠাবেন না।</div>}
+        <button className="s-place-order-btn" type="submit" disabled={busy || checkoutBlocked || (isD1RealCOD && !privacyConsent) || !meetsMin || zoneBlocked || submitCooldown > 0}>
+          {busy ? "অর্ডার দেওয়া হচ্ছে…" : checkoutBlocked ? "অর্ডার এখন বন্ধ" : submitCooldown > 0 ? `অপেক্ষা করুন (${submitCooldown}s)` : `অর্ডার করুন — ${money(grandTotal)}`}
         </button>
       </form>
     </div>
