@@ -46,3 +46,28 @@ No real payment gateways, credential verification, merchant identity validation,
 3. Add privacy-preserving verified merchant login, customer identity, chat, coupons, true accounting double-entry journals, payments and reporting.
 4. Implement reliable backups to R2 and tested D1 point-in-time restore before any cutover.
 5. Only after verification, switch legacy FastAPI owner modules to the new D1 backend and retire ephemeral SQLite without losing real records.
+
+
+## Staged real COD foundation (not launched yet)
+
+A guarded **Cash on Delivery** checkout implementation is under review in the `feature/d1-real-cod-foundation-20261026` branch. It includes delivery contact validation, affirmative consent, an hourly per-IP hashed rate limit, D1 transactional stock deduction, merchant-visible addresses, and explicit shipped/fulfilled status transitions. Neither card nor bKash/Nagad/SSLCommerz payments are processed by this Worker.
+
+**Fail-closed by default:** for any real order to be possible, all of these must be true:
+
+1. Apply reviewed migration `cloudflare/migrations/0006_real_cod_gate.sql` **once**, after a verified remote D1 backup and migration-ledger reconciliation.
+2. Independently verify the merchant, approve `commerce_stores.real_cod_approved=1` for that exact owner and real store, and set its `is_demo=0`. The owner website cannot self-approve or self-promote a synthetic demo store.
+3. Deploy the reviewed Worker bundle, pass frontend and backend tests, and explicitly set `ENABLE_REAL_COD=true` in that Worker's runtime. It defaults to off and stores unapproved.
+4. Establish published privacy/retention/deletion guidance, recovery from backups, incident response, merchant support, dispatch procedures, and abuse controls before public orders are enabled.
+
+This does **not** migrate FastAPI users, historical POS or accounting data. There is no delivery carrier integration, verified payment collection, refund gateway, self-service merchant KYC, or production-ready identity recovery. No synthetic records should ever be presented as merchant history. Real delivery and any financial settlement remain the merchant's responsibility outside this release, until separately integrated and verified.
+
+To test this branch locally without collecting real shopper data:
+
+```bash
+cd cloudflare
+npm test
+node --check commerce-worker.js
+node --check merchant-routes.js
+```
+
+See `docs/D1_REAL_COD_ROLLOUT.md` for required data-protection and cutover checks.
