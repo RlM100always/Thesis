@@ -3,7 +3,9 @@ import "./D1MerchantCenter.css";
 import { useUi } from "../UiContext";
 
 const BASE=(import.meta.env.VITE_D1_COMMERCE_URL || "https://bsmart-commerce-api.bcs-written-rakib.workers.dev").replace(/\/$/,"");
-const fmt=n=>"৳"+Number(n||0).toLocaleString("en-BD");
+const fmt=n=>"৳"+Number(n||0).toLocaleString("bn-BD");
+const ORDER_STATUS_BN={placed:"অর্ডার জমা হয়েছে",confirmed:"নিশ্চিত হয়েছে",fulfilled:"ডেমো অর্ডার সম্পন্ন",cancelled:"বাতিল হয়েছে"};
+const CASH_KIND_BN={receipt:"টাকা গ্রহণ",expense:"খরচ"};
 const empty={email:"",access_key:""};
 async function call(path,{method="GET",body,token}={}){
   const response=await fetch(BASE+path,{method,headers:{"Content-Type":"application/json",...(token?{Authorization:"Bearer "+token}:{})},...(body?{body:JSON.stringify(body)}:{})});
@@ -124,11 +126,11 @@ export default function D1MerchantCenter(){
           </section>
           <section className="dm-panel"><h2>সাম্প্রতিক নগদ হিসাব</h2>
             {!(data.cashbook||[]).length?<Empty>এখনো কোনো হিসাব যোগ করা হয়নি।</Empty>:<div className="dm-scroll"><table><thead><tr><th>তারিখ</th><th>ধরন</th><th>পরিমাণ</th><th>বিবরণ</th></tr></thead>
-            <tbody>{data.cashbook.map(row=><tr key={row.id}><td>{row.created_at}</td><td>{row.kind}</td><td>{fmt(row.amount_bdt)}</td><td>{row.description}</td></tr>)}</tbody></table></div>}
+            <tbody>{data.cashbook.map(row=><tr key={row.id}><td>{row.created_at}</td><td>{CASH_KIND_BN[row.kind]||row.kind}</td><td>{fmt(row.amount_bdt)}</td><td>{row.description}</td></tr>)}</tbody></table></div>}
           </section>
         </div>}
         {view==="orders"&&<div className="dm-panel"><h2>পরীক্ষামূলক অর্ডার ({orders.length})</h2><p className="dm-muted">অর্ডারের তথ্য Cloudflare D1-তে সংরক্ষিত থাকে। পরীক্ষামূলক অর্ডারে বাস্তব ক্রেতার পরিচয় ব্যবহার করা হয় না।</p>
-          {orders.length===0?<Empty>অর্ডার আসলে এখানে দেখা যাবে।</Empty>:<div className="dm-scroll"><table><thead><tr><th>অর্ডার</th><th>তারিখ</th><th>মোট</th><th>অবস্থা</th><th>করণীয়</th></tr></thead><tbody>{orders.map(o=><tr key={o.id}><td>{o.order_number}</td><td>{o.placed_at}</td><td>{fmt(o.total_bdt)}</td><td>{o.status}</td><td>{o.status==="placed"?<>
+          {orders.length===0?<Empty>অর্ডার আসলে এখানে দেখা যাবে।</Empty>:<div className="dm-scroll"><table><thead><tr><th>অর্ডার</th><th>তারিখ</th><th>মোট</th><th>অবস্থা</th><th>করণীয়</th></tr></thead><tbody>{orders.map(o=><tr key={o.id}><td>{o.order_number}</td><td>{o.placed_at}</td><td>{fmt(o.total_bdt)}</td><td>{ORDER_STATUS_BN[o.status]||o.status}</td><td>{o.status==="placed"?<>
             <button className="dm-secondary" disabled={busy} onClick={()=>run(()=>call("/api/merchant/orders/"+o.id+"/status",{method:"PATCH",token,body:{status:"confirmed"}}),"অর্ডার নিশ্চিত করা হয়েছে।")}>নিশ্চিত করুন</button> <button className="dm-danger" disabled={busy} onClick={()=>run(()=>call("/api/merchant/orders/"+o.id+"/status",{method:"PATCH",token,body:{status:"cancelled"}}),"অর্ডার বাতিল হয়েছে এবং মজুত আগের অবস্থায় ফিরেছে।")}>বাতিল করুন</button></>:
             o.status==="confirmed"?<><button className="dm-secondary" disabled={busy} onClick={()=>run(()=>call("/api/merchant/orders/"+o.id+"/status",{method:"PATCH",token,body:{status:"fulfilled"}}),"পরীক্ষামূলক অর্ডার সম্পন্ন বলে চিহ্নিত হয়েছে।")}>ডেমো অর্ডার সম্পন্ন করুন</button> <button className="dm-danger" disabled={busy} onClick={()=>run(()=>call("/api/merchant/orders/"+o.id+"/status",{method:"PATCH",token,body:{status:"cancelled"}}),"অর্ডার বাতিল করা হয়েছে।")}>বাতিল করুন</button></>:<span>—</span>}</td></tr>)}</tbody></table></div>}
         </div>}
