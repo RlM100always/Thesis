@@ -1740,6 +1740,7 @@ export default function StorePage() {
       {store.is_demo && <div role="status" style={{position:"relative",zIndex:50,padding:"12px 16px",background:"#fef3c7",color:"#78350f",fontWeight:700,textAlign:"center"}}>
         Cloudflare D1-তে চালু ডেমো দোকান — অর্ডার রেকর্ড হবে, কিন্তু বাস্তব ডেলিভারি বা পেমেন্ট নেই। নাম/ফোন/ঠিকানায় নমুনা তথ্য ব্যবহার করুন; আসল টাকা পাঠাবেন না।
       </div>}
+      {!!store.announcement_text&&<div className="s-announcement" role="note"><span>✦</span>{store.announcement_text}</div>}
       {/* Floating cart button (mobile) */}
       {cartCount > 0 && (
         <button className="s-float-cart" onClick={() => setCartOpen(true)} aria-label="কার্ট খুলুন">
@@ -1762,6 +1763,11 @@ export default function StorePage() {
         />
       )}
 
+      {compareOpen && comparisonProducts.length>=2&&<StoreProductCompare
+        items={comparisonProducts} storeCategory={store.category}
+        onClose={()=>setCompareOpen(false)} onRemove={toggleComparison}
+        onView={p=>{setCompareOpen(false);viewProduct(p);}}
+        onAdd={p=>addToCart(p)} />}
       {/* Sticky cart bar (desktop) */}
       {cartCount > 0 && view === "home" && (
         <button type="button" className="s-sticky-bar" onClick={() => setCartOpen(true)} style={{ display: "flex" }} aria-label="কার্ট খুলুন">
@@ -1910,6 +1916,7 @@ export default function StorePage() {
                     storeCategory={store.category}
                     showStockLevel={store.show_stock_level}
                     isFavorite={favoriteProducts.includes(String(p.id))} onFavorite={favoriteProduct}
+                     isCompared={compareIds.includes(String(p.id))} compareDisabled={compareIds.length>=COMPARE_LIMIT&&!compareIds.includes(String(p.id))} onCompare={toggleComparison}
                      onAdd={addToCart} onQtyChange={setQty} onView={viewProduct} />
                 ))}
               </div>
@@ -1971,6 +1978,7 @@ export default function StorePage() {
                   storeCategory={store.category}
                   showStockLevel={store.show_stock_level}
                   isFavorite={favoriteProducts.includes(String(p.id))} onFavorite={favoriteProduct}
+                     isCompared={compareIds.includes(String(p.id))} compareDisabled={compareIds.length>=COMPARE_LIMIT&&!compareIds.includes(String(p.id))} onCompare={toggleComparison}
                      onAdd={addToCart} onQtyChange={setQty} onView={viewProduct} />
               ))}
             </div>
