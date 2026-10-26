@@ -818,6 +818,7 @@ function CheckoutView({ store, cart, products, onBack, onDone, scCustomer, varia
   const [couponErr, setCouponErr] = useState("");
   const [couponBusy, setCouponBusy] = useState(false);
   const [privacyConsent, setPrivacyConsent] = useState(false);
+  const [checkoutRequestId] = useState(() => crypto.randomUUID());
   const isD1RealCOD = store.real_cod_enabled === true;
   const checkoutBlocked = store.checkout_available === false;
   const set = (k) => (e) => setForm(f => ({ ...f, [k]: e.target.value }));
@@ -899,6 +900,7 @@ function CheckoutView({ store, cart, products, onBack, onDone, scCustomer, varia
         notes: form.note || null,
         payment_method: form.payment,
         privacy_consent: isD1RealCOD && privacyConsent,
+        checkout_request_id: isD1RealCOD ? checkoutRequestId : undefined,
         delivery_division: form.division || undefined,
         payment_screenshot: form.payment_screenshot || undefined,
         items: items.map(([product_id, quantity]) => ({
