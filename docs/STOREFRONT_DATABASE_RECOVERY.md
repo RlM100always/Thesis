@@ -1,5 +1,19 @@
 # Operational online stores — data recovery boundary
 
+> **Verified 26 Oct 2026 — Cloudflare architecture correction:** The user
+> established Cloudflare as the intended primary storage provider. The Primary
+> Cloudflare account has R2 bucket `bsmart-thesis-research` with one setup
+> metadata object, and no B-SMART D1 database. Operational SQL rows currently
+> reside in an ephemeral Render SQLite instance, **not R2**. A Render Postgres
+> instance exists but is not used by this website. Do not migrate or seed
+> until source-of-truth / backups are confirmed. Demo-bootstrap environment flag
+> has been reset to `NO` while this is unresolved.
+>
+> Cloudflare-first relational primary would mean provisioning D1 and adapting
+> the FastAPI SQLAlchemy code with a secure Worker/data-access layer. R2 alone
+> cannot satisfy transactional product, order, and customer SQL queries.
+
+
 The production web service is `thesis-j0n8.onrender.com`. It auto-deploys changes to GitHub `main`. The Render workspace contains a Postgres instance named `thesis-db` (Postgres 17, Singapore); existence alone does NOT mean `DATABASE_URL` is configured for the service. Render external IP allowlist is empty, so external diagnostic queries cannot be used.
 
 ## Store visibility
