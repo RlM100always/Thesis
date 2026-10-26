@@ -89,7 +89,7 @@ export default function D1MerchantCenter(){
         <button disabled={busy} type="submit" className="dm-btn">Create D1 Store</button></form>
       </section>:
       <>
-        <div className="dm-tabs">{[["dashboard","Overview"],["products","Products & Stock"],["pos","Demo POS & Cashbook"],["orders","Orders"],["store","Store Settings"]].map(([k,l])=><button key={k} onClick={()=>setView(k)} className={view===k?"dm-active":""}>{l}</button>)}</div>
+        <div className="dm-tabs">{[["dashboard","Overview"],["products","Products & Stock"],["pos","Demo POS & Cashbook"],["orders","Orders"],["store","Store Settings"]].filter(([k])=>store.is_demo||k!=="pos").map(([k,l])=><button key={k} onClick={()=>setView(k)} className={view===k?"dm-active":""}>{l}</button>)}</div>
         {view==="dashboard"&&<div className="dm-stack">
           <div className="dm-stats"><Metric title={store.is_demo?"Demo orders":"COD orders"} value={Number(stats.orders||0).toLocaleString("en-BD")}/><Metric title="Order value (uncollected)" value={fmt(stats.placed_total_bdt)} tip="Not real collected revenue"/><Metric title="Published products" value={totalProducts}/><Metric title="On-hand units" value={Number(stats.inventory_units||0)}/></div>
           <div className="dm-panel"><h2>{store.name}</h2><p className="dm-muted">{store.area} · {store.category}</p><p>Public visibility: <strong>{store.is_active?"On":"Off"}</strong></p><p className="dm-muted">{store.is_demo?"Demo-only store; no money or shipment":store.real_cod_approved?"Approved for gated COD checkout":"Merchant verification required before COD can be enabled"}</p><p className="dm-muted">Store URL: <code>/#/store/{store.slug}</code></p>
@@ -145,6 +145,6 @@ export default function D1MerchantCenter(){
           <label className="dm-check"><input type="checkbox" checked={!!edit.is_listed} onChange={e=>setEdit(v=>({...v,is_listed:e.target.checked}))}/>Published</label><div className="dm-actions"><button className="dm-btn" disabled={busy} type="submit">Save to D1</button><button type="button" onClick={()=>setEdit(null)} className="dm-secondary">Close</button></div></form></section></div>}
       </>}
     </div>
-    {token&&store&&<nav className="dm-bottom" aria-label="Owner mobile app navigation">{[["dashboard","Home","⌂"],["products","Products","▣"],["pos","POS","⊞"],["orders","Orders","≡"],["store","Settings","⚙"]].map(([k,t,icon])=><button key={k} className={view===k?"selected":""} onClick={()=>{setView(k);window.scrollTo({top:0,behavior:"smooth"});}}><span>{icon}</span>{t}</button>)}</nav>}
+    {token&&store&&<nav className="dm-bottom" aria-label="Owner mobile app navigation">{[["dashboard","Home","⌂"],["products","Products","▣"],["pos","POS","⊞"],["orders","Orders","≡"],["store","Settings","⚙"]].filter(([k])=>store.is_demo||k!=="pos").map(([k,t,icon])=><button key={k} className={view===k?"selected":""} onClick={()=>{setView(k);window.scrollTo({top:0,behavior:"smooth"});}}><span>{icon}</span>{t}</button>)}</nav>}
   </main>;
 }
