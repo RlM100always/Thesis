@@ -63,5 +63,5 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - name: Validate D1 schema v1-v6 and stock movement triggers
+      - name: Validate D1 schema v1-v10 and stock movement triggers
         run: python cloudflare/tests/verify_migrations.py
