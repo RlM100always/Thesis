@@ -56,3 +56,10 @@
  .public-order-status{padding:16px 12px 45px}
  .public-order-status .order-status-timeline{gap:0}
 }
+
+/* Customer-facing tracking theme switch. */
+.public-order-status .order-status-toolbar{display:flex;justify-content:flex-end;margin-bottom:6px}
+.public-order-status .order-status-theme-toggle{width:42px;height:42px;display:grid;place-items:center;cursor:pointer;border:1px solid var(--border);border-radius:12px;background:var(--surface);color:var(--text);font-size:20px}
+.public-order-status .order-status-theme-toggle:hover{background:var(--surface-2)}
+.public-order-status .order-status-theme-toggle:focus-visible{outline:3px solid var(--order-link);outline-offset:3px}
+.public-order-status :is(button,input,select,textarea){font-family:var(--font-ui,'Hind Siliguri',sans-serif)}
