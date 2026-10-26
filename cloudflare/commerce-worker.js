@@ -35,9 +35,9 @@ function safe(v) {return String(v||"").slice(0,110);}
 const baseView=(s,env)=>({
   organization_id:s.id,slug:s.slug,is_demo:!!s.is_demo,is_active:!!s.is_active,
   checkout_available:!!s.is_demo||realCODReady(s,env),real_cod_enabled:realCODReady(s,env),
-  display_name:s.name,tagline:s.tagline,logo_data_url:null,cover_data_url:null,
+  display_name:s.name,tagline:s.tagline,logo_data_url:s.is_demo?null:(s.logo_image_url||null),cover_data_url:s.is_demo?null:(s.cover_image_url||null),
   category:s.category,area:s.area,theme_preset:s.theme,theme_color:s.color,
-  phone:null,address:null,show_hours:false,hours_json:null,show_price:true,
+  phone:s.is_demo?null:(s.public_phone||null),address:s.is_demo?null:(s.public_address||null),show_hours:false,hours_json:null,show_price:true,
   show_stock_level:"available_only",payment_cod:!!s.is_demo||realCODReady(s,env),payment_bkash:false,
   payment_nagad:false,bkash_number:null,nagad_number:null,
   sslcz_store_id:null,bkash_app_key:null,nagad_merchant_id:null,
