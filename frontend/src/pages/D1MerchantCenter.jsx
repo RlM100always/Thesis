@@ -22,8 +22,8 @@ export default function D1MerchantCenter(){
   const [token,setToken]=useState(()=>sessionStorage.getItem("bsmart_d1_merchant")||"");
   const [form,setForm]=useState(empty),[mode,setMode]=useState("login"),[view,setView]=useState("dashboard");
   const [data,setData]=useState(null),[busy,setBusy]=useState(false),[error,setError]=useState(""),[note,setNote]=useState("");
-  const [storeForm,setStoreForm]=useState({name:"",category:"মুদি",area:"",tagline:"",is_active:false});
-  const [newProduct,setNewProduct]=useState({sku:"",name:"",category:"",price_bdt:"",stock_qty:"",reorder_point:"5",is_listed:true});
+  const [storeForm,setStoreForm]=useState({name:"",category:"মুদি",area:"",tagline:"",theme:"clean",color:"#087e59",is_active:false});
+  const [newProduct,setNewProduct]=useState({sku:"",name:"",category:"",price_bdt:"",stock_qty:"",reorder_point:"5",description:"",image_url:"",is_featured:false,is_listed:true});
   const [edit,setEdit]=useState(null);
   const [posProduct,setPosProduct]=useState("");
   const [posQty,setPosQty]=useState("1");
@@ -35,7 +35,7 @@ export default function D1MerchantCenter(){
   const load=useCallback(async tk=>{
     const latest=await call("/api/merchant/dashboard",{token:tk});
     setData(latest);
-    if(latest.store)setStoreForm({name:latest.store.name,category:latest.store.category||"মুদি",area:latest.store.area||"",tagline:latest.store.tagline||"",is_active:latest.store.is_active});
+    if(latest.store)setStoreForm({name:latest.store.name,category:latest.store.category||"মুদি",area:latest.store.area||"",tagline:latest.store.tagline||"",theme:latest.store.theme||"clean",color:latest.store.color||"#087e59",is_active:latest.store.is_active});
     return latest;
   },[]);
   useEffect(()=>{if(!token)return;load(token).catch(e=>{setError(e.message);if(e.status===401){sessionStorage.removeItem("bsmart_d1_merchant");setToken("");}});},[token,load]);
@@ -118,13 +118,18 @@ export default function D1MerchantCenter(){
         </div>}
         {view==="insights"&&<D1MerchantInsights load={loadInsights} onStock={()=>setView("products")}/>}
         {view==="products"&&<div className="dm-stack">
-          <section className="dm-panel"><h2>নতুন পণ্য যোগ করুন</h2><form className="dm-product-form" onSubmit={e=>{e.preventDefault();run(async()=>{await call("/api/merchant/products",{method:"POST",token,body:{...newProduct,price_bdt:Number(newProduct.price_bdt),stock_qty:Number(newProduct.stock_qty)}});setNewProduct({sku:"",name:"",category:"",price_bdt:"",stock_qty:"",reorder_point:"5",is_listed:true});},"Product created in D1");}}>
+          <section className="dm-panel"><h2>নতুন পণ্য যোগ করুন</h2><form className="dm-product-form" onSubmit={e=>{e.preventDefault();run(async()=>{await call("/api/merchant/products",{method:"POST",token,body:{...newProduct,price_bdt:Number(newProduct.price_bdt),stock_qty:Number(newProduct.stock_qty)}});setNewProduct({sku:"",name:"",category:"",price_bdt:"",stock_qty:"",reorder_point:"5",description:"",image_url:"",is_featured:false,is_listed:true});},"Product created in D1");}}>
           {["sku","name","category","price_bdt","stock_qty","reorder_point"].map(k=><Field key={k} label={{sku:"SKU",name:"Product",category:"Category",price_bdt:"Price BDT",stock_qty:"Stock quantity",reorder_point:"Low-stock alert at"}[k]}><input style={input} value={newProduct[k]} required type={["price_bdt","stock_qty","reorder_point"].includes(k)?"number":"text"} min={["price_bdt","stock_qty"].includes(k)?0:undefined} onChange={e=>setNewProduct(v=>({...v,[k]:e.target.value}))}/></Field>)}
+          <Field label="Product description"><textarea className="dm-input" rows={3} maxLength={1100} value={newProduct.description} onChange={e=>setNewProduct(v=>({...v,description:e.target.value}))} placeholder="Material, features, sizes, care and other real product details" /></Field>
+          <Field label="Product photo HTTPS URL"><input className="dm-input" type="url" maxLength={900} placeholder="https://example.com/item.jpg" value={newProduct.image_url} onChange={e=>setNewProduct(v=>({...v,image_url:e.target.value}))}/></Field>
+          <label className="dm-check"><input type="checkbox" checked={newProduct.is_featured} onChange={e=>setNewProduct(v=>({...v,is_featured:e.target.checked}))}/>Show as featured product</label>
           <label className="dm-check"><input type="checkbox" checked={newProduct.is_listed} onChange={e=>setNewProduct(v=>({...v,is_listed:e.target.checked}))}/>{store.is_demo?"Publish a demo product":"Publish product listing"}</label><button disabled={busy} type="submit" className="dm-btn">Add product</button></form></section>
           <D1InventoryCorrection products={products} busy={busy} onSave={body=>run(()=>call("/api/merchant/inventory/corrections",{method:"POST",token,body}),"Stock correction saved with audit trail")}/>
           <section className="dm-panel"><h2>আপনার পণ্য ({products.length})</h2>
           {products.length===0?<Empty>No products yet</Empty>:<div className="dm-product-list">{products.map(p=><article key={p.id} className="dm-product">
-            <div><strong>{p.name}</strong><p className="dm-muted">{p.sku} · {p.category||"Uncategorised"}</p><p><b>{fmt(p.price_bdt)}</b> · Stock <b>{p.stock_qty}</b> · Alert ≤ {p.reorder_point??5} {p.is_listed&&p.stock_qty<=Number(p.reorder_point??5)?"· ⚠️ Low stock":""} · {p.is_listed?"Published":"Hidden"}</p></div>
+            <div className="dm-product-main">
+               {p.image_url&&<img className="dm-product-thumb" src={p.image_url} alt="" loading="lazy" />}
+               <div><strong>{p.name}</strong>{!!p.is_featured&&<span className="dm-featured-tag">Featured</span>}<p className="dm-muted">{p.sku} · {p.category||"Uncategorised"}</p><p><b>{fmt(p.price_bdt)}</b> · Stock <b>{p.stock_qty}</b> · Alert ≤ {p.reorder_point??5} {p.is_listed&&p.stock_qty<=Number(p.reorder_point??5)?"· ⚠️ Low stock":""} · {p.is_listed?"Published":"Hidden"}</p></div></div>
             <button className="dm-secondary" onClick={()=>setEdit({...p})}>Edit</button></article>)}</div>}</section>
         </div>}
         {view==="pos"&&<div className="dm-stack">
@@ -158,13 +163,28 @@ export default function D1MerchantCenter(){
           <Field label="Name"><input style={input} required minLength={3} value={storeForm.name} onChange={e=>setStoreForm(v=>({...v,name:e.target.value}))}/></Field>
           <Field label="Category"><select style={input} value={storeForm.category} onChange={e=>setStoreForm(v=>({...v,category:e.target.value}))}>{categories.map(c=><option key={c}>{c}</option>)}</select></Field>
           <Field label="Area"><input style={input} required value={storeForm.area} onChange={e=>setStoreForm(v=>({...v,area:e.target.value}))}/></Field>
-          <Field label="Description"><input style={input} value={storeForm.tagline} onChange={e=>setStoreForm(v=>({...v,tagline:e.target.value}))}/></Field>
+          <Field label="Store tagline"><input style={input} value={storeForm.tagline} onChange={e=>setStoreForm(v=>({...v,tagline:e.target.value}))}/></Field>
+          <div className="dm-theme-settings">
+            <Field label="Store visual theme"><select className="dm-input" value={storeForm.theme} onChange={e=>setStoreForm(v=>({...v,theme:e.target.value}))}>
+              {["clean","bold","warm","fresh","purple","ocean"].map(name=><option key={name} value={name}>{name.charAt(0).toUpperCase()+name.slice(1)}</option>)}
+            </select></Field>
+            <Field label="Brand accent colour"><input type="color" className="dm-color-input" value={storeForm.color} onChange={e=>setStoreForm(v=>({...v,color:e.target.value}))}/></Field>
+          </div>
+          <div className="dm-store-theme-preview" style={{borderColor:storeForm.color}}>
+            <div className="dm-brand-dot" style={{background:storeForm.color}}/>
+            <div><strong>{storeForm.name||"My storefront"}</strong><p className="dm-muted">{storeForm.tagline||"Preview of the store's name, theme and accent"}</p></div>
+            <span className="dm-brand-tag" style={{background:storeForm.color}}>Store preview</span>
+          </div>
           <label className="dm-check"><input type="checkbox" checked={storeForm.is_active} onChange={e=>setStoreForm(v=>({...v,is_active:e.target.checked}))}/>{store.is_demo?"Make this labelled demo storefront public":"Make approved storefront public"}</label>
           <button className="dm-btn" disabled={busy} type="submit">Save settings</button>
         </form></section>}
         {edit&&<div className="dm-modal-bg" onClick={()=>setEdit(null)}><section role="dialog" aria-modal="true" aria-label="Edit product" className="dm-panel dm-dialog" onClick={e=>e.stopPropagation()}><h2>Edit: {edit.name}</h2>
-          <form className="dm-fields" onSubmit={e=>{e.preventDefault();run(async()=>{await call("/api/merchant/products/"+edit.id,{method:"PATCH",token,body:{name:edit.name,category:edit.category,price_bdt:Number(edit.price_bdt),...(store.is_demo?{stock_qty:Number(edit.stock_qty)}:{}),reorder_point:Number(edit.reorder_point),is_listed:edit.is_listed}});setEdit(null);},"Product updated");}}>
+          <form className="dm-fields" onSubmit={e=>{e.preventDefault();run(async()=>{await call("/api/merchant/products/"+edit.id,{method:"PATCH",token,body:{name:edit.name,category:edit.category,price_bdt:Number(edit.price_bdt),...(store.is_demo?{stock_qty:Number(edit.stock_qty)}:{}),description:edit.description||"",image_url:edit.image_url||"",is_featured:!!edit.is_featured,reorder_point:Number(edit.reorder_point),is_listed:edit.is_listed}});setEdit(null);},"Product updated");}}>
           {["name","category","price_bdt",...(store.is_demo?["stock_qty"]:[]),"reorder_point"].map(k=><Field key={k} label={k}><input style={input} type={["price_bdt","stock_qty","reorder_point"].includes(k)?"number":"text"} min={["price_bdt","stock_qty"].includes(k)?0:undefined} required value={edit[k]} onChange={e=>setEdit(v=>({...v,[k]:e.target.value}))}/></Field>)}
+          <Field label="Description"><textarea className="dm-input" maxLength={1100} rows={3} value={edit.description||""} onChange={e=>setEdit(v=>({...v,description:e.target.value}))}/></Field>
+          <Field label="HTTPS photo URL"><input className="dm-input" type="url" maxLength={900} value={edit.image_url||""} onChange={e=>setEdit(v=>({...v,image_url:e.target.value}))}/></Field>
+          {edit.image_url&&<img src={edit.image_url} alt="Product preview" className="dm-edit-image" loading="lazy"/>}
+          <label className="dm-check"><input type="checkbox" checked={!!edit.is_featured} onChange={e=>setEdit(v=>({...v,is_featured:e.target.checked}))}/>Feature on storefront</label>
           <label className="dm-check"><input type="checkbox" checked={!!edit.is_listed} onChange={e=>setEdit(v=>({...v,is_listed:e.target.checked}))}/>Published</label><div className="dm-actions"><button className="dm-btn" disabled={busy} type="submit">Save to D1</button><button type="button" onClick={()=>setEdit(null)} className="dm-secondary">Close</button></div></form></section></div>}
       </>}
     </div>
