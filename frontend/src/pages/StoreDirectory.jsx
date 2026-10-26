@@ -143,6 +143,7 @@ export default function StoreDirectory() {
   const [stores, setStores] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
+  const [availability, setAvailability] = useState(null);
   const [search, setSearch] = useState("");
   const [activeCategory, setActiveCategory] = useState(null);
   const [activeArea, setActiveArea] = useState(null);
@@ -161,6 +162,8 @@ export default function StoreDirectory() {
     try {
       const data = await api.getPublicStores();
       setStores(Array.isArray(data) ? data : []);
+      setAvailability(Array.isArray(data) && data.length === 0
+        ? await api.publicStoreDiagnostics().catch(() => null) : null);
     } catch {
       setLoadError("দোকানের তালিকা এখন আনা যাচ্ছে না। ইন্টারনেট সংযোগ দেখে আবার চেষ্টা করুন।");
     } finally { setLoading(false); }
@@ -282,7 +285,15 @@ export default function StoreDirectory() {
         <div className="sd-empty">
           <div className="sd-empty-icon">🔍</div>
           <h2>কোনো দোকান পাওয়া যায়নি</h2>
-          <p>অন্য কীওয়ার্ড বা বিভাগ চেষ্টা করুন।</p>
+          {stores.length === 0 ? (
+            <>
+              <p>এই মুহূর্তে operational database-এ কোনো সক্রিয় অনলাইন স্টোর নেই।</p>
+              {availability && <p>সক্রিয় স্টোর: {availability.active_stores} · প্রকাশিত পণ্য: {availability.listed_products}</p>}
+              <p>দোকান মালিককে Store Management থেকে স্টোর Activate করে পণ্য Publish করতে হবে।
+                ডাটাবেস সংযোগ/ডেমো সেটআপের জন্য অ্যাডমিনকে জানান।</p>
+              <a href="#/signup" className="sd-filter-btn" style={{display:"inline-flex",textDecoration:"none"}}>নতুন ব্যবসা তৈরি করুন</a>
+            </>
+          ) : <p>অন্য কীওয়ার্ড বা বিভাগ চেষ্টা করুন।</p>}
         </div>
       ) : (
         <div className="sd-grid">
