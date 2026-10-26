@@ -1,4 +1,5 @@
 import {merchantInsights} from "./merchant-insights.js";
+import {normalizeBangladeshPhone} from "./checkout-policy.js";
 /* Authenticated Cloudflare D1 merchant console (separate from legacy FastAPI).
    Public demo checkout does not accept any real payment or delivery.
    IMPORTANT: This owner identity is not imported from ephemeral SQLite.
@@ -43,7 +44,9 @@ async function myStore(env,owner){
  return env.DB.prepare("SELECT * FROM commerce_stores WHERE owner_id=? ORDER BY created_at LIMIT 1").bind(owner.id).first();
 }
 async function storeOnly(env,owner){const row=await myStore(env,owner);if(!row)throw new Error("Create a store first");return row;}
-function stripStore(s){return {id:s.id,slug:s.slug,name:s.name,tagline:s.tagline||"",category:s.category||"",area:s.area||"",is_active:!!s.is_active,is_demo:!!s.is_demo,created_at:s.created_at,real_cod_approved:!!s.real_cod_approved,theme:s.theme||"clean",color:s.color||"#087e59"};}
+function stripStore(s){return {id:s.id,slug:s.slug,name:s.name,tagline:s.tagline||"",category:s.category||"",area:s.area||"",is_active:!!s.is_active,is_demo:!!s.is_demo,created_at:s.created_at,real_cod_approved:!!s.real_cod_approved,theme:s.theme||"clean",color:s.color||"#087e59",
+ logo_image_url:s.logo_image_url||"",cover_image_url:s.cover_image_url||"",
+ public_phone:s.public_phone||"",public_address:s.public_address||""};}
 async function dashboard(env,owner){
  const store=await myStore(env,owner);
  if(!store)return {account:{email:owner.email},store:null,products:[],orders:[],metrics:{orders:0,inventory_units:0,placed_total_bdt:0},stock_adjustments:[],cashbook:[]};
@@ -172,8 +175,13 @@ export async function merchantRouter(req,env,path,output,error){
    const activate=b.is_active===undefined?store.is_active:(b.is_active===true?1:0);
    const theme=short(b.theme??store.theme,20);
    const color=safeColor(b.color??store.color);
-   if(name.length<3||!area||!category||!["clean","bold","warm","fresh","purple","ocean"].includes(theme)||!color)return bad(req,error,422,"Invalid store profile, theme or color");
-   await env.DB.prepare("UPDATE commerce_stores SET name=?,tagline=?,category=?,area=?,theme=?,color=?,is_active=? WHERE id=? AND owner_id=?").bind(name,tagline,category,area,theme,color,activate,store.id,owner.id).run();
+   const logoImage=b.logo_image_url===undefined?store.logo_image_url:cleanImage(b.logo_image_url);
+   const coverImage=b.cover_image_url===undefined?store.cover_image_url:cleanImage(b.cover_image_url);
+   const incomingPhone=short(b.public_phone??store.public_phone,25);
+   const phone=incomingPhone?normalizeBangladeshPhone(incomingPhone):"";
+   const address=short(b.public_address??store.public_address,300);
+   if(name.length<3||!area||!category||!["clean","bold","warm","fresh","purple","ocean"].includes(theme)||!color||(incomingPhone&&!phone))return bad(req,error,422,"Invalid store profile, theme or color");
+   await env.DB.prepare("UPDATE commerce_stores SET name=?,tagline=?,category=?,area=?,theme=?,color=?,logo_image_url=?,cover_image_url=?,public_phone=?,public_address=?,is_active=? WHERE id=? AND owner_id=?").bind(name,tagline,category,area,theme,color,logoImage,coverImage,phone,address,activate,store.id,owner.id).run();
    return output(req,{store:stripStore(await myStore(env,owner))});
   }
   if(method==="POST"&&path==="/api/merchant/cashbook"){
