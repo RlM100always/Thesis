@@ -156,7 +156,15 @@ def initialize_application_database():
     # Only creates clearly labelled demonstration storefronts on an explicitly
     # configured PostgreSQL database. Never runs on the SQLite Render fallback.
     from .demo_catalog_bootstrap import seed_demo_catalogue
-    seed_demo_catalogue()
+    try:
+        seed_demo_catalogue()
+    except Exception:
+        # Optional demonstration content must never take the production
+        # operational API offline if a tenant database has drifted.
+        import logging
+        logging.getLogger("bsmart.demo_catalog").exception(
+            "Optional demo bootstrap failed; preserving existing data and continuing"
+        )
     # Diagnostic only: do not create or activate storefronts implicitly.
     _report_storefront_status()
 
