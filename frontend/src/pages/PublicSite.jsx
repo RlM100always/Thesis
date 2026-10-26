@@ -4,6 +4,7 @@ import { api } from "../api";
 import { useAuth } from "../AuthContext";
 import { useUi } from "../UiContext";
 import Icon from "../ui/Icon";
+import { normalizePublicCopy, normalizePublicContentTree } from "../publicCopy";
 
 // Platform-admin overrides — fetched once, cached module-wide.
 // useSiteContent() returns { get(key, fallback), getJson(key, fallback), ...raw }
@@ -25,12 +26,18 @@ function useSiteContent() {
     }
     _siteContentPromise.then((c) => { _siteContentCache = c; _siteContentCacheAt = Date.now(); _siteContentPromise = null; setContent(c); });
   }, []);
-  const get = (key, fallback = "") => content[key] ?? fallback;
+  // CMS may still contain older copy; keep admin values persisted, but do not
+  // let stale mixed-language defaults override corrected public presentation.
+  const get = (key, fallback = "") => normalizePublicCopy(content[key], key, fallback);
   const getJson = (key, fallback = null) => {
-    const v = content[key];
-    if (v == null) return fallback;
-    if (Array.isArray(v) || (typeof v === "object" && v !== null)) return v;
-    try { return JSON.parse(v); } catch { return fallback; }
+    const raw = content[key];
+    if (raw == null || raw === "") return fallback;
+    let parsed = raw;
+    if (typeof raw === "string") {
+      try { parsed = JSON.parse(raw); } catch { return fallback; }
+    }
+    if (typeof parsed !== "object" || parsed === null) return fallback;
+    return normalizePublicContentTree(parsed, key);
   };
   return { ...content, get, getJson };
 }
@@ -376,7 +383,7 @@ function PublicFooter() {
         <div><strong>বিশ্বাস</strong>{col2.map(([to, label]) => <Link key={to} to={to}>{label}</Link>)}</div>
         <div><strong>শুরু করুন</strong>{col3.map(([to, label]) => <Link key={to} to={to}>{label}</Link>)}</div>
       </div>
-      <div className="public-footnote"><span>{site.get("footer.copy","© 2026 B-SMART · Bangladesh SME Business OS")}</span><span className="public-legal"><Link to="/privacy">গোপনীয়তা</Link><Link to="/terms">শর্তাবলি</Link><Link to="/status">System status</Link></span><span>{site.get("footer.rollout_note","Production capability ও rollout status স্বচ্ছভাবে প্রকাশ করা হয়।")}</span></div>
+      <div className="public-footnote"><span>{site.get("footer.copy","© 2026 B-SMART · Bangladesh SME Business OS")}</span><span className="public-legal"><Link to="/privacy">গোপনীয়তা</Link><Link to="/terms">শর্তাবলি</Link><Link to="/status">সিস্টেমের অবস্থা</Link></span><span>{site.get("footer.rollout_note","কোন সুবিধা চালু আছে আর কোনটি পরীক্ষামূলক, তা স্পষ্টভাবে জানানো হয়।")}</span></div>
     </footer>
   );
 }

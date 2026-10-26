@@ -1866,6 +1866,10 @@ a.btn-primary, a.btn-secondary { text-decoration: none; display: inline-block; }
   --public-ink: #10231c;
   --public-muted: #5d6e67;
   --public-green: #087a4e;
+  /* Text-on-accent buttons are intentionally darker than the decorative
+     highlight green: white text on #15c27a only has ~2.3:1 contrast. */
+  --public-cta-from: #075b3d;
+  --public-cta-to: #087046;
   --public-green-2: #0ba66a;
   --public-cream: #f6f7f2;
   --public-surface: #ffffff;
@@ -1994,7 +1998,7 @@ a.btn-primary, a.btn-secondary { text-decoration: none; display: inline-block; }
 .public-linkbtn { font-weight: 700; text-decoration: none; font-size: 14px; padding: 10px 12px; color: var(--public-nav-text); }
 .public-menu { display: none; width: 48px; height: 48px; border: 1px solid var(--public-menu-border); border-radius: 10px; background: var(--public-menu-bg); color: var(--public-ink); place-items: center; }
 .public-cta, .public-ghost { min-height: 48px; display: inline-flex; align-items: center; justify-content: center; gap: 7px; padding: 10px 17px; border-radius: 11px; text-decoration: none; font-weight: 750; font-size: 14px; transition: transform .18s, box-shadow .18s, background .18s; }
-.public-cta { color: #fff !important; background: linear-gradient(135deg, var(--public-green), #09955e); box-shadow: 0 8px 22px rgba(8,122,78,.18); }
+.public-cta { color: #fff !important; background: linear-gradient(135deg, var(--public-cta-from), var(--public-cta-to)); box-shadow: 0 8px 22px rgba(8,122,78,.18); }
 .public-cta:hover { transform: translateY(-1px); box-shadow: 0 12px 28px rgba(8,122,78,.25); }
 .public-ghost { color: var(--public-ink); border: 1px solid var(--public-menu-border); background: color-mix(in srgb, var(--public-surface) 80%, transparent); }
 .public-ghost:hover { border-color: var(--public-muted); background: var(--public-surface); }
@@ -2864,10 +2868,10 @@ a.btn-primary, a.btn-secondary { text-decoration: none; display: inline-block; }
 .public-site .owner-problem-grid article>div small{color:var(--public-muted)}
 .public-site .before-after-grid{border-color:var(--pub-card-border)}
 .public-site .before-after-row{background:var(--pub-card);border-color:var(--pub-card-border)}
-.public-site .before-after-cell.after{background:var(--pub-subtle);color:var(--public-ink)}
-.public-site .before-after-cell.before{color:var(--public-ink)}
-.public-site .before-after-head span:first-child{background:color-mix(in srgb,#e05151 12%,var(--pub-card));color:var(--public-ink)}
-.public-site .before-after-head span:last-child{background:color-mix(in srgb,var(--public-green) 14%,var(--pub-card));color:var(--public-ink)}
+.public-site .before-after-cell.after{background:var(--pub-after-bg);color:var(--pub-after-color)}
+.public-site .before-after-cell.before{background:var(--pub-before-bg);color:var(--pub-before-color)}
+.public-site .before-after-head span:first-child{background:var(--pub-before-head-bg);color:var(--pub-before-head-ink)}
+.public-site .before-after-head span:last-child{background:var(--pub-after-head-bg);color:var(--pub-after-head-ink)}
 .public-site .public-notice.warn{background:color-mix(in srgb,#c78617 13%,var(--pub-card));border-color:color-mix(in srgb,#c78617 35%,var(--pub-card-border));color:var(--public-ink)}
 .public-site .public-notice.warn>.ui-icon{color:var(--public-ink)}
 .public-site :is(.status-components article>span,.solution-grid small,.public-legal a){color:var(--public-muted)}
@@ -2879,7 +2883,7 @@ a.btn-primary, a.btn-secondary { text-decoration: none; display: inline-block; }
 .public-site .ai-decision-head .public-sectionhead p{color:#d2e9dc}
 .public-site .ai-signal span{color:#d4e8dc}
 .public-site .product-tour-stage{color:#fff}
-.public-site .tour-window{color:#15271f}
+.public-site .tour-window{color:#15271f;background:#f6f8f7;color-scheme:light}
 :root[data-theme="dark"] .public-site {--public-muted:#b7cebf;--public-nav-text:#d0e4d5;--pub-card-border:#3b5144;--pub-notice-border:#365b45;}
 @media(prefers-color-scheme:dark){
  :root:not([data-theme="light"]):not([data-theme="dark"]) .public-site{
