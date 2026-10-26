@@ -1,4 +1,4 @@
-"""Verify fresh D1 v1-v7 schema and stock auditing with stdlib SQLite.
+"""Verify fresh D1 v1-v8 schema and stock auditing with stdlib SQLite.
 
 Runs in CI against an isolated in-memory database, never live Cloudflare data.
 """
@@ -10,7 +10,7 @@ db = sqlite3.connect(":memory:")
 db.execute("PRAGMA foreign_keys = ON")
 for script in sorted(migrations.glob("*.sql")):
     db.executescript(script.read_text(encoding="utf-8"))
-assert db.execute("SELECT value FROM commerce_meta WHERE key='schema_version'").fetchone() == ("7",)
+assert db.execute("SELECT value FROM commerce_meta WHERE key='schema_version'").fetchone() == ("8",)
 
 db.execute("INSERT INTO merchant_accounts(id,email,password_hash,password_salt) VALUES('owner','owner@example.test','ACCESS_KEY_ONLY','DISABLED')")
 db.execute("""INSERT INTO commerce_stores(id,slug,name,category,area,is_demo,is_active,owner_id,real_cod_approved)
@@ -69,5 +69,19 @@ try:
 except sqlite3.IntegrityError:
     pass
 assert db.execute("SELECT COUNT(*) FROM commerce_order_events WHERE order_id='demo-order'").fetchone()==(1,)
-print("D1 migrations 0001-0007 verified; audit, tenancy, reorder thresholds and atomic inventory corrections OK")
+# v8: the same merchant may not create another order with the same
+# idempotency key; another merchant has a separate namespace for that key.
+db.execute("UPDATE commerce_orders SET checkout_request_id='safe-key' WHERE id='real-order'")
+db.execute("UPDATE commerce_orders SET checkout_request_id='safe-key' WHERE id='demo-order'")
+try:
+    db.execute("""INSERT INTO commerce_orders(id,store_id,order_number,access_token,
+      subtotal_bdt,total_bdt,checkout_request_id)
+      VALUES('duplicate','real-shop','COD-DUPLICATE','DUPLICATE-TOKEN',0,0,'safe-key')""")
+    assert False, "Duplicate checkout accepted"
+except sqlite3.IntegrityError:
+    pass
+assert db.execute("SELECT COUNT(*) FROM commerce_orders WHERE store_id='real-shop'").fetchone() == (1,)
+assert db.execute("SELECT stock_qty FROM commerce_products WHERE id='real-item'").fetchone() == (7,)
+
+print("D1 migrations 0001-0008 verified; audit, tenancy, reorder thresholds and atomic inventory corrections OK")
 
