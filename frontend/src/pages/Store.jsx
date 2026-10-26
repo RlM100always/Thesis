@@ -7,7 +7,7 @@
  */
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useLocation, useParams } from "react-router-dom";
 import { api } from "../api";
 import { explain } from "../errors";
 import { productImage, storeCoverImage } from "../storeImages";
@@ -1505,6 +1505,7 @@ function saveCart(orgId, cart) {
 // ─── Main component ───────────────────────────────────────────────────────────
 export default function StorePage() {
   const { storeId } = useParams();
+  const location=useLocation();
   useInjectCSS(STORE_CSS);
 
   const [store, setStore] = useState(null);
@@ -1588,6 +1589,12 @@ export default function StorePage() {
   }, [storeId]);
 
   const products = useMemo(() => [...(store?.products || [])].sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)), [store]);
+  useEffect(()=>{
+    const requested=new URLSearchParams(location.search).get("product");
+    if(!requested||!store)return;
+    const match=products.find(p=>String(p.id)===requested);
+    if(match){setModalProduct(match);setView("home");}
+  },[location.search,store?.organization_id,products]);
   const productMap = useMemo(() => Object.fromEntries(products.map(p => [p.id, p])), [products]);
   const cartCount = useMemo(() => Object.entries(cart).reduce((s, [id, qty]) => s + (productMap[id]?.price != null ? qty : 0), 0), [cart, productMap]);
   const cartTotal = useMemo(() => Object.entries(cart).reduce((s, [id, q]) => s + q * (productMap[id]?.price || 0), 0), [cart, productMap]);
