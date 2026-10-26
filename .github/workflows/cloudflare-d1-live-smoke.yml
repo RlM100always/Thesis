@@ -21,6 +21,14 @@ jobs:
         run: |
           curl -fLsS --retry 4 --retry-delay 2 --max-time 18 "$D1_API/health" > health.json
           node -e 'const h=require("./health.json");if(h.database!=="Cloudflare D1"||h.stores!==10||h.products<250)process.exit(1); console.log("D1 stores="+h.stores+" products="+h.products)'
+      - name: Verify Cloudflare CORS for B-SMART website
+        run: |
+          curl -fsSI --max-time 18 -X OPTIONS \
+            -H "Origin: https://thesis-j0n8.onrender.com" \
+            -H "Access-Control-Request-Method: POST" \
+            "$D1_API/api/public/orders/demo-bsmart-grocery" > headers.txt
+          grep -iq '^access-control-allow-origin: https://thesis-j0n8.onrender.com' headers.txt
+          grep -iq '^access-control-allow-methods:.*POST' headers.txt
       - name: Check published store directory
         run: |
           curl -fLsS --retry 3 --max-time 18 "$D1_API/api/public/store/" > stores.json
