@@ -54,7 +54,7 @@ test("demo shop contact stays private and product never masquerades as real",asy
  assert.equal(s.cover_data_url,null);
  assert.equal(s.phone,null);
  assert.equal(s.address,null);
- assert.equal(s.delivery_policy_text,"Demo only; no delivery is performed");
- assert.equal(s.return_policy_text,"Demo only; no actual purchases or returns");
+ assert.equal(s.delivery_policy_text,"এটি ডেমো দোকান। কোনো বাস্তব ডেলিভারি করা হয় না।");
+ assert.equal(s.return_policy_text,"এটি ডেমো দোকান। এখানে বাস্তব কেনাকাটা বা পণ্য ফেরত নেওয়া হয় না।");
  assert.equal(s.products[0].description,"Soft breathable cotton");
 });
