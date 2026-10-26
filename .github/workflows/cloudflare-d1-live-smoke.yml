@@ -21,6 +21,10 @@ jobs:
         run: |
           curl -fLsS --retry 4 --retry-delay 2 --max-time 18 "$D1_API/health" > health.json
           node -e 'const h=require("./health.json");if(h.database!=="Cloudflare D1"||h.stores!==10||h.products<250)process.exit(1); console.log("D1 stores="+h.stores+" products="+h.products)'
+      - name: Check merchant password hashing capability
+        run: |
+          curl -fLsS --max-time 25 "$D1_API/api/merchant/health" > ownerhealth.json
+          node -e 'const x=require("./ownerhealth.json");console.log("KDF:",x.auth_kdf_ok,"error:",x.auth_kdf_error);if(!x.auth_kdf_ok)process.exit(1)'
       - name: Verify Cloudflare CORS for B-SMART website
         run: |
           curl -fsSI --max-time 18 -X OPTIONS \
