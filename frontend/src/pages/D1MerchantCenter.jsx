@@ -22,7 +22,7 @@ export default function D1MerchantCenter(){
   const [token,setToken]=useState(()=>sessionStorage.getItem("bsmart_d1_merchant")||"");
   const [form,setForm]=useState(empty),[mode,setMode]=useState("login"),[view,setView]=useState("dashboard");
   const [data,setData]=useState(null),[busy,setBusy]=useState(false),[error,setError]=useState(""),[note,setNote]=useState("");
-  const [storeForm,setStoreForm]=useState({name:"",category:"মুদি",area:"",tagline:"",theme:"clean",color:"#087e59",is_active:false});
+  const [storeForm,setStoreForm]=useState({name:"",category:"মুদি",area:"",tagline:"",theme:"clean",color:"#087e59",logo_image_url:"",cover_image_url:"",public_phone:"",public_address:"",is_active:false});
   const [newProduct,setNewProduct]=useState({sku:"",name:"",category:"",price_bdt:"",stock_qty:"",reorder_point:"5",description:"",image_url:"",is_featured:false,is_listed:true});
   const [edit,setEdit]=useState(null);
   const [posProduct,setPosProduct]=useState("");
@@ -35,7 +35,7 @@ export default function D1MerchantCenter(){
   const load=useCallback(async tk=>{
     const latest=await call("/api/merchant/dashboard",{token:tk});
     setData(latest);
-    if(latest.store)setStoreForm({name:latest.store.name,category:latest.store.category||"মুদি",area:latest.store.area||"",tagline:latest.store.tagline||"",theme:latest.store.theme||"clean",color:latest.store.color||"#087e59",is_active:latest.store.is_active});
+    if(latest.store)setStoreForm({name:latest.store.name,category:latest.store.category||"মুদি",area:latest.store.area||"",tagline:latest.store.tagline||"",theme:latest.store.theme||"clean",color:latest.store.color||"#087e59",logo_image_url:latest.store.logo_image_url||"",cover_image_url:latest.store.cover_image_url||"",public_phone:latest.store.public_phone||"",public_address:latest.store.public_address||"",is_active:latest.store.is_active});
     return latest;
   },[]);
   useEffect(()=>{if(!token)return;load(token).catch(e=>{setError(e.message);if(e.status===401){sessionStorage.removeItem("bsmart_d1_merchant");setToken("");}});},[token,load]);
@@ -170,6 +170,14 @@ export default function D1MerchantCenter(){
             </select></Field>
             <Field label="Brand accent colour"><input type="color" className="dm-color-input" value={storeForm.color} onChange={e=>setStoreForm(v=>({...v,color:e.target.value}))}/></Field>
           </div>
+          <Field label="Logo image URL (HTTPS)"><input className="dm-input" type="url" value={storeForm.logo_image_url} maxLength={900} onChange={e=>setStoreForm(v=>({...v,logo_image_url:e.target.value}))} placeholder="https://example.com/logo.png"/></Field>
+          <Field label="Banner image URL (HTTPS)"><input className="dm-input" type="url" value={storeForm.cover_image_url} maxLength={900} onChange={e=>setStoreForm(v=>({...v,cover_image_url:e.target.value}))} placeholder="https://example.com/cover.jpg"/></Field>
+          <Field label="Public phone (optional, shown for real approved stores only)"><input className="dm-input" type="tel" maxLength={25} value={storeForm.public_phone} onChange={e=>setStoreForm(v=>({...v,public_phone:e.target.value}))} placeholder="01XXXXXXXXX"/></Field>
+          <Field label="Public business address (optional)"><textarea className="dm-input" maxLength={300} rows={2} value={storeForm.public_address} onChange={e=>setStoreForm(v=>({...v,public_address:e.target.value}))}/></Field>
+          {(storeForm.cover_image_url||storeForm.logo_image_url)&&<div className="dm-store-media">
+             {storeForm.cover_image_url&&<img src={storeForm.cover_image_url} className="dm-cover-preview" loading="lazy" alt="Store banner preview"/>}
+             {storeForm.logo_image_url&&<img src={storeForm.logo_image_url} className="dm-logo-preview" loading="lazy" alt="Store logo preview"/>}
+          </div>}
           <div className="dm-store-theme-preview" style={{borderColor:storeForm.color}}>
             <div className="dm-brand-dot" style={{background:storeForm.color}}/>
             <div><strong>{storeForm.name||"My storefront"}</strong><p className="dm-muted">{storeForm.tagline||"Preview of the store's name, theme and accent"}</p></div>
