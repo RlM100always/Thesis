@@ -4,16 +4,17 @@ import { api } from "../api";
 import { explain } from "../errors";
 import { dateBn, money, num } from "../format";
 import { Badge, Card, Notice, PageHeader } from "../ui/kit";
+import "./OrderStatus.css";
 
 const LABEL = {
-  placed: ["অর্ডার জমা হয়েছে, দোকান দেখছে", "warn"],
-  confirmed: ["দোকান নিশ্চিত করেছে", "info"],
-  ready: ["পণ্য প্রস্তুত হচ্ছে", "warn"],
-  dispatched: ["ডেলিভারির জন্য পাঠানো হয়েছে", "info"],
-  delivered: ["ডেলিভারি সম্পন্ন", "success"],
+  placed: ["অর্ডারটি গ্রহণ করা হয়েছে", "warn"],
+  confirmed: ["দোকান অর্ডারটি নিশ্চিত করেছে", "info"],
+  ready: ["অর্ডার প্রস্তুত করা হচ্ছে", "warn"],
+  dispatched: ["ডেলিভারির জন্য পাঠানো হয়েছে", "info"],
+  delivered: ["ডেলিভারি সম্পন্ন হয়েছে", "success"],
   cancelled: ["অর্ডার বাতিল হয়েছে", "danger"],
-  shipped: ["বিক্রেতা পাঠানো হয়েছে বলে চিহ্নিত করেছেন", "info"],
-  fulfilled: ["বিক্রেতা সম্পন্ন চিহ্নিত করেছেন (পেমেন্ট যাচাইকৃত নয়)", "success"],
+  shipped: ["দোকান অর্ডারটি পাঠানো হয়েছে বলে জানিয়েছে", "info"],
+  fulfilled: ["দোকান অর্ডারটি সম্পন্ন বলে চিহ্নিত করেছে", "success"],
 };
 
 const STEPS = ["placed", "confirmed", "ready", "dispatched", "delivered"];
@@ -23,32 +24,32 @@ const DEMO_STEPS = ["placed","confirmed","fulfilled"];
 function StatusTimeline({ status, steps=STEPS }) {
   const currentIdx = steps.indexOf(status);
   if (status === "cancelled") return (
-    <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "12px 0", color: "#ef4444", fontWeight: 600, fontSize: 13 }}>
+    <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "12px 0", color: "var(--order-danger)", fontWeight: 600, fontSize: 13 }}>
       ❌ অর্ডার বাতিল হয়েছে
     </div>
   );
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 0, margin: "16px 0", overflowX: "auto" }}>
+    <div className="order-status-timeline" style={{ display: "flex", alignItems: "center", gap: 0, margin: "16px 0", overflowX: "auto" }}>
       {steps.map((s, i) => {
         const done = i <= currentIdx;
         const active = i === currentIdx;
         return (
-          <div key={s} style={{ display: "flex", alignItems: "center", flex: 1, minWidth: 0 }}>
+          <div key={s} style={{ display: "flex", alignItems: "center", flex: 1, minWidth: 105 }}>
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", flex: 1 }}>
               <div style={{
                 width: 28, height: 28, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center",
-                background: done ? "#0a8752" : "var(--surface)", border: `2px solid ${done ? "#0a8752" : "var(--border)"}`,
-                color: done ? "#fff" : "var(--text-muted)", fontSize: 13, fontWeight: 700,
-                boxShadow: active ? "0 0 0 3px #0a875240" : "none",
+                background: done ? "var(--order-success)" : "var(--surface)", border: `2px solid ${done ? "var(--order-success)" : "var(--border)"}`,
+                color: done ? "var(--order-success-text)" : "var(--text-muted)", fontSize: 13, fontWeight: 700,
+                boxShadow: active ? "0 0 0 3px var(--order-focus)" : "none",
               }}>
                 {done ? "✓" : i + 1}
               </div>
-              <div style={{ fontSize: 10, color: done ? "#0a8752" : "var(--text-muted)", marginTop: 4, textAlign: "center", whiteSpace: "nowrap" }}>
+              <div style={{ fontSize: 10, color: done ? "var(--order-link)" : "var(--text-muted)", marginTop: 4, textAlign: "center", whiteSpace: "normal", lineHeight: 1.45, overflowWrap: "anywhere" }}>
                 {LABEL[s]?.[0]?.split(",")[0] || s}
               </div>
             </div>
             {i < steps.length - 1 && (
-              <div style={{ height: 2, flex: 1, background: i < currentIdx ? "#0a8752" : "var(--border)", marginBottom: 16 }} />
+              <div style={{ height: 2, flex: 1, background: i < currentIdx ? "var(--order-success)" : "var(--border)", marginBottom: 16 }} />
             )}
           </div>
         );
@@ -68,7 +69,7 @@ export default function OrderStatusPage() {
   const [uploadingScreenshot, setUploadingScreenshot] = useState(false);
 
   function load() {
-    api.publicOrderStatus(orgId, token).then(setOrder).catch((e) => setError(explain(e, { 404: "এই অর্ডারটি পাওয়া যায়নি।" })));
+    api.publicOrderStatus(orgId, token).then(setOrder).catch((e) => setError(explain(e, { 404: "অর্ডারটি পাওয়া যায়নি। লিংকটি সঠিক কি না দেখে আবার চেষ্টা করুন।" })));
   }
 
   useEffect(() => { load(); }, [orgId, token]);
@@ -95,8 +96,8 @@ export default function OrderStatusPage() {
   }
 
   return (
-    <div className="page stack" style={{ maxWidth: 600, margin: "0 auto" }}>
-      <PageHeader title="অর্ডারের অবস্থা" subtitle="এই লিংকটি সংরক্ষণ করুন — যেকোনো সময় অর্ডারের সর্বশেষ অবস্থা দেখতে পারবেন।" />
+    <div className="page stack public-order-status" style={{ maxWidth: 660, margin: "0 auto" }}>
+      <PageHeader title="অর্ডারের সর্বশেষ অবস্থা" subtitle="এই লিংকটি সংরক্ষণ করুন। এখান থেকে অর্ডারের অগ্রগতি দেখতে পারবেন।" />
       {error && <Notice tone="danger">{error}</Notice>}
       {!order && !error && <p className="muted">লোড হচ্ছে…</p>}
       {order && (
@@ -105,7 +106,7 @@ export default function OrderStatusPage() {
             <strong style={{ fontSize: 16 }}>#{order.order_number}</strong>
             <Badge tone={LABEL[order.status]?.[1] || "neutral"}>{LABEL[order.status]?.[0] || order.status}</Badge>
           </div>
-          <p className="muted" style={{ fontSize: 13, marginBottom: 4 }}>জমা হয়েছে: {dateBn(order.placed_at)}</p>
+          <p className="muted" style={{ fontSize: 13, marginBottom: 4 }}>অর্ডার করা হয়েছে: {dateBn(order.placed_at)}</p>
           {order.expected_delivery_at && (
             <p className="muted" style={{ fontSize: 13 }}>আনুমানিক ডেলিভারি: {dateBn(order.expected_delivery_at)}</p>
           )}
@@ -113,18 +114,18 @@ export default function OrderStatusPage() {
           <StatusTimeline status={order.status} steps={order.order_number?.startsWith("COD-")?COD_STEPS:order.order_number?.startsWith("DEMO-")?DEMO_STEPS:STEPS} />
           {Array.isArray(order.status_events)&&order.status_events.length>0&&
             <section aria-label="Recorded order updates" style={{margin:"12px 0 18px",padding:"12px",background:"var(--surface)",border:"1px solid var(--border)",borderRadius:10}}>
-              <strong style={{fontSize:14}}>অর্ডার আপডেট ইতিহাস</strong>
+              <strong style={{fontSize:14}}>অর্ডারের পরিবর্তনের ইতিহাস</strong>
               <ol style={{fontSize:12,lineHeight:1.8,paddingLeft:20,margin:"8px 0"}}>
                 {order.status_events.map((ev,i)=><li key={ev.created_at+"-"+i}>
                   {LABEL[ev.status]?.[0]||ev.status} — {dateBn(ev.created_at)}
                 </li>)}
               </ol>
-              <p className="muted" style={{fontSize:11,margin:0}}>এই তথ্য অ্যাপের status changes। Courier delivery বা টাকা সংগ্রহের স্বাধীন প্রমাণ নয়।</p>
+              <p className="muted" style={{fontSize:11,margin:0}}>এই তথ্য শুধু সিস্টেমে অর্ডারের অবস্থার পরিবর্তন দেখায়। কুরিয়ারে পৌঁছানো বা টাকা সংগ্রহের স্বাধীন প্রমাণ নয়।</p>
             </section>}
 
           {order.status_note && (
             <div style={{ padding: "10px 14px", background: "color-mix(in srgb, #3b82f6 10%, transparent)", borderRadius: 8, border: "1px solid #3b82f640", fontSize: 13, marginBottom: 12 }}>
-              💬 দোকান থেকে বার্তা: <strong>{order.status_note}</strong>
+              💬 অর্ডার সম্পর্কে তথ্য: <strong>{order.status_note}</strong>
             </div>
           )}
 
@@ -137,15 +138,15 @@ export default function OrderStatusPage() {
             ))}
           </ul>
           {Number(order.delivery_fee) > 0 && (
-            <p style={{ fontSize: 13, color: "var(--text-muted)" }}>ডেলিভারি চার্জ: {money(order.delivery_fee)}</p>
+            <p style={{ fontSize: 13, color: "var(--text-muted)" }}>ডেলিভারি খরচ: {money(order.delivery_fee)}</p>
           )}
-          <p><strong>মোট: {money(order.total)}</strong></p>
-          <p className="muted" style={{ fontSize: 13 }}>ডেলিভারি ঠিকানা: {order.shipping_address}</p>
+          <p><strong>অর্ডারের মোট মূল্য: {money(order.total)}</strong></p>
+          <p className="muted" style={{ fontSize: 13 }}>ডেলিভারির ঠিকানা: {order.shipping_address}</p>
 
           {/* Payment screenshot upload */}
           {order.payment_status === "pending" && order.status !== "cancelled" && (
             <div style={{ marginTop: 14, padding: "12px 14px", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 10 }}>
-              <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 8 }}>📤 পেমেন্ট স্ক্রিনশট পাঠান</div>
+              <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 8 }}>📤 পেমেন্টের স্ক্রিনশট যুক্ত করুন</div>
               <input type="file" accept="image/*" onChange={async e => {
                 const file = e.target.files[0]; if (!file) return;
                 const reader = new FileReader();
@@ -154,8 +155,8 @@ export default function OrderStatusPage() {
               }} style={{ display: "block", marginBottom: 8 }} />
               {screenshot && (
                 <button disabled={uploadingScreenshot} onClick={uploadScreenshot}
-                  style={{ padding: "7px 16px", borderRadius: 8, border: "1px solid #0a875240", background: "#0a875112", color: "#0a8752", fontSize: 13, cursor: "pointer", fontWeight: 600 }}>
-                  {uploadingScreenshot ? "পাঠানো হচ্ছে…" : "✓ স্ক্রিনশট পাঠান"}
+                  className="order-status-upload-btn">
+                  {uploadingScreenshot ? "পাঠানো হচ্ছে…" : "স্ক্রিনশট জমা দিন"}
                 </button>
               )}
             </div>
@@ -164,13 +165,13 @@ export default function OrderStatusPage() {
           {/* Cancel button */}
           {order.status === "placed" && (
             <button disabled={cancelling} onClick={cancelOrder}
-              style={{ marginTop: 14, width: "100%", padding: "10px 0", borderRadius: 10, border: "2px solid #ef4444", background: "transparent", color: "#ef4444", fontWeight: 700, fontSize: 14, cursor: "pointer" }}>
+              className="order-status-cancel-btn">
               {cancelling ? "বাতিল হচ্ছে…" : "✕ অর্ডার বাতিল করুন"}
             </button>
           )}
 
           <div style={{ marginTop: 16 }}>
-            <Link to={`/store/${order.organization_id || orgId}`} style={{ color: "var(--green, #0a8752)", fontSize: 13 }}>আরেকটি অর্ডার করুন →</Link>
+            <Link to={`/store/${order.organization_id || orgId}`} className="order-status-return">দোকানে ফিরে যান →</Link>
           </div>
         </Card>
       )}
