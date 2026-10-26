@@ -15,6 +15,7 @@ import StoreCustomerPortal from "./StoreCustomerPortal";
 import {readFavorites,toggleFavorite} from "../storefrontFavorites";
 import {recentProducts,rememberProduct,toggleCompared,COMPARE_LIMIT} from "../storefrontDiscovery";
 import StoreProductCompare from "../components/StoreProductCompare";
+import StoreProductGallery from "../components/StoreProductGallery";
 
 // ─── Utility ─────────────────────────────────────────────────────────────────
 const money = (v) => `৳${Number(v).toLocaleString("bn-BD", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
@@ -579,6 +580,9 @@ button.s-contact-price { background: transparent; border: 0; padding: 4px 0; tex
 .s-checkout-policies summary{font-weight:800;cursor:pointer}
 .s-checkout-policies>div{margin-top:12px;border-top:1px solid var(--s-border);padding-top:12px}
 .s-checkout-policies p{white-space:pre-line;color:var(--s-muted);margin:6px 0;overflow-wrap:anywhere}
+.s-detail-gallery{min-width:0;align-self:start}
+.s-gallery-modal-wrap{position:relative;margin:0 0 17px}
+.s-gallery-sale{position:absolute;top:10px;left:10px;background:#dc2626;color:#fff;border-radius:10px;font-weight:800;font-size:12px;z-index:4;padding:5px 9px}
 `;
 
 function useInjectCSS(css) {
@@ -730,9 +734,9 @@ function ProductModal({ product, cartQty, onClose, onAdd, onQtyChange, onViewFul
         <div className="s-modal-handle" />
         <div className="s-modal-inner">
           <button className="s-modal-close" onClick={onClose}>✕</button>
-          <div className="s-modal-img" style={{ position: "relative" }}>
-            {hasFlashSale && <div style={{ position: "absolute", top: 8, left: 8, background: "#dc2626", color: "#fff", borderRadius: 6, padding: "2px 8px", fontSize: 12, fontWeight: 700 }}>🔥 সেল</div>}
-            <img src={product.image_data_url || productImage(product, storeCategory)} alt={product.name} loading="lazy" />
+          <div className="s-gallery-modal-wrap">
+            {hasFlashSale && <span className="s-gallery-sale">🔥 সেল</span>}
+            <StoreProductGallery product={product} storeCategory={storeCategory} context="modal"/>
           </div>
           <h2 style={{ margin: "0 0 6px", fontSize: 22, fontWeight: 800, lineHeight: 1.2 }}>{product.name}</h2>
           <div style={{ fontSize: 13, color: "#6b8a7a", marginBottom: 6 }}>{product.unit}</div>
@@ -2105,8 +2109,8 @@ export default function StorePage() {
         <div className="s-detail">
           <button className="s-back-btn" onClick={() => setView("home")}>← সব পণ্য</button>
           <div className="s-detail-grid">
-            <div className="s-detail-image">
-              <img src={selectedProduct.image_data_url || productImage(selectedProduct, store.category)} alt={selectedProduct.name} loading="lazy" />
+            <div className="s-detail-gallery">
+              <StoreProductGallery product={selectedProduct} storeCategory={store.category} context="detail"/>
             </div>
             <div className="s-detail-info">
               <div className="s-detail-title-row"><h1 className="s-detail-name">{selectedProduct.name}</h1>
