@@ -19,7 +19,7 @@ test("important public pages use semantic scoped dark-mode colors",()=>{
  const landing=read("index.css");
  const tracking=read("pages/OrderStatus.css");
  const portal=read("pages/StoreCustomerPortal.css");
- assert.match(store,/readableAccent\(color, palette.bg\)/);
+ assert.match(store,/readableAccent\(color, darkSurface/);
  assert.match(store,/--s-ink:#f2f8f3/);
  assert.match(dir,/--sd-active-text/);
  assert.match(landing,/Public-facing visual QA v13/);
@@ -36,4 +36,29 @@ test("old misleading and mixed public copy stays removed",()=>{
  for(const obsolete of ["operational database-এ","Activate করে পণ্য Publish","independent owner account"]){
   assert.ok(!directory.includes(obsolete),obsolete);
  }
+});
+
+test("customers can switch theme on all standalone public shopping routes",()=>{
+ const store=read("pages/Store.jsx");
+ const directory=read("pages/StoreDirectory.jsx");
+ const tracking=read("pages/OrderStatus.jsx");
+ for(const page of [store,directory,tracking]){
+  assert.match(page,/useUi\(\)/);
+  assert.match(page,/toggleTheme/);
+  assert.match(page,/লাইট মোড চালু করুন/);
+  assert.match(page,/ডার্ক মোড চালু করুন/);
+ }
+});
+test("public shopping descriptions distinguish demos from real services",()=>{
+ const directory=read("pages/StoreDirectory.jsx");
+ const store=read("pages/Store.jsx");
+ const login=read("pages/Login.jsx");
+ const site=read("pages/PublicSite.jsx");
+ assert.match(directory,/ডেমো দোকানে বাস্তব পেমেন্ট বা ডেলিভারি হয় না/);
+ assert.match(directory,/!s.is_demo && s.payment_cod/);
+ assert.match(directory,/শুধু পরীক্ষামূলক দোকান/);
+ assert.match(store,/পরীক্ষামূলক দোকানটি দেখুন/);
+ assert.ok(!login.includes("Owner account খুলুন"));
+ assert.ok(!login.includes("actor-aware operation"));
+ assert.ok(!site.includes("শুধু শুধু ফিচারের সংখ্যা"));
 });
