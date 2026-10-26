@@ -1,3 +1,4 @@
+import { merchantRouter } from "./merchant-routes.js";
 /*
  B-SMART Cloudflare D1 Commerce API.
  Public read-only directory & example-store catalogues, demo checkout (no
@@ -20,7 +21,7 @@ const cors = (request) => {
     "Vary":"Origin",
     ...(origin && allowed.has(origin) ? {"Access-Control-Allow-Origin":origin} : {}),
     "Access-Control-Allow-Methods":"GET,POST,OPTIONS",
-    "Access-Control-Allow-Headers":"Content-Type",
+    "Access-Control-Allow-Headers":"Content-Type, Authorization",
   };
 };
 function output(request,value,status=200) {
@@ -128,6 +129,8 @@ export default {
   if(method==="OPTIONS")
    return new Response(null,{status:204,headers:cors(request)});
   try{
+   const merchant=await merchantRouter(request,env,path,output,error);
+   if(merchant!==null)return merchant;
    if(path==="/health"&&method==="GET") {
     const row=await env.DB.prepare("SELECT COUNT(*) n FROM commerce_stores WHERE is_active=1").first();
     const pro=await env.DB.prepare("SELECT COUNT(*) n FROM commerce_products WHERE is_listed=1").first();
