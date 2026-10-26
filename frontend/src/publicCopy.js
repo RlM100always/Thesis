@@ -46,7 +46,9 @@ export function normalizePublicCopy(value,key="",fallback=""){
  if(!trimmed)return fallback;
  if(!editorialKey(key) || /^(?:https?:\/\/|mailto:|tel:|#\/)/i.test(trimmed))return value;
  // Do not replace proper business names, prose we have not reviewed, or user data.
- const canonical=exactLegacy.get(trimmed);
+ // Older CMS values sometimes end with an ASCII full stop instead of the
+ // Bengali sentence mark, though the rest of the wording is identical.
+ const canonical=exactLegacy.get(trimmed) || exactLegacy.get(trimmed.replace(/\.$/,"।"));
  if(canonical)return canonical;
  return mixedTerms.reduce((result,[pattern,replacement])=>result.replace(pattern,replacement),value);
 }
