@@ -6,7 +6,7 @@ const encoder=new TextEncoder();
 const hex=arr=>Array.from(new Uint8Array(arr),b=>b.toString(16).padStart(2,"0")).join("");
 async function sha256(value){return hex(await crypto.subtle.digest("SHA-256",encoder.encode(value)));}
 async function derive(pass,salt){
- const key=await crypto.subtle.importKey("raw",encoder.encode(pass),"PBKDF2",false,["deriveBits"]);
+ const key=await crypto.subtle.importKey("raw",encoder.encode(pass),{name:"PBKDF2"},false,["deriveBits"]);
  return hex(await crypto.subtle.deriveBits({name:"PBKDF2",salt:Uint8Array.from(salt.match(/../g).map(x=>parseInt(x,16))),iterations:210000,hash:"SHA-256"},key,256));
 }
 function newSalt(){const a=new Uint8Array(16);crypto.getRandomValues(a);return hex(a);}
