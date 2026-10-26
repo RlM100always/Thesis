@@ -67,3 +67,45 @@ jobs:
           node -e 'const o=require("./cancelled.json");if(o.status!=="cancelled")process.exit(1);console.log("D1 cancellation persisted")'
           curl -fLsS --max-time 20 "$D1_API/api/public/store/slug/demo-bsmart-grocery" > after.json
           node -e 'const a=require("./before.json").products.find(x=>x.id==="demo-grocery-DAL1"),b=require("./after.json").products.find(x=>x.id==="demo-grocery-DAL1");if(!a||!b||a.quantity!==b.quantity)process.exit(1);console.log("D1 restock trigger confirmed: "+a.quantity+"->"+b.quantity)'
+
+      - name: Merchant D1 end-to-end isolated test
+        if: contains(github.event.head_commit.message, '[merchant-e2e]')
+        env:
+          RUN_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          EMAIL="ci-${RUN_SHA:0:16}@example.invalid"
+          PASSWORD="BsmartTmpTest-$RUN_SHA-xY!"
+          export EMAIL PASSWORD
+          node -e 'require("fs").writeFileSync("reg.json",JSON.stringify({email:process.env.EMAIL,password:process.env.PASSWORD}))'
+          curl -fLsS --max-time 30 -H 'Content-Type: application/json' -d @reg.json \
+            "$D1_API/api/merchant/register" > registered.json
+          node -e 'const x=require("./registered.json");if(!x.created)process.exit(1)'
+          curl -fLsS --max-time 30 -H 'Content-Type: application/json' -d @reg.json \
+            "$D1_API/api/merchant/login" > login.json
+          TOKEN="$(node -p 'require("./login.json").token')"
+          test "${#TOKEN}" = 64
+          curl -fLsS --max-time 20 -H "Authorization: Bearer $TOKEN" \
+            "$D1_API/api/merchant/dashboard" > init.json
+          node -e 'const x=require("./init.json");if(x.store||x.metrics.orders)process.exit(1)'
+          echo '{"name":"Automated Unpublished Demo Business","area":"Test-only location","category":"Grocery"}' > shop-in.json
+          curl -fLsS -X POST --max-time 20 -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+            --data-binary @shop-in.json "$D1_API/api/merchant/store" > store.json
+          node -e 'const s=require("./store.json").store;if(!s||s.is_active||!s.slug.startsWith("shop-"))process.exit(1);console.log("Owner created private D1 demo store")'
+          echo '{"sku":"CI-ITEM","name":"QA only notebook","category":"Stationery","price_bdt":120,"stock_qty":10,"is_listed":true}' > prod-in.json
+          curl -fLsS -X POST --max-time 20 -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+            --data-binary @prod-in.json "$D1_API/api/merchant/products" > product.json
+          PRODUCT_ID="$(node -p 'require("./product.json").product_id')"
+          echo '{"stock_qty":15}' > stock-change.json
+          curl -fLsS -X PATCH --max-time 20 -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+            --data-binary @stock-change.json "$D1_API/api/merchant/products/$PRODUCT_ID" > revised.json
+          node -e 'const x=require("./revised.json");if(!x.updated||x.stock_change!==5)process.exit(1)'
+          curl -fLsS --max-time 20 -H "Authorization: Bearer $TOKEN" "$D1_API/api/merchant/dashboard" > data.json
+          node -e 'const x=require("./data.json");if(x.products.length!==1||x.products[0].stock_qty!==15||x.stock_adjustments[0].delta!==5)process.exit(1);console.log("Product stock and inventory audit durable")'
+          echo '{"confirm":"DELETE DEMO ACCOUNT"}' > cleanup.json
+          curl -fLsS -X POST --max-time 20 -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+            --data-binary @cleanup.json "$D1_API/api/merchant/delete-account" > deleted.json
+          node -e 'if(!require("./deleted.json").deleted)process.exit(1);console.log("Temporary demo owner/store deleted safely")'
+          STATUS="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 20 -H "Authorization: Bearer $TOKEN" "$D1_API/api/merchant/dashboard")"
+          test "$STATUS" = 401
+          rm -f login.json reg.json registered.json
