@@ -469,6 +469,7 @@ export const api = {
   placePublicOrder: (orgId, body) => post(`/api/public/orders/${orgId}`, body),
   publicOrderStatus: (orgId, token) => request(`/api/public/orders/${orgId}/status/${token}`),
   getPublicStores: () => request("/api/public/store/"),
+  publicStoreDiagnostics: () => request("/api/public/store/diagnostics"),
   getPublicStoreBySlug: (slug) => request(`/api/public/store/slug/${encodeURIComponent(slug)}`),
   getPublicStore: (orgId) => request(`/api/public/store/${orgId}`),
   // Store admin — tenant-scoped, JWT required.
