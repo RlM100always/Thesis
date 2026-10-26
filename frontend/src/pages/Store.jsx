@@ -16,6 +16,7 @@ import {readFavorites,toggleFavorite} from "../storefrontFavorites";
 import {recentProducts,rememberProduct,toggleCompared,COMPARE_LIMIT} from "../storefrontDiscovery";
 import StoreProductCompare from "../components/StoreProductCompare";
 import StoreProductGallery from "../components/StoreProductGallery";
+import {contrastColor,readableAccent} from "../storeContrast";
 
 // ─── Utility ─────────────────────────────────────────────────────────────────
 const money = (v) => `৳${Number(v).toLocaleString("bn-BD", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
@@ -38,18 +39,11 @@ function hexToRgb(hex) {
   return `${r} ${g} ${b}`;
 }
 
-function contrastColor(hex) {
-  const channels = [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16) / 255).map(c => c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
-  const luminance = 0.2126 * channels[0] + 0.7152 * channels[1] + 0.0722 * channels[2];
-  // Optimal black/white pivot for WCAG relative luminance (not an arbitrary brightness cutoff).
-  return luminance > 0.179 ? "#13231b" : "#ffffff";
-}
-
 // ─── Theme injection ──────────────────────────────────────────────────────────
 function applyTheme(color = "#0a8752", preset = "clean") {
   const root = document.documentElement;
-  const safeColor = /^#[0-9a-f]{6}$/i.test(color) ? color : "#0a8752";
   const palette = STORE_PALETTES[preset] || STORE_PALETTES.clean;
+  const safeColor = readableAccent(color, palette.bg);
   root.style.setProperty("--store-accent", safeColor);
   root.style.setProperty("--store-accent-on", contrastColor(safeColor));
   root.style.setProperty("--store-accent-rgb", hexToRgb(safeColor));
