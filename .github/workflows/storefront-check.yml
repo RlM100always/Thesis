@@ -60,3 +60,8 @@ jobs:
       - name: Validate COD merchant approval, contact and consent policy
         run: npm test
         working-directory: cloudflare
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Validate D1 schema v1-v6 and stock movement triggers
+        run: python cloudflare/tests/verify_migrations.py
