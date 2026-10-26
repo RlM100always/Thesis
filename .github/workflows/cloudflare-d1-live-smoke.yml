@@ -115,3 +115,32 @@ jobs:
           STATUS="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 20 -H "Authorization: Bearer $TOKEN" "$D1_API/api/merchant/dashboard")"
           test "$STATUS" = 401
           rm -f login.json reg.json registered.json signin.json
+
+      - name: One-time D1 merchant POS integration test
+        if: contains(github.event.head_commit.message, '[pos-e2e]')
+        env:
+          RUN_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          export TEST_EMAIL="ci-pos-${RUN_SHA:0:16}@example.invalid"
+          node -e 'require("fs").writeFileSync("posreg.json",JSON.stringify({email:process.env.TEST_EMAIL}))'
+          curl -fLsS --max-time 30 -H 'Content-Type: application/json' --data-binary @posreg.json "$D1_API/api/merchant/register" > posowner.json
+          node -e 'const x=require("./posowner.json");if(!/^[0-9a-f]{64}$/.test(x.owner_access_key))process.exit(1);require("fs").writeFileSync("poslogin.json",JSON.stringify({email:process.env.TEST_EMAIL,access_key:x.owner_access_key}))'
+          curl -fLsS --max-time 30 -H 'Content-Type: application/json' --data-binary @poslogin.json "$D1_API/api/merchant/login" > posauth.json
+          TOKEN="$(node -p 'require("./posauth.json").token')"
+          echo '{"name":"POS CI Test Unverified Shop","area":"Automated Test Only","category":"Grocery"}' > posstore.json
+          curl -fLsS --max-time 20 -X POST -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' --data-binary @posstore.json "$D1_API/api/merchant/store" > newshop.json
+          echo '{"sku":"CIPOS","name":"QA Counter Item","category":"Tests","price_bdt":50,"stock_qty":10,"is_listed":true}' > postestprod.json
+          curl -fLsS --max-time 20 -X POST -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' --data-binary @postestprod.json "$D1_API/api/merchant/products" > newprod.json
+          ITEM="$(node -p 'require("./newprod.json").product_id')"
+          echo '{"is_active":true}' > activate.json
+          curl -fLsS --max-time 20 -X PATCH -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' --data-binary @activate.json "$D1_API/api/merchant/store" > liveowner.json
+          SLUG="$(node -p 'require("./liveowner.json").store.slug')"
+          curl -fLsS --max-time 20 "$D1_API/api/public/store/slug/$SLUG" > publicowner.json
+          node -e 'const s=require("./publicowner.json");if(!s.is_demo||s.products.length!==1)process.exit(1);console.log("Owner-created public demo storefront resolves via D1")'
+          export ITEM
+          node -e 'require("fs").writeFileSync("possale.json",JSON.stringify({items:[{product_id:process.env.ITEM,quantity:2}]}))'
+          curl -fLsS --max-time 20 -X POST -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' --data-binary @possale.json "$D1_API/api/merchant/pos" > postsale.json
+          node -e 'const v=require("./postsale.json");if(!v.created||v.total_bdt!==100||!v.order_number.startsWith("POS-"))process.exit(1);console.log("Demo POS recorded:",v.order_number)'
+          curl -fLsS --max-time 20 -H "Authorization: Bearer $TOKEN" "$D1_API/api/merchant/dashboard" > posdashboard.json
+          node -e 'const v=require("./posdashboard.json");if(v.metrics.orders!==1||v.products[0].stock_qty!==8||v.cashbook[0].amount_bdt!==100||v.cashbook[0].related_order_id!==v.orders[0].id)process.exit(1);console.log("D1 order, stock, cashbook reconcile to same POS sale")'
