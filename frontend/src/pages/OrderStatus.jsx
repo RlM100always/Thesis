@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { api } from "../api";
+import { useUi } from "../UiContext";
 import { explain } from "../errors";
 import { dateBn, money, num } from "../format";
 import { Badge, Card, Notice, PageHeader } from "../ui/kit";
@@ -57,6 +58,7 @@ function StatusTimeline({ status }) {
 // Public order-status lookup: a customer with no account checks their order
 // with the access_token they were given at checkout.
 export default function OrderStatusPage() {
+  const {theme, toggleTheme} = useUi();
   const { orgId, token } = useParams();
   const [order, setOrder] = useState(null);
   const [error, setError] = useState("");
@@ -93,6 +95,10 @@ export default function OrderStatusPage() {
 
   return (
     <div className="page stack public-order-status" style={{ maxWidth: 660, margin: "0 auto" }}>
+      <div className="order-status-toolbar"><button type="button" className="order-status-theme-toggle"
+        onClick={toggleTheme} aria-pressed={theme === "dark"}
+        aria-label={theme === "dark" ? "লাইট মোড চালু করুন" : "ডার্ক মোড চালু করুন"}
+        title={theme === "dark" ? "লাইট মোড চালু করুন" : "ডার্ক মোড চালু করুন"}>{theme === "dark" ? "☀️" : "🌙"}</button></div>
       <PageHeader title="অর্ডারের সর্বশেষ অবস্থা" subtitle="এই লিংকটি সংরক্ষণ করুন। এখান থেকে অর্ডারের অগ্রগতি দেখতে পারবেন।" />
       {error && <Notice tone="danger">{error}</Notice>}
       {!order && !error && <p className="muted">লোড হচ্ছে…</p>}
