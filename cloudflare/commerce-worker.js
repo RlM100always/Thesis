@@ -49,9 +49,9 @@ const baseView=(s,env)=>({
 });
 const productView=(p,isDemo=true)=>({
   id:p.id,name:p.name,sku:p.sku,unit:"pcs",price:p.price_bdt,
-  selling_price:p.price_bdt,description:isDemo?"Demo product; not a real merchant listing":"Product listed by the approved merchant",
+  selling_price:p.price_bdt,description:isDemo?(p.description||"Demo product; not a real merchant listing"):(p.description||""),
   sale_price:null,sale_end:null,image_data_url:p.image_url||null,
-  tags:[],is_featured:!!p.is_featured,sort_order:0,max_order_qty:Math.min(p.stock_qty,10),
+  tags:p.category?[p.category]:[],is_featured:!!p.is_featured,sort_order:0,max_order_qty:Math.min(p.stock_qty,10),
   variants:[],in_stock:p.stock_qty>0,quantity:p.stock_qty,category:p.category
 });
 async function getStore(env,term,slugMode) {
