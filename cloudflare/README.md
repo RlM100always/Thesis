@@ -71,3 +71,14 @@ node --check merchant-routes.js
 ```
 
 See `docs/D1_REAL_COD_ROLLOUT.md` for required data-protection and cutover checks.
+
+
+### Storefront presentation improvements — staged PR only
+
+The branch `feature/d1-real-cod-foundation-20261026` also contains a
+premium marketplace/storefront UI, owner storefront identity editor, persisted
+device-local favorite stores/products, richer product metadata and merchandising,
+and migration files `0009` (product descriptions) and `0010` (store
+banner/logo/contact). These changes are **NOT deployed**. The remote connected
+D1 database was last independently verified at schema version **5**.
+See `docs/D1_REAL_COD_ROLLOUT.md` before any schema or Worker rollout.
