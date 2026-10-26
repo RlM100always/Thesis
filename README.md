@@ -22,6 +22,12 @@ python run_api.py
 cd frontend && npm ci && npm run dev
 ```
 
-The website must use a **persisted database** (`DATABASE_URL`, Render PostgreSQL) to retain organization, store, customer and order records across deploys. This does not happen merely because a Postgres instance exists.
+### Verified Cloudflare / live-database status — 26 October 2026
+
+The user's intended primary Cloudflare storage is present: the **Primary Cloudflare account** contains R2 bucket `bsmart-thesis-research`. At verification, that bucket had **one object** (`thesis/research/setup.json`, 269 bytes), and the account had **no B-SMART D1 database**. R2 is integrated in `api/r2_store.py` for research-file/model objects; it is **not** the operational shop/customer/order database.
+
+Render startup logs verified that `thesis-j0n8.onrender.com` actually uses **SQLite**: 1 organization, 4 products, 0 stores, 0 public listings. An independent Render PostgreSQL instance also exists but is not connected to the running app; its mere existence does not make it primary. **Do not blindly switch production to PostgreSQL or run a demo seed without confirming where original business records live.** The opt-in demo bootstrap flag was disabled.
+
+If Cloudflare must become the operational **primary database**, provision/validate **Cloudflare D1** and implement a compatible transaction-safe data-access layer and migrations first. D1 cannot be selected simply by assigning an R2 bucket to SQLAlchemy's `DATABASE_URL`. Alternatively retain PostgreSQL for operational SQL and R2 for research files/backups after an explicit architecture decision. Neither path reconstructs customer/order records without their original database or backups.
 
 **Research:** previous ML weights were retired. No new real SME data or trained model is represented by an empty research portal.
