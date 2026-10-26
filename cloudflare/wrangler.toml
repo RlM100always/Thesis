@@ -1,0 +1,12 @@
+name = "bsmart-commerce-api"
+main = "commerce-worker.js"
+compatibility_date = "2026-10-26"
+workers_dev = true
+
+# Cloudflare D1 primary for the *isolated demo storefront data*.
+# Existing FastAPI operational POS/customer/account databases are NOT migrated.
+[[d1_databases]]
+binding = "DB"
+database_name = "bsmart-commerce"
+database_id = "887fa347-9c22-46b1-a7cf-91a7dbdfc311"
+migrations_dir = "migrations"
