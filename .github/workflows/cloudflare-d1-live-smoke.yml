@@ -1,0 +1,31 @@
+name: B-SMART Cloudflare D1 Live Smoke
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'cloudflare/**'
+      - 'frontend/src/api.js'
+      - 'frontend/src/pages/Store.jsx'
+      - '.github/workflows/cloudflare-d1-live-smoke.yml'
+
+jobs:
+  d1-live-read-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    env:
+      D1_API: https://bsmart-commerce-api.bcs-written-rakib.workers.dev
+    steps:
+      - name: Check Worker /health
+        run: |
+          curl -fLsS --retry 4 --retry-delay 2 --max-time 18 "$D1_API/health" > health.json
+          node -e 'const h=require("./health.json");if(h.database!=="Cloudflare D1"||h.stores!==10||h.products<250)process.exit(1); console.log("D1 stores="+h.stores+" products="+h.products)'
+      - name: Check published store directory
+        run: |
+          curl -fLsS --retry 3 --max-time 18 "$D1_API/api/public/store/" > stores.json
+          node -e 'const s=require("./stores.json");if(!Array.isArray(s)||s.length!==10||s.some(x=>!x.is_demo||!x.slug))process.exit(1);console.log("Verified "+s.length+" safely labelled demo stores")'
+      - name: Check individual catalog and stock
+        run: |
+          curl -fLsS --retry 3 --max-time 18 "$D1_API/api/public/store/slug/demo-bsmart-grocery" > shop.json
+          node -e 'const s=require("./shop.json");if(s.slug!=="demo-bsmart-grocery"||s.products.length<20||s.products.some(p=>typeof p.price!=="number"||typeof p.in_stock!=="boolean"))process.exit(1);console.log("Verified "+s.products.length+" product catalog entries")'
