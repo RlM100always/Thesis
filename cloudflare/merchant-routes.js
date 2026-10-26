@@ -5,11 +5,6 @@
 const encoder=new TextEncoder();
 const hex=arr=>Array.from(new Uint8Array(arr),b=>b.toString(16).padStart(2,"0")).join("");
 async function sha256(value){return hex(await crypto.subtle.digest("SHA-256",encoder.encode(value)));}
-async function derive(pass,salt){
- const key=await crypto.subtle.importKey("raw",encoder.encode(pass),{name:"PBKDF2"},false,["deriveBits"]);
- return hex(await crypto.subtle.deriveBits({name:"PBKDF2",salt:Uint8Array.from(salt.match(/../g).map(x=>parseInt(x,16))),iterations:210000,hash:"SHA-256"},key,256));
-}
-function newSalt(){const a=new Uint8Array(16);crypto.getRandomValues(a);return hex(a);}
 function newSession(){const a=new Uint8Array(32);crypto.getRandomValues(a);return hex(a);}
 function bad(request,error,code,message){return error(request,code,message);}
 async function json(request,error,max=10000){
@@ -49,48 +44,37 @@ export async function merchantRouter(req,env,path,output,error){
  const method=req.method;
  try{
   if(method==="GET"&&path==="/api/merchant/health"){
-   const start=Date.now(); let crypto_ok=false, crypto_error=null;
-   try{ const salt=newSalt();const passwordHash=await derive("bsmart-health-test",salt);crypto_ok=passwordHash.length===64; }
-   catch(e){crypto_error=e.name||"CryptoError";}
-   return output(req,{status:"ok",db:"D1",auth_kdf_ok:crypto_ok,auth_kdf_error:crypto_error,kdf_time_ms:Date.now()-start});
+   const secret=newSession(),digest=await sha256(secret);
+   return output(req,{status:"ok",db:"D1",auth_key_digest_ok:digest.length===64,auth_mode:"256bit_random_access_key"});
   }
   if(method==="POST"&&path==="/api/merchant/register"){
-   const b=await json(req,error);
-   const email=short(b.email,200).toLowerCase();
-   if(!validEmail(email)||typeof b.password!=="string"||b.password.length<12||b.password.length>96)
-    return bad(req,error,422,"Valid email and a password of 12-96 characters required");
-   // Guard this opt-in demo platform from automated bulk account creation.
+   const b=await json(req,error),email=short(b.email,200).toLowerCase();
+   if(!validEmail(email))return bad(req,error,422,"Valid email required");
    const today=await env.DB.prepare("SELECT COUNT(*) AS n FROM merchant_accounts WHERE created_at >= datetime('now','start of day')").first();
    if(Number(today?.n||0)>=20)return bad(req,error,429,"Daily demo registration limit reached");
-   const exists=await env.DB.prepare("SELECT id FROM merchant_accounts WHERE email=?").bind(email).first();
-   if(exists)return bad(req,error,409,"Account already exists");
-   const salt=newSalt(),hash=await derive(b.password,salt);
-   const id=crypto.randomUUID();
-   try{await env.DB.prepare("INSERT INTO merchant_accounts(id,email,password_hash,password_salt) VALUES(?,?,?,?)").bind(id,email,hash,salt).run();}
-   catch(e){return bad(req,error,errorCode(e),"Unable to register this email");}
-   return output(req,{created:true,requires_login:true,note:"Email not yet independently verified"},201);
+   if(await env.DB.prepare("SELECT id FROM merchant_accounts WHERE email=?").bind(email).first())
+     return bad(req,error,409,"Account already exists");
+   const id=crypto.randomUUID(),key=newSession(),digest=await sha256(key);
+   try{await env.DB.prepare("INSERT INTO merchant_accounts(id,email,password_hash,password_salt,access_key_digest) VALUES(?,?,?,?,?)").bind(id,email,"ACCESS_KEY_ONLY","DISABLED",digest).run();}
+   catch(e){return bad(req,error,errorCode(e),"Unable to create owner account");}
+   return output(req,{created:true,owner_access_key:key,requires_login:true,note:"SAVE THIS KEY NOW. It is never shown again. No email verification or recovery exists."},201);
   }
   if(method==="POST"&&path==="/api/merchant/login"){
-   const b=await json(req,error);
-   const email=short(b.email,200).toLowerCase();
+   const b=await json(req,error),email=short(b.email,200).toLowerCase();
+   const candidate=String(b.access_key||"").trim().toLowerCase();
+   if(!validEmail(email)||!/^[0-9a-f]{64}$/.test(candidate))return bad(req,error,401,"Invalid account email or owner access key");
    const now=new Date().toISOString();
-   if(!validEmail(email)||typeof b.password!=="string"||b.password.length>96)return bad(req,error,401,"Invalid credentials");
    const lock=await env.DB.prepare("SELECT failures,lock_until FROM merchant_login_attempts WHERE email=?").bind(email).first();
    if(lock?.lock_until&&lock.lock_until>now)return bad(req,error,429,"Too many attempts; try again later");
-   const acc=await env.DB.prepare("SELECT * FROM merchant_accounts WHERE email=?").bind(email).first();
-   let valid=false;
-   if(acc) {
-    const hash=await derive(b.password,acc.password_salt);
-    const aa=encoder.encode(hash),bb=encoder.encode(acc.password_hash);
-    valid=aa.length===bb.length;
-    let xor=0;for(let i=0;i<aa.length&&valid;i++)xor|=aa[i]^bb[i];
-    valid=valid&&xor===0;
-   }
-   if(!valid) {
-    const failures=(lock?.failures||0)+1;
-    const until=failures>=6?new Date(Date.now()+15*60*1000).toISOString():null;
+   const acc=await env.DB.prepare("SELECT id,email,access_key_digest FROM merchant_accounts WHERE email=?").bind(email).first();
+   const hash=await sha256(candidate),expected=String(acc?.access_key_digest||"");
+   let valid=hash.length===expected.length;let xor=0;
+   for(let i=0;i<hash.length&&valid;i++)xor|=hash.charCodeAt(i)^expected.charCodeAt(i);
+   valid=valid&&xor===0;
+   if(!valid){
+    const failures=(lock?.failures||0)+1,until=failures>=6?new Date(Date.now()+15*60*1000).toISOString():null;
     await env.DB.prepare("INSERT INTO merchant_login_attempts(email,failures,lock_until) VALUES(?,?,?) ON CONFLICT(email) DO UPDATE SET failures=excluded.failures,lock_until=excluded.lock_until").bind(email,failures,until).run();
-    return bad(req,error,401,"Invalid credentials");
+    return bad(req,error,401,"Invalid account email or owner access key");
    }
    await env.DB.prepare("DELETE FROM merchant_login_attempts WHERE email=?").bind(email).run();
    const token=newSession(),tokenHash=await sha256(token),expires=new Date(Date.now()+12*60*60*1000).toISOString();
