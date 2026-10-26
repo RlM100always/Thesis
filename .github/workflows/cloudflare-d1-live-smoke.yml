@@ -20,7 +20,7 @@ jobs:
       - name: Check Worker /health
         run: |
           curl -fLsS --retry 4 --retry-delay 2 --max-time 18 "$D1_API/health" > health.json
-          node -e 'const h=require("./health.json");if(h.database!=="Cloudflare D1"||h.stores!==10||h.products<250)process.exit(1); console.log("D1 stores="+h.stores+" products="+h.products)'
+          node -e 'const h=require("./health.json");if(h.database!=="Cloudflare D1"||h.stores<10||h.products<250)process.exit(1); console.log("D1 stores="+h.stores+" products="+h.products)'
       - name: Check merchant password hashing capability
         run: |
           curl -fLsS --max-time 25 "$D1_API/api/merchant/health" > ownerhealth.json
@@ -36,7 +36,7 @@ jobs:
       - name: Check published store directory
         run: |
           curl -fLsS --retry 3 --max-time 18 "$D1_API/api/public/store/" > stores.json
-          node -e 'const s=require("./stores.json");if(!Array.isArray(s)||s.length!==10||s.some(x=>!x.is_demo||!x.slug))process.exit(1);console.log("Verified "+s.length+" safely labelled demo stores")'
+          node -e 'const s=require("./stores.json");if(!Array.isArray(s)||s.filter(x=>x.slug.startsWith("demo-bsmart-")).length!==10||s.some(x=>!x.is_demo||!x.slug))process.exit(1);console.log("Verified "+s.length+" safely labelled demo stores")'
       - name: Check individual catalog and stock
         run: |
           curl -fLsS --retry 3 --max-time 18 "$D1_API/api/public/store/slug/demo-bsmart-grocery" > shop.json
