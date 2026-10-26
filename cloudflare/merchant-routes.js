@@ -102,6 +102,7 @@ export async function merchantRouter(req,env,path,output,error){
    const statements=[];
    if(store){
      statements.push(
+       env.DB.prepare("DELETE FROM commerce_cashbook WHERE store_id=?").bind(store.id),
        env.DB.prepare("DELETE FROM commerce_stock_adjustments WHERE store_id=?").bind(store.id),
        env.DB.prepare("DELETE FROM commerce_products WHERE store_id=?").bind(store.id),
        env.DB.prepare("DELETE FROM commerce_stores WHERE owner_id=? AND id=?").bind(owner.id,store.id)
