@@ -32,3 +32,9 @@
 .s-site .store-customer-portal strong,
 .s-site .store-customer-portal h2,
 .s-site .store-customer-portal h3{color:var(--text)}
+
+.s-site .store-customer-portal .sc-alert{border:1px solid;border-radius:10px;padding:11px 14px;font-size:13px;margin-bottom:12px;line-height:1.6}
+.s-site .store-customer-portal .sc-alert-error{background:color-mix(in srgb,#e05262 13%,var(--s-card));color:var(--s-ink);border-color:color-mix(in srgb,#e05262 55%,var(--s-border))}
+.s-site .store-customer-portal .sc-alert-success{background:color-mix(in srgb,#179f69 13%,var(--s-card));color:var(--s-ink);border-color:color-mix(in srgb,#179f69 55%,var(--s-border))}
+.s-site .store-customer-portal :is(button,input,select,textarea){min-height:34px}
+.s-site .store-customer-portal :is(button,a):focus-visible{outline:3px solid var(--green);outline-offset:3px}

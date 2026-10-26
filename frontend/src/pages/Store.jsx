@@ -12,6 +12,7 @@ import { api } from "../api";
 import { explain } from "../errors";
 import { productImage, storeCoverImage } from "../storeImages";
 import StoreCustomerPortal from "./StoreCustomerPortal";
+import { useUi } from "../UiContext";
 import {contrastColor,readableAccent} from "../storeContrast";
 
 // ─── Utility ─────────────────────────────────────────────────────────────────
@@ -36,10 +37,11 @@ function hexToRgb(hex) {
 }
 
 // ─── Theme injection ──────────────────────────────────────────────────────────
-function applyTheme(color = "#0a8752", preset = "clean") {
+function applyTheme(color = "#0a8752", preset = "clean", mode = "light") {
   const root = document.documentElement;
   const palette = STORE_PALETTES[preset] || STORE_PALETTES.clean;
-  const safeColor = readableAccent(color, palette.bg);
+  const darkSurface = mode === "dark" || preset === "bold";
+  const safeColor = readableAccent(color, darkSurface ? "#091710" : palette.card);
   root.style.setProperty("--store-accent", safeColor);
   root.style.setProperty("--store-accent-on", contrastColor(safeColor));
   root.style.setProperty("--store-accent-rgb", hexToRgb(safeColor));
@@ -93,7 +95,7 @@ const STORE_CSS = `
 /* ── Hero ── */
 .s-hero { padding: 34px 20px 44px; text-align: center; background: linear-gradient(180deg, #fff 0%, var(--s-bg, #f7faf8) 100%); }
 .s-hero h1 { font-size: clamp(24px, 5vw, 42px); font-weight: 800; margin: 0 0 10px; color: var(--s-ink, #0d1f16); line-height: 1.15; letter-spacing: -.5px; }
-.s-hero p { font-size: 15.5px; color: #4a6358; margin: 0 0 20px; max-width: 480px; margin-inline: auto; line-height: 1.6; }
+.s-hero p { font-size: 15.5px;; margin: 0 0 20px; max-width: 480px; margin-inline: auto; line-height: 1.6; ;color: var(--s-muted);}
 .s-trust-row { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-top: 14px; }
 .s-trust-chip { background: var(--sa-bg); color: var(--sa); border-radius: 20px; padding: 5px 14px; font-size: 13px; font-weight: 600; border: 1px solid rgba(var(--sa-rgb) / .15); }
 .s-payment-chips { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-top: 12px; }
@@ -115,8 +117,8 @@ const STORE_CSS = `
 .s-product-name-button { display: block; padding: 0; border: 0; background: transparent; color: var(--s-ink, #0d1f16); text-align: left; font: inherit; font-weight: 700; cursor: pointer; }
 .s-product-img-placeholder { width: 100%; aspect-ratio: 1; background: linear-gradient(135deg, var(--sa-bg) 0%, rgba(var(--sa-rgb)/.05) 100%); display: flex; align-items: center; justify-content: center; font-size: 44px; }
 .s-product-body { padding: 13px 14px 14px; flex: 1; display: flex; flex-direction: column; gap: 5px; }
-.s-product-name { font-size: 14px; font-weight: 700; color: #0d1f16; line-height: 1.35; letter-spacing: -.1px; }
-.s-product-unit { font-size: 11.5px; color: #7a9a8a; }
+.s-product-name { font-size: 14px; font-weight: 700;; line-height: 1.35; letter-spacing: -.1px; ;color: var(--s-ink);}
+.s-product-unit { font-size: 11.5px;; ;color: var(--s-muted);}
 .s-product-price { font-size: 18px; font-weight: 800; color: var(--sa); letter-spacing: -.3px; }
 .s-product-tags { display: flex; gap: 4px; flex-wrap: wrap; }
 .s-tag { background: var(--sa-bg); color: var(--sa); border-radius: 5px; padding: 2px 7px; font-size: 11px; font-weight: 600; }
@@ -145,9 +147,9 @@ const STORE_CSS = `
 .s-detail-image { border-radius: 20px; overflow: hidden; aspect-ratio: 1; background: linear-gradient(135deg, var(--sa-bg), rgba(var(--sa-rgb)/.04)); display: flex; align-items: center; justify-content: center; font-size: 80px; box-shadow: 0 4px 24px rgba(0,0,0,.08); }
 .s-detail-image img { width: 100%; height: 100%; object-fit: cover; }
 .s-detail-info { display: flex; flex-direction: column; gap: 14px; }
-.s-detail-name { font-size: 26px; font-weight: 800; color: #0d1f16; margin: 0; line-height: 1.2; letter-spacing: -.3px; }
+.s-detail-name { font-size: 26px; font-weight: 800;; margin: 0; line-height: 1.2; letter-spacing: -.3px; ;color: var(--s-ink);}
 .s-detail-price { font-size: 30px; font-weight: 800; color: var(--sa); letter-spacing: -.5px; }
-.s-detail-desc { font-size: 14.5px; color: #4a6358; line-height: 1.7; }
+.s-detail-desc { font-size: 14.5px;; line-height: 1.7; ;color: var(--s-muted);}
 .s-qty-row { display: flex; align-items: center; gap: 12px; }
 .s-qty-btn { width: 38px; height: 38px; border-radius: 50%; border: 2px solid var(--sa); background: #fff; color: var(--sa); font-size: 20px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background .12s, transform .1s; }
 .s-qty-btn:hover { background: var(--sa-bg); transform: scale(1.08); }
@@ -170,8 +172,8 @@ const STORE_CSS = `
 .s-cart-item:last-child { border-bottom: none; }
 .s-cart-item-img { width: 48px; height: 48px; border-radius: 10px; background: var(--sa-bg); overflow: hidden; display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0; }
 .s-cart-item-img img { width: 100%; height: 100%; object-fit: cover; }
-.s-cart-item-name { font-size: 14px; font-weight: 700; color: #0d1f16; line-height: 1.3; }
-.s-cart-item-price { font-size: 12.5px; color: #6b8a7a; }
+.s-cart-item-name { font-size: 14px; font-weight: 700;; line-height: 1.3; ;color: var(--s-ink);}
+.s-cart-item-price { font-size: 12.5px;; ;color: var(--s-muted);}
 .s-cart-item-right { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
 .s-cart-item-total { font-size: 15px; font-weight: 800; color: var(--sa); }
 .s-cart-qty-row { display: flex; align-items: center; gap: 8px; background: #f4f7f5; border-radius: 20px; padding: 3px 6px; }
@@ -191,7 +193,7 @@ const STORE_CSS = `
 .s-checkout { max-width: 620px; margin: 0 auto; padding: 36px 20px 80px; }
 .s-checkout h2 { font-size: 24px; font-weight: 800; margin: 0 0 28px; letter-spacing: -.3px; }
 .s-form-group { margin-bottom: 18px; }
-.s-form-group label { display: block; font-size: 13px; font-weight: 700; color: #4a6358; margin-bottom: 7px; }
+.s-form-group label { display: block; font-size: 13px; font-weight: 700;; margin-bottom: 7px; ;color: var(--s-muted);}
 .s-form-group label span { color: #dc2626; }
 .s-input { width: 100%; padding: 12px 15px; border: 1.5px solid #d0e0d8; border-radius: 12px; font-size: 14.5px; font-family: inherit; outline: none; transition: border-color .15s, box-shadow .15s; color: #0d1f16; }
 .s-input:focus { border-color: var(--sa); box-shadow: 0 0 0 3px var(--sa-bg); }
@@ -272,8 +274,8 @@ const STORE_CSS = `
 .s-confirm { max-width: 520px; margin: 0 auto; padding: 56px 20px 80px; text-align: center; }
 .s-confirm-lottie { font-size: 72px; margin-bottom: 16px; animation: s-pop .5s cubic-bezier(.36,.07,.19,.97) both; }
 @keyframes s-pop { 0% { transform: scale(0); } 60% { transform: scale(1.2); } 100% { transform: scale(1); } }
-.s-confirm h2 { font-size: 28px; font-weight: 800; margin: 0 0 10px; color: #0d1f16; letter-spacing: -.4px; }
-.s-confirm p { font-size: 15px; color: #4a6358; margin: 0 0 16px; line-height: 1.6; }
+.s-confirm h2 { font-size: 28px; font-weight: 800; margin: 0 0 10px;; letter-spacing: -.4px; ;color: var(--s-ink);}
+.s-confirm p { font-size: 15px;; margin: 0 0 16px; line-height: 1.6; ;color: var(--s-muted);}
 .s-confirm-token { font-family: 'Courier New', monospace; font-size: 14px; background: var(--sa-bg); color: var(--sa); border-radius: 10px; padding: 12px 20px; display: inline-block; margin-bottom: 24px; word-break: break-all; font-weight: 700; border: 1px solid rgba(var(--sa-rgb)/.2); }
 .s-track-btn { display: inline-flex; align-items: center; gap: 6px; background: var(--sa); color: #fff; border: none; border-radius: 14px; padding: 15px 32px; font-size: 15.5px; font-weight: 700; font-family: inherit; cursor: pointer; text-decoration: none; transition: opacity .15s, transform .12s; box-shadow: 0 4px 16px rgba(var(--sa-rgb)/.35); }
 .s-track-btn:hover { opacity: .9; transform: translateY(-2px); }
@@ -380,12 +382,12 @@ const STORE_CSS = `
 .s-store-nav button { border: 0; background: transparent; color: #52655b; font-family: inherit; font-size: 13px; font-weight: 600; cursor: pointer; padding: 8px 0; }
 .s-store-nav button:hover { color: var(--sa); }
 .s-store-benefits { max-width: 1060px; margin: 0 auto 36px; padding: 0 20px; display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 12px; }
-.s-store-benefit { border: 1px solid #e1e9e4; border-radius: 8px; background: #fff; padding: 14px 16px; display: flex; align-items: flex-start; gap: 10px; color: #52655b; font-size: 12.5px; line-height: 1.5; }
-.s-store-benefit strong { display: block; color: #1f3027; font-size: 13px; margin-bottom: 2px; }
+.s-store-benefit { border: 1px solid #e1e9e4; border-radius: 8px;; padding: 14px 16px; display: flex; align-items: flex-start; gap: 10px;; font-size: 12.5px; line-height: 1.5; ;color: var(--s-muted);background: var(--s-card);}
+.s-store-benefit strong { display: block;; font-size: 13px; margin-bottom: 2px; ;color: var(--s-ink);}
 .s-stock-low { color: #b45309; font-size: 11.5px; font-weight: 700; }
 .s-product-card { cursor: default; }
 .s-product-open { cursor: pointer; }
-.s-contact-price { color: #475569; font-size: 13px; font-weight: 700; }
+.s-contact-price {;; font-size: 13px; font-weight: 700; ;color: var(--s-muted);}
 button.s-contact-price { background: transparent; border: 0; padding: 4px 0; text-align: left; cursor: pointer; font: inherit; font-weight: 700; color: var(--sa); }
 
 /* ── Responsive ── */
@@ -438,6 +440,7 @@ button.s-contact-price { background: transparent; border: 0; padding: 4px 0; tex
    inherited from html, preserving light/bold palettes and browser dark mode. */
 .s-site {
   --s-field:var(--s-card,#fff);
+  --s-accent-on:var(--store-accent-on,#fff);
   --s-soft:color-mix(in srgb,var(--s-card,#fff) 85%,var(--s-bg,#f7faf8));
   --s-negative:#b42330;
   --s-positive:#076f42;
@@ -450,6 +453,7 @@ button.s-contact-price { background: transparent; border: 0; padding: 4px 0; tex
   --s-bg:#091710;--s-card:#13251b;--s-ink:#f2f8f3;
   --s-muted:#bed4c5;--s-border:#365241;--s-field:#182e22;
   --s-soft:#1d3427;--s-negative:#ff9caa;--s-positive:#83edac;
+  --s-accent-on:#06180e;
   --sa:color-mix(in srgb,var(--store-accent,#0a8752) 45%,#a4f4c8);
   --sa-bg:color-mix(in srgb,var(--sa) 12%,transparent);
   --sa-bg2:color-mix(in srgb,var(--sa) 20%,transparent);
@@ -461,6 +465,7 @@ button.s-contact-price { background: transparent; border: 0; padding: 4px 0; tex
     --s-bg:#091710;--s-card:#13251b;--s-ink:#f2f8f3;
     --s-muted:#bed4c5;--s-border:#365241;--s-field:#182e22;
     --s-soft:#1d3427;--s-negative:#ff9caa;--s-positive:#83edac;
+  --s-accent-on:#06180e;
     --sa:color-mix(in srgb,var(--store-accent,#0a8752) 45%,#a4f4c8);
     --sa-bg:color-mix(in srgb,var(--sa) 12%,transparent);
     --sa-bg2:color-mix(in srgb,var(--sa) 20%,transparent);
@@ -538,6 +543,45 @@ button.s-contact-price { background: transparent; border: 0; padding: 4px 0; tex
 .s-site [style*="background: var(--surface)"] {background:var(--s-card) !important}
 .s-site [style*="color: var(--text-muted)"] {color:var(--s-muted) !important}
 .s-site [style*="color: var(--text)"] {color:var(--s-ink) !important}
+
+/* Second-pass targeted cleanup. All colours below inherit the current shop theme. */
+.s-site .s-theme-toggle {
+  display:grid;place-items:center;flex:0 0 auto;width:40px;height:40px;
+  border-radius:12px;border:1px solid var(--s-border);
+  background:var(--s-card);color:var(--s-ink);font-size:19px;cursor:pointer;
+}
+.s-site .s-theme-toggle:hover{background:var(--s-soft)}
+.s-site .s-theme-toggle:focus-visible{outline:3px solid var(--sa);outline-offset:3px}
+.s-site :is(.s-store-benefit strong,.s-hero-stat strong,.s-store-nav button,.s-cart-header,.s-detail-info,.s-detail-name,.s-product-name,.s-product-open){color:var(--s-ink)}
+.s-site :is(.s-store-benefit,.s-stock-note,.s-contact-price,.s-product-unit,.s-form-group label,.s-delivery-note,.s-cart-subtotal-row,.s-cart-item-price,.s-product-rating,.s-info-disclaimer,.s-not-found p){color:var(--s-muted)}
+.s-site :is(.s-store-benefit,.s-product-card,.s-payment-chip,.s-cart-drawer,.s-cart-header,.s-cart-footer,.s-cart-item,.s-modal,.s-screenshot-upload){border-color:var(--s-border)}
+.s-site :is(.s-detail-info input,.s-detail-info textarea,.s-qty-btn,.s-card-qty-btn,.s-cart-qty-btn,.s-modal-close,.s-cart-close,.s-search,.s-sort-select){
+ background:var(--s-card);color:var(--s-ink);border-color:var(--s-border)
+}
+.s-site :is(.s-store-nav button,.s-back-btn,.s-modal-full-btn,.s-shopping-clear,.s-continue-btn){color:var(--sa)}
+.s-site :is(.s-product-tags,.s-cart-item,.s-store-benefit,.s-payment-options,.s-checkout,.s-order-summary,.s-detail,.s-info-card){color:var(--s-ink)}
+.s-site :is(.s-shopping-clear,.s-shopping-filter,.s-cat-tab,.s-filter-btn,.s-price-filter input,.s-form-group input,.s-form-group textarea,.s-form-group select) {
+ border-color:var(--s-border);color:var(--s-ink);background:var(--s-field);
+}
+.s-site :is(.s-shopping-clear,.s-shopping-filter,.s-cat-tab,.s-filter-btn):hover{background:var(--s-soft);border-color:var(--sa)}
+.s-site :is(.s-cat-tab.active,.s-filter-btn.active,.s-checkout-btn,.s-cart-btn,.s-add-btn,.s-place-order-btn,.s-add-to-cart-btn,.s-float-cart,.s-sticky-bar){
+ color:var(--s-accent-on);background:var(--sa);
+}
+.s-site :is(.s-cart-badge,.s-float-cart-count){background:var(--s-card);color:var(--s-ink)}
+.s-site .s-stock-low{color:var(--s-negative)}
+.s-site .s-store-benefits{color:var(--s-ink)}
+.s-site :is(.s-qty-btn:disabled,.s-cart-qty-btn:disabled,.s-shopping-filter:disabled){opacity:.5;cursor:not-allowed}
+.s-site :is(.s-store-benefit,.s-info-card,.s-faq-item,.s-product-card,.s-payment-chip,.s-order-summary,.s-delivery-note) {background-color:var(--s-card)}
+.s-site .s-order-summary{background:var(--s-soft)}
+.s-site :is(.s-form-group label,.s-payment-option-label,.s-delivery-note,.s-hero p){line-height:1.65}
+.s-site .s-store-name{overflow-wrap:anywhere;line-height:1.35}
+.s-site :is(button,input,select,textarea){font-family:'Hind Siliguri',system-ui,sans-serif}
+.s-site :is(input,select,textarea,button,a,[role="button"]):focus-visible{outline:3px solid var(--sa);outline-offset:2px}
+@media(max-width:640px){
+  .s-site .s-theme-toggle{width:36px;height:36px;font-size:17px}
+  .s-site .s-header-inner{gap:7px;padding-inline:8px}
+  .s-site .s-store-name{max-width:min(32vw,165px);overflow:hidden;text-overflow:ellipsis}
+}
 `;
 
 function useInjectCSS(css) {
@@ -1509,6 +1553,7 @@ function saveCart(orgId, cart) {
 // ─── Main component ───────────────────────────────────────────────────────────
 export default function StorePage() {
   const { storeId } = useParams();
+  const { theme, toggleTheme } = useUi();
   useInjectCSS(STORE_CSS);
 
   const [store, setStore] = useState(null);
@@ -1564,7 +1609,7 @@ export default function StorePage() {
     fetch
       .then(data => {
         setStore(data);
-        applyTheme(data.theme_color, data.theme_preset);
+        // Applied separately when store data or viewer theme changes.
         // SEO meta tags
         document.title = data.meta_title || data.display_name;
         let metaDesc = document.querySelector('meta[name="description"]');
@@ -1586,6 +1631,10 @@ export default function StorePage() {
       .finally(() => setLoading(false));
     return () => { clearTheme(); document.title = 'B-SMART'; };
   }, [storeId]);
+
+  useEffect(() => {
+    if (store) applyTheme(store.theme_color, store.theme_preset, theme);
+  }, [store, theme]);
 
   const products = useMemo(() => [...(store?.products || [])].sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)), [store]);
   const productMap = useMemo(() => Object.fromEntries(products.map(p => [p.id, p])), [products]);
@@ -1674,7 +1723,7 @@ export default function StorePage() {
 
   const logoInitial = store.display_name?.[0]?.toUpperCase() || "S";
   const storeUrl = typeof window !== "undefined" ? window.location.href : "";
-  const waShareUrl = `https://wa.me/?text=${encodeURIComponent(`${store.display_name} - অনলাইনে অর্ডার করুন: ${storeUrl}`)}`;
+  const waShareUrl = `https://wa.me/?text=${encodeURIComponent(`${store.display_name} — ${store.is_demo ? "পরীক্ষামূলক দোকানটি দেখুন" : "দোকানটি দেখুন"}: ${storeUrl}`)}`;
 
   // Business hours: check if open now
   function getTodayOpenStatus() {
@@ -1761,6 +1810,10 @@ export default function StorePage() {
               </span>
             )}
           </button>}
+          <button type="button" className="s-theme-toggle" onClick={toggleTheme}
+            aria-label={theme === "dark" ? "লাইট মোড চালু করুন" : "ডার্ক মোড চালু করুন"}
+            title={theme === "dark" ? "লাইট মোড চালু করুন" : "ডার্ক মোড চালু করুন"}
+            aria-pressed={theme === "dark"}>{theme === "dark" ? "☀️" : "🌙"}</button>
           <button className="s-cart-btn" onClick={() => setCartOpen(true)} aria-label={`কার্ট, ${cartCount}টি পণ্য`}>
             🛒 কার্ট <span className="s-cart-badge">{cartCount}</span>
           </button>

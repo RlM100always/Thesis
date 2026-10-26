@@ -4,6 +4,8 @@
  */
 import { useEffect, useState } from "react";
 import { api } from "../api";
+import { useUi } from "../UiContext";
+import { readableAccent } from "../storeContrast";
 import { storeCoverImage } from "../storeImages";
 
 const PRESET_GRAD = {
@@ -234,9 +236,38 @@ const DIR_CSS = `
  .sd-page .sd-discovery-pill{font-size:12px;line-height:1.5}
  .sd-page .sd-hero p{opacity:1}
 }
+
+/* Unified header theme toggle, readable demo labels and responsive store chips. */
+.sd-page .sd-theme-toggle {
+ width:40px;height:40px;display:grid;place-items:center;flex-shrink:0;
+ border:1px solid var(--sd-line);border-radius:11px;
+ background:var(--sd-card);color:var(--sd-text);font-size:19px;cursor:pointer;
+}
+.sd-page .sd-theme-toggle:hover{border-color:var(--sd-accent);background:var(--sd-chip)}
+.sd-page .sd-theme-toggle:focus-visible{outline:3px solid var(--sd-accent);outline-offset:3px}
+.sd-page .sd-demo-label {
+ display:inline-flex;max-width:100%;font-size:11px;font-weight:750;
+ padding:5px 9px;margin:2px 0 9px;border-radius:7px;
+ background:color-mix(in srgb,#c28a27 17%,var(--sd-card));
+ border:1px solid color-mix(in srgb,#c28a27 40%,var(--sd-line));
+ color:var(--sd-text);line-height:1.5;
+}
+.sd-page .sd-card-name,.sd-page .sd-card-tagline{overflow-wrap:anywhere}
+.sd-page .sd-visit-btn{color:var(--sd-accent)}
+.sd-page .sd-card-footer{gap:8px}
+.sd-page .sd-footer{color:#d8eadf}
+.sd-page .sd-footer a{color:#e8fff1}
+@media(max-width:680px){
+ .sd-page .sd-header-inner{gap:9px}
+ .sd-page .sd-theme-toggle{width:36px;height:36px;font-size:17px}
+ .sd-page .sd-back-link{font-size:12px;white-space:nowrap}
+ .sd-page .sd-card-footer{flex-wrap:wrap}
+ .sd-page .sd-visit-btn{line-height:1.5}
+}
 `;
 
 export default function StoreDirectory() {
+  const {theme, toggleTheme} = useUi();
   const [stores, setStores] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
@@ -293,6 +324,9 @@ export default function StoreDirectory() {
           </a>
           <span className="sd-tagline">বাংলাদেশি ব্যবসার অনলাইন দোকানসমূহ</span>
           <div className="sd-header-space" />
+          <button type="button" className="sd-theme-toggle" onClick={toggleTheme}
+            aria-pressed={theme === "dark"} aria-label={theme === "dark" ? "লাইট মোড চালু করুন" : "ডার্ক মোড চালু করুন"}
+            title={theme === "dark" ? "লাইট মোড চালু করুন" : "ডার্ক মোড চালু করুন"}>{theme === "dark" ? "☀️" : "🌙"}</button>
           <a href="#/" className="sd-back-link">← মূল পাতা</a>
         </div>
       </header>
@@ -300,12 +334,13 @@ export default function StoreDirectory() {
       {/* Hero */}
       <div className="sd-hero">
         <div className="sd-hero-eyebrow">🇧🇩 বাংলাদেশের ব্যবসার জন্য</div>
-        <h1>সেরা দোকানগুলো এখন অনলাইনে</h1>
-        <p>এলাকা ও ব্যবসার ধরন অনুযায়ী দোকান খুঁজে অর্ডার করুন</p>
+        <h1>আপনার প্রয়োজনের দোকান খুঁজে নিন</h1>
+        <p>এলাকা ও ব্যবসার ধরন অনুযায়ী দোকান এবং পণ্য দেখুন। ডেমো দোকানে বাস্তব পেমেন্ট বা ডেলিভারি হয় না।</p>
         <div className="sd-search-wrap">
           <span className="sd-search-icon">🔍</span>
           <input
             className="sd-search"
+            aria-label="দোকানের নাম, এলাকা বা ব্যবসার ধরন দিয়ে খুঁজুন"
             placeholder="দোকানের নাম, এলাকা বা ব্যবসার ধরন লিখুন…"
             value={search}
             onChange={e => setSearch(e.target.value)}
@@ -322,8 +357,8 @@ export default function StoreDirectory() {
               <div className="sd-hero-stat-label">বিভাগ</div>
             </div>
             <div className="sd-hero-stat">
-              <div className="sd-hero-stat-num">{stores.filter(s => s.payment_cod).length}</div>
-              <div className="sd-hero-stat-label">COD সুবিধা</div>
+              <div className="sd-hero-stat-num">{stores.filter(s => !s.is_demo && s.payment_cod).length}</div>
+              <div className="sd-hero-stat-label">ডেমো ছাড়া COD দোকান</div>
             </div>
           </div>
         )}
@@ -403,14 +438,14 @@ export default function StoreDirectory() {
                 <div className="sd-card-cover" style={{ background: PRESET_GRAD[s.theme_preset] || PRESET_GRAD.clean }}>
                   <img src={storeCoverImage(s)} alt={`${s.display_name} দোকান`} loading="lazy" />
                   <div className="sd-card-cover-overlay" />
-                  <div className="sd-card-logo" style={{ color: accent }}>
+                  <div className="sd-card-logo" style={{ color: readableAccent(accent, theme === "dark" ? "#102018" : "#ffffff") }}>
                     {s.logo_data_url ? <img src={s.logo_data_url} alt={s.display_name} /> : initial}
                   </div>
                 </div>
                 {/* Body */}
                 <div className="sd-card-body">
                   <div className="sd-card-name">{s.display_name}</div>
-                  {s.is_demo && <div style={{fontSize:11,fontWeight:700,color:"#92400e",background:"#fffbeb",borderRadius:6,padding:"3px 8px",display:"inline-block",marginBottom:6}}>সিমুলেটেড ডেমো · বাস্তব দোকান নয়</div>}
+                  {s.is_demo && <span className="sd-demo-label">শুধু পরীক্ষামূলক দোকান</span>}
                   <div className="sd-card-tagline">{s.tagline || " "}</div>
                   <div className="sd-card-chips">
                     {s.category && <span className="sd-chip sd-chip-cat">{emoji} {s.category}</span>}
@@ -419,11 +454,11 @@ export default function StoreDirectory() {
                 </div>
                 {/* Footer */}
                 <div className="sd-card-footer">
-                  <span className="sd-visit-btn">দোকান দেখুন <span>→</span></span>
+                  <span className="sd-visit-btn">{s.is_demo ? "ডেমো দোকান দেখুন" : "দোকান দেখুন"} <span>→</span></span>
                   <div className="sd-payment-row">
-                    {s.payment_cod && <span className="sd-pay-badge" title="ক্যাশ অন ডেলিভারি">💵</span>}
-                    {s.payment_bkash && <span className="sd-pay-badge" title="bKash">📱</span>}
-                    {s.payment_nagad && <span className="sd-pay-badge" title="Nagad">💳</span>}
+                    {!s.is_demo && s.payment_cod && <span className="sd-pay-badge" title="ক্যাশ অন ডেলিভারি">💵</span>}
+                    {!s.is_demo && s.payment_bkash && <span className="sd-pay-badge" title="bKash">📱</span>}
+                    {!s.is_demo && s.payment_nagad && <span className="sd-pay-badge" title="Nagad">💳</span>}
                   </div>
                 </div>
               </a>
@@ -435,7 +470,7 @@ export default function StoreDirectory() {
       <section style={{textAlign:"center",padding:"20px 16px",background:"var(--sd-card)",color:"var(--sd-text)"}}><strong>নিজের অনলাইন দোকানের ডেমো তৈরি করুন</strong><p style={{color:"var(--sd-muted)"}}>দোকানের তথ্য, পণ্য ও পরীক্ষামূলক অর্ডার একটি জায়গা থেকে পরিচালনা করুন।</p><a className="sd-filter-btn" style={{display:"inline-block",textDecoration:"none"}} href="#/d1-owner">দোকান ব্যবস্থাপনা খুলুন →</a></section>
       {/* Footer */}
       <footer className="sd-footer">
-        <p>Powered by <a href="#/">B-SMART</a> — AI-Powered Business Analytics for Bangladeshi SMEs</p>
+        <p>প্রযুক্তি সহায়তায় <a href="#/">B-SMART</a> · বাংলাদেশের ব্যবসার জন্য তৈরি</p>
       </footer>
     </div>
   );

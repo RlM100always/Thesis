@@ -8,9 +8,9 @@ import Icon from "../ui/Icon";
 import { Button, Card, Field, Notice } from "../ui/kit";
 
 const POINTS = [
-  ["cart", "বিক্রি থেকে stock, payment ও হিসাব একই connected flow তে"],
-  ["userCheck", "Owner, cashier, stock ও accounts সবার আলাদা কাজের panel"],
-  ["zap", "সংখ্যার সঙ্গে কারণ, করণীয় ও outcome"],
+  ["cart", "বিক্রি, মজুত ও লেনদেনের হিসাব একই জায়গায়"],
+  ["userCheck", "মালিক, ক্যাশিয়ার ও কর্মীদের দায়িত্ব অনুযায়ী আলাদা কাজের পাতা"],
+  ["zap", "সংখ্যার সঙ্গে কারণ, করণীয় ও ফলাফলের তথ্য"],
 ];
 
 // Shared by the login screen and the invite screen: brand panel on desktop, a
@@ -31,16 +31,16 @@ export function AuthLayout({ title, subtitle, children }) {
           fontSize: 18, lineHeight: 1, boxShadow: "var(--shadow-2)",
           color: "var(--text)",
         }}
-        title={theme === "dark" ? "Light mode" : "Dark mode"}
+        title={theme === "dark" ? "লাইট মোড চালু করুন" : "ডার্ক মোড চালু করুন"}
       >
         {theme === "dark" ? "☀️" : "🌙"}
       </button>
 
       <section className="auth-brand" aria-hidden="true">
         <img className="auth-logo" src="/bsmart-mark.svg" alt="" />
-        <span className="auth-brand-kicker">B-SMART · Business OS</span>
-        <h1>আপনার পুরো ব্যবসা,<br />একটি নির্ভরযোগ্য সত্যে</h1>
-        <p>বাংলাদেশের SME-এর জন্য actor-aware operation, traceable হিসাব এবং ব্যাখ্যাসহ সিদ্ধান্ত সহায়তা।</p>
+        <span className="auth-brand-kicker">B-SMART · ব্যবসা পরিচালনার সফটওয়্যার</span>
+        <h1>আপনার ব্যবসার প্রয়োজনীয় তথ্য,<br />এক জায়গায়</h1>
+        <p>বাংলাদেশের ছোট ও মাঝারি ব্যবসার বিক্রি, মজুত, হিসাব ও দৈনন্দিন কাজ পরিচালনায় সহায়ক একটি সফটওয়্যার।</p>
         <ul className="auth-points">
           {POINTS.map(([icon, text]) => (
             <li key={icon}><Icon name={icon} size={20} /><span>{text}</span></li>
@@ -49,7 +49,7 @@ export function AuthLayout({ title, subtitle, children }) {
       </section>
       <main className="auth-panel">
         <div className="auth-card">
-          <div className="auth-mobile-brand"><img src="/bsmart-mark.svg" alt="" /><strong>B-SMART</strong><span>Business OS</span></div>
+          <div className="auth-mobile-brand"><img src="/bsmart-mark.svg" alt="" /><strong>B-SMART</strong><span>ব্যবসা পরিচালনা</span></div>
           <div>
             <h2>{title}</h2>
             {subtitle && <p className="muted" style={{ margin: "6px 0 0" }}>{subtitle}</p>}
@@ -80,7 +80,7 @@ function MfaStep({ mfaToken, onBack }) {
   }
 
   return (
-    <AuthLayout title="যাচাইকরণ কোড দিন" subtitle="আপনার authenticator app এর ৬ সংখ্যার কোড অথবা একটি recovery code দিন।">
+    <AuthLayout title="যাচাইকরণ কোড দিন" subtitle="আপনার অথেনটিকেটর অ্যাপের ৬ সংখ্যার কোড অথবা সংরক্ষিত পুনরুদ্ধার কোড লিখুন।">
       <Card>
         <form className="ui-form" onSubmit={submit}>
           <Field label="কোড" required>
@@ -167,14 +167,14 @@ export default function Login({ initialMode = "login" }) {
 
   return (
     <AuthLayout
-      title={isLogin ? "ব্যবসার অ্যাকাউন্টে লগইন করুন" : "Owner account খুলুন"}
-      subtitle={isLogin ? "আপনার membership অনুযায়ী সঠিক কাজের panel খুলবে।" : "নতুন business workspace এবং guided setup শুরু করুন।"}
+      title={isLogin ? "ব্যবসার অ্যাকাউন্টে লগইন করুন" : "নতুন ব্যবসার অ্যাকাউন্ট খুলুন"}
+      subtitle={isLogin ? "লগইন করলে আপনার অনুমতি অনুযায়ী কাজের পাতা দেখতে পাবেন।" : "নিজের ব্যবসার তথ্য যোগ করে ধাপে ধাপে শুরু করুন।"}
     >
       <Card>
         <form className="ui-form" onSubmit={submit} noValidate={false}>
           {!isLogin && (
             <>
-              <div className="auth-owner-note"><Icon name="info" size={17} /><span>এটি নতুন business এর Owner signup। কর্মী হলে মালিক অথবা HR এর invite link ব্যবহার করুন।</span></div>
+              <div className="auth-owner-note"><Icon name="info" size={17} /><span>এখান থেকে ব্যবসার মালিক নতুন অ্যাকাউন্ট খুলতে পারবেন। কর্মী হলে মালিকের পাঠানো আমন্ত্রণ লিংক ব্যবহার করুন।</span></div>
               <Field label="আপনার নাম" required>
                 <input value={form.display_name} onChange={set("display_name")} minLength={2} autoComplete="name" />
               </Field>
