@@ -137,7 +137,9 @@ export async function merchantRouter(req,env,path,output,error){
    return output(req,{store:stripStore(await myStore(env,owner))});
   }
   if(method==="POST"&&path==="/api/merchant/cashbook"){
-   const store=await storeOnly(env,owner),b=await json(req,error);
+   const store=await storeOnly(env,owner);
+   if(!store.is_demo)return bad(req,error,409,"Real accounting is not available in the demo cashbook");
+   const b=await json(req,error);
    const kind=short(b.kind,15),amount=Number(b.amount_bdt),description=short(b.description,140);
    if(!["receipt","expense"].includes(kind)||!integer(amount,1,500000)||description.length<3)
     return bad(req,error,422,"Valid kind, demo amount and note required");
