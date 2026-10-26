@@ -54,3 +54,8 @@
 .dm-brand-tag{color:#fff;font-size:11px;padding:7px 11px;border-radius:9px;font-weight:800}
 .dm-edit-image{max-height:160px;width:100%;object-fit:contain;box-shadow:0 2px 12px #0001;border-radius:12px}
 @media(max-width:450px){.dm-product-main{gap:8px}.dm-product-thumb{width:56px;height:56px}.dm-theme-settings{grid-template-columns:1fr}.dm-store-theme-preview{padding:12px}}
+
+.dm-store-media{position:relative;margin:3px 0 12px;background:var(--dm-bg);border-radius:15px;overflow:hidden;border:1px solid var(--dm-line);min-height:100px}
+.dm-cover-preview{display:block;width:100%;max-height:200px;min-height:90px;object-fit:cover}
+.dm-logo-preview{display:block;width:65px;height:65px;object-fit:cover;background:var(--dm-surface);border:3px solid var(--dm-surface);border-radius:14px;box-shadow:0 2px 12px #0003;margin:10px}
+.dm-cover-preview+.dm-logo-preview{position:absolute;left:12px;bottom:5px;margin:0}
