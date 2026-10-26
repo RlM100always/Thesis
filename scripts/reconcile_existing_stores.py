@@ -104,6 +104,8 @@ def main(argv=None) -> int:
         if len(orgs)!=1:
             parser.error("Exactly one existing organization may be changed per invocation")
         org=orgs[0]
+        if (org.sector or "").lower() == "pharmacy" and args.publish_new_products:
+            parser.error("Pharmacy items require manual licensed review before public listing")
         before=_record_counts(db,org)
         store=db.scalar(select(Store).where(Store.organization_id == org.id))
         try:
