@@ -46,7 +46,9 @@ async function myStore(env,owner){
 async function storeOnly(env,owner){const row=await myStore(env,owner);if(!row)throw new Error("Create a store first");return row;}
 function stripStore(s){return {id:s.id,slug:s.slug,name:s.name,tagline:s.tagline||"",category:s.category||"",area:s.area||"",is_active:!!s.is_active,is_demo:!!s.is_demo,created_at:s.created_at,real_cod_approved:!!s.real_cod_approved,theme:s.theme||"clean",color:s.color||"#087e59",
  logo_image_url:s.logo_image_url||"",cover_image_url:s.cover_image_url||"",
- public_phone:s.public_phone||"",public_address:s.public_address||""};}
+ public_phone:s.public_phone||"",public_address:s.public_address||"",
+ announcement_text:s.announcement_text||"",about_text:s.about_text||"",
+ delivery_policy_text:s.delivery_policy_text||"",return_policy_text:s.return_policy_text||""};}
 async function dashboard(env,owner){
  const store=await myStore(env,owner);
  if(!store)return {account:{email:owner.email},store:null,products:[],orders:[],metrics:{orders:0,inventory_units:0,placed_total_bdt:0},stock_adjustments:[],cashbook:[]};
@@ -180,8 +182,12 @@ export async function merchantRouter(req,env,path,output,error){
    const incomingPhone=short(b.public_phone??store.public_phone,25);
    const phone=incomingPhone?normalizeBangladeshPhone(incomingPhone):"";
    const address=short(b.public_address??store.public_address,300);
+   const announcement=short(b.announcement_text??store.announcement_text,180);
+   const about=short(b.about_text??store.about_text,1800);
+   const deliveryPolicy=short(b.delivery_policy_text??store.delivery_policy_text,1800);
+   const returnPolicy=short(b.return_policy_text??store.return_policy_text,1800);
    if(name.length<3||!area||!category||!["clean","bold","warm","fresh","purple","ocean"].includes(theme)||!color||(incomingPhone&&!phone))return bad(req,error,422,"Invalid store profile, theme or color");
-   await env.DB.prepare("UPDATE commerce_stores SET name=?,tagline=?,category=?,area=?,theme=?,color=?,logo_image_url=?,cover_image_url=?,public_phone=?,public_address=?,is_active=? WHERE id=? AND owner_id=?").bind(name,tagline,category,area,theme,color,logoImage,coverImage,phone,address,activate,store.id,owner.id).run();
+   await env.DB.prepare("UPDATE commerce_stores SET name=?,tagline=?,category=?,area=?,theme=?,color=?,logo_image_url=?,cover_image_url=?,public_phone=?,public_address=?,announcement_text=?,about_text=?,delivery_policy_text=?,return_policy_text=?,is_active=? WHERE id=? AND owner_id=?").bind(name,tagline,category,area,theme,color,logoImage,coverImage,phone,address,announcement,about,deliveryPolicy,returnPolicy,activate,store.id,owner.id).run();
    return output(req,{store:stripStore(await myStore(env,owner))});
   }
   if(method==="POST"&&path==="/api/merchant/cashbook"){
