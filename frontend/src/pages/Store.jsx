@@ -1659,10 +1659,10 @@ export default function StorePage() {
 
       {/* Sticky cart bar (desktop) */}
       {cartCount > 0 && view === "home" && (
-        <div className="s-sticky-bar" onClick={() => setCartOpen(true)} style={{ display: "flex" }}>
+        <button type="button" className="s-sticky-bar" onClick={() => setCartOpen(true)} style={{ display: "flex" }} aria-label="কার্ট খুলুন">
           <span className="s-sticky-bar-left">🛒 {cartCount}টি পণ্য কার্টে</span>
-          <span className="s-sticky-bar-right">অর্ডার করুন — {money(cartTotal)} →</span>
-        </div>
+          <span className="s-sticky-bar-right">কার্ট দেখুন — {money(cartTotal)} →</span>
+        </button>
       )}
 
       {/* Header */}
@@ -1753,6 +1753,12 @@ export default function StorePage() {
             </div>
             <h1>{store.display_name}</h1>
             {store.tagline && <p>{store.tagline}</p>}
+            <div className="s-hero-metrics">
+              <div><strong>{products.length}</strong><span>প্রকাশিত পণ্য</span></div>
+              <div><strong>{allCats.length}</strong><span>পণ্যের বিভাগ</span></div>
+              <div><strong>{store.is_demo?"ডেমো":store.real_cod_enabled?"COD":"স্টোর"}</strong>
+                <span>{store.is_demo?"বাস্তব অর্ডার নয়":store.real_cod_enabled?"ডেলিভারির সময় মূল্য":"দোকানের তথ্য"}</span></div>
+            </div>
             <div className="s-trust-row">
               {store.category && <span className="s-trust-chip">🏷️ {store.category}</span>}
               {store.area && <span className="s-trust-chip">📍 {store.area}</span>}
@@ -1798,7 +1804,8 @@ export default function StorePage() {
                   <ProductCard key={p.id} product={p} cartQty={cart[p.id] || 0}
                     storeCategory={store.category}
                     showStockLevel={store.show_stock_level}
-                    onAdd={addToCart} onQtyChange={setQty} onView={viewProduct} />
+                    isFavorite={favoriteProducts.includes(String(p.id))} onFavorite={favoriteProduct}
+                     onAdd={addToCart} onQtyChange={setQty} onView={viewProduct} />
                 ))}
               </div>
             </div>
@@ -1807,7 +1814,7 @@ export default function StorePage() {
           {/* All products */}
           <div className="s-section" id="store-products" style={{ paddingBottom: cartCount > 0 ? 80 : undefined }}>
             <div className="s-section-head">
-              <h2>সব পণ্য</h2>
+              <h2>পণ্য খুঁজুন ও কিনুন</h2>
               <span className="s-badge">{products.length}</span>
             </div>
             {/* Category tabs */}
@@ -1830,19 +1837,27 @@ export default function StorePage() {
                 />
               </div>
             </div>
+            <div className="s-shopping-filters" role="group" aria-label="পণ্যের দ্রুত ফিল্টার">
+              <button type="button" className={`s-shopping-filter${onlyAvailable?" active":""}`} aria-pressed={onlyAvailable} onClick={()=>setOnlyAvailable(v=>!v)}>✓ মজুত আছে</button>
+              <button type="button" className={`s-shopping-filter${onlyFavorites?" active":""}`} aria-pressed={onlyFavorites} onClick={()=>setOnlyFavorites(v=>!v)}>♥ পছন্দের পণ্য ({favCount})</button>
+              {(search||activeCat||onlyFavorites||onlyAvailable)&&<button type="button" className="s-shopping-clear" onClick={()=>{setSearch("");setActiveCat(null);setOnlyAvailable(false);setOnlyFavorites(false);setVisibleCount(20);}}>সব ফিল্টার মুছুন</button>}
+            </div>
             <div className="s-store-toolbar">
-              <span className="s-result-count">{sortedProducts.length}টি পণ্য</span>
+              <span className="s-result-count">{sortedProducts.length}টি পণ্য দেখানো হচ্ছে</span>
               <select className="s-sort-select" aria-label="পণ্য সাজান" value={sortOrder} onChange={e => setSortOrder(e.target.value)}>
                 <option value="recommended">প্রস্তাবিত ক্রম</option>
                 <option value="price-low">দাম: কম থেকে বেশি</option>
                 <option value="price-high">দাম: বেশি থেকে কম</option>
                 <option value="name">নাম অনুযায়ী</option>
+                <option value="available">মজুত আছে আগে</option>
+                <option value="featured">বিশেষ পণ্য আগে</option>
               </select>
             </div>
             {filtered.length === 0 && (
               <div style={{ textAlign: "center", padding: "48px 16px" }}>
                 <div style={{ fontSize: 48, marginBottom: 12 }}>🔍</div>
-                <p style={{ color: "#8aaa97" }}>কোনো পণ্য পাওয়া যায়নি।</p>
+                <p style={{ color: "var(--s-muted)" }}>এই ফিল্টারে কোনো পণ্য পাওয়া যায়নি। অন্য বিভাগ বা পছন্দের তালিকা দেখুন।</p>
+                <button type="button" className="s-shopping-clear" onClick={()=>{setSearch("");setActiveCat(null);setOnlyFavorites(false);setOnlyAvailable(false);}}>সব পণ্য দেখুন</button>
               </div>
             )}
             <div className="s-product-grid">
@@ -1850,7 +1865,8 @@ export default function StorePage() {
                 <ProductCard key={p.id} product={p} cartQty={cart[p.id] || 0}
                   storeCategory={store.category}
                   showStockLevel={store.show_stock_level}
-                  onAdd={addToCart} onQtyChange={setQty} onView={viewProduct} />
+                  isFavorite={favoriteProducts.includes(String(p.id))} onFavorite={favoriteProduct}
+                     onAdd={addToCart} onQtyChange={setQty} onView={viewProduct} />
               ))}
             </div>
             {visibleCount < sortedProducts.length && (
@@ -1876,7 +1892,11 @@ export default function StorePage() {
               <img src={selectedProduct.image_data_url || productImage(selectedProduct, store.category)} alt={selectedProduct.name} loading="lazy" />
             </div>
             <div className="s-detail-info">
-              <h1 className="s-detail-name">{selectedProduct.name}</h1>
+              <div className="s-detail-title-row"><h1 className="s-detail-name">{selectedProduct.name}</h1>
+                 <button className={`s-detail-favorite${favoriteProducts.includes(String(selectedProduct.id))?" selected":""}`}
+                   type="button" aria-label="পছন্দের তালিকা পরিবর্তন করুন" aria-pressed={favoriteProducts.includes(String(selectedProduct.id))}
+                   onClick={()=>favoriteProduct(selectedProduct.id)}>{favoriteProducts.includes(String(selectedProduct.id))?"♥":"♡"}</button>
+               </div>
               <div className="s-product-unit">{selectedProduct.unit}</div>
               {selectedProduct.price != null && (
                 <div className="s-detail-price">{money(selectedProduct.price)}</div>
