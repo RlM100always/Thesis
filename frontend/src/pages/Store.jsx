@@ -575,6 +575,10 @@ button.s-contact-price { background: transparent; border: 0; padding: 4px 0; tex
  .s-info-grid{grid-template-columns:1fr}
  .s-info-card{padding:15px}
 }
+.s-checkout-policies{margin:16px 0;border:1px solid var(--s-border);border-radius:12px;background:var(--s-card);color:var(--s-ink);padding:11px 13px;font-size:13px;line-height:1.65}
+.s-checkout-policies summary{font-weight:800;cursor:pointer}
+.s-checkout-policies>div{margin-top:12px;border-top:1px solid var(--s-border);padding-top:12px}
+.s-checkout-policies p{white-space:pre-line;color:var(--s-muted);margin:6px 0;overflow-wrap:anywhere}
 `;
 
 function useInjectCSS(css) {
@@ -1331,6 +1335,13 @@ function CheckoutView({ store, cart, products, onBack, onDone, scCustomer, varia
           </div>
         )}
 
+        {(store.delivery_policy_text||store.return_policy_text)&&
+          <details className="s-checkout-policies">
+            <summary>দোকানের ডেলিভারি ও রিটার্নের তথ্য পড়ুন</summary>
+            {store.delivery_policy_text&&<div><strong>ডেলিভারি:</strong><p>{store.delivery_policy_text}</p></div>}
+            {store.return_policy_text&&<div><strong>রিটার্ন:</strong><p>{store.return_policy_text}</p></div>}
+            {store.is_demo&&<p><strong>এটি ডেমো। কোনো বাস্তব ডেলিভারি, পেমেন্ট বা রিটার্ন হবে না।</strong></p>}
+          </details>}
         {isD1RealCOD && <label style={{display:"flex",gap:10,alignItems:"flex-start",lineHeight:1.6,margin:"16px 0",fontSize:13}}>
           <input type="checkbox" checked={privacyConsent} onChange={e=>setPrivacyConsent(e.target.checked)} required />
           আমি সম্মতি দিচ্ছি যে ডেলিভারি ও অর্ডার নিশ্চিত করার জন্য আমার নাম, ফোন ও ঠিকানা এই দোকানের মালিকের সঙ্গে শেয়ার হবে। অগ্রিম টাকা পাঠাতে হবে না।
