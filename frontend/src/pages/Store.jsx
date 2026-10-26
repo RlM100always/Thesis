@@ -906,7 +906,7 @@ function CheckoutView({ store, cart, products, onBack, onDone, scCustomer, varia
           quantity,
           variant_label: variantSelections?.[product_id] || undefined,
         })),
-        store_customer_token: scToken || undefined,
+        store_customer_token: isD1RealCOD ? undefined : scToken || undefined,
         coupon_code: couponResult?.code || undefined,
       });
       setSubmitCooldown(30);
@@ -1664,7 +1664,7 @@ export default function StorePage() {
           <a href={waShareUrl} target="_blank" rel="noopener noreferrer" className="s-wa-btn" title="WhatsApp-এ শেয়ার করুন">
             📤
           </a>
-          {!store.is_demo && <button onClick={() => setPortalOpen(true)} title="আমার অ্যাকাউন্ট"
+          {!store.is_demo && store.real_cod_enabled === undefined && <button onClick={() => setPortalOpen(true)} title="আমার অ্যাকাউন্ট"
             style={{ background: "none", border: "1px solid var(--border,rgba(0,0,0,.12))", borderRadius: 20, padding: "7px 13px", fontSize: 13, fontWeight: 600, cursor: "pointer", color: "var(--sa)", display: "flex", alignItems: "center", gap: 5, position: "relative" }}>
             👤 {scCustomer ? scCustomer.display_name.split(" ")[0] : "অ্যাকাউন্ট"}
             {chatUnread > 0 && (
@@ -1680,7 +1680,7 @@ export default function StorePage() {
       </header>
 
       {/* Customer portal */}
-      {portalOpen && !store.is_demo && (
+      {portalOpen && !store.is_demo && store.real_cod_enabled === undefined && (
         <StoreCustomerPortal
           storeSlug={store.slug}
           storeName={store.display_name}
