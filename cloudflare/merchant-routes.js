@@ -22,8 +22,12 @@ const cleanImage=value=>{
  if(v.length>900)throw new Error("Image URL too long");
  let u;
  try{u=new URL(v);}catch{throw new Error("Invalid product image URL");}
- if(u.protocol!=="https:"||u.username||u.password||!u.hostname||u.hostname==="localhost"||
-    /(?:^|\\.)(?:local|internal)$/.test(u.hostname)||/^(?:127\\.|10\\.|192\\.168\\.|169\\.254\\.|172\\.(?:1[6-9]|2\\d|3[01])\\.)/.test(u.hostname))
+ const host=u.hostname.toLowerCase();
+ const suffix=["localhost","local","internal"].some(part=>host===part||host.endsWith("."+part));
+ // Displaying remote images is a customer privacy choice, so disallow local
+ // and raw IP targets instead of allowing untrusted URL forms by default.
+ const ipLiteral=/^[0-9.]+$/.test(host)||host.includes(":")||host.startsWith("[");
+ if(u.protocol!=="https:"||u.username||u.password||!host||suffix||ipLiteral)
   throw new Error("Product image must use a public HTTPS URL");
  return u.href;
 };
