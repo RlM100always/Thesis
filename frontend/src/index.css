@@ -2835,3 +2835,59 @@ a.btn-primary, a.btn-secondary { text-decoration: none; display: inline-block; }
   .public-site .before-after-cell.after { padding: 12px 14px; }
 }
 /* ================= END THEME CONTRAST PATCH V2 ================= */
+
+/* Public-facing visual QA v13: scoped semantic colors, never change account UI. */
+.public-site{color:var(--public-ink);background:var(--public-surface);line-height:1.65}
+.public-site :is(button,input,select,textarea){font-family:var(--font-ui)}
+.public-site :is(button,a,input,select,textarea,summary):focus-visible{
+ outline:3px solid var(--public-green);outline-offset:3px;
+}
+.public-site :is(.public-pagehero h1,.public-hero h1,.public-sectionhead h2,.pricing-grid h2,.faq-list summary){
+ color:var(--public-ink);
+}
+.public-site :is(.public-pagehero p,.public-sectionhead p,.pricing-grid p,.faq-list p,.public-flow span){
+ color:var(--public-muted);
+}
+.public-site .public-cta:not(.light){color:#fff!important}
+.public-site .public-nav a{color:var(--public-nav-text)}
+.public-site .public-nav a.active{color:var(--public-green);background:var(--public-nav-hover-bg)}
+.public-site .public-menu{color:var(--public-ink);border-color:var(--pub-card-border);background:var(--pub-card)}
+.public-site .public-theme-toggle{color:var(--public-ink);border-color:var(--pub-card-border);background:var(--pub-card)}
+.public-site :is(.public-productshot,.owner-problem-grid article,.pricing-grid article,.legal-copy article,.solution-grid>a,.guideline-steps article,.contact-grid article,.help-grid>a){
+ border-color:var(--pub-card-border);color:var(--public-ink);
+}
+.public-site .owner-problem-section{background:var(--public-cream)}
+.public-site .owner-problem-grid article{background:var(--pub-card)}
+.public-site .owner-problem-grid article>span{background:var(--pub-icon-bg);color:var(--public-green)}
+.public-site .owner-problem-grid article>div{border-color:var(--pub-card-border)}
+.public-site .owner-problem-grid article>div b{color:var(--public-green)}
+.public-site .owner-problem-grid article>div small{color:var(--public-muted)}
+.public-site .before-after-grid{border-color:var(--pub-card-border)}
+.public-site .before-after-row{background:var(--pub-card);border-color:var(--pub-card-border)}
+.public-site .before-after-cell.after{background:var(--pub-subtle);color:var(--public-ink)}
+.public-site .before-after-cell.before{color:var(--public-ink)}
+.public-site .before-after-head span:first-child{background:color-mix(in srgb,#e05151 12%,var(--pub-card));color:var(--public-ink)}
+.public-site .before-after-head span:last-child{background:color-mix(in srgb,var(--public-green) 14%,var(--pub-card));color:var(--public-ink)}
+.public-site .public-notice.warn{background:color-mix(in srgb,#c78617 13%,var(--pub-card));border-color:color-mix(in srgb,#c78617 35%,var(--pub-card-border));color:var(--public-ink)}
+.public-site .public-notice.warn>.ui-icon{color:var(--public-ink)}
+.public-site :is(.status-components article>span,.solution-grid small,.public-legal a){color:var(--public-muted)}
+.public-site .public-legal a{text-decoration:underline;text-underline-offset:3px}
+.public-site .public-footer a{color:#d7e8df}
+.public-site .public-footer a:hover{color:#fff}
+.public-site .public-hero-copy>p{color:var(--public-muted)}
+.public-site .product-tour-copy>p{color:#d2e9dc}
+.public-site .ai-decision-head .public-sectionhead p{color:#d2e9dc}
+.public-site .ai-signal span{color:#d4e8dc}
+.public-site .product-tour-stage{color:#fff}
+.public-site .tour-window{color:#15271f}
+:root[data-theme="dark"] .public-site {--public-muted:#b7cebf;--public-nav-text:#d0e4d5;--pub-card-border:#3b5144;--pub-notice-border:#365b45;}
+@media(prefers-color-scheme:dark){
+ :root:not([data-theme="light"]):not([data-theme="dark"]) .public-site{
+ --public-muted:#b7cebf;--public-nav-text:#d0e4d5;--pub-card-border:#3b5144;--pub-notice-border:#365b45;
+ }
+}
+@media(max-width:620px){
+ .public-site :is(.public-pagehero p,.public-hero-copy>p){font-size:15px;line-height:1.75}
+ .public-site .public-pagehero h1{overflow-wrap:anywhere}
+ .public-site .faq-list summary{line-height:1.65}
+}
