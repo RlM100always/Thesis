@@ -12,12 +12,16 @@ const LABEL = {
   dispatched: ["ডেলিভারির জন্য পাঠানো হয়েছে", "info"],
   delivered: ["ডেলিভারি সম্পন্ন", "success"],
   cancelled: ["অর্ডার বাতিল হয়েছে", "danger"],
+  shipped: ["বিক্রেতা পাঠানো হয়েছে বলে চিহ্নিত করেছেন", "info"],
+  fulfilled: ["বিক্রেতা সম্পন্ন চিহ্নিত করেছেন (পেমেন্ট যাচাইকৃত নয়)", "success"],
 };
 
 const STEPS = ["placed", "confirmed", "ready", "dispatched", "delivered"];
+const COD_STEPS = ["placed","confirmed","shipped","fulfilled"];
+const DEMO_STEPS = ["placed","confirmed","fulfilled"];
 
-function StatusTimeline({ status }) {
-  const currentIdx = STEPS.indexOf(status);
+function StatusTimeline({ status, steps=STEPS }) {
+  const currentIdx = steps.indexOf(status);
   if (status === "cancelled") return (
     <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "12px 0", color: "#ef4444", fontWeight: 600, fontSize: 13 }}>
       ❌ অর্ডার বাতিল হয়েছে
@@ -25,7 +29,7 @@ function StatusTimeline({ status }) {
   );
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 0, margin: "16px 0", overflowX: "auto" }}>
-      {STEPS.map((s, i) => {
+      {steps.map((s, i) => {
         const done = i <= currentIdx;
         const active = i === currentIdx;
         return (
@@ -43,7 +47,7 @@ function StatusTimeline({ status }) {
                 {LABEL[s]?.[0]?.split(",")[0] || s}
               </div>
             </div>
-            {i < STEPS.length - 1 && (
+            {i < steps.length - 1 && (
               <div style={{ height: 2, flex: 1, background: i < currentIdx ? "#0a8752" : "var(--border)", marginBottom: 16 }} />
             )}
           </div>
@@ -106,7 +110,17 @@ export default function OrderStatusPage() {
             <p className="muted" style={{ fontSize: 13 }}>আনুমানিক ডেলিভারি: {dateBn(order.expected_delivery_at)}</p>
           )}
 
-          <StatusTimeline status={order.status} />
+          <StatusTimeline status={order.status} steps={order.order_number?.startsWith("COD-")?COD_STEPS:order.order_number?.startsWith("DEMO-")?DEMO_STEPS:STEPS} />
+          {Array.isArray(order.status_events)&&order.status_events.length>0&&
+            <section aria-label="Recorded order updates" style={{margin:"12px 0 18px",padding:"12px",background:"var(--surface)",border:"1px solid var(--border)",borderRadius:10}}>
+              <strong style={{fontSize:14}}>অর্ডার আপডেট ইতিহাস</strong>
+              <ol style={{fontSize:12,lineHeight:1.8,paddingLeft:20,margin:"8px 0"}}>
+                {order.status_events.map((ev,i)=><li key={ev.created_at+"-"+i}>
+                  {LABEL[ev.status]?.[0]||ev.status} — {dateBn(ev.created_at)}
+                </li>)}
+              </ol>
+              <p className="muted" style={{fontSize:11,margin:0}}>এই তথ্য অ্যাপের status changes। Courier delivery বা টাকা সংগ্রহের স্বাধীন প্রমাণ নয়।</p>
+            </section>}
 
           {order.status_note && (
             <div style={{ padding: "10px 14px", background: "color-mix(in srgb, #3b82f6 10%, transparent)", borderRadius: 8, border: "1px solid #3b82f640", fontSize: 13, marginBottom: 12 }}>
