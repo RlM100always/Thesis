@@ -1602,7 +1602,7 @@ export default function StorePage() {
   return (
     <div className="s-site">
       {store.is_demo && <div role="status" style={{position:"relative",zIndex:50,padding:"12px 16px",background:"#fef3c7",color:"#78350f",fontWeight:700,textAlign:"center"}}>
-        ডেমো দোকান — পণ্য, মূল্য ও স্টক উদাহরণ মাত্র। অর্ডার দিলে বাস্তব ডেলিভারি হবে না; আসল ব্যক্তিগত তথ্য বা টাকা দেবেন না।
+        Cloudflare D1-তে চালু ডেমো দোকান — অর্ডার রেকর্ড হবে, কিন্তু বাস্তব ডেলিভারি বা পেমেন্ট নেই। নাম/ফোন/ঠিকানায় নমুনা তথ্য ব্যবহার করুন; আসল টাকা পাঠাবেন না।
       </div>}
       {/* Floating cart button (mobile) */}
       {cartCount > 0 && (
@@ -1653,7 +1653,7 @@ export default function StorePage() {
           <a href={waShareUrl} target="_blank" rel="noopener noreferrer" className="s-wa-btn" title="WhatsApp-এ শেয়ার করুন">
             📤
           </a>
-          <button onClick={() => setPortalOpen(true)} title="আমার অ্যাকাউন্ট"
+          {!store.is_demo && <button onClick={() => setPortalOpen(true)} title="আমার অ্যাকাউন্ট"
             style={{ background: "none", border: "1px solid var(--border,rgba(0,0,0,.12))", borderRadius: 20, padding: "7px 13px", fontSize: 13, fontWeight: 600, cursor: "pointer", color: "var(--sa)", display: "flex", alignItems: "center", gap: 5, position: "relative" }}>
             👤 {scCustomer ? scCustomer.display_name.split(" ")[0] : "অ্যাকাউন্ট"}
             {chatUnread > 0 && (
@@ -1661,7 +1661,7 @@ export default function StorePage() {
                 {chatUnread > 9 ? "9+" : chatUnread}
               </span>
             )}
-          </button>
+          </button>}
           <button className="s-cart-btn" onClick={() => setCartOpen(true)} aria-label={`কার্ট, ${cartCount}টি পণ্য`}>
             🛒 কার্ট <span className="s-cart-badge">{cartCount}</span>
           </button>
@@ -1669,7 +1669,7 @@ export default function StorePage() {
       </header>
 
       {/* Customer portal */}
-      {portalOpen && (
+      {portalOpen && !store.is_demo && (
         <StoreCustomerPortal
           storeSlug={store.slug}
           storeName={store.display_name}
