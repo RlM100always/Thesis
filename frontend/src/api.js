@@ -6,6 +6,56 @@ import { authedFetch, clearTokens, getTokens, saveTokens } from "./auth";
 
 const BASE = import.meta.env.VITE_API_URL ?? (import.meta.env.PROD ? "" : "http://127.0.0.1:8000");
 
+/* Dedicated, durable Cloudflare D1 commerce demo API.
+   Operational tenant POS/auth/order data remain in the existing FastAPI
+   database until their audited migration; never represent demo stores as real. */
+const D1_COMMERCE = (import.meta.env.VITE_D1_COMMERCE_URL ||
+  "https://bsmart-commerce-api.bcs-written-rakib.workers.dev").replace(/\/$/, "");
+const isD1Store = (id) => String(id || "").startsWith("demo-bsmart-");
+async function d1Commerce(path, { method = "GET", body } = {}) {
+  const response = await fetch(D1_COMMERCE + path, {
+    method,
+    headers: { "Content-Type": "application/json" },
+    ...(body !== undefined ? {body: JSON.stringify(body)} : {}),
+  });
+  if (!response.ok) {
+    throw Object.assign(new Error(await detailOf(response)), { status: response.status });
+  }
+  return response.json();
+}
+async function storesFromBothSources() {
+  const [operational, demo] = await Promise.allSettled([
+    request("/api/public/store/"),
+    d1Commerce("/api/public/store/"),
+  ]);
+  if (operational.status === "rejected" && demo.status === "rejected") {
+    throw new Error("Business database and Cloudflare D1 storefronts are both unavailable");
+  }
+  const actual = operational.status === "fulfilled" && Array.isArray(operational.value)
+    ? operational.value : [];
+  const demos = demo.status === "fulfilled" && Array.isArray(demo.value)
+    ? demo.value : [];
+  const seen = new Set(actual.map(x => x.slug));
+  return [...actual, ...demos.filter(x => !seen.has(x.slug))];
+}
+async function storesStatus() {
+  const [real,demo] = await Promise.allSettled([
+    request("/api/public/store/diagnostics"),
+    d1Commerce("/api/public/store/diagnostics"),
+  ]);
+  if (real.status === "rejected" && demo.status === "rejected")
+    throw new Error("Store availability status is unavailable");
+  const r = real.status === "fulfilled" ? real.value : {};
+  const d = demo.status === "fulfilled" ? demo.value : {};
+  const active = Number(r.active_stores || 0) + Number(d.active_stores || 0);
+  const listed = Number(r.listed_products || 0) + Number(d.listed_products || 0);
+  return {active_stores:active,listed_products:listed,catalog_ready:active>0&&listed>0,
+    operational_active_stores:Number(r.active_stores||0),
+    d1_demo_stores:Number(d.active_stores||0),
+    source:"operational + Cloudflare D1 demo"};
+}
+
+
 async function request(path) {
   const res = await fetch(`${BASE}${path}`);
   if (!res.ok) {
@@ -465,13 +515,13 @@ export const api = {
   convertQuote: (org, id, body) => appRequest(`/api/app/sales-documents/${id}/convert-to-order`, { method: "POST", body, organizationId: org }),
   invoiceSalesOrder: (org, id, body) => appRequest(`/api/app/sales-documents/${id}/invoice`, { method: "POST", body, organizationId: org }),
   // Public online-storefront checkout — no auth, no org header.
-  publicCatalog: (orgId) => request(`/api/public/orders/${orgId}/products`),
-  placePublicOrder: (orgId, body) => post(`/api/public/orders/${orgId}`, body),
-  publicOrderStatus: (orgId, token) => request(`/api/public/orders/${orgId}/status/${token}`),
-  getPublicStores: () => request("/api/public/store/"),
-  publicStoreDiagnostics: () => request("/api/public/store/diagnostics"),
-  getPublicStoreBySlug: (slug) => request(`/api/public/store/slug/${encodeURIComponent(slug)}`),
-  getPublicStore: (orgId) => request(`/api/public/store/${orgId}`),
+  publicCatalog: (orgId) => isD1Store(orgId) ? d1Commerce(`/api/public/orders/${encodeURIComponent(orgId)}/products`) : request(`/api/public/orders/${encodeURIComponent(orgId)}/products`),
+  placePublicOrder: (orgId, body) => isD1Store(orgId) ? d1Commerce(`/api/public/orders/${encodeURIComponent(orgId)}`, { method: "POST", body }) : post(`/api/public/orders/${encodeURIComponent(orgId)}`, body),
+  publicOrderStatus: (orgId, token) => isD1Store(orgId) ? d1Commerce(`/api/public/orders/${encodeURIComponent(orgId)}/status/${encodeURIComponent(token)}`) : request(`/api/public/orders/${encodeURIComponent(orgId)}/status/${encodeURIComponent(token)}`),
+  getPublicStores: () => storesFromBothSources(),
+  publicStoreDiagnostics: () => storesStatus(),
+  getPublicStoreBySlug: (slug) => isD1Store(slug) ? d1Commerce(`/api/public/store/slug/${encodeURIComponent(slug)}`) : request(`/api/public/store/slug/${encodeURIComponent(slug)}`),
+  getPublicStore: (orgId) => isD1Store(orgId) ? d1Commerce(`/api/public/store/${encodeURIComponent(orgId)}`) : request(`/api/public/store/${encodeURIComponent(orgId)}`),
   // Store admin — tenant-scoped, JWT required.
   getStore: () => appRequest("/api/app/store"),
   createStore: (body) => appRequest("/api/app/store", { method: "POST", body }),
@@ -721,7 +771,7 @@ export const api = {
     }).then(r => r.ok ? r.json() : r.json().then(e => Promise.reject(new Error(e.detail || "Review failed"))));
   },
 
-  validateCoupon: (orgId, code, orderSubtotal) => post(`/api/public/store/${encodeURIComponent(orgId)}/coupon/validate`, {code, order_subtotal:orderSubtotal}),
+  validateCoupon: (orgId, code, orderSubtotal) => isD1Store(orgId) ? Promise.reject(new Error("ডেমো দোকানে কুপন প্রযোজ্য নয়")) : post(`/api/public/store/${encodeURIComponent(orgId)}/coupon/validate`, {code, order_subtotal:orderSubtotal}),
 
   getRevenueChart: (days = 30) => appRequest(`/api/app/store/revenue-chart?days=${days}`),
 
