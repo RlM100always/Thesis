@@ -53,6 +53,9 @@ export async function merchantRouter(req,env,path,output,error){
    const email=short(b.email,200).toLowerCase();
    if(!validEmail(email)||typeof b.password!=="string"||b.password.length<12||b.password.length>96)
     return bad(req,error,422,"Valid email and a password of 12-96 characters required");
+   // Guard this opt-in demo platform from automated bulk account creation.
+   const today=await env.DB.prepare("SELECT COUNT(*) AS n FROM merchant_accounts WHERE created_at >= datetime('now','start of day')").first();
+   if(Number(today?.n||0)>=20)return bad(req,error,429,"Daily demo registration limit reached");
    const exists=await env.DB.prepare("SELECT id FROM merchant_accounts WHERE email=?").bind(email).first();
    if(exists)return bad(req,error,409,"Account already exists");
    const salt=newSalt(),hash=await derive(b.password,salt);
@@ -94,6 +97,32 @@ export async function merchantRouter(req,env,path,output,error){
    const token=req.headers.get("Authorization").slice(7);
    await env.DB.prepare("DELETE FROM merchant_sessions WHERE token_hash=?").bind(await sha256(token)).run();
    return output(req,{logged_out:true});
+  }
+  if(method==="POST"&&path==="/api/merchant/delete-account"){
+   const body=await json(req,error);
+   if(body.confirm!=="DELETE DEMO ACCOUNT")return bad(req,error,422,"Explicit account deletion confirmation required");
+   const store=await myStore(env,owner);
+   if(store&&(!store.is_demo||!store.id.startsWith("merchant-")))
+     return bad(req,error,409,"Only isolated demo stores can be deleted automatically");
+   if(store){
+     const x=await env.DB.prepare("SELECT COUNT(*) AS n FROM commerce_orders WHERE store_id=?").bind(store.id).first();
+     if(x.n)return bad(req,error,409,"Cannot delete account with order history; contact admin for data export and supervised deletion");
+   }
+   const statements=[];
+   if(store){
+     statements.push(
+       env.DB.prepare("DELETE FROM commerce_stock_adjustments WHERE store_id=?").bind(store.id),
+       env.DB.prepare("DELETE FROM commerce_products WHERE store_id=?").bind(store.id),
+       env.DB.prepare("DELETE FROM commerce_stores WHERE owner_id=? AND id=?").bind(owner.id,store.id)
+     );
+   }
+   statements.push(
+     env.DB.prepare("DELETE FROM merchant_sessions WHERE account_id=?").bind(owner.id),
+     env.DB.prepare("DELETE FROM merchant_login_attempts WHERE email=?").bind(owner.email),
+     env.DB.prepare("DELETE FROM merchant_accounts WHERE id=?").bind(owner.id)
+   );
+   await env.DB.batch(statements);
+   return output(req,{deleted:true});
   }
   if(method==="GET"&&path==="/api/merchant/dashboard")return output(req,await dashboard(env,owner));
   if(method==="POST"&&path==="/api/merchant/store"){
