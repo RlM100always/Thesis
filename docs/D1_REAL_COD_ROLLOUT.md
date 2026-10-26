@@ -187,3 +187,33 @@ migration tests, frontend production build, backend integration suite; stage
 two- and three-product comparisons on Android/iOS/desktop, stale product IDs,
 private browsing storage failures, demo disclosure, seller information
 updates, and checkout regression tests. This branch remains a **draft PR**.
+
+
+## Advanced catalogue and store FAQ (schema v12, staged only)
+
+- Cloudflare D1 migration `0012_storefront_catalog_gallery_faq.sql` is additive:
+  `commerce_products.gallery_json` and `commerce_stores.faq_json`,
+  both default to JSON `[]`. It must be reviewed/applied **after v11**.
+- Seller can edit four **additional** product photo HTTPS URLs from Owner
+  Center. The existing main image remains separate. Server validation
+  rejects duplicates, non-HTTPS protocols, local IP targets and oversized
+  galleries. This is URL-based image referencing **not R2 file upload**.
+- Customer product quick view and detail page show the gallery with
+  thumbnails, previous/next buttons, keyboard navigation and a photo count.
+  Legacy FastAPI products with no gallery continue to show their main image.
+- Seller can publish up to six FAQs with bounded questions/answers. These
+  appear as expandable cards on the storefront, with merchant-authored text
+  displayed as untrusted plain text.
+- Customer can restrict catalogue by minimum/maximum BDT price while
+  combining existing category, availability, wishlist, search and sort filters.
+  **All prices are catalogue values**, not a guaranteed checkout quote.
+- Automation: Worker response tests verify gallery/FAQ serialization,
+  Node merchant content validation tests, Python v1-v12 migration integrity,
+  React production build and legacy FastAPI integrations.
+
+**No production cutover yet:** connected live D1 was last checked at schema
+v5. The PR contains staged source migrations v6-v12, not remotely applied.
+The feature does not create real online payment or courier integrations.
+A reviewed backup, migration-ledger reconciliation, isolated recovery drill,
+real mobile/browser E2E verification and independent merchant approval
+remain required before production checkout.
