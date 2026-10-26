@@ -39,6 +39,9 @@ def test_restoration_requires_explicit_consent():
 
 
 def test_read_only_audit_can_run_without_mutation(capsys):
+    # CI runs sqlite:// in memory; initialise the schema before the audit.
+    from api.database import create_schema
     from scripts.reconcile_existing_stores import main
+    create_schema()
     assert main([]) == 0
     assert "No records created or modified" in capsys.readouterr().out
