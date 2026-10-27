@@ -228,6 +228,40 @@ function ProfileView({ customer, token, onUpdate }) {
   );
 }
 
+function OrderReviewForm({ order, item, token }) {
+  const [rating, setRating] = useState("5");
+  const [comment, setComment] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+  async function submit(event) {
+    event.preventDefault(); setBusy(true); setError(""); setSuccess("");
+    try {
+      const response = await fetch(`/api/public/reviews/${encodeURIComponent(order.organization_id)}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ product_id: item.product_id, order_id: order.id, rating: Number(rating), comment: comment.trim() || null }),
+      });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(body.detail || "রিভিউ জমা দেওয়া যায়নি।");
+      setSuccess("রিভিউ সংরক্ষণ হয়েছে। ধন্যবাদ!");
+    } catch (e) { setError(e.message); }
+    finally { setBusy(false); }
+  }
+  return <form onSubmit={submit} style={{ border: "1px solid var(--border)", borderRadius: 10, padding: 10, marginTop: 8, display: "grid", gap: 7 }}>
+    <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text)" }}>{item.description || "পণ্য"} — রিভিউ</div>
+    <div style={{ display: "grid", gridTemplateColumns: "90px 1fr", gap: 7 }}>
+      <select aria-label="রেটিং" value={rating} onChange={e => setRating(e.target.value)} style={{ padding: "7px 8px", borderRadius: 8, border: "1px solid var(--border)", background: "var(--bg)", color: "var(--text)", fontSize: 12 }}>
+        {[5,4,3,2,1].map(n => <option key={n} value={n}>{n} ★</option>)}
+      </select>
+      <input value={comment} onChange={e => setComment(e.target.value)} maxLength={1000} placeholder="আপনার অভিজ্ঞতা লিখুন (ঐচ্ছিক)" style={{ minWidth: 0, padding: "7px 9px", borderRadius: 8, border: "1px solid var(--border)", background: "var(--bg)", color: "var(--text)", fontSize: 12 }}/>
+    </div>
+    {error && <div role="alert" style={{ color: "#dc2626", fontSize: 11 }}>{error}</div>}
+    {success && <div role="status" style={{ color: "#15803d", fontSize: 11 }}>{success}</div>}
+    <button type="submit" disabled={busy} style={{ justifySelf: "start", padding: "7px 11px", borderRadius: 8, border: 0, background: "var(--green)", color: "var(--sc-on-green)", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>{busy ? "জমা হচ্ছে…" : "রিভিউ জমা দিন"}</button>
+  </form>;
+}
+
 // ── Orders View ───────────────────────────────────────────────────────────────
 
 const STATUS_STEPS = ["placed", "confirmed", "ready", "dispatched", "delivered"];
@@ -361,6 +395,12 @@ function OrdersView({ storeSlug, token, onReorder }) {
                 {o.status_note && (
                   <div style={{ marginTop: 8, padding: "8px 12px", background: "color-mix(in srgb, #3b82f6 10%, transparent)", borderRadius: 8, border: "1px solid #3b82f640", fontSize: 13, color: "var(--text)" }}>
                     💬 দোকান থেকে: {o.status_note}
+                  </div>
+                )}
+                {o.status === "delivered" && o.items?.length > 0 && (
+                  <div style={{ marginTop: 12, paddingTop: 10, borderTop: "1px solid var(--border)" }}>
+                    <div style={{ color: "var(--text)", fontSize: 13, fontWeight: 750 }}>⭐ কেনা পণ্যের রিভিউ</div>
+                    {o.items.map((item, index) => <OrderReviewForm key={`${o.id}-${item.product_id}-${index}`} order={o} item={item} token={token} />)}
                   </div>
                 )}
                 {Number(o.delivery_fee) > 0 && (
