@@ -187,10 +187,9 @@ def create_address(
     exists = db.scalar(select(StoreCustomerAddress.id).where(
         StoreCustomerAddress.customer_id == customer.id
     ).limit(1))
-    address = StoreCustomerAddress(
-        customer_id=customer.id, **payload.model_dump(),
-        is_default=bool(payload.is_default or not exists),
-    )
+    values = payload.model_dump()
+    values["is_default"] = bool(payload.is_default or not exists)
+    address = StoreCustomerAddress(customer_id=customer.id, **values)
     db.add(address)
     db.flush()
     if address.is_default:
