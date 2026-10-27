@@ -64,11 +64,13 @@ from api.database import Base, get_db
 from api.directory_routes import router as directory_router
 from api.domain_models import Branch, InventoryBalance, Membership, Organization, Product, User
 from api.finance_routes import router as finance_router
+from api.store_customer_routes import router as store_customer_router, biz_router as store_customer_biz_router
+from api.store_customer_commerce import router as store_customer_commerce_router
 from api.permissions import ROLES
 
 ROUTERS = (
     auth_router, app_router, commerce_router, directory_router, finance_router,
-    data_import_router, analytics_router, bsmart_router, audit_router, batch_router, insights_router, bulk_import_router, planning_router, receivables_router, insights_advanced_router, accounting_router, approval_router, stock_count_router, order_router, public_order_router, purchase_return_router, reference_router, integration_router, loyalty_router, platform_router, shift_router, ticket_router, lead_router, feedback_router, notification_router, attendance_router, leave_router, roster_router, commission_router, target_router, delivery_router, advance_router, payroll_router, health_score_router, mission_queue_router, reservation_router, team_chat_router, assistant_router,
+    data_import_router, analytics_router, bsmart_router, audit_router, batch_router, insights_router, bulk_import_router, planning_router, receivables_router, insights_advanced_router, accounting_router, approval_router, stock_count_router, order_router, public_order_router, purchase_return_router, reference_router, integration_router, loyalty_router, platform_router, shift_router, ticket_router, lead_router, feedback_router, notification_router, attendance_router, leave_router, roster_router, commission_router, target_router, delivery_router, advance_router, payroll_router, health_score_router, mission_queue_router, reservation_router, team_chat_router, assistant_router, store_customer_router, store_customer_biz_router, store_customer_commerce_router,
 )
 
 
