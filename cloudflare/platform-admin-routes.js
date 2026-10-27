@@ -44,7 +44,10 @@ export async function platformAdminRouter(req,env,path,output,error) {
         "(SELECT COUNT(*) FROM commerce_customer_accounts) AS customers_total,"+
         "(SELECT COUNT(*) FROM commerce_orders) AS orders_total,"+
         "(SELECT COUNT(*) FROM commerce_orders WHERE status='cancelled') AS orders_cancelled,"+
-        "(SELECT COALESCE(SUM(total_bdt),0) FROM commerce_orders WHERE status!='cancelled') AS demo_order_value_bdt,"+
+        "(SELECT COALESCE(SUM(o.total_bdt),0) FROM commerce_orders o JOIN commerce_stores s ON s.id=o.store_id WHERE o.status!='cancelled' AND s.is_demo=1) AS demo_order_value_bdt,"+
+        "(SELECT COALESCE(SUM(o.total_bdt),0) FROM commerce_orders o JOIN commerce_stores s ON s.id=o.store_id WHERE o.status!='cancelled' AND s.is_demo=0 AND o.payment_method='cod') AS cod_order_value_bdt,"+
+        "(SELECT COALESCE(SUM(o.total_bdt),0) FROM commerce_orders o JOIN commerce_stores s ON s.id=o.store_id WHERE o.status!='cancelled' AND s.is_demo=0 AND o.payment_status='paid') AS cod_paid_total_bdt,"+
+        "(SELECT COALESCE(SUM(o.total_bdt),0) FROM commerce_orders o JOIN commerce_stores s ON s.id=o.store_id WHERE o.status!='cancelled' AND s.is_demo=0 AND o.payment_status='pending_cod') AS cod_pending_total_bdt,"+
         "(SELECT COUNT(*) FROM commerce_order_returns WHERE status IN ('requested','approved')) AS returns_open,"+
         "(SELECT COUNT(*) FROM commerce_customer_messages WHERE sender_role='customer' AND read_by_merchant_at IS NULL) AS unread_customer_messages"
       ).first();

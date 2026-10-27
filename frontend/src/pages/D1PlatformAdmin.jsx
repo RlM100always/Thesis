@@ -85,6 +85,9 @@ export default function D1PlatformAdmin() {
           ["Customer accounts",metrics.customers_total,"D1-তে সংরক্ষিত"],
           ["মোট অর্ডার",metrics.orders_total,"বাতিল "+(metrics.orders_cancelled||0)+"টি"],
           ["Demo order value",money(metrics.demo_order_value_bdt),"বাস্তব আয় নয়"],
+          ["COD order value",money(metrics.cod_order_value_bdt),"Operational COD order total"],
+          ["COD received",money(metrics.cod_paid_total_bdt),"Merchant-confirmed collection"],
+          ["COD pending",money(metrics.cod_pending_total_bdt),"Collection not yet confirmed"],
           ["Open returns",metrics.returns_open,"অনুমোদনের অপেক্ষায়"],
           ["Unread messages",metrics.unread_customer_messages,"Merchant inbox"],
         ].map(([label,value,tip])=><div key={label} style={{border:"1px solid var(--border,#dfe7e2)",borderRadius:12,padding:14}}><div style={{fontSize:11,color:"var(--text-muted,#65736b)"}}>{label}</div><strong style={{display:"block",fontSize:23,margin:"6px 0"}}>{value??0}</strong><div style={{fontSize:10,color:"var(--text-muted,#65736b)"}}>{tip}</div></div>)}</div></section>}
@@ -95,7 +98,7 @@ export default function D1PlatformAdmin() {
           {label:"অবস্থা",render:r=><strong style={{color:r.is_active?"#15803d":"#dc2626"}}>{r.is_active?"Active":"Suspended"}</strong>},
           {label:"করণীয়",render:r=><div style={{display:"flex",gap:5,flexWrap:"wrap"}}><button style={style.button} disabled={busy} onClick={()=>run(()=>call("/api/platform-admin/stores/"+encodeURIComponent(r.id),secret,{method:"PATCH",body:{is_active:!r.is_active,reason:"Changed through D1 platform admin"}}),r.is_active?"দোকান স্থগিত করা হয়েছে":"দোকান সক্রিয় করা হয়েছে")}>{r.is_active?"স্থগিত করুন":"সক্রিয় করুন"}</button>{r.owner_email&&<button style={{...style.button,color:r.is_demo?"#087e59":"#b91c1c"}} disabled={busy} onClick={()=>{const promote=!!r.is_demo;if(!window.confirm(promote?"এই merchant-owned দোকানে COD checkout চালু ও দোকান প্রকাশ করবেন? অনলাইন পেমেন্ট/কুরিয়ার সংযুক্ত নয়।":"এই দোকানকে আবার demo-only করবেন?"))return;run(()=>call("/api/platform-admin/stores/"+encodeURIComponent(r.id),secret,{method:"PATCH",body:promote?{is_demo:false,is_active:true,confirm_production:"ENABLE COD CHECKOUT",reason:"Admin approved manual COD fulfilment"}:{is_demo:true,reason:"Returned to demo mode"}}),promote?"COD checkout চালু ও দোকান প্রকাশ হয়েছে":"দোকান demo-only করা হয়েছে");}}>{r.is_demo?"COD চালু ও প্রকাশ":"Demo-তে ফেরত"}</button>}</div>},
         ]}/></section>}
-        {tab==="orders"&&<section style={style.panel}><h2 style={{marginTop:0,fontSize:18}}>Order oversight</h2><p style={{fontSize:12,color:"var(--text-muted,#65736b)"}}>সব অর্ডারের মূল্য নমুনা হিসাব। Cancel করলে D1 trigger সংশ্লিষ্ট demo stock ফিরিয়ে দেয়।</p><Table rows={orders} columns={[
+        {tab==="orders"&&<section style={style.panel}><h2 style={{marginTop:0,fontSize:18}}>Order oversight</h2><p style={{fontSize:12,color:"var(--text-muted,#65736b)"}}>Demo order value বাস্তব আয় নয়। Operational store-এর COD টাকা merchant হাতে গ্রহণ নিশ্চিত করলে তবেই paid হিসেবে দেখানো হয়। Cancel করলে D1 trigger সংশ্লিষ্ট stock পুনরুদ্ধার করে।</p><Table rows={orders} columns={[
           {label:"অর্ডার",render:r=><><strong>{r.order_number}</strong><div style={{fontSize:11,opacity:.7}}>{r.store_name}</div><div style={{fontSize:10,opacity:.7}}>{r.customer_name||"Guest"}</div></>},
           {label:"তারিখ",key:"placed_at"},
           {label:"মূল্য",render:r=>money(r.total_bdt)},
