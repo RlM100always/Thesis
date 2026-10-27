@@ -31,7 +31,7 @@ async function dashboard(env,owner){
  const store=await myStore(env,owner);
  if(!store)return {account:{email:owner.email},store:null,products:[],orders:[],metrics:{orders:0,inventory_units:0,placed_total_bdt:0},stock_adjustments:[],cashbook:[]};
  const [products,orders,stats,adjustments,cashbook]=await Promise.all([
-  env.DB.prepare("SELECT id,sku,name,category,price_bdt,stock_qty,is_listed,created_at FROM commerce_products WHERE store_id=? ORDER BY created_at DESC LIMIT 200").bind(store.id).all(),
+  env.DB.prepare("SELECT id,sku,name,category,description,brand,tags,compare_at_price_bdt,unit_label,price_bdt,stock_qty,is_listed,created_at,updated_at FROM commerce_products WHERE store_id=? ORDER BY created_at DESC LIMIT 200").bind(store.id).all(),
   env.DB.prepare("SELECT id,order_number,status,total_bdt,placed_at,payment_method FROM commerce_orders WHERE store_id=? ORDER BY placed_at DESC LIMIT 150").bind(store.id).all(),
   env.DB.prepare("SELECT (SELECT COUNT(*) FROM commerce_orders WHERE store_id=?) AS orders,(SELECT COALESCE(SUM(stock_qty),0) FROM commerce_products WHERE store_id=?) AS inventory_units,(SELECT COALESCE(SUM(total_bdt),0) FROM commerce_orders WHERE store_id=? AND status!='cancelled') AS placed_total_bdt").bind(store.id,store.id,store.id).first(),
   env.DB.prepare("SELECT product_id,old_quantity,new_quantity,delta,reason,created_at FROM commerce_stock_adjustments WHERE store_id=? ORDER BY created_at DESC LIMIT 25").bind(store.id).all(),
@@ -117,6 +117,48 @@ export async function merchantRouter(req,env,path,output,error){
    return output(req,{deleted:true});
   }
   if(method==="GET"&&path==="/api/merchant/dashboard")return output(req,await dashboard(env,owner));
+   if(method==="GET"&&path==="/api/merchant/returns"){
+    const store=await storeOnly(env,owner);
+    const {results}=await env.DB.prepare(
+     "SELECT r.id,r.order_id,r.account_id,r.reason,r.customer_note,r.merchant_note,r.status,r.requested_at,r.updated_at,o.order_number,o.total_bdt,a.display_name AS customer_name,a.email,a.phone " +
+     "FROM commerce_order_returns r JOIN commerce_orders o ON o.id=r.order_id JOIN commerce_customer_accounts a ON a.id=r.account_id " +
+     "WHERE r.store_id=? ORDER BY r.requested_at DESC LIMIT 100"
+    ).bind(store.id).all();
+    return output(req,{returns:results});
+   }
+   const returnStatusMatch=/^\/api\/merchant\/returns\/([a-zA-Z0-9-]{2,90})$/.exec(path);
+   if(method==="PATCH"&&returnStatusMatch){
+    const store=await storeOnly(env,owner),body=await json(req,error),id=returnStatusMatch[1];
+    const row=await env.DB.prepare("SELECT * FROM commerce_order_returns WHERE id=? AND store_id=?").bind(id,store.id).first();
+    if(!row)return bad(req,error,404,"Return request not found");
+    const status=short(body.status,30),note=short(body.merchant_note,1000);
+    const next={requested:["approved","rejected"],approved:["received"],received:["closed_demo"],rejected:[],closed_demo:[]};
+    if(!next[row.status]?.includes(status))return bad(req,error,409,"Invalid return status transition");
+    const result=await env.DB.prepare("UPDATE commerce_order_returns SET status=?,merchant_note=?,updated_at=CURRENT_TIMESTAMP WHERE id=? AND store_id=? AND status=?")
+     .bind(status,note||null,id,store.id,row.status).run();
+    if(!result.meta?.changes)return bad(req,error,409,"Return request changed; refresh and retry");
+    return output(req,{updated:true,status,inventory_restocked:status==="received",note:"Demo return workflow only; no money was refunded"});
+   }
+   if(method==="GET"&&path==="/api/merchant/chat"){
+    const store=await storeOnly(env,owner),url=new URL(req.url),accountId=short(url.searchParams.get("account_id"),80);
+    if(accountId)await env.DB.prepare("UPDATE commerce_customer_messages SET read_by_merchant_at=CURRENT_TIMESTAMP WHERE store_id=? AND account_id=? AND sender_role='customer' AND read_by_merchant_at IS NULL").bind(store.id,accountId).run();
+    const {results}=await env.DB.prepare(
+     "SELECT m.id,m.account_id,m.order_id,m.sender_role,m.message,m.created_at,m.read_by_customer_at,m.read_by_merchant_at,a.display_name AS customer_name,a.email AS customer_email,o.order_number " +
+     "FROM commerce_customer_messages m JOIN commerce_customer_accounts a ON a.id=m.account_id LEFT JOIN commerce_orders o ON o.id=m.order_id " +
+     "WHERE m.store_id=? AND (?='' OR m.account_id=?) ORDER BY m.created_at DESC LIMIT 150"
+    ).bind(store.id,accountId,accountId).all();
+    return output(req,{messages:results.reverse()});
+   }
+   if(method==="POST"&&path==="/api/merchant/chat"){
+    const store=await storeOnly(env,owner),body=await json(req,error),accountId=short(body.account_id,80),message=short(body.message,2000),orderId=short(body.order_id,80)||null;
+    if(!accountId||message.length<1)return bad(req,error,422,"Customer and message are required");
+    const thread=await env.DB.prepare("SELECT id FROM commerce_customer_messages WHERE store_id=? AND account_id=? LIMIT 1").bind(store.id,accountId).first();
+    if(!thread)return bad(req,error,404,"Customer conversation not found");
+    if(orderId&&!await env.DB.prepare("SELECT id FROM commerce_orders WHERE id=? AND store_id=? AND account_id=?").bind(orderId,store.id,accountId).first())return bad(req,error,403,"Order does not belong to this customer/store");
+    const id=crypto.randomUUID();
+    await env.DB.prepare("INSERT INTO commerce_customer_messages(id,store_id,account_id,order_id,sender_role,message) VALUES(?,?,?,?,?,?)").bind(id,store.id,accountId,orderId,"merchant",message).run();
+    return output(req,{id,account_id:accountId,order_id:orderId,sender_role:"merchant",message,created_at:new Date().toISOString()},201);
+   }
   if(method==="POST"&&path==="/api/merchant/store"){
    if(await myStore(env,owner))return bad(req,error,409,"Account already has a store");
    const b=await json(req,error);
@@ -172,11 +214,16 @@ export async function merchantRouter(req,env,path,output,error){
   if(method==="POST"&&path==="/api/merchant/products"){
    const store=await storeOnly(env,owner),b=await json(req,error);
    const sku=short(b.sku,45),name=short(b.name,140),cat=short(b.category,65);
-   if(!sku||name.length<2||!integer(b.price_bdt,0,10000000)||!integer(b.stock_qty,0,1000000))
-    return bad(req,error,422,"Invalid SKU, name, price or quantity");
+   const description=short(b.description,3000),brand=short(b.brand,100),unit=short(b.unit_label||"pcs",24);
+   const tags=Array.isArray(b.tags)?JSON.stringify(b.tags.map(x=>short(x,32)).filter(Boolean).slice(0,12)):JSON.stringify([]);
+   const compare=b.compare_at_price_bdt===undefined||b.compare_at_price_bdt===""||b.compare_at_price_bdt===null?null:Number(b.compare_at_price_bdt);
+   if(!sku||name.length<2||!integer(b.price_bdt,0,10000000)||!integer(b.stock_qty,0,1000000)||
+      (compare!==null&&(!integer(compare,0,10000000)||compare<Number(b.price_bdt))))
+    return bad(req,error,422,"Invalid SKU, name, price, compare-at price or quantity");
    const id=crypto.randomUUID(),price=Number(b.price_bdt),qty=Number(b.stock_qty);
    try{
-    await env.DB.prepare("INSERT INTO commerce_products(id,store_id,sku,name,category,price_bdt,stock_qty,is_listed) VALUES(?,?,?,?,?,?,?,?)").bind(id,store.id,sku,name,cat,price,qty,b.is_listed===true?1:0).run();
+    await env.DB.prepare("INSERT INTO commerce_products(id,store_id,sku,name,category,description,brand,tags,compare_at_price_bdt,unit_label,price_bdt,stock_qty,is_listed,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,CURRENT_TIMESTAMP)")
+     .bind(id,store.id,sku,name,cat,description||null,brand||null,tags,compare,unit,price,qty,b.is_listed===true?1:0).run();
    }catch(e){return bad(req,error,errorCode(e),"Product SKU must be unique");}
    return output(req,{created:true,product_id:id},201);
   }
@@ -189,11 +236,17 @@ export async function merchantRouter(req,env,path,output,error){
    const name=short(b.name??p.name,140),cat=short(b.category??p.category,65);
    const price=b.price_bdt===undefined?p.price_bdt:Number(b.price_bdt);
    const qty=b.stock_qty===undefined?p.stock_qty:Number(b.stock_qty);
-   if(!name||!integer(price,0,10000000)||!integer(qty,0,1000000))
+   const description=short(b.description===undefined?p.description:b.description,3000),brand=short(b.brand===undefined?p.brand:b.brand,100);
+   const unit=short(b.unit_label===undefined?(p.unit_label||"pcs"):b.unit_label,24);
+   let tags=p.tags||"[]";
+   if(b.tags!==undefined)tags=JSON.stringify(Array.isArray(b.tags)?b.tags.map(x=>short(x,32)).filter(Boolean).slice(0,12):[]);
+   const compare=b.compare_at_price_bdt===undefined?p.compare_at_price_bdt:(b.compare_at_price_bdt===""||b.compare_at_price_bdt===null?null:Number(b.compare_at_price_bdt));
+   if(!name||!integer(price,0,10000000)||!integer(qty,0,1000000)||
+      (compare!==null&&compare!==undefined&&(!integer(compare,0,10000000)||compare<price)))
     return bad(req,error,422,"Invalid product fields");
    const listed=b.is_listed===undefined?p.is_listed:(b.is_listed===true?1:0);
    const diff=qty-p.stock_qty;
-   const update=env.DB.prepare("UPDATE commerce_products SET name=?,category=?,price_bdt=?,stock_qty=?,is_listed=? WHERE store_id=? AND id=?").bind(name,cat,price,qty,listed,store.id,p.id);
+   const update=env.DB.prepare("UPDATE commerce_products SET name=?,category=?,description=?,brand=?,tags=?,compare_at_price_bdt=?,unit_label=?,price_bdt=?,stock_qty=?,is_listed=?,updated_at=CURRENT_TIMESTAMP WHERE store_id=? AND id=?").bind(name,cat,description||null,brand||null,tags,compare??null,unit,price,qty,listed,store.id,p.id);
    if(diff) {
     await env.DB.batch([update,env.DB.prepare("INSERT INTO commerce_stock_adjustments(id,store_id,product_id,old_quantity,new_quantity,delta,reason) VALUES(?,?,?,?,?,?,?)").bind(crypto.randomUUID(),store.id,p.id,p.stock_qty,qty,diff,"Owner manual inventory correction")]);
    } else await update.run();
