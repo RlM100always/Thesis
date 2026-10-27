@@ -48,7 +48,7 @@ export async function platformAdminRouter(req,env,path,output,error) {
         "(SELECT COUNT(*) FROM commerce_order_returns WHERE status IN ('requested','approved')) AS returns_open,"+
         "(SELECT COUNT(*) FROM commerce_customer_messages WHERE sender_role='customer' AND read_by_merchant_at IS NULL) AS unread_customer_messages"
       ).first();
-      return output(req,{scope:"Cloudflare D1 demo commerce only",real_payments:false,real_delivery:false,metrics:row});
+      return output(req,{scope:"Cloudflare D1 storefronts; approved operational stores are COD/manual fulfilment only",real_payments:false,real_delivery:false,manual_cod_enabled:true,metrics:row});
     }
     if(method==="GET"&&path==="/api/platform-admin/stores") {
       const {results}=await env.DB.prepare(
@@ -93,13 +93,21 @@ export async function platformAdminRouter(req,env,path,output,error) {
     const storeMatch=path.match(/^\/api\/platform-admin\/stores\/([^/]+)$/);
     if(method==="PATCH"&&storeMatch) {
       const id=decodeURIComponent(storeMatch[1]),body=await readBody(req);
-      if(typeof body.is_active!=="boolean")return error(req,422,"is_active must be true or false");
-      const store=await env.DB.prepare("SELECT id,slug,name,is_active FROM commerce_stores WHERE id=?").bind(id).first();
+      if(body.is_active===undefined && body.is_demo===undefined)return error(req,422,"Provide is_active or is_demo");
+      if(body.is_active!==undefined && typeof body.is_active!=="boolean")return error(req,422,"is_active must be true or false");
+      if(body.is_demo!==undefined && typeof body.is_demo!=="boolean")return error(req,422,"is_demo must be true or false");
+      const store=await env.DB.prepare("SELECT id,slug,name,is_active,is_demo,owner_id FROM commerce_stores WHERE id=?").bind(id).first();
       if(!store)return error(req,404,"Store not found");
-      const result=await env.DB.prepare("UPDATE commerce_stores SET is_active=? WHERE id=? AND is_active=?")
-        .bind(body.is_active?1:0,id,store.is_active).run();
-      await audit(env,body.is_active?"store_activated":"store_suspended","store",id,{slug:store.slug,name:store.name,previous_active:!!store.is_active,is_active:body.is_active,reason:short(body.reason,250)});
-      return output(req,{updated:!!result.meta?.changes,store:{...store,is_active:body.is_active}});
+      const nextActive=body.is_active===undefined?!!store.is_active:body.is_active;
+      const nextDemo=body.is_demo===undefined?!!store.is_demo:body.is_demo;
+      if(body.is_demo===false && !store.owner_id)return error(req,409,"Seeded demo stores cannot be promoted to operational checkout");
+      if(body.is_demo===false && body.confirm_production!=="ENABLE COD CHECKOUT")return error(req,422,"Explicit COD checkout confirmation required");
+      const deliveryNote=nextDemo?"Demo orders only; no real shipping or payment":"Cash on delivery; merchant-managed delivery. No online payment gateway or courier integration is active.";
+      const result=await env.DB.prepare("UPDATE commerce_stores SET is_active=?,is_demo=?,delivery_note=? WHERE id=? AND is_active=? AND is_demo=?")
+        .bind(nextActive?1:0,nextDemo?1:0,deliveryNote,id,store.is_active,store.is_demo).run();
+      const action=body.is_demo===false?"store_promoted_to_cod":body.is_demo===true?"store_returned_to_demo":nextActive?"store_activated":"store_suspended";
+      await audit(env,action,"store",id,{slug:store.slug,name:store.name,previous_active:!!store.is_active,is_active:nextActive,previous_demo:!!store.is_demo,is_demo:nextDemo,reason:short(body.reason,250)});
+      return output(req,{updated:!!result.meta?.changes,store:{...store,is_active:nextActive?1:0,is_demo:nextDemo?1:0,delivery_note:deliveryNote},note:nextDemo?"Demo checkout only.":"COD/manual fulfilment enabled; no online payment or courier integration."});
     }
     const orderMatch=path.match(/^\/api\/platform-admin\/orders\/([^/]+)$/);
     if(method==="PATCH"&&orderMatch) {

@@ -4,12 +4,12 @@ import { platformAdminRouter } from "./platform-admin-routes.js";
 import { defaultOrderStatusNote } from "./order-workflow.js";
 /*
  B-SMART Cloudflare D1 Commerce API.
- Public demo-store catalogues, customer accounts, saved addresses, account-linked
- order history, support chat and demo-only checkout. Account contact/address data
- is stored in D1; users must use synthetic information until production security
- and privacy controls are complete. No real payment, physical delivery or refund.
- D1 is the source of truth for this demo catalogue only. Legacy FastAPI business
- and historical customer records are separate and are not synchronized.
+ Public storefront catalogues, customer accounts, saved addresses, account-linked
+ order history and support chat. Seeded/demo stores accept simulated orders only.
+ An explicitly admin-approved merchant store may accept cash-on-delivery orders
+ with manual fulfilment; no online payment gateway, courier integration or refund
+ automation is active. Legacy FastAPI business and historical customer records
+ remain separate and are not synchronized.
 */
 const allowed = new Set([
   "https://thesis-j0n8.onrender.com",
@@ -80,7 +80,7 @@ async function orderDetails(env,request,id,token) {
  ]);
  return output(request,{
   id:order.id,order_number:order.order_number,document_number:order.order_number,access_token:order.access_token,
-  status:order.status,payment_status:"demo_no_payment",status_note:order.status_note||defaultOrderStatusNote(order.status,!!store?.is_demo),
+  status:order.status,payment_status:store?.is_demo?"demo_no_payment":(order.payment_method==="cod"?"pending_cod":"unpaid"),status_note:order.status_note||defaultOrderStatusNote(order.status,!!store?.is_demo),
   placed_at:order.placed_at,issued_at:order.placed_at,
   shipping_name:order.shipping_name||"",shipping_phone:order.shipping_phone||"",shipping_address:order.shipping_address||"",
   subtotal:order.subtotal_bdt,tax_amount:0,delivery_fee:0,discount_amount:0,
@@ -94,16 +94,20 @@ async function orderDetails(env,request,id,token) {
 async function checkout(env,request,id) {
  const store=await getStore(env,id,false);
  if(!store)return error(request,404,"Store not active");
- if(!store.is_demo)return error(request,409,"Merchant checkout is not yet enabled on this D1 service");
+ if(!store.is_demo && String((await request.clone().json().catch(()=>({}))).payment_method||"")!=="cod")return error(request,409,"This approved store currently accepts cash on delivery only.");
  const size=Number(request.headers.get("content-length")||0);
  if(size>10000)return error(request,413,"Order request too large");
  let data;
  try{data=await request.json();}catch{return error(request,400,"Invalid JSON");}
- if(data.payment_method && !["cod","demo"].includes(data.payment_method))
-   return error(request,422,"Only free demo/COD checkout is supported. Do not make a payment.");
- const shippingName=safe(data.shipping_name||"Demo customer");
+ if(store.is_demo && data.payment_method && !["cod","demo"].includes(data.payment_method))
+   return error(request,422,"Demo stores do not accept real payments.");
+ if(!store.is_demo && data.payment_method!=="cod")
+   return error(request,422,"This store accepts cash on delivery only; online payments are not configured.");
+ const shippingName=safe(data.shipping_name||(store.is_demo?"Demo customer":""));
  const shippingPhone=String(data.shipping_phone||"").trim().slice(0,30);
  const shippingAddress=String(data.shipping_address||"").trim().slice(0,500);
+ if(!store.is_demo && (shippingName.length<2 || !/^[+()\\d\\-\\s]{7,20}$/.test(shippingPhone) || shippingAddress.length<8))
+   return error(request,422,"Enter a valid customer name, phone number and delivery address for COD.");
  const customerToken=String(data.store_customer_token||data.customer_token||"").trim();
  let account=null;
  if(customerToken){
@@ -127,18 +131,19 @@ async function checkout(env,request,id) {
   subtotal+=qty*price;
   details.push({p,qty,price});
  }
- if(subtotal>500000)return error(request,422,"Demo order total too high");
+ if(subtotal>(store.is_demo?500000:5000000))return error(request,422,store.is_demo?"Demo order total too high":"Order total exceeds the store limit.");
  // A single D1.batch call is a transaction. SQL triggers reject stale/oversold
  // products and roll back every line and header together if stock runs out.
  const oid=crypto.randomUUID();
  const token=crypto.randomUUID().replaceAll("-","")+crypto.randomUUID().replaceAll("-","");
- const no="DEMO-"+oid.slice(0,8).toUpperCase();
+ const no=(store.is_demo?"DEMO-":"ORD-")+oid.slice(0,8).toUpperCase();
  const customerId=crypto.randomUUID();
+ const paymentMethod=store.is_demo?"demo":"cod";
  const statements=[
   env.DB.prepare("INSERT INTO commerce_customers(id,store_id,display_name) VALUES(?,?,?)")
    .bind(customerId,id,shippingName),
   env.DB.prepare("INSERT INTO commerce_orders(id,store_id,order_number,access_token,status,subtotal_bdt,total_bdt,payment_method,shipping_name,shipping_phone,shipping_address,customer_id,account_id) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)")
-   .bind(oid,id,no,token,"placed",subtotal,subtotal,"demo",shippingName,shippingPhone,shippingAddress,customerId,account?.id||null),
+   .bind(oid,id,no,token,"placed",subtotal,subtotal,paymentMethod,shippingName,shippingPhone,shippingAddress,customerId,account?.id||null),
   ...details.map(({p,qty,price})=>env.DB.prepare("INSERT INTO commerce_order_lines(order_id,product_id,product_name,quantity,price_bdt,line_total_bdt) VALUES(?,?,?,?,?,?)")
    .bind(oid,p.id,p.name,qty,price,qty*price))
  ];

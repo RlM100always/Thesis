@@ -1122,7 +1122,7 @@ function CheckoutView({ store, cart, products, onBack, onDone, scCustomer, varia
     <div className="s-checkout">
       <button className="s-back-btn" onClick={onBack}>← কার্টে ফিরুন</button>
       <h2>{store.is_demo ? "পরীক্ষামূলক অর্ডারের তথ্য দিন" : "ডেলিভারি তথ্য দিন"}</h2>
-      {store.is_demo && <p role="note" className="s-demo-checkout-note">এটি ডেমো অর্ডার। কোনো টাকা পাঠাতে হবে না এবং পণ্য ডেলিভারি করা হবে না। অনুগ্রহ করে নমুনা তথ্য ব্যবহার করুন।</p>}
+      {store.is_demo && <p role="note" className="s-demo-checkout-note">এটি ডেমো অর্ডার। কোনো টাকা পাঠাতে হবে না এবং পণ্য ডেলিভারি করা হবে না। অনুগ্রহ করে নমুনা তথ্য ব্যবহার করুন।</p>}{!store.is_demo && <p role="note" style={{background:"color-mix(in srgb,#0a8752 8%,var(--s-card,#fff))",border:"1px solid var(--s-border,#dce6df)",borderRadius:10,padding:"11px 13px",fontSize:13,lineHeight:1.6,color:"var(--s-ink,#14251d)"}}>এই দোকানে Cash on Delivery (COD) চালু। পণ্য হাতে পেয়ে টাকা দিন। দোকান নিজস্ব ব্যবস্থায় ডেলিভারি পরিচালনা করবে; অনলাইন পেমেন্ট গেটওয়ে ও কুরিয়ার ইন্টিগ্রেশন চালু নেই।</p>}
       {scCustomer && (
         <div style={{ background: "color-mix(in srgb,var(--sa,#0a8752) 10%,transparent)", border: "1px solid color-mix(in srgb,var(--sa,#0a8752) 30%,transparent)", borderRadius: 10, padding: "10px 14px", marginBottom: 18, fontSize: 13, display: "flex", alignItems: "center", gap: 8 }}>
           <span style={{ fontSize: 16 }}>✅</span>
@@ -1446,6 +1446,7 @@ function ConfirmationView({ order, store, orgId, onContinue }) {
       <div className="s-confirm-lottie">✅</div>
       <h2>আপনার অর্ডারটি গ্রহণ করা হয়েছে</h2>
       <p>আপনার অর্ডার নম্বর: <strong style={{color:"var(--sa)",fontSize:20}}>#{order.order_number}</strong></p>
+      {pm==="cod"&&!store?.is_demo&&<p role="status" style={{background:"color-mix(in srgb,#0a8752 8%,var(--s-card,#fff))",border:"1px solid var(--s-border,#dce6df)",borderRadius:10,padding:"11px 13px",fontSize:13,lineHeight:1.6}}>আপনার COD অর্ডারটি সংরক্ষিত হয়েছে। ডেলিভারির সময় পণ্য বুঝে নিয়ে টাকা পরিশোধ করুন। দোকান নিজস্বভাবে ডেলিভারি পরিচালনা করবে।</p>}
 
       {payErr && <div style={{background:"#fee2e2",color:"#b91c1c",borderRadius:10,padding:"10px 14px",fontSize:13,margin:"8px 0"}}>{payErr}</div>}
 
