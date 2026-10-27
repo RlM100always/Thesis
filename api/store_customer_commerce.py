@@ -214,13 +214,16 @@ def update_address(
     if address is None:
         raise HTTPException(status_code=404, detail="ঠিকানাটি পাওয়া যায়নি")
     updates = payload.model_dump(exclude_unset=True)
+    required_fields = {"label", "recipient_name", "phone", "division", "district", "address_detail"}
+    if any(field in updates and updates[field] is None for field in required_fields):
+        raise HTTPException(status_code=422, detail="ঠিকানার আবশ্যক তথ্য ফাঁকা রাখা যাবে না")
+    was_default = bool(address.is_default)
     for field, value in updates.items():
         setattr(address, field, value)
     db.flush()
     if updates.get("is_default") is True:
         _set_default_address(db, customer.id, address.id)
-    elif updates.get("is_default") is False and address.is_default:
-        address.is_default = False
+    elif updates.get("is_default") is False and was_default:
         replacement = db.scalar(select(StoreCustomerAddress).where(
             StoreCustomerAddress.customer_id == customer.id,
             StoreCustomerAddress.id != address.id,
