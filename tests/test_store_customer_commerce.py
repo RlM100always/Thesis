@@ -4,7 +4,7 @@ from decimal import Decimal
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
-from api.domain_models import Branch, InventoryBalance, Product, Store, StoreProduct
+from api.domain_models import Branch, InventoryBalance, Product, SalesDocument, Store, StoreProduct
 
 
 def _register(client, email="buyer@example.com", phone="01711111111"):
@@ -167,6 +167,43 @@ def test_password_change_revokes_old_sessions_and_logout_revokes_current_session
     assert client.get("/api/sc/me", headers=new_headers).status_code == 200
     assert client.post("/api/sc/logout", headers=new_headers).status_code == 200
     assert client.get("/api/sc/me", headers=new_headers).status_code == 401
+
+
+
+def test_reviews_require_owned_delivered_order_and_a_product_from_that_order(engine, world, client_for):
+    _seed_store(engine, world["org_a"], world["product_a"], "shop-a", "Shop A")
+    client, _ = client_for("owner")
+    token, headers = _register(client)
+    placed = client.post(f"/api/public/orders/{world['org_a']}", json={
+        "shipping_name": "Demo Buyer", "shipping_phone": "01711111111",
+        "shipping_address": "Sample address only",
+        "items": [{"product_id": world["product_a"], "quantity": 1}],
+        "store_customer_token": token,
+    })
+    assert placed.status_code == 200, placed.text
+    order_id = placed.json()["id"]
+    review_body = {
+        "product_id": world["product_a"], "order_id": order_id,
+        "rating": 5, "comment": "Sample review",
+    }
+    assert client.post(f"/api/public/reviews/{world['org_a']}", headers=headers, json=review_body).status_code == 409
+
+    with Session(engine) as db:
+        order = db.get(SalesDocument, order_id)
+        order.status = "delivered"
+        foreign_product = Product(
+            organization_id=world["org_a"], sku="NOT-ORDERED", name="Not ordered",
+            selling_price=Decimal("10"), cost_price=Decimal("5"),
+        )
+        db.add(foreign_product)
+        db.commit()
+        foreign_product_id = foreign_product.id
+
+    not_purchased = {**review_body, "product_id": foreign_product_id}
+    assert client.post(f"/api/public/reviews/{world['org_a']}", headers=headers, json=not_purchased).status_code == 403
+    accepted = client.post(f"/api/public/reviews/{world['org_a']}", headers=headers, json=review_body)
+    assert accepted.status_code == 201, accepted.text
+    assert accepted.json()["rating"] == 5
 
 
 def test_account_cannot_read_or_edit_another_customers_address(world, client_for):
