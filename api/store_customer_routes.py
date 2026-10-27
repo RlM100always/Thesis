@@ -282,9 +282,9 @@ def order_history(
     q = select(SalesDocument).where(
         SalesDocument.organization_id == store.organization_id,
         SalesDocument.document_type == "order",
-        # Match by linked account OR by phone number used at checkout
-        (SalesDocument.store_customer_id == customer.id)
-        | (SalesDocument.shipping_phone == customer.phone),
+        # Only show orders linked to this authenticated account. A phone number
+        # alone is not proof of ownership because customer phone is not verified.
+        SalesDocument.store_customer_id == customer.id,
     )
     if status:
         q = q.where(SalesDocument.status == status)
