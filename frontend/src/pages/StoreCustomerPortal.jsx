@@ -132,6 +132,7 @@ function ProfileView({ customer, token, onUpdate }) {
     district: customer.district || "",
     thana: customer.thana || "",
     address_detail: customer.address_detail || "",
+    avatar_data_url: customer.avatar_data_url || "",
   });
   const [ok, setOk] = useState(""); const [err, setErr] = useState(""); const [saving, setSaving] = useState(false);
 
@@ -147,6 +148,16 @@ function ProfileView({ customer, token, onUpdate }) {
       return next;
     });
   };
+  function uploadAvatar(event) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) { setErr("ছবির ফাইল নির্বাচন করুন।"); return; }
+    if (file.size > 1024 * 1024) { setErr("প্রোফাইল ছবির আকার ১ MB-এর মধ্যে রাখুন।"); return; }
+    const reader = new FileReader();
+    reader.onload = () => setForm(current => ({ ...current, avatar_data_url: String(reader.result || "") }));
+    reader.onerror = () => setErr("ছবিটি পড়া যায়নি। আবার চেষ্টা করুন।");
+    reader.readAsDataURL(file);
+  }
 
   async function save(e) {
     e.preventDefault(); setSaving(true); setErr(""); setOk("");
@@ -166,9 +177,22 @@ function ProfileView({ customer, token, onUpdate }) {
       <h3 style={{ fontSize: 15, fontWeight: 700, marginBottom: 16, color: "var(--text)" }}>আমার প্রোফাইল</h3>
       <Ok msg={ok} /><Err msg={err} />
 
+      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 14 }}>
+        <div style={{ width: 62, height: 62, borderRadius: "50%", overflow: "hidden", flexShrink: 0, display: "grid", placeItems: "center", background: "var(--surface)", border: "1px solid var(--border)", color: "var(--green)", fontSize: 24, fontWeight: 800 }}>
+          {form.avatar_data_url ? <img src={form.avatar_data_url} alt="প্রোফাইল ছবি" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : (form.display_name?.[0] || "👤")}
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <label style={{ fontSize: 12, color: "var(--text-muted)", fontWeight: 650, display: "block", marginBottom: 5 }}>প্রোফাইল ছবি (সর্বোচ্চ ১ MB)</label>
+          <input type="file" accept="image/*" onChange={uploadAvatar} style={{ width: "100%", fontSize: 12, color: "var(--text)" }} />
+          {form.avatar_data_url && <button type="button" onClick={() => setForm(current => ({ ...current, avatar_data_url: "" }))} style={{ marginTop: 5, border: 0, background: "none", color: "#dc2626", cursor: "pointer", fontSize: 11 }}>ছবি সরান</button>}
+        </div>
+      </div>
+
       <label style={{ fontSize: 12, color: "var(--text-muted)", fontWeight: 600 }}>নাম</label>
       <input {...inp} value={form.display_name} onChange={set("display_name")} required />
 
+      <label style={{ fontSize: 12, color: "var(--text-muted)", fontWeight: 600 }}>অ্যাকাউন্টের ইমেইল</label>
+      <input {...inp} value={customer.email || "ইমেইল যোগ করা হয়নি"} disabled style={{ ...inp.style, opacity: .72 }} />
       <label style={{ fontSize: 12, color: "var(--text-muted)", fontWeight: 600 }}>ফোন নম্বর</label>
       <input {...inp} type="tel" value={form.phone} onChange={set("phone")} placeholder="01XXXXXXXXX" />
 
