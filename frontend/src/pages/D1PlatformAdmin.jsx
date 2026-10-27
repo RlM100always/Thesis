@@ -3,6 +3,7 @@ import { useCallback, useState } from "react";
 const BASE=(import.meta.env.VITE_D1_COMMERCE_URL || "https://bsmart-commerce-api.bcs-written-rakib.workers.dev").replace(/\/$/,"");
 const money=n=>"৳"+Number(n||0).toLocaleString("bn-BD");
 const STATUS={placed:"অর্ডার জমা",confirmed:"নিশ্চিত",processing:"প্রস্তুত হচ্ছে",ready:"পণ্য প্রস্তুত",dispatched:"পাঠানো হয়েছে",shipped:"পাঠানো হয়েছে",fulfilled:"সম্পন্ন",delivered:"ডেলিভারি সম্পন্ন",cancelled:"বাতিল"};
+const PAYMENT_STATUS={demo_no_payment:"ডেমো—পেমেন্ট নেই",pending_cod:"COD—গ্রহণ বাকি",paid:"টাকা গ্রহণ নিশ্চিত",cancelled_no_payment:"বাতিল—পেমেন্ট নেই",unpaid:"পেমেন্ট বাকি"};
 const ORDER_ACTIONS={
   placed:[{status:"confirmed",label:"নিশ্চিত"},{status:"cancelled",label:"বাতিল",danger:true}],
   confirmed:[{status:"processing",label:"প্রস্তুতি শুরু"},{status:"cancelled",label:"বাতিল",danger:true}],
@@ -98,6 +99,7 @@ export default function D1PlatformAdmin() {
           {label:"অর্ডার",render:r=><><strong>{r.order_number}</strong><div style={{fontSize:11,opacity:.7}}>{r.store_name}</div><div style={{fontSize:10,opacity:.7}}>{r.customer_name||"Guest"}</div></>},
           {label:"তারিখ",key:"placed_at"},
           {label:"মূল্য",render:r=>money(r.total_bdt)},
+          {label:"পেমেন্ট",render:r=><>{PAYMENT_STATUS[r.payment_status]||r.payment_status||"—"}{r.payment_received_at&&<div style={{fontSize:10,opacity:.7,marginTop:4}}>{r.payment_received_at}</div>}</>},
           {label:"অবস্থা",render:r=><>{STATUS[r.status]||r.status}{r.status_note&&<div style={{fontSize:10,opacity:.75,marginTop:4}}>{r.status_note}</div>}{r.cancellation_reason&&r.status==="cancelled"&&<div style={{fontSize:10,opacity:.75,marginTop:4}}>কারণ: {r.cancellation_reason}</div>}</>},
           {label:"করণীয়",render:r=>(ORDER_ACTIONS[r.status]||[]).length?<div style={{display:"flex",gap:5,flexWrap:"wrap"}}>{ORDER_ACTIONS[r.status].map(action=><button key={action.status} style={{...style.button,...(action.danger?{color:"#b91c1c"}:{})}} disabled={busy} onClick={()=>run(()=>call("/api/platform-admin/orders/"+encodeURIComponent(r.id),secret,{method:"PATCH",body:{status:action.status,reason:action.status==="cancelled"?"Platform admin cancellation":"Platform admin status update"}}),action.status==="cancelled"?"অর্ডার বাতিল হয়েছে":(STATUS[action.status]||action.status)+" হয়েছে")}>{action.label}</button>)}</div>:"—"},
         ]}/></section>}

@@ -304,10 +304,18 @@ function OrderReturnForm({ order, token, storeSlug, onSubmitted }) {
     <textarea value={note} onChange={e => setNote(e.target.value)} maxLength={1000} rows={2} placeholder="অতিরিক্ত তথ্য (ঐচ্ছিক)" style={{ width: "100%", boxSizing: "border-box", padding: 9, borderRadius: 8, border: "1px solid var(--border)", background: "var(--bg)", color: "var(--text)", fontSize: 12, resize: "vertical" }}/>
     {error && <div role="alert" style={{ color: "#dc2626", fontSize: 11 }}>{error}</div>}
     <button type="submit" disabled={busy} style={{ padding: "9px 12px", borderRadius: 8, border: 0, background: "var(--green)", color: "var(--sc-on-green)", fontWeight: 700, cursor: busy ? "wait" : "pointer", fontSize: 12 }}>{busy ? "জমা হচ্ছে…" : "ফেরতের অনুরোধ জমা দিন"}</button>
-    <div style={{ fontSize: 10, color: "var(--text-muted)" }}>পরীক্ষামূলক ব্যবস্থা: কোনো অর্থ ফেরত দেওয়া হয় না।</div>
+    <div style={{ fontSize: 10, color: "var(--text-muted)" }}>{order.is_demo ? "পরীক্ষামূলক ব্যবস্থা: কোনো অর্থ ফেরত দেওয়া হয় না।" : "ফেরত অনুমোদন বা পণ্য গ্রহণ মানেই অর্থ ফেরত নয়; দোকানের সঙ্গে আলাদাভাবে নিষ্পত্তি করুন।"}</div>
   </form>;
 }
 
+const PAYMENT_STATUS_LABEL = {
+  demo_no_payment: "ডেমো অর্ডার—বাস্তব পেমেন্ট নেই",
+  pending_cod: "COD—টাকা গ্রহণ নিশ্চিত হয়নি",
+  paid: "পেমেন্ট গ্রহণ নিশ্চিত",
+  cancelled_no_payment: "বাতিল—পেমেন্ট নেওয়া হয়নি",
+  unpaid: "পেমেন্ট বাকি",
+};
+const PAYMENT_METHOD_LABEL = { cod: "Cash on Delivery", demo: "ডেমো", demo_pos: "ডেমো কাউন্টার" };
 const RETURN_LABEL = {
   requested: "অনুরোধ জমা হয়েছে", approved: "দোকান অনুমোদন করেছে",
   rejected: "দোকান অনুরোধ প্রত্যাখ্যান করেছে", received: "ফেরত পণ্য গ্রহণ করা হয়েছে",
@@ -431,6 +439,12 @@ function OrdersView({ storeSlug, token, onReorder }) {
               <div style={{ borderTop: "1px solid var(--border)", padding: "12px 14px" }}>
                 {/* Status timeline */}
                 <OrderTimeline status={o.status} />
+
+                <div style={{ marginTop: 10, padding: "9px 11px", border: "1px solid var(--border)", borderRadius: 9, fontSize: 12, color: "var(--text)" }}>
+                  <strong>পেমেন্ট:</strong> {PAYMENT_METHOD_LABEL[o.payment_method] || o.payment_method || "—"} · {PAYMENT_STATUS_LABEL[o.payment_status] || o.payment_status || "অবস্থা পাওয়া যায়নি"}
+                  {o.payment_received_at && <div style={{ marginTop: 4, color: "var(--text-muted)" }}>গ্রহণের সময়: {o.payment_received_at}{o.payment_received_by ? ` · ${o.payment_received_by}` : ""}</div>}
+                  {o.payment_note && <div style={{ marginTop: 4, color: "var(--text-muted)" }}>নোট: {o.payment_note}</div>}
+                </div>
 
                 {/* Items */}
                 <div style={{ marginTop: 8 }}>
