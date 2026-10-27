@@ -1,4 +1,5 @@
 import { merchantRouter } from "./merchant-routes.js";
+import { customerRouter, customerFromToken } from "./customer-routes.js";
 /*
  B-SMART Cloudflare D1 Commerce API.
  Public read-only directory & example-store catalogues, demo checkout (no
@@ -20,7 +21,7 @@ const cors = (request) => {
     "Cache-Control":"no-store",
     "Vary":"Origin",
     ...(origin && allowed.has(origin) ? {"Access-Control-Allow-Origin":origin} : {}),
-    "Access-Control-Allow-Methods":"GET,POST,OPTIONS",
+    "Access-Control-Allow-Methods":"GET,POST,PATCH,PUT,DELETE,OPTIONS",
     "Access-Control-Allow-Headers":"Content-Type, Authorization",
   };
 };
@@ -64,15 +65,20 @@ async function storeResponse(env,store) {
 async function orderDetails(env,request,id,token) {
  const order=await env.DB.prepare("SELECT * FROM commerce_orders WHERE store_id=? AND access_token=? LIMIT 1").bind(id,token).first();
  if(!order)return error(request,404,"Order not found");
- const {results}=await env.DB.prepare("SELECT product_name,quantity,price_bdt,line_total_bdt FROM commerce_order_lines WHERE order_id=?").bind(order.id).all();
+ const [{results},store]=await Promise.all([
+  env.DB.prepare("SELECT product_id,product_name,quantity,price_bdt,line_total_bdt FROM commerce_order_lines WHERE order_id=?").bind(order.id).all(),
+  env.DB.prepare("SELECT slug,name,is_demo FROM commerce_stores WHERE id=?").bind(id).first()
+ ]);
  return output(request,{
-  id:order.id,order_number:order.order_number,access_token:order.access_token,
-  status:order.status,payment_status:"demo_no_payment",status_note:"Synthetic demonstration order; no delivery",
-  placed_at:order.placed_at,shipping_name:"Demo customer",shipping_phone:"",shipping_address:"",
+  id:order.id,order_number:order.order_number,document_number:order.order_number,access_token:order.access_token,
+  status:order.status,payment_status:"demo_no_payment",status_note:"পরীক্ষামূলক অর্ডার; বাস্তব ডেলিভারি বা পেমেন্ট নেই",
+  placed_at:order.placed_at,issued_at:order.placed_at,
+  shipping_name:order.shipping_name||"",shipping_phone:order.shipping_phone||"",shipping_address:order.shipping_address||"",
   subtotal:order.subtotal_bdt,tax_amount:0,delivery_fee:0,discount_amount:0,
   coupon_code:null,coupon_discount:0,total:order.total_bdt,organization_id:id,
-  payment_method:"cod",
-  items:results.map(p=>({product_name:p.product_name,quantity:p.quantity,unit_price:p.price_bdt,line_total:p.line_total_bdt,variant_label:null})),
+  store_slug:store?.slug||null,store_name:store?.name||"পরীক্ষামূলক দোকান",is_demo:true,
+  payment_method:order.payment_method||"demo",
+  items:results.map(p=>({product_id:p.product_id,description:p.product_name,product_name:p.product_name,quantity:p.quantity,unit_price:p.price_bdt,line_total:p.line_total_bdt,variant_label:null})),
   whatsapp_notify_url:null,coupon_applied:false,referral_discount:0
  });
 }
@@ -86,6 +92,15 @@ async function checkout(env,request,id) {
  try{data=await request.json();}catch{return error(request,400,"Invalid JSON");}
  if(data.payment_method && !["cod","demo"].includes(data.payment_method))
    return error(request,422,"Only free demo/COD checkout is supported. Do not make a payment.");
+ const shippingName=safe(data.shipping_name||"Demo customer");
+ const shippingPhone=String(data.shipping_phone||"").trim().slice(0,30);
+ const shippingAddress=String(data.shipping_address||"").trim().slice(0,500);
+ const customerToken=String(data.store_customer_token||data.customer_token||"").trim();
+ let account=null;
+ if(customerToken){
+  account=await customerFromToken(env,customerToken);
+  if(!account)return error(request,401,"Customer session expired. Sign in again before placing this demo order.");
+ }
  const items=data.items;
  if(!Array.isArray(items)||items.length<1||items.length>12)
    return error(request,422,"An order requires 1-12 distinct products");
@@ -112,9 +127,9 @@ async function checkout(env,request,id) {
  const customerId=crypto.randomUUID();
  const statements=[
   env.DB.prepare("INSERT INTO commerce_customers(id,store_id,display_name) VALUES(?,?,?)")
-   .bind(customerId,id,"Anonymous demo customer"),
-  env.DB.prepare("INSERT INTO commerce_orders(id,store_id,order_number,access_token,status,subtotal_bdt,total_bdt,payment_method,shipping_name,shipping_phone,shipping_address,customer_id) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)")
-   .bind(oid,id,no,token,"placed",subtotal,subtotal,"demo","Demo customer","","",customerId),
+   .bind(customerId,id,shippingName),
+  env.DB.prepare("INSERT INTO commerce_orders(id,store_id,order_number,access_token,status,subtotal_bdt,total_bdt,payment_method,shipping_name,shipping_phone,shipping_address,customer_id,account_id) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)")
+   .bind(oid,id,no,token,"placed",subtotal,subtotal,"demo",shippingName,shippingPhone,shippingAddress,customerId,account?.id||null),
   ...details.map(({p,qty,price})=>env.DB.prepare("INSERT INTO commerce_order_lines(order_id,product_id,product_name,quantity,price_bdt,line_total_bdt) VALUES(?,?,?,?,?,?)")
    .bind(oid,p.id,p.name,qty,price,qty*price))
  ];
@@ -129,6 +144,8 @@ export default {
   if(method==="OPTIONS")
    return new Response(null,{status:204,headers:cors(request)});
   try{
+   const customer=await customerRouter(request,env,path,output,error);
+   if(customer!==null)return customer;
    const merchant=await merchantRouter(request,env,path,output,error);
    if(merchant!==null)return merchant;
    if(path==="/health"&&method==="GET") {
