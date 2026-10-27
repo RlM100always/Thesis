@@ -58,6 +58,7 @@ from .mission_queue_routes import router as mission_queue_router  # noqa: E402
 from .reservation_routes import router as reservation_router  # noqa: E402
 from .store_routes import router as store_router, public_router as public_store_router  # noqa: E402
 from .store_customer_routes import router as sc_router, biz_router as sc_biz_router
+from .store_customer_commerce import router as sc_commerce_router
 from .payment_routes import router as payment_router
 from .coupon_routes import router as coupon_router, public_router as public_coupon_router
 from .review_routes import router as review_router
@@ -130,6 +131,7 @@ app.include_router(store_router)
 app.include_router(public_store_router)
 app.include_router(sc_router)
 app.include_router(sc_biz_router)
+app.include_router(sc_commerce_router)
 app.include_router(payment_router)
 app.include_router(coupon_router)
 app.include_router(public_coupon_router)
