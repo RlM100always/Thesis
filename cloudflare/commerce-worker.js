@@ -52,6 +52,7 @@ const productView=(p)=>({
   brand:p.brand||null,sale_price:p.compare_at_price_bdt||null,sale_end:null,image_data_url:p.image_url||null,
   tags:(()=>{try{return JSON.parse(p.tags||"[]")}catch{return []}})(),
   is_featured:!!p.is_featured,sort_order:0,max_order_qty:Math.min(p.stock_qty,10),
+  review_avg:Number(p.review_avg||0),review_count:Number(p.review_count||0),
   variants:[],in_stock:p.stock_qty>0,quantity:p.stock_qty,category:p.category
 });
 async function getStore(env,term,slugMode) {
@@ -61,7 +62,11 @@ async function getStore(env,term,slugMode) {
  return env.DB.prepare(sql).bind(term).first();
 }
 async function storeResponse(env,store) {
- const {results}=await env.DB.prepare("SELECT * FROM commerce_products WHERE store_id=? AND is_listed=1 ORDER BY is_featured DESC,name").bind(store.id).all();
+ const {results}=await env.DB.prepare(
+  "SELECT p.*,COALESCE(AVG(r.rating),0) AS review_avg,COUNT(r.id) AS review_count " +
+  "FROM commerce_products p LEFT JOIN commerce_product_reviews r ON r.product_id=p.id AND r.store_id=p.store_id " +
+  "WHERE p.store_id=? AND p.is_listed=1 GROUP BY p.id ORDER BY p.is_featured DESC,p.name"
+ ).bind(store.id).all();
  return {...baseView(store),products:results.map(productView)};
 }
 async function orderDetails(env,request,id,token) {
@@ -184,7 +189,11 @@ export default {
     if(method==="GET"&&action==="products") {
      const store=await getStore(env,id,false);
      if(!store)return error(request,404,"Store not found");
-     const {results}=await env.DB.prepare("SELECT * FROM commerce_products WHERE store_id=? AND is_listed=1 ORDER BY name").bind(id).all();
+     const {results}=await env.DB.prepare(
+      "SELECT p.*,COALESCE(AVG(r.rating),0) AS review_avg,COUNT(r.id) AS review_count " +
+      "FROM commerce_products p LEFT JOIN commerce_product_reviews r ON r.product_id=p.id AND r.store_id=p.store_id " +
+      "WHERE p.store_id=? AND p.is_listed=1 GROUP BY p.id ORDER BY p.name"
+     ).bind(id).all();
      return output(request,results.map(productView));
     }
     if(method==="POST"&&!action)return checkout(env,request,id);
