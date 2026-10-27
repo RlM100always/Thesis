@@ -3,11 +3,12 @@ import { customerRouter, customerFromToken } from "./customer-routes.js";
 import { platformAdminRouter } from "./platform-admin-routes.js";
 /*
  B-SMART Cloudflare D1 Commerce API.
- Public read-only directory & example-store catalogues, demo checkout (no
- actual payment/delivery), token-only order tracking. No private profile data
- retained for synthetic demo checkout.
- D1 is the source of truth for this demo catalogue only. The pre-existing
- FastAPI operational POS/customer/admin flows still need explicit migration.
+ Public demo-store catalogues, customer accounts, saved addresses, account-linked
+ order history, support chat and demo-only checkout. Account contact/address data
+ is stored in D1; users must use synthetic information until production security
+ and privacy controls are complete. No real payment, physical delivery or refund.
+ D1 is the source of truth for this demo catalogue only. Legacy FastAPI business
+ and historical customer records are separate and are not synchronized.
 */
 const allowed = new Set([
   "https://thesis-j0n8.onrender.com",
