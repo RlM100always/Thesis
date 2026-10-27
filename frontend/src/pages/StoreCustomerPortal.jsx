@@ -523,7 +523,7 @@ const TABS = [
   { id: "chat", label: "চ্যাট", icon: "💬" },
 ];
 
-export default function StoreCustomerPortal({ storeSlug, storeName, onClose, onAuthChange, onReorder }) {
+export default function StoreCustomerPortal({ storeSlug, storeName, onClose, onAuthChange, onReorder, onAddToCart }) {
   const [token, setToken] = useState(() => loadToken());
   const [customer, setCustomer] = useState(null);
   const [tab, setTab] = useState("profile");
@@ -593,7 +593,7 @@ export default function StoreCustomerPortal({ storeSlug, storeName, onClose, onA
               {tab === "profile" && <ProfileView customer={customer} token={token} onUpdate={setCustomer} />}
               {tab === "addresses" && <AddressesView token={token} />}
               {tab === "orders" && <OrdersView storeSlug={storeSlug} token={token} onReorder={onReorder ? (items) => { onReorder(items); onClose(); } : null} />}
-              {tab === "wishlist" && <WishlistView token={token} storeSlug={storeSlug} onReorder={onReorder ? (items) => { onReorder(items); onClose(); } : null} />}
+              {tab === "wishlist" && <WishlistView token={token} storeSlug={storeSlug} onAddToCart={onAddToCart ? (productId) => { onAddToCart(productId); onClose(); } : null} />}
               {tab === "security" && <SecurityView token={token} onTokenChange={handleTokenChange} />}
               {tab === "chat" && <ChatView storeSlug={storeSlug} token={token} storeName={storeName} />}
             </>
