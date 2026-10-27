@@ -1009,7 +1009,7 @@ function CheckoutView({ store, cart, products, onBack, onDone, scCustomer, varia
         }
       }).catch(() => {});
     return () => { active = false; };
-  }, [scCustomer?.id]);
+  }, [scCustomer?.id, store.slug]);
 
   function applySavedAddress(id) {
     setSelectedAddressId(id);
