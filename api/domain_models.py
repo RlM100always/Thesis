@@ -1780,6 +1780,77 @@ class StoreMessage(Base):
     read_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
+
+class StoreCustomerAddress(Base, TimestampMixin):
+    """A saved delivery address owned by one store customer across all stores."""
+
+    __tablename__ = "store_customer_addresses"
+    __table_args__ = (
+        Index("ix_sc_address_customer_default", "customer_id", "is_default"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    customer_id: Mapped[str] = mapped_column(
+        ForeignKey("store_customers.id", ondelete="CASCADE"), index=True
+    )
+    label: Mapped[str] = mapped_column(String(40), default="বাড়ি")
+    recipient_name: Mapped[str] = mapped_column(String(100))
+    phone: Mapped[str] = mapped_column(String(20))
+    division: Mapped[str] = mapped_column(String(50))
+    district: Mapped[str] = mapped_column(String(50))
+    thana: Mapped[str | None] = mapped_column(String(80))
+    address_detail: Mapped[str] = mapped_column(String(400))
+    postal_code: Mapped[str | None] = mapped_column(String(12))
+    is_default: Mapped[bool] = mapped_column(Boolean, default=False)
+
+
+class StoreCustomerWishlistItem(Base):
+    """A customer's saved product, scoped to the actual store selling it."""
+
+    __tablename__ = "store_customer_wishlist_items"
+    __table_args__ = (
+        UniqueConstraint("customer_id", "store_id", "product_id", name="uq_sc_wishlist_product"),
+        Index("ix_sc_wishlist_customer_created", "customer_id", "created_at"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    customer_id: Mapped[str] = mapped_column(
+        ForeignKey("store_customers.id", ondelete="CASCADE"), index=True
+    )
+    store_id: Mapped[str] = mapped_column(
+        ForeignKey("stores.id", ondelete="CASCADE"), index=True
+    )
+    product_id: Mapped[str] = mapped_column(
+        ForeignKey("products.id", ondelete="CASCADE"), index=True
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class StoreCustomerCartItem(Base, TimestampMixin):
+    """A server-saved cart line for one customer in one storefront."""
+
+    __tablename__ = "store_customer_cart_items"
+    __table_args__ = (
+        UniqueConstraint("customer_id", "store_id", "product_id", name="uq_sc_cart_product"),
+        CheckConstraint("quantity >= 1 AND quantity <= 99", name="ck_sc_cart_quantity"),
+        Index("ix_sc_cart_customer_store", "customer_id", "store_id"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    customer_id: Mapped[str] = mapped_column(
+        ForeignKey("store_customers.id", ondelete="CASCADE"), index=True
+    )
+    store_id: Mapped[str] = mapped_column(
+        ForeignKey("stores.id", ondelete="CASCADE"), index=True
+    )
+    product_id: Mapped[str] = mapped_column(
+        ForeignKey("products.id", ondelete="CASCADE"), index=True
+    )
+    quantity: Mapped[int] = mapped_column(Integer)
+    variant_label: Mapped[str | None] = mapped_column(String(100))
+
+
+
 # ── New ecommerce feature models ──────────────────────────────────────────────
 
 class StoreCoupon(Base, TimestampMixin):

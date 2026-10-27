@@ -7,6 +7,7 @@ path and vice versa.
 
 from __future__ import annotations
 
+import re
 import secrets
 from datetime import datetime, timedelta, timezone
 from typing import Annotated
@@ -15,6 +16,7 @@ import jwt
 from fastapi import APIRouter, Depends, Header, HTTPException, status
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from .config import get_settings
@@ -85,7 +87,7 @@ class ScRegister(BaseModel):
     display_name: str = Field(min_length=2, max_length=100)
     email: str | None = Field(default=None, max_length=200)
     phone: str | None = Field(default=None, max_length=20)
-    password: str = Field(min_length=6, max_length=128)
+    password: str = Field(min_length=8, max_length=128)
 
 
 class ScLogin(BaseModel):
@@ -96,7 +98,7 @@ class ScLogin(BaseModel):
 class ScProfileUpdate(BaseModel):
     display_name: str | None = Field(default=None, min_length=2, max_length=100)
     phone: str | None = Field(default=None, max_length=20)
-    avatar_data_url: str | None = None
+    avatar_data_url: str | None = Field(default=None, max_length=1_500_000)
     division: str | None = Field(default=None, max_length=50)
     district: str | None = Field(default=None, max_length=50)
     thana: str | None = Field(default=None, max_length=80)
@@ -180,34 +182,37 @@ def _msg_view(m: StoreMessage) -> dict:
 
 @router.post("/register")
 def register(payload: ScRegister, db: Db = Depends(get_db)):
-    if not payload.email and not payload.phone:
+    email = payload.email.strip().lower() if payload.email and payload.email.strip() else None
+    phone = payload.phone.strip() if payload.phone and payload.phone.strip() else None
+    if not email and not phone:
         raise HTTPException(status_code=422, detail="ইমেইল বা ফোন নম্বর দিতে হবে")
+    if email and not re.fullmatch(_EMAIL_RE, email):
+        raise HTTPException(status_code=422, detail="সঠিক ইমেইল ঠিকানা দিন")
 
-    if payload.email:
-        existing = db.scalar(select(StoreCustomer).where(StoreCustomer.email == payload.email))
-        if existing:
-            raise HTTPException(status_code=409, detail="এই ইমেইল দিয়ে আগেই অ্যাকাউন্ট আছে")
-
-    if payload.phone:
-        existing_phone = db.scalar(select(StoreCustomer).where(StoreCustomer.phone == payload.phone))
-        if existing_phone:
-            raise HTTPException(status_code=409, detail="এই ফোন নম্বর দিয়ে আগেই অ্যাকাউন্ট আছে")
+    if email and db.scalar(select(StoreCustomer.id).where(func.lower(StoreCustomer.email) == email)):
+        raise HTTPException(status_code=409, detail="এই ইমেইল দিয়ে আগেই অ্যাকাউন্ট আছে")
+    if phone and db.scalar(select(StoreCustomer.id).where(StoreCustomer.phone == phone)):
+        raise HTTPException(status_code=409, detail="এই ফোন নম্বর দিয়ে আগেই অ্যাকাউন্ট আছে")
 
     customer = StoreCustomer(
-        display_name=payload.display_name,
-        email=payload.email or None,
-        phone=payload.phone or None,
+        display_name=payload.display_name.strip(),
+        email=email,
+        phone=phone,
         password_hash=hash_password(payload.password),
     )
     db.add(customer)
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status_code=409, detail="এই ইমেইল বা ফোন নম্বর দিয়ে আগেই অ্যাকাউন্ট আছে")
     db.refresh(customer)
     return {"token": _issue(customer.id, customer.token_version), "customer": _customer_view(customer)}
 
 
 @router.post("/login")
 def login(payload: ScLogin, db: Db = Depends(get_db)):
-    ep = payload.email_or_phone.strip()
+    ep = payload.email_or_phone.strip().lower() if "@" in payload.email_or_phone else payload.email_or_phone.strip()
     if "@" in ep:
         customer = db.scalar(select(StoreCustomer).where(StoreCustomer.email == ep))
     else:
@@ -240,7 +245,19 @@ def update_me(
     db: Db = Depends(get_db),
 ):
     customer = _get_customer(authorization, db)
-    for field, value in payload.model_dump(exclude_unset=True).items():
+    updates = payload.model_dump(exclude_unset=True)
+    if "display_name" in updates and updates["display_name"] is not None:
+        updates["display_name"] = updates["display_name"].strip()
+    if "phone" in updates and updates["phone"]:
+        updates["phone"] = updates["phone"].strip()
+        existing = db.scalar(select(StoreCustomer.id).where(
+            StoreCustomer.phone == updates["phone"], StoreCustomer.id != customer.id
+        ))
+        if existing:
+            raise HTTPException(status_code=409, detail="এই ফোন নম্বর দিয়ে অন্য অ্যাকাউন্ট আছে")
+    if updates.get("avatar_data_url") and not updates["avatar_data_url"].startswith("data:image/"):
+        raise HTTPException(status_code=422, detail="প্রোফাইল ছবির ফরম্যাট সঠিক নয়")
+    for field, value in updates.items():
         setattr(customer, field, value)
     db.commit()
     db.refresh(customer)
@@ -265,9 +282,9 @@ def order_history(
     q = select(SalesDocument).where(
         SalesDocument.organization_id == store.organization_id,
         SalesDocument.document_type == "order",
-        # Match by linked account OR by phone number used at checkout
-        (SalesDocument.store_customer_id == customer.id)
-        | (SalesDocument.shipping_phone == customer.phone),
+        # Only show orders linked to this authenticated account. A phone number
+        # alone is not proof of ownership because customer phone is not verified.
+        SalesDocument.store_customer_id == customer.id,
     )
     if status:
         q = q.where(SalesDocument.status == status)

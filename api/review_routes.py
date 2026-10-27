@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from typing import Annotated
 
 from .database import get_db
-from .domain_models import ProductReview, SalesDocument, StoreCustomer
+from .domain_models import ProductReview, SalesDocument, SalesDocumentLine, StoreCustomer
 from .store_customer_routes import _get_customer
 
 Db = Session
@@ -52,8 +52,16 @@ def submit_review(
     )
     if not order:
         raise HTTPException(status_code=404, detail="অর্ডার পাওয়া যায়নি")
-    if order.store_customer_id != customer.id and order.shipping_phone != customer.phone:
+    if order.store_customer_id != customer.id:
         raise HTTPException(status_code=403, detail="এই অর্ডারের জন্য আপনি রিভিউ দিতে পারবেন না")
+    if order.status != "delivered":
+        raise HTTPException(status_code=409, detail="ডেলিভারি সম্পন্ন হলে রিভিউ দিতে পারবেন")
+    purchased = db.scalar(select(SalesDocumentLine.id).where(
+        SalesDocumentLine.document_id == order.id,
+        SalesDocumentLine.product_id == body.product_id,
+    ))
+    if purchased is None:
+        raise HTTPException(status_code=403, detail="এই পণ্যটি ওই অর্ডারে ছিল না")
 
     existing = db.scalar(
         select(ProductReview).where(
