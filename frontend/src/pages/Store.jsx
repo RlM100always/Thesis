@@ -634,7 +634,7 @@ function StarRating({ value, count }) {
   );
 }
 
-function ProductCard({ product, cartQty, onAdd, onQtyChange, onView, storeCategory, showStockLevel }) {
+function ProductCard({ product, cartQty, onAdd, onQtyChange, onView, storeCategory, showStockLevel, isWishlisted = false, onToggleWishlist }) {
   const outOfStock = product.in_stock === false;
   const inCart = (cartQty || 0) > 0;
   const hasFlashSale = product.sale_price != null;
@@ -643,6 +643,13 @@ function ProductCard({ product, cartQty, onAdd, onQtyChange, onView, storeCatego
     <div className="s-product-card-wrap">
       {product.is_featured && <span className="s-featured-badge">⭐ বিশেষ</span>}
       {hasFlashSale && <span className="s-featured-badge" style={{ background: "#dc2626", right: 8, left: "auto" }}>🔥 সেল</span>}
+      <button type="button" className={`s-product-favorite ${isWishlisted ? "selected" : ""}`}
+        aria-label={isWishlisted ? "পছন্দের তালিকা থেকে সরান" : "পছন্দের তালিকায় রাখুন"}
+        title={isWishlisted ? "পছন্দের তালিকা থেকে সরান" : "পছন্দের তালিকায় রাখুন"}
+        onClick={e => { e.stopPropagation(); onToggleWishlist?.(product); }}
+        style={{ position: "absolute", top: 42, right: 9, zIndex: 4, width: 36, height: 36, borderRadius: "50%", border: "1px solid rgba(0,0,0,.08)", display: "grid", placeItems: "center", fontSize: 22, lineHeight: 1, cursor: "pointer", boxShadow: "0 3px 12px rgba(0,0,0,.14)" }}>
+        {isWishlisted ? "♥" : "♡"}
+      </button>
       <div className="s-product-card">
         {product.price != null ? <button type="button" className="s-product-img-button" onClick={() => onView(product)} aria-label={`${product.name} বিস্তারিত দেখুন`}>
           <img src={product.image_data_url || productImage(product, storeCategory)} alt={product.name} className="s-product-img" loading="lazy" />
@@ -692,7 +699,7 @@ function ProductCard({ product, cartQty, onAdd, onQtyChange, onView, storeCatego
   );
 }
 
-function ProductModal({ product, cartQty, onClose, onAdd, onQtyChange, onViewFull, storeCategory, showStockLevel, orgId }) {
+function ProductModal({ product, cartQty, onClose, onAdd, onQtyChange, onViewFull, storeCategory, showStockLevel, orgId, isWishlisted = false, onToggleWishlist }) {
   const outOfStock = product.in_stock === false;
   const [qty, setQty] = useState(1);
   const [selectedVariants, setSelectedVariants] = useState({});  // variantId → option
@@ -751,6 +758,11 @@ function ProductModal({ product, cartQty, onClose, onAdd, onQtyChange, onViewFul
           {product.description && (
             <p style={{ fontSize: 14, color: "var(--s-ink)", lineHeight: 1.65, margin: "0 0 14px" }}>{product.description}</p>
           )}
+          <button type="button" className={`s-detail-favorite ${isWishlisted ? "selected" : ""}`}
+            onClick={() => onToggleWishlist?.(product)}
+            style={{ width: "100%", margin: "0 0 14px", padding: "9px 12px", borderRadius: 10, border: "1px solid var(--s-border)", background: isWishlisted ? "rgba(190,18,60,.09)" : "var(--s-card)", color: isWishlisted ? "#be123c" : "var(--s-ink)", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+            {isWishlisted ? "♥ পছন্দের তালিকায় আছে" : "♡ পছন্দের তালিকায় রাখুন"}
+          </button>
           {product.tags?.length > 0 && (
             <div className="s-product-tags" style={{ marginBottom: 16 }}>
               {product.tags.map(t => <span key={t} className="s-tag">{t}</span>)}
@@ -1579,6 +1591,10 @@ export default function StorePage() {
   const [portalOpen, setPortalOpen] = useState(false);
   const [scCustomer, setScCustomer] = useState(null); // logged-in store customer
   const [chatUnread, setChatUnread] = useState(0);
+  const [wishlistIds, setWishlistIds] = useState({});
+  const [wishlistBusy, setWishlistBusy] = useState({});
+  const pendingWishlistRef = useRef(null);
+  const [cartReadyScope, setCartReadyScope] = useState("");
   const [search, setSearch] = useState("");
   const [activeCat, setActiveCat] = useState(null);
   const [sortOrder, setSortOrder] = useState("recommended");
@@ -1596,6 +1612,80 @@ export default function StorePage() {
       .then(c => { if (c) setScCustomer(c); })
       .catch(() => {});
   }, []);
+
+  // Load this customer's cross-store wishlist and persist a pending favourite
+  // after sign-in. The API enforces customer ownership and active store listings.
+  useEffect(() => {
+    if (!scCustomer || !store?.slug) { setWishlistIds({}); return; }
+    const token = (() => { try { return localStorage.getItem("sc_token"); } catch (_) { return null; } })();
+    if (!token) return;
+    let active = true;
+    const pending = pendingWishlistRef.current;
+    if (pending) pendingWishlistRef.current = null;
+    const load = () => fetch(`/api/sc/wishlist?store_slug=${encodeURIComponent(store.slug)}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    }).then(r => r.ok ? r.json() : Promise.reject(new Error("পছন্দের তালিকা লোড করা যায়নি")))
+      .then(d => { if (active) setWishlistIds(Object.fromEntries((d.items || []).map(item => [item.product_id, true]))); });
+    load().then(async () => {
+      if (!pending || !active) return;
+      const response = await fetch("/api/sc/wishlist", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ store_slug: store.slug, product_id: pending.id }),
+      });
+      if (!response.ok) { const d = await response.json().catch(() => ({})); throw new Error(d.detail || "পণ্যটি পছন্দের তালিকায় রাখা যায়নি"); }
+      await load();
+    }).catch(e => { if (active) window.alert(e.message || "পছন্দের তালিকা আপডেট করা যায়নি"); });
+    return () => { active = false; };
+  }, [scCustomer?.id, store?.slug]);
+
+  // Merge guest cart with the account's server-side cart when signed in. The
+  // store/customer scope prevents a cart from one vendor leaking into another.
+  const cartScope = scCustomer && store?.slug ? `${scCustomer.id}:${store.slug}` : "";
+  useEffect(() => {
+    if (!cartScope || !store?.organization_id) { setCartReadyScope(""); return; }
+    let active = true;
+    setCartReadyScope("");
+    const token = (() => { try { return localStorage.getItem("sc_token"); } catch (_) { return null; } })();
+    if (!token) { setCartReadyScope(cartScope); return; }
+    fetch(`/api/sc/cart/${encodeURIComponent(store.slug)}`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.ok ? r.json() : Promise.reject(new Error("সেভ করা কার্ট লোড করা যায়নি")))
+      .then(data => {
+        if (!active) return;
+        const allowed = new Set((store.products || []).filter(p => p.price != null).map(p => p.id));
+        const merged = {};
+        for (const item of data.items || []) if (allowed.has(item.product_id)) merged[item.product_id] = Math.max(1, Number(item.quantity) || 1);
+        for (const [id, quantity] of Object.entries(loadCart(store.organization_id))) {
+          if (allowed.has(id)) merged[id] = Math.min(maxOrderQuantity((store.products || []).find(p => p.id === id) || {}), Math.max(merged[id] || 0, Number(quantity) || 0));
+        }
+        setCart(merged);
+        saveCart(store.organization_id, merged);
+        setVariantSelections(current => {
+          const next = { ...current };
+          for (const item of data.items || []) if (item.variant_label) next[item.product_id] = item.variant_label;
+          return next;
+        });
+        setCartReadyScope(cartScope);
+      })
+      .catch(() => { if (active) setCartReadyScope(cartScope); });
+    return () => { active = false; };
+  }, [cartScope, store?.organization_id]);
+
+  useEffect(() => {
+    if (!cartScope || cartReadyScope !== cartScope || !store?.slug) return;
+    const token = (() => { try { return localStorage.getItem("sc_token"); } catch (_) { return null; } })();
+    if (!token) return;
+    const timeout = window.setTimeout(() => {
+      const items = Object.entries(cart).filter(([id, quantity]) => quantity > 0 && productMap[id]?.price != null)
+        .map(([product_id, quantity]) => ({ product_id, quantity: Math.min(99, Number(quantity)), variant_label: variantSelections[product_id] || undefined }));
+      fetch(`/api/sc/cart/${encodeURIComponent(store.slug)}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ items }),
+      }).catch(() => {});
+    }, 450);
+    return () => window.clearTimeout(timeout);
+  }, [cart, variantSelections, cartScope, cartReadyScope, store?.slug, productMap]);
 
   // Poll unread chat count for account button badge
   useEffect(() => {
@@ -1700,6 +1790,41 @@ export default function StorePage() {
     }
   }
 
+  async function toggleWishlist(product) {
+    if (!product?.id || !store?.slug) return;
+    if (!scCustomer) {
+      pendingWishlistRef.current = product;
+      setPortalOpen(true);
+      return;
+    }
+    const token = (() => { try { return localStorage.getItem("sc_token"); } catch (_) { return null; } })();
+    if (!token) { setPortalOpen(true); return; }
+    const wasSaved = !!wishlistIds[product.id];
+    setWishlistBusy(current => ({ ...current, [product.id]: true }));
+    setWishlistIds(current => {
+      const next = { ...current };
+      if (wasSaved) delete next[product.id]; else next[product.id] = true;
+      return next;
+    });
+    try {
+      const response = await fetch(wasSaved
+        ? `/api/sc/wishlist/${encodeURIComponent(store.slug)}/${encodeURIComponent(product.id)}`
+        : "/api/sc/wishlist", {
+        method: wasSaved ? "DELETE" : "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        ...(wasSaved ? {} : { body: JSON.stringify({ store_slug: store.slug, product_id: product.id }) }),
+      });
+      if (!response.ok) { const d = await response.json().catch(() => ({})); throw new Error(d.detail || "পছন্দের তালিকা আপডেট করা যায়নি"); }
+    } catch (e) {
+      setWishlistIds(current => {
+        const next = { ...current };
+        if (wasSaved) next[product.id] = true; else delete next[product.id];
+        return next;
+      });
+      window.alert(e.message || "পছন্দের তালিকা আপডেট করা যায়নি");
+    } finally { setWishlistBusy(current => ({ ...current, [product.id]: false })); }
+  }
+
   function viewProduct(p) { setModalProduct(p); }
   function viewProductFull(p) { setSelectedProduct(p); setDetailQty(1); setView("product"); window.scrollTo(0, 0); }
   function goToSection(id) {
@@ -1777,6 +1902,7 @@ export default function StorePage() {
           storeCategory={store?.category}
           showStockLevel={store?.show_stock_level}
           orgId={orgId}
+          isWishlisted={!!wishlistIds[modalProduct.id]} onToggleWishlist={toggleWishlist}
           onClose={() => setModalProduct(null)}
           onViewFull={p => { setModalProduct(null); viewProductFull(p); }}
           onAdd={(p, qty, variantLabel) => { addToCart(p, qty, variantLabel); }}
@@ -1811,7 +1937,7 @@ export default function StorePage() {
           <a href={waShareUrl} target="_blank" rel="noopener noreferrer" className="s-wa-btn" title="WhatsApp-এ শেয়ার করুন">
             📤
           </a>
-          {!store.is_demo && <button onClick={() => setPortalOpen(true)} title="আমার অ্যাকাউন্ট"
+          <button onClick={() => setPortalOpen(true)} title="আমার অ্যাকাউন্ট"
             style={{ background: "none", border: "1px solid var(--border,rgba(0,0,0,.12))", borderRadius: 20, padding: "7px 13px", fontSize: 13, fontWeight: 600, cursor: "pointer", color: "var(--sa)", display: "flex", alignItems: "center", gap: 5, position: "relative" }}>
             👤 {scCustomer ? scCustomer.display_name.split(" ")[0] : "অ্যাকাউন্ট"}
             {chatUnread > 0 && (
@@ -1819,7 +1945,7 @@ export default function StorePage() {
                 {chatUnread > 9 ? "9+" : chatUnread}
               </span>
             )}
-          </button>}
+          </button>
           <button type="button" className="s-theme-toggle" onClick={toggleTheme}
             aria-label={theme === "dark" ? "লাইট মোড চালু করুন" : "ডার্ক মোড চালু করুন"}
             title={theme === "dark" ? "লাইট মোড চালু করুন" : "ডার্ক মোড চালু করুন"}
@@ -1831,12 +1957,12 @@ export default function StorePage() {
       </header>
 
       {/* Customer portal */}
-      {portalOpen && !store.is_demo && (
+      {portalOpen && (
         <StoreCustomerPortal
           storeSlug={store.slug}
           storeName={store.display_name}
           onClose={() => setPortalOpen(false)}
-          onAuthChange={(c) => { setScCustomer(c); if (!c) setChatUnread(0); }}
+          onAuthChange={(c) => { setScCustomer(c); if (!c) { setChatUnread(0); setWishlistIds({}); } }}
           onReorder={(items) => {
             // items: [{product_id, quantity, description}]
             const newCart = { ...cart };
@@ -1981,6 +2107,7 @@ export default function StorePage() {
                 <ProductCard key={p.id} product={p} cartQty={cart[p.id] || 0}
                   storeCategory={store.category}
                   showStockLevel={store.show_stock_level}
+                  isWishlisted={!!wishlistIds[p.id]} onToggleWishlist={toggleWishlist}
                   onAdd={addToCart} onQtyChange={setQty} onView={viewProduct} />
               ))}
             </div>
@@ -2035,6 +2162,11 @@ export default function StorePage() {
                 <button className="s-qty-btn" disabled={detailQty >= maxOrderQuantity(selectedProduct)} onClick={() => setDetailQty(q => Math.min(maxOrderQuantity(selectedProduct), q + 1))}>+</button>
                 <span style={{ fontSize: 13, color: "#6b8a7a", marginLeft: 4 }}>{displayProductUnit(selectedProduct.unit)}</span>
               </div>
+              <button type="button" className={`s-detail-favorite ${wishlistIds[selectedProduct.id] ? "selected" : ""}`}
+                onClick={() => toggleWishlist(selectedProduct)}
+                style={{ width: "100%", marginBottom: 10, padding: "9px 12px", borderRadius: 10, border: "1px solid var(--s-border)", background: wishlistIds[selectedProduct.id] ? "rgba(190,18,60,.09)" : "var(--s-card)", color: wishlistIds[selectedProduct.id] ? "#be123c" : "var(--s-ink)", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+                {wishlistIds[selectedProduct.id] ? "♥ পছন্দের তালিকায় আছে" : "♡ পছন্দের তালিকায় রাখুন"}
+              </button>
               <button
                 className="s-add-to-cart-btn"
                 disabled={selectedProduct.in_stock === false || selectedProduct.price == null}
