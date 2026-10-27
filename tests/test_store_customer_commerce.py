@@ -98,17 +98,26 @@ def test_customer_wishlist_and_cart_are_persistent_and_private(engine, world, cl
     assert client.get("/api/sc/wishlist", headers=headers).json()["total"] == 1
 
 
-def test_wishlist_rejects_products_from_another_tenant(world, client_for):
+def test_wishlist_rejects_products_from_another_tenant(engine, world, client_for):
+    _seed_store(engine, world["org_a"], world["product_a"], "shop-a", "Shop A")
+    with Session(engine) as db:
+        foreign_product = Product(
+            organization_id=world["org_b"], sku="FOREIGN-1", name="Foreign product",
+            selling_price=Decimal("20"), cost_price=Decimal("10"),
+        )
+        db.add(foreign_product)
+        db.commit()
+        foreign_product_id = foreign_product.id
     client, _ = client_for("owner")
     _, headers = _register(client)
     response = client.post("/api/sc/wishlist", headers=headers, json={
-        "store_slug": "shop-a", "product_id": world["product_a"],
+        "store_slug": "shop-a", "product_id": foreign_product_id,
     })
-    assert response.status_code == 404  # the store is not active/registered yet
+    assert response.status_code == 404
 
 
 def test_account_order_history_combines_orders_across_stores(engine, world, client_for):
-    store_a = _seed_store(engine, world["org_a"], world["product_a"], "shop-a", "Shop A")
+    _seed_store(engine, world["org_a"], world["product_a"], "shop-a", "Shop A")
     with Session(engine) as db:
         branch_b = Branch(organization_id=world["org_b"], code="MAIN", name="Main")
         product_b = Product(
