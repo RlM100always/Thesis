@@ -9,13 +9,13 @@ const BASE = import.meta.env.VITE_API_URL ?? (import.meta.env.PROD ? "" : "http:
 /* Dedicated, durable Cloudflare D1 commerce demo API.
    Operational tenant POS/auth/order data remain in the existing FastAPI
    database until their audited migration; never represent demo stores as real. */
-const D1_COMMERCE = (import.meta.env.VITE_D1_COMMERCE_URL ||
+export const D1_COMMERCE = (import.meta.env.VITE_D1_COMMERCE_URL ||
   "https://bsmart-commerce-api.bcs-written-rakib.workers.dev").replace(/\/$/, "");
-const isD1Store = (id) => /^(demo-bsmart-|merchant-|shop-)/.test(String(id || ""));
-async function d1Commerce(path, { method = "GET", body } = {}) {
+export const isD1Store = (id) => /^(demo-bsmart-|merchant-|shop-)/.test(String(id || ""));
+export async function d1Commerce(path, { method = "GET", body, headers = {} } = {}) {
   const response = await fetch(D1_COMMERCE + path, {
     method,
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...headers },
     ...(body !== undefined ? {body: JSON.stringify(body)} : {}),
   });
   if (!response.ok) {
@@ -761,15 +761,17 @@ export const api = {
 
   deleteCoupon: (id) => appRequest(`/api/app/store/coupons/${encodeURIComponent(id)}`, { method: "DELETE" }),
 
-  getReviews: (orgId, productId) => request(`/api/public/reviews/${encodeURIComponent(orgId)}/${encodeURIComponent(productId)}`),
+  getReviews: (orgId, productId) => isD1Store(orgId)
+    ? d1Commerce(`/api/public/reviews/${encodeURIComponent(orgId)}/${encodeURIComponent(productId)}`)
+    : request(`/api/public/reviews/${encodeURIComponent(orgId)}/${encodeURIComponent(productId)}`),
 
-  submitReview: (orgId, body, scToken) => {
-    return fetch(`/api/public/reviews/${encodeURIComponent(orgId)}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", ...(scToken ? { Authorization: `Bearer ${scToken}` } : {}) },
-      body: JSON.stringify(body),
-    }).then(r => r.ok ? r.json() : r.json().then(e => Promise.reject(new Error(e.detail || "Review failed"))));
-  },
+  submitReview: (orgId, body, scToken) => isD1Store(orgId)
+    ? d1Commerce(`/api/customer/reviews/${encodeURIComponent(orgId)}`, { method: "POST", headers: scToken ? { Authorization: `Bearer ${scToken}` } : {}, body })
+    : fetch(`/api/public/reviews/${encodeURIComponent(orgId)}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...(scToken ? { Authorization: `Bearer ${scToken}` } : {}) },
+        body: JSON.stringify(body),
+      }).then(r => r.ok ? r.json() : r.json().then(e => Promise.reject(new Error(e.detail || "Review failed")))),
 
   validateCoupon: (orgId, code, orderSubtotal) => isD1Store(orgId) ? Promise.reject(new Error("ডেমো দোকানে কুপন প্রযোজ্য নয়")) : post(`/api/public/store/${encodeURIComponent(orgId)}/coupon/validate`, {code, order_subtotal:orderSubtotal}),
 

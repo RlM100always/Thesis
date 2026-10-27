@@ -5,6 +5,7 @@ import { useUi } from "../UiContext";
 const BASE=(import.meta.env.VITE_D1_COMMERCE_URL || "https://bsmart-commerce-api.bcs-written-rakib.workers.dev").replace(/\/$/,"");
 const fmt=n=>"৳"+Number(n||0).toLocaleString("bn-BD");
 const ORDER_STATUS_BN={placed:"অর্ডার জমা হয়েছে",confirmed:"নিশ্চিত হয়েছে",fulfilled:"ডেমো অর্ডার সম্পন্ন",cancelled:"বাতিল হয়েছে"};
+const RETURN_STATUS_BN={requested:"অনুরোধ এসেছে",approved:"অনুমোদিত",rejected:"প্রত্যাখ্যাত",received:"ফেরত পণ্য গ্রহণ",closed_demo:"পরীক্ষামূলকভাবে বন্ধ"};
 const CASH_KIND_BN={receipt:"টাকা গ্রহণ",expense:"খরচ"};
 const empty={email:"",access_key:""};
 async function call(path,{method="GET",body,token}={}){
@@ -24,12 +25,18 @@ export default function D1MerchantCenter(){
   const [form,setForm]=useState(empty),[mode,setMode]=useState("login"),[view,setView]=useState("dashboard");
   const [data,setData]=useState(null),[busy,setBusy]=useState(false),[error,setError]=useState(""),[note,setNote]=useState("");
   const [storeForm,setStoreForm]=useState({name:"",category:"মুদি",area:"",tagline:"",is_active:false});
-  const [newProduct,setNewProduct]=useState({sku:"",name:"",category:"",price_bdt:"",stock_qty:"",is_listed:true});
+  const [newProduct,setNewProduct]=useState({sku:"",name:"",category:"",description:"",brand:"",tags:"",compare_at_price_bdt:"",unit_label:"pcs",price_bdt:"",stock_qty:"",is_listed:true});
   const [edit,setEdit]=useState(null);
   const [posProduct,setPosProduct]=useState("");
   const [posQty,setPosQty]=useState("1");
   const [cashForm,setCashForm]=useState({kind:"expense",amount_bdt:"",description:""});
+  const [returnRequests,setReturnRequests]=useState([]);
+  const [chatMessages,setChatMessages]=useState([]);
+  const [threadMessages,setThreadMessages]=useState([]);
+  const [activeCustomerId,setActiveCustomerId]=useState("");
+  const [replyText,setReplyText]=useState("");
   const [oneTimeKey,setOneTimeKey]=useState("");
+  const store=data?.store;
   const load=useCallback(async tk=>{
     const latest=await call("/api/merchant/dashboard",{token:tk});
     setData(latest);
@@ -37,10 +44,33 @@ export default function D1MerchantCenter(){
     return latest;
   },[]);
   useEffect(()=>{if(!token)return;load(token).catch(e=>{setError(e.message);if(e.status===401){sessionStorage.removeItem("bsmart_d1_merchant");setToken("");}});},[token,load]);
+  useEffect(()=>{
+    if(!token||!store)return;
+    if(view==="returns")call("/api/merchant/returns",{token}).then(x=>setReturnRequests(x.returns||[])).catch(e=>setError(e.message));
+    if(view==="chat")call("/api/merchant/chat",{token}).then(x=>setChatMessages(x.messages||[])).catch(e=>setError(e.message));
+  },[view,token,store?.id]);
+  useEffect(()=>{
+    if(view!=="chat"||!token||!activeCustomerId){setThreadMessages([]);return;}
+    call("/api/merchant/chat?account_id="+encodeURIComponent(activeCustomerId),{token})
+      .then(x=>setThreadMessages(x.messages||[])).catch(e=>setError(e.message));
+  },[view,token,activeCustomerId,store?.id]);
+  const chatThreads=useMemo(()=>{
+    const by=new Map();
+    for(const message of chatMessages)by.set(message.account_id,message);
+    return [...by.values()].sort((a,b)=>String(b.created_at).localeCompare(String(a.created_at)));
+  },[chatMessages]);
   async function run(action,success){
     setBusy(true);setError("");setNote("");
-    try{await action();if(token)await load(token);setNote(success||"Cloudflare D1-তে পরিবর্তন সংরক্ষিত হয়েছে।");}
-    catch(e){setError(e.message||"অনুরোধটি সম্পন্ন করা যায়নি।");}
+    try{
+      await action();
+      if(token)await load(token);
+      if(token&&view==="returns"){const x=await call("/api/merchant/returns",{token});setReturnRequests(x.returns||[]);}
+      if(token&&view==="chat"){
+        const x=await call("/api/merchant/chat",{token});setChatMessages(x.messages||[]);
+        if(activeCustomerId){const t=await call("/api/merchant/chat?account_id="+encodeURIComponent(activeCustomerId),{token});setThreadMessages(t.messages||[]);}
+      }
+      setNote(success||"Cloudflare D1-তে পরিবর্তন সংরক্ষিত হয়েছে।");
+    } catch(e){setError(e.message||"অনুরোধটি সম্পন্ন করা যায়নি।");}
     finally{setBusy(false);}
   }
   async function authenticate(e){
@@ -59,11 +89,11 @@ export default function D1MerchantCenter(){
     try{if(token)await call("/api/merchant/logout",{method:"POST",token});}catch{/* local logout even offline */}
     sessionStorage.removeItem("bsmart_d1_merchant");setToken("");setData(null);setNote("");setError("");
   }
-  const store=data?.store,products=data?.products||[],orders=data?.orders||[],stats=data?.metrics||{};
+  const products=data?.products||[],orders=data?.orders||[],stats=data?.metrics||{};
   const totalProducts=useMemo(()=>products.filter(p=>p.is_listed).length,[products]);
   return <main className="dm-page">
     <header className="dm-header"><a href="#/" className="dm-logo">B-SMART <span>দোকান পরিচালনা</span></a>
-      <div className="dm-header-side"><span className="dm-d1">D1-তে তথ্য সংরক্ষিত</span><a href="#/stores">সব দোকান</a><button type="button" className="dm-theme-toggle" onClick={toggleTheme} aria-pressed={theme==="dark"} aria-label={theme==="dark"?"লাইট মোড চালু করুন":"ডার্ক মোড চালু করুন"} title={theme==="dark"?"লাইট মোড চালু করুন":"ডার্ক মোড চালু করুন"}>{theme==="dark"?"☀️":"🌙"}</button>{token&&<button className="dm-text-btn" onClick={logout}>লগআউট</button>}</div>
+      <div className="dm-header-side"><span className="dm-d1">D1-তে তথ্য সংরক্ষিত</span><a href="#/stores">সব দোকান</a><a href="#/d1-platform-admin">Platform admin</a><button type="button" className="dm-theme-toggle" onClick={toggleTheme} aria-pressed={theme==="dark"} aria-label={theme==="dark"?"লাইট মোড চালু করুন":"ডার্ক মোড চালু করুন"} title={theme==="dark"?"লাইট মোড চালু করুন":"ডার্ক মোড চালু করুন"}>{theme==="dark"?"☀️":"🌙"}</button>{token&&<button className="dm-text-btn" onClick={logout}>লগআউট</button>}</div>
     </header>
     <div className="dm-main">
       <section className="dm-heading"><div><p className="dm-overline">Cloudflare D1 · পরীক্ষামূলক দোকান পরিচালনা</p><h1>স্টোর ম্যানেজমেন্ট</h1>
@@ -93,7 +123,7 @@ export default function D1MerchantCenter(){
         <button disabled={busy} type="submit" className="dm-btn">পরীক্ষামূলক দোকান তৈরি করুন</button></form>
       </section>:
       <>
-        <div className="dm-tabs">{[["dashboard","সারসংক্ষেপ"],["products","পণ্য ও মজুত"],["pos","ডেমো বিক্রি ও হিসাব"],["orders","অর্ডার"],["store","দোকানের সেটিংস"]].map(([k,l])=><button key={k} onClick={()=>setView(k)} className={view===k?"dm-active":""}>{l}</button>)}</div>
+        <div className="dm-tabs">{[["dashboard","সারসংক্ষেপ"],["products","পণ্য ও মজুত"],["pos","ডেমো বিক্রি ও হিসাব"],["orders","অর্ডার"],["returns","ফেরত"],["chat","ক্রেতার বার্তা"],["store","দোকানের সেটিংস"]].map(([k,l])=><button key={k} onClick={()=>setView(k)} className={view===k?"dm-active":""}>{l}</button>)}</div>
         {view==="dashboard"&&<div className="dm-stack">
           <div className="dm-stats"><Metric title="ডেমো অর্ডার" value={Number(stats.orders||0).toLocaleString("en-BD")}/><Metric title="বাতিল হয়নি এমন নমুনা বিক্রি" value={fmt(stats.placed_total_bdt)} tip="বাস্তবে কোনো টাকা আদায় হয়নি"/><Metric title="প্রকাশিত পণ্য" value={totalProducts}/><Metric title="মজুতের পরিমাণ" value={Number(stats.inventory_units||0)}/></div>
           <div className="dm-panel"><h2>{store.name}</h2><p className="dm-muted">{store.area} · {store.category}</p><p>ডেমো দোকান প্রকাশিত: <strong>{store.is_active?"হ্যাঁ":"না"}</strong></p><p className="dm-muted">দোকানের লিংক: <code>/#/store/{store.slug}</code></p>
@@ -102,8 +132,9 @@ export default function D1MerchantCenter(){
           <div className="dm-scroll"><table><thead><tr><th>সময়</th><th>পণ্য</th><th>আগের পরিমাণ</th><th>নতুন পরিমাণ</th><th>Δ</th></tr></thead><tbody>{data.stock_adjustments.map((a,i)=><tr key={i}><td>{a.created_at}</td><td>{products.find(p=>p.id===a.product_id)?.name||a.product_id}</td><td>{a.old_quantity}</td><td>{a.new_quantity}</td><td>{a.delta}</td></tr>)}</tbody></table></div>}</div>
         </div>}
         {view==="products"&&<div className="dm-stack">
-          <section className="dm-panel"><h2>নতুন পণ্য যোগ করুন</h2><form className="dm-product-form" onSubmit={e=>{e.preventDefault();run(async()=>{await call("/api/merchant/products",{method:"POST",token,body:{...newProduct,price_bdt:Number(newProduct.price_bdt),stock_qty:Number(newProduct.stock_qty)}});setNewProduct({sku:"",name:"",category:"",price_bdt:"",stock_qty:"",is_listed:true});},"নতুন পণ্য সংরক্ষিত হয়েছে।");}}>
-          {["sku","name","category","price_bdt","stock_qty"].map(k=><Field key={k} label={{sku:"পণ্য কোড (SKU)",name:"পণ্যের নাম",category:"বিভাগ",price_bdt:"দাম (টাকা)",stock_qty:"মজুতের পরিমাণ"}[k]}><input style={input} value={newProduct[k]} required type={["price_bdt","stock_qty"].includes(k)?"number":"text"} min={["price_bdt","stock_qty"].includes(k)?0:undefined} onChange={e=>setNewProduct(v=>({...v,[k]:e.target.value}))}/></Field>)}
+          <section className="dm-panel"><h2>নতুন পণ্য যোগ করুন</h2><form className="dm-product-form" onSubmit={e=>{e.preventDefault();run(async()=>{await call("/api/merchant/products",{method:"POST",token,body:{...newProduct,tags:newProduct.tags.split(",").map(x=>x.trim()).filter(Boolean),price_bdt:Number(newProduct.price_bdt),stock_qty:Number(newProduct.stock_qty),compare_at_price_bdt:newProduct.compare_at_price_bdt===""?null:Number(newProduct.compare_at_price_bdt)}});setNewProduct({sku:"",name:"",category:"",description:"",brand:"",tags:"",compare_at_price_bdt:"",unit_label:"pcs",price_bdt:"",stock_qty:"",is_listed:true});},"নতুন পণ্য সংরক্ষিত হয়েছে।");}}>
+          {["sku","name","category","brand","unit_label","price_bdt","compare_at_price_bdt","stock_qty","tags"].map(k=><Field key={k} label={{sku:"পণ্য কোড (SKU)",name:"পণ্যের নাম",category:"বিভাগ",brand:"ব্র্যান্ড (ঐচ্ছিক)",unit_label:"একক",price_bdt:"বিক্রয়মূল্য (টাকা)",compare_at_price_bdt:"আগের/তুলনামূলক দাম (ঐচ্ছিক)",stock_qty:"মজুতের পরিমাণ",tags:"ট্যাগ (কমা দিয়ে লিখুন)"}[k]}><input style={input} value={newProduct[k]} required={["sku","name","category","price_bdt","stock_qty"].includes(k)} type={["price_bdt","stock_qty","compare_at_price_bdt"].includes(k)?"number":"text"} min={["price_bdt","stock_qty","compare_at_price_bdt"].includes(k)?0:undefined} onChange={e=>setNewProduct(v=>({...v,[k]:e.target.value}))}/></Field>)}
+          <Field label="পণ্যের বিস্তারিত বিবরণ"><textarea style={{...input,minHeight:90}} maxLength={3000} value={newProduct.description} onChange={e=>setNewProduct(v=>({...v,description:e.target.value}))}/></Field>
           <label className="dm-check"><input type="checkbox" checked={newProduct.is_listed} onChange={e=>setNewProduct(v=>({...v,is_listed:e.target.checked}))}/>পণ্যটি পরীক্ষামূলক দোকানে দেখান</label><button disabled={busy} type="submit" className="dm-btn">পণ্য যোগ করুন</button></form></section>
           <section className="dm-panel"><h2>আপনার পণ্য ({products.length})</h2>
           {products.length===0?<Empty>এখনো কোনো পণ্য যোগ করা হয়নি।</Empty>:<div className="dm-product-list">{products.map(p=><article key={p.id} className="dm-product">
@@ -134,6 +165,26 @@ export default function D1MerchantCenter(){
             <button className="dm-secondary" disabled={busy} onClick={()=>run(()=>call("/api/merchant/orders/"+o.id+"/status",{method:"PATCH",token,body:{status:"confirmed"}}),"অর্ডার নিশ্চিত করা হয়েছে।")}>নিশ্চিত করুন</button> <button className="dm-danger" disabled={busy} onClick={()=>run(()=>call("/api/merchant/orders/"+o.id+"/status",{method:"PATCH",token,body:{status:"cancelled"}}),"অর্ডার বাতিল হয়েছে এবং মজুত আগের অবস্থায় ফিরেছে।")}>বাতিল করুন</button></>:
             o.status==="confirmed"?<><button className="dm-secondary" disabled={busy} onClick={()=>run(()=>call("/api/merchant/orders/"+o.id+"/status",{method:"PATCH",token,body:{status:"fulfilled"}}),"পরীক্ষামূলক অর্ডার সম্পন্ন বলে চিহ্নিত হয়েছে।")}>ডেমো অর্ডার সম্পন্ন করুন</button> <button className="dm-danger" disabled={busy} onClick={()=>run(()=>call("/api/merchant/orders/"+o.id+"/status",{method:"PATCH",token,body:{status:"cancelled"}}),"অর্ডার বাতিল করা হয়েছে।")}>বাতিল করুন</button></>:<span>—</span>}</td></tr>)}</tbody></table></div>}
         </div>}
+        {view==="returns"&&<section className="dm-panel"><h2>ক্রেতার ফেরত অনুরোধ ({returnRequests.length})</h2><p className="dm-muted">ফেরত পণ্য গ্রহণ করলে পরীক্ষামূলক মজুত একবার পুনরুদ্ধার হবে। এখানে কোনো অর্থ ফেরত দেওয়া হয় না।</p>
+          {returnRequests.length===0?<Empty>এখনো কোনো ফেরত অনুরোধ আসেনি।</Empty>:<div className="dm-scroll"><table><thead><tr><th>অর্ডার/ক্রেতা</th><th>কারণ</th><th>নোট</th><th>অবস্থা</th><th>করণীয়</th></tr></thead><tbody>{returnRequests.map(r=><tr key={r.id}><td>{r.order_number}<br/><small>{r.customer_name}</small></td><td>{({damaged:"ক্ষতিগ্রস্ত",wrong_item:"ভুল পণ্য",missing_item:"পণ্য অনুপস্থিত",not_as_described:"বর্ণনার সঙ্গে মিল নেই",other:"অন্যান্য"})[r.reason]||r.reason}</td><td>{r.customer_note||"—"}</td><td>{RETURN_STATUS_BN[r.status]||r.status}<br/><small>{r.merchant_note||""}</small></td><td>{r.status==="requested"?<><button className="dm-secondary" disabled={busy} onClick={()=>run(()=>call("/api/merchant/returns/"+r.id,{method:"PATCH",token,body:{status:"approved"}}),"ফেরত অনুরোধ অনুমোদন করা হয়েছে।")}>অনুমোদন</button> <button className="dm-danger" disabled={busy} onClick={()=>run(()=>call("/api/merchant/returns/"+r.id,{method:"PATCH",token,body:{status:"rejected",merchant_note:"অনুরোধটি অনুমোদন করা হয়নি"}}),"ফেরত অনুরোধ প্রত্যাখ্যান করা হয়েছে।")}>প্রত্যাখ্যান</button></>:r.status==="approved"?<button className="dm-secondary" disabled={busy} onClick={()=>run(()=>call("/api/merchant/returns/"+r.id,{method:"PATCH",token,body:{status:"received"}}),"ফেরত পণ্য গ্রহণ হয়েছে; পরীক্ষামূলক মজুত পুনরুদ্ধার হয়েছে।")}>পণ্য গ্রহণ হয়েছে</button>:r.status==="received"?<button className="dm-secondary" disabled={busy} onClick={()=>run(()=>call("/api/merchant/returns/"+r.id,{method:"PATCH",token,body:{status:"closed_demo"}}),"ফেরত প্রক্রিয়া বন্ধ হয়েছে।")}>বন্ধ করুন</button>: "—"}</td></tr>)}</tbody></table></div>}</section>}
+        {view==="chat"&&<section className="dm-panel"><h2>ক্রেতার বার্তা</h2><p className="dm-muted">এই দোকানের গ্রাহকের সঙ্গে বার্তা আদান-প্রদান করুন। পরীক্ষামূলক সাপোর্ট চ্যাট।</p>
+          <div style={{display:"grid",gridTemplateColumns:"minmax(170px,0.8fr) minmax(0,1.5fr)",gap:12,minHeight:330}}>
+            <div style={{border:"1px solid var(--dm-line)",borderRadius:10,overflowY:"auto",maxHeight:460}}>
+              {chatThreads.length===0?<Empty>এখনো কোনো বার্তা নেই।</Empty>:chatThreads.map(t=><button key={t.account_id} onClick={()=>setActiveCustomerId(t.account_id)} style={{display:"block",width:"100%",textAlign:"left",padding:10,border:0,borderBottom:"1px solid var(--dm-line)",background:activeCustomerId===t.account_id?"var(--dm-soft)":"transparent",color:"var(--dm-text)",cursor:"pointer"}}><strong>{t.customer_name||t.customer_email||"ক্রেতা"}</strong><div style={{fontSize:11,opacity:.75,marginTop:4}}>{t.message.slice(0,70)}</div><small>{t.created_at}</small></button>)}
+            </div>
+            <div style={{display:"flex",flexDirection:"column",gap:8,minWidth:0}}>
+              {!activeCustomerId?<Empty>বার্তা পড়তে বাম পাশ থেকে একজন ক্রেতা নির্বাচন করুন।</Empty>:<>
+                <div style={{flex:1,overflowY:"auto",maxHeight:360,display:"grid",alignContent:"start",gap:7}}>
+                  {threadMessages.map(m=><div key={m.id} style={{justifySelf:m.sender_role==="merchant"?"end":"start",maxWidth:"90%",padding:9,borderRadius:9,background:m.sender_role==="merchant"?"var(--dm-soft)":"var(--dm-surface)",border:"1px solid var(--dm-line)"}}><div style={{fontSize:12}}>{m.message}</div><small>{m.created_at}</small></div>)}
+                </div>
+                <form onSubmit={e=>{e.preventDefault();if(!replyText.trim()||!activeCustomerId)return;run(async()=>{await call("/api/merchant/chat",{method:"POST",token,body:{account_id:activeCustomerId,message:replyText.trim()}});setReplyText("");const x=await call("/api/merchant/chat?account_id="+encodeURIComponent(activeCustomerId),{token});setThreadMessages(x.messages||[]);},"বার্তা পাঠানো হয়েছে।");}} style={{display:"flex",gap:6}}>
+                  <input style={input} value={replyText} maxLength={2000} onChange={e=>setReplyText(e.target.value)} placeholder="উত্তর লিখুন…" required/>
+                  <button className="dm-btn" disabled={busy||!replyText.trim()} type="submit">পাঠান</button>
+                </form>
+              </>}
+            </div>
+          </div>
+        </section>}
         {view==="store"&&<section className="dm-panel"><h2>দোকানের সেটিংস</h2><p className="dm-muted">এই দোকান শুধু পরীক্ষামূলক হিসেবে প্রকাশ করা যাবে। এখানে বাস্তব পেমেন্ট বা ডেলিভারি চালু নেই।</p>
         <form className="dm-fields" onSubmit={e=>{e.preventDefault();run(()=>call("/api/merchant/store",{method:"PATCH",token,body:storeForm}),"দোকানের তথ্য সংরক্ষিত হয়েছে।");}}>
           <Field label="নাম"><input style={input} required minLength={3} value={storeForm.name} onChange={e=>setStoreForm(v=>({...v,name:e.target.value}))}/></Field>
@@ -144,11 +195,11 @@ export default function D1MerchantCenter(){
           <button className="dm-btn" disabled={busy} type="submit">সেটিংস সংরক্ষণ করুন</button>
         </form></section>}
         {edit&&<div className="dm-modal-bg" onClick={()=>setEdit(null)}><section role="dialog" aria-modal="true" aria-label="পণ্য সম্পাদনা" className="dm-panel dm-dialog" onClick={e=>e.stopPropagation()}><h2>পণ্য সম্পাদনা: {edit.name}</h2>
-          <form className="dm-fields" onSubmit={e=>{e.preventDefault();run(async()=>{await call("/api/merchant/products/"+edit.id,{method:"PATCH",token,body:{name:edit.name,category:edit.category,price_bdt:Number(edit.price_bdt),stock_qty:Number(edit.stock_qty),is_listed:edit.is_listed}});setEdit(null);},"পণ্যের তথ্য সংশোধন করা হয়েছে।");}}>
-          {["name","category","price_bdt","stock_qty"].map(k=><Field key={k} label={k}><input style={input} type={["price_bdt","stock_qty"].includes(k)?"number":"text"} min={["price_bdt","stock_qty"].includes(k)?0:undefined} required value={edit[k]} onChange={e=>setEdit(v=>({...v,[k]:e.target.value}))}/></Field>)}
+          <form className="dm-fields" onSubmit={e=>{e.preventDefault();run(async()=>{await call("/api/merchant/products/"+edit.id,{method:"PATCH",token,body:{name:edit.name,category:edit.category,description:edit.description||"",brand:edit.brand||"",tags:Array.isArray(edit.tags)?edit.tags:(()=>{try{return JSON.parse(edit.tags||"[]")}catch{return []}})(),unit_label:edit.unit_label||"pcs",compare_at_price_bdt:edit.compare_at_price_bdt===""||edit.compare_at_price_bdt==null?null:Number(edit.compare_at_price_bdt),price_bdt:Number(edit.price_bdt),stock_qty:Number(edit.stock_qty),is_listed:edit.is_listed}});setEdit(null);},"পণ্যের তথ্য সংশোধন করা হয়েছে।");}}>
+          {["name","category","brand","unit_label","price_bdt","compare_at_price_bdt","stock_qty"].map(k=><Field key={k} label={{name:"পণ্যের নাম",category:"বিভাগ",brand:"ব্র্যান্ড",unit_label:"একক",price_bdt:"বিক্রয়মূল্য",compare_at_price_bdt:"তুলনামূলক দাম",stock_qty:"মজুত"}[k]||k}><input style={input} type={["price_bdt","stock_qty","compare_at_price_bdt"].includes(k)?"number":"text"} min={["price_bdt","stock_qty","compare_at_price_bdt"].includes(k)?0:undefined} required={["name","price_bdt","stock_qty"].includes(k)} value={edit[k]??""} onChange={e=>setEdit(v=>({...v,[k]:e.target.value}))}/></Field>)}<Field label="পণ্যের বিবরণ"><textarea style={{...input,minHeight:90}} maxLength={3000} value={edit.description||""} onChange={e=>setEdit(v=>({...v,description:e.target.value}))}/></Field><Field label="ট্যাগ (কমা দিয়ে লিখুন)"><input style={input} value={Array.isArray(edit.tags)?edit.tags.join(", "):(()=>{try{return JSON.parse(edit.tags||"[]").join(", ")}catch{return ""}})()} onChange={e=>setEdit(v=>({...v,tags:e.target.value.split(",").map(x=>x.trim()).filter(Boolean)}))}/></Field>
           <label className="dm-check"><input type="checkbox" checked={!!edit.is_listed} onChange={e=>setEdit(v=>({...v,is_listed:e.target.checked}))}/>প্রকাশিত</label><div className="dm-actions"><button className="dm-btn" disabled={busy} type="submit">পরিবর্তন সংরক্ষণ করুন</button><button type="button" onClick={()=>setEdit(null)} className="dm-secondary">বন্ধ করুন</button></div></form></section></div>}
       </>}
     </div>
-    {token&&store&&<nav className="dm-bottom" aria-label="Owner mobile app navigation">{[["dashboard","হোম","⌂"],["products","পণ্য","▣"],["pos","বিক্রি","⊞"],["orders","অর্ডার","≡"],["store","সেটিংস","⚙"]].map(([k,t,icon])=><button key={k} className={view===k?"selected":""} onClick={()=>{setView(k);window.scrollTo({top:0,behavior:"smooth"});}}><span>{icon}</span>{t}</button>)}</nav>}
+    {token&&store&&<nav className="dm-bottom" aria-label="Owner mobile app navigation">{[["dashboard","হোম","⌂"],["products","পণ্য","▣"],["pos","বিক্রি","⊞"],["orders","অর্ডার","≡"],["returns","ফেরত","↩"],["store","সেটিংস","⚙"]].map(([k,t,icon])=><button key={k} className={view===k?"selected":""} onClick={()=>{setView(k);window.scrollTo({top:0,behavior:"smooth"});}}><span>{icon}</span>{t}</button>)}</nav>}
   </main>;
 }

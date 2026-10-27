@@ -1,11 +1,14 @@
 import { merchantRouter } from "./merchant-routes.js";
+import { customerRouter, customerFromToken } from "./customer-routes.js";
+import { platformAdminRouter } from "./platform-admin-routes.js";
 /*
  B-SMART Cloudflare D1 Commerce API.
- Public read-only directory & example-store catalogues, demo checkout (no
- actual payment/delivery), token-only order tracking. No private profile data
- retained for synthetic demo checkout.
- D1 is the source of truth for this demo catalogue only. The pre-existing
- FastAPI operational POS/customer/admin flows still need explicit migration.
+ Public demo-store catalogues, customer accounts, saved addresses, account-linked
+ order history, support chat and demo-only checkout. Account contact/address data
+ is stored in D1; users must use synthetic information until production security
+ and privacy controls are complete. No real payment, physical delivery or refund.
+ D1 is the source of truth for this demo catalogue only. Legacy FastAPI business
+ and historical customer records are separate and are not synchronized.
 */
 const allowed = new Set([
   "https://thesis-j0n8.onrender.com",
@@ -20,7 +23,7 @@ const cors = (request) => {
     "Cache-Control":"no-store",
     "Vary":"Origin",
     ...(origin && allowed.has(origin) ? {"Access-Control-Allow-Origin":origin} : {}),
-    "Access-Control-Allow-Methods":"GET,POST,OPTIONS",
+    "Access-Control-Allow-Methods":"GET,POST,PATCH,PUT,DELETE,OPTIONS",
     "Access-Control-Allow-Headers":"Content-Type, Authorization",
   };
 };
@@ -45,10 +48,12 @@ const baseView=(s)=>({
   meta_title:s.name,meta_desc:s.tagline
 });
 const productView=(p)=>({
-  id:p.id,name:p.name,sku:p.sku,unit:"pcs",price:p.price_bdt,
-  selling_price:p.price_bdt,description:"Demo product; not a real merchant listing",
-  sale_price:null,sale_end:null,image_data_url:p.image_url||null,
-  tags:[],is_featured:!!p.is_featured,sort_order:0,max_order_qty:Math.min(p.stock_qty,10),
+  id:p.id,name:p.name,sku:p.sku,unit:p.unit_label||"pcs",price:p.price_bdt,
+  selling_price:p.price_bdt,description:p.description||"পরীক্ষামূলক পণ্য; বাস্তব বিক্রেতা বা ডেলিভারি যাচাই করা হয়নি",
+  brand:p.brand||null,compare_at_price:p.compare_at_price_bdt||null,sale_price:null,sale_end:null,image_data_url:p.image_url||null,
+  tags:(()=>{try{return JSON.parse(p.tags||"[]")}catch{return []}})(),
+  is_featured:!!p.is_featured,sort_order:0,max_order_qty:Math.min(p.stock_qty,10),
+  review_avg:Number(p.review_avg||0),review_count:Number(p.review_count||0),
   variants:[],in_stock:p.stock_qty>0,quantity:p.stock_qty,category:p.category
 });
 async function getStore(env,term,slugMode) {
@@ -58,21 +63,30 @@ async function getStore(env,term,slugMode) {
  return env.DB.prepare(sql).bind(term).first();
 }
 async function storeResponse(env,store) {
- const {results}=await env.DB.prepare("SELECT * FROM commerce_products WHERE store_id=? AND is_listed=1 ORDER BY is_featured DESC,name").bind(store.id).all();
+ const {results}=await env.DB.prepare(
+  "SELECT p.*,COALESCE(AVG(r.rating),0) AS review_avg,COUNT(r.id) AS review_count " +
+  "FROM commerce_products p LEFT JOIN commerce_product_reviews r ON r.product_id=p.id AND r.store_id=p.store_id " +
+  "WHERE p.store_id=? AND p.is_listed=1 GROUP BY p.id ORDER BY p.is_featured DESC,p.name"
+ ).bind(store.id).all();
  return {...baseView(store),products:results.map(productView)};
 }
 async function orderDetails(env,request,id,token) {
  const order=await env.DB.prepare("SELECT * FROM commerce_orders WHERE store_id=? AND access_token=? LIMIT 1").bind(id,token).first();
  if(!order)return error(request,404,"Order not found");
- const {results}=await env.DB.prepare("SELECT product_name,quantity,price_bdt,line_total_bdt FROM commerce_order_lines WHERE order_id=?").bind(order.id).all();
+ const [{results},store]=await Promise.all([
+  env.DB.prepare("SELECT product_id,product_name,quantity,price_bdt,line_total_bdt FROM commerce_order_lines WHERE order_id=?").bind(order.id).all(),
+  env.DB.prepare("SELECT slug,name,is_demo FROM commerce_stores WHERE id=?").bind(id).first()
+ ]);
  return output(request,{
-  id:order.id,order_number:order.order_number,access_token:order.access_token,
-  status:order.status,payment_status:"demo_no_payment",status_note:"Synthetic demonstration order; no delivery",
-  placed_at:order.placed_at,shipping_name:"Demo customer",shipping_phone:"",shipping_address:"",
+  id:order.id,order_number:order.order_number,document_number:order.order_number,access_token:order.access_token,
+  status:order.status,payment_status:"demo_no_payment",status_note:"পরীক্ষামূলক অর্ডার; বাস্তব ডেলিভারি বা পেমেন্ট নেই",
+  placed_at:order.placed_at,issued_at:order.placed_at,
+  shipping_name:order.shipping_name||"",shipping_phone:order.shipping_phone||"",shipping_address:order.shipping_address||"",
   subtotal:order.subtotal_bdt,tax_amount:0,delivery_fee:0,discount_amount:0,
   coupon_code:null,coupon_discount:0,total:order.total_bdt,organization_id:id,
-  payment_method:"cod",
-  items:results.map(p=>({product_name:p.product_name,quantity:p.quantity,unit_price:p.price_bdt,line_total:p.line_total_bdt,variant_label:null})),
+  store_slug:store?.slug||null,store_name:store?.name||"পরীক্ষামূলক দোকান",is_demo:true,
+  payment_method:order.payment_method||"demo",
+  items:results.map(p=>({product_id:p.product_id,description:p.product_name,product_name:p.product_name,quantity:p.quantity,unit_price:p.price_bdt,line_total:p.line_total_bdt,variant_label:null})),
   whatsapp_notify_url:null,coupon_applied:false,referral_discount:0
  });
 }
@@ -86,6 +100,15 @@ async function checkout(env,request,id) {
  try{data=await request.json();}catch{return error(request,400,"Invalid JSON");}
  if(data.payment_method && !["cod","demo"].includes(data.payment_method))
    return error(request,422,"Only free demo/COD checkout is supported. Do not make a payment.");
+ const shippingName=safe(data.shipping_name||"Demo customer");
+ const shippingPhone=String(data.shipping_phone||"").trim().slice(0,30);
+ const shippingAddress=String(data.shipping_address||"").trim().slice(0,500);
+ const customerToken=String(data.store_customer_token||data.customer_token||"").trim();
+ let account=null;
+ if(customerToken){
+  account=await customerFromToken(env,customerToken);
+  if(!account)return error(request,401,"Customer session expired. Sign in again before placing this demo order.");
+ }
  const items=data.items;
  if(!Array.isArray(items)||items.length<1||items.length>12)
    return error(request,422,"An order requires 1-12 distinct products");
@@ -112,9 +135,9 @@ async function checkout(env,request,id) {
  const customerId=crypto.randomUUID();
  const statements=[
   env.DB.prepare("INSERT INTO commerce_customers(id,store_id,display_name) VALUES(?,?,?)")
-   .bind(customerId,id,"Anonymous demo customer"),
-  env.DB.prepare("INSERT INTO commerce_orders(id,store_id,order_number,access_token,status,subtotal_bdt,total_bdt,payment_method,shipping_name,shipping_phone,shipping_address,customer_id) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)")
-   .bind(oid,id,no,token,"placed",subtotal,subtotal,"demo","Demo customer","","",customerId),
+   .bind(customerId,id,shippingName),
+  env.DB.prepare("INSERT INTO commerce_orders(id,store_id,order_number,access_token,status,subtotal_bdt,total_bdt,payment_method,shipping_name,shipping_phone,shipping_address,customer_id,account_id) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)")
+   .bind(oid,id,no,token,"placed",subtotal,subtotal,"demo",shippingName,shippingPhone,shippingAddress,customerId,account?.id||null),
   ...details.map(({p,qty,price})=>env.DB.prepare("INSERT INTO commerce_order_lines(order_id,product_id,product_name,quantity,price_bdt,line_total_bdt) VALUES(?,?,?,?,?,?)")
    .bind(oid,p.id,p.name,qty,price,qty*price))
  ];
@@ -129,6 +152,10 @@ export default {
   if(method==="OPTIONS")
    return new Response(null,{status:204,headers:cors(request)});
   try{
+    const platformAdmin=await platformAdminRouter(request,env,path,output,error);
+    if(platformAdmin!==null)return platformAdmin;
+   const customer=await customerRouter(request,env,path,output,error);
+   if(customer!==null)return customer;
    const merchant=await merchantRouter(request,env,path,output,error);
    if(merchant!==null)return merchant;
    if(path==="/health"&&method==="GET") {
@@ -163,7 +190,11 @@ export default {
     if(method==="GET"&&action==="products") {
      const store=await getStore(env,id,false);
      if(!store)return error(request,404,"Store not found");
-     const {results}=await env.DB.prepare("SELECT * FROM commerce_products WHERE store_id=? AND is_listed=1 ORDER BY name").bind(id).all();
+     const {results}=await env.DB.prepare(
+      "SELECT p.*,COALESCE(AVG(r.rating),0) AS review_avg,COUNT(r.id) AS review_count " +
+      "FROM commerce_products p LEFT JOIN commerce_product_reviews r ON r.product_id=p.id AND r.store_id=p.store_id " +
+      "WHERE p.store_id=? AND p.is_listed=1 GROUP BY p.id ORDER BY p.name"
+     ).bind(id).all();
      return output(request,results.map(productView));
     }
     if(method==="POST"&&!action)return checkout(env,request,id);

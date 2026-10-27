@@ -22,6 +22,22 @@ jobs:
       - name: Check public copy and dark/light contrast
         run: node --test tests/public-copy-theme.test.mjs tests/store-display-text.test.mjs tests/public-cms-display.test.mjs
         working-directory: frontend
+  d1-schema-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Apply and exercise D1 schema migrations in SQLite
+        run: python -c "import runpy; t=runpy.run_path('tests/test_cloudflare_d1_migrations.py'); t['test_all_d1_migrations_apply_in_order_and_create_commerce_tables'](); t['test_cancel_and_received_return_restore_stock_once']()"
+      - name: Validate Cloudflare Worker module syntax
+        run: |
+          set -euo pipefail
+          for file in cloudflare/commerce-worker.js cloudflare/customer-routes.js cloudflare/merchant-routes.js cloudflare/platform-admin-routes.js; do
+            node --check --input-type=module < "$file"
+          done
+
   backend-compile:
     runs-on: ubuntu-latest
     steps:

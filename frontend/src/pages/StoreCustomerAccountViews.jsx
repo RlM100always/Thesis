@@ -1,19 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { BD_DIVISIONS, getDistricts, getThanas } from "../bd_address";
-
-async function customerFetch(path, options = {}, token) {
-  const response = await fetch(`/api/sc${path}`, {
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...(options.headers || {}),
-    },
-  });
-  const body = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(body.detail || "অনুরোধটি সম্পন্ন করা যায়নি। আবার চেষ্টা করুন।");
-  return body;
-}
+import { customerFetch } from "../storeCustomerApi";
 
 const inputStyle = {
   width: "100%", minWidth: 0, padding: "10px 12px", borderRadius: 10,
@@ -57,7 +44,7 @@ const blankAddress = () => ({
   thana: "", address_detail: "", postal_code: "", is_default: false,
 });
 
-export function AddressesView({ token }) {
+export function AddressesView({ token, storeSlug }) {
   const [addresses, setAddresses] = useState([]);
   const [form, setForm] = useState(blankAddress);
   const [editingId, setEditingId] = useState(null);
@@ -72,12 +59,12 @@ export function AddressesView({ token }) {
 
   async function load() {
     try {
-      const data = await customerFetch("/addresses", {}, token);
+      const data = await customerFetch(storeSlug, "/addresses", {}, token);
       setAddresses(data.addresses || []);
     } catch (e) { setError(e.message); }
     finally { setLoading(false); }
   }
-  useEffect(() => { load(); }, [token]);
+  useEffect(() => { load(); }, [token, storeSlug]);
 
   function setField(key, value) {
     setForm(current => {
@@ -102,7 +89,7 @@ export function AddressesView({ token }) {
     event.preventDefault(); setSaving(true); setError(""); setNotice("");
     try {
       const path = editingId ? `/addresses/${encodeURIComponent(editingId)}` : "/addresses";
-      const result = await customerFetch(path, {
+      const result = await customerFetch(storeSlug, path, {
         method: editingId ? "PATCH" : "POST",
         body: JSON.stringify(form),
       }, token);
@@ -119,7 +106,7 @@ export function AddressesView({ token }) {
   async function makeDefault(address) {
     setBusyId(address.id); setError(""); setNotice("");
     try {
-      await customerFetch(`/addresses/${encodeURIComponent(address.id)}`, {
+      await customerFetch(storeSlug, `/addresses/${encodeURIComponent(address.id)}`, {
         method: "PATCH", body: JSON.stringify({ is_default: true }),
       }, token);
       await load(); setNotice("ডিফল্ট ঠিকানা পরিবর্তন হয়েছে।");
@@ -130,7 +117,7 @@ export function AddressesView({ token }) {
     if (!window.confirm("এই সংরক্ষিত ঠিকানাটি মুছে ফেলতে চান?")) return;
     setBusyId(address.id); setError(""); setNotice("");
     try {
-      await customerFetch(`/addresses/${encodeURIComponent(address.id)}`, { method: "DELETE" }, token);
+      await customerFetch(storeSlug, `/addresses/${encodeURIComponent(address.id)}`, { method: "DELETE" }, token);
       await load(); setNotice("ঠিকানা মুছে ফেলা হয়েছে।");
       if (editingId === address.id) { setShowForm(false); setEditingId(null); }
     } catch (e) { setError(e.message); }
@@ -203,7 +190,7 @@ export function WishlistView({ token, storeSlug, onAddToCart }) {
   const [busy, setBusy] = useState("");
   const [error, setError] = useState("");
   async function load() {
-    try { const data = await customerFetch("/wishlist", {}, token); setItems(data.items || []); }
+    try { const data = await customerFetch(storeSlug, "/wishlist", {}, token); setItems(data.items || []); }
     catch (e) { setError(e.message); }
     finally { setLoading(false); }
   }
@@ -211,7 +198,7 @@ export function WishlistView({ token, storeSlug, onAddToCart }) {
   async function remove(item) {
     setBusy(item.id); setError("");
     try {
-      await customerFetch(`/wishlist/${encodeURIComponent(item.store_slug)}/${encodeURIComponent(item.product_id)}`, { method: "DELETE" }, token);
+      await customerFetch(storeSlug, `/wishlist/${encodeURIComponent(item.store_slug)}/${encodeURIComponent(item.product_id)}`, { method: "DELETE" }, token);
       setItems(current => current.filter(x => x.id !== item.id));
     } catch (e) { setError(e.message); }
     finally { setBusy(""); }
@@ -246,7 +233,7 @@ export function WishlistView({ token, storeSlug, onAddToCart }) {
   </section>;
 }
 
-export function SecurityView({ token, onTokenChange }) {
+export function SecurityView({ token, storeSlug, onTokenChange }) {
   const [form, setForm] = useState({ current_password: "", new_password: "", confirm_password: "" });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -258,7 +245,7 @@ export function SecurityView({ token, onTokenChange }) {
     if (form.new_password.length < 8) { setError("নতুন পাসওয়ার্ড কমপক্ষে ৮ অক্ষরের হতে হবে।"); return; }
     setBusy(true);
     try {
-      const data = await customerFetch("/password", {
+      const data = await customerFetch(storeSlug, "/password", {
         method: "POST",
         body: JSON.stringify({ current_password: form.current_password, new_password: form.new_password }),
       }, token);

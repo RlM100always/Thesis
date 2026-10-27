@@ -9,6 +9,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import { api } from "../api";
+import { customerFetch, getCustomerToken } from "../storeCustomerApi";
 import { explain } from "../errors";
 import { productImage, storeCoverImage } from "../storeImages";
 import StoreCustomerPortal from "./StoreCustomerPortal";
@@ -637,8 +638,9 @@ function StarRating({ value, count }) {
 function ProductCard({ product, cartQty, onAdd, onQtyChange, onView, storeCategory, showStockLevel, isWishlisted = false, wishlistBusy = false, onToggleWishlist }) {
   const outOfStock = product.in_stock === false;
   const inCart = (cartQty || 0) > 0;
-  const hasFlashSale = product.sale_price != null;
-  const displayPrice = hasFlashSale ? product.sale_price : product.price;
+  const hasFlashSale = product.sale_price != null || product.compare_at_price != null;
+  const displayPrice = product.sale_price != null ? product.sale_price : product.price;
+  const comparePrice = product.sale_price != null ? product.price : product.compare_at_price;
   return (
     <div className="s-product-card-wrap">
       {product.is_featured && <span className="s-featured-badge">⭐ বিশেষ</span>}
@@ -660,7 +662,7 @@ function ProductCard({ product, cartQty, onAdd, onQtyChange, onView, storeCatego
           {product.review_avg && <StarRating value={product.review_avg} count={product.review_count || 0} />}
           {product.price != null ? (
             <div className="s-product-price">
-              {hasFlashSale && <span style={{ textDecoration: "line-through", color: "#9ca3af", fontSize: 13, marginRight: 6 }}>{money(product.price)}</span>}
+              {hasFlashSale && <span style={{ textDecoration: "line-through", color: "#9ca3af", fontSize: 13, marginRight: 6 }}>{money(comparePrice)}</span>}
               <span style={hasFlashSale ? { color: "#dc2626" } : {}}>{money(displayPrice)}</span>
               {hasFlashSale && product.sale_end && <div><FlashSaleCountdown saleEnd={product.sale_end} /></div>}
             </div>
@@ -749,7 +751,7 @@ function ProductModal({ product, cartQty, onClose, onAdd, onQtyChange, onViewFul
           {reviews?.average && <StarRating value={reviews.average} count={reviews.count} />}
           {product.price != null && (
             <div style={{ fontSize: 26, fontWeight: 700, color: hasFlashSale ? "#dc2626" : "var(--sa)", marginBottom: 4 }}>
-              {hasFlashSale && <span style={{ textDecoration: "line-through", color: "#9ca3af", fontSize: 16, marginRight: 8 }}>{money(product.price)}</span>}
+              {hasFlashSale && <span style={{ textDecoration: "line-through", color: "#9ca3af", fontSize: 16, marginRight: 8 }}>{money(comparePrice)}</span>}
               {money(displayPrice)}
             </div>
           )}
@@ -987,11 +989,10 @@ function CheckoutView({ store, cart, products, onBack, onDone, scCustomer, varia
 
   useEffect(() => {
     if (!scCustomer?.id) { setSavedAddresses([]); setSelectedAddressId(""); return; }
-    const token = (() => { try { return localStorage.getItem("sc_token"); } catch (_) { return null; } })();
+    const token = getCustomerToken(store.slug);
     if (!token) return;
     let active = true;
-    fetch("/api/sc/addresses", { headers: { Authorization: `Bearer ${token}` } })
-      .then(r => r.ok ? r.json() : Promise.reject(new Error("সংরক্ষিত ঠিকানা লোড করা যায়নি")))
+    customerFetch(store.slug, "/addresses", {}, token)
       .then(data => {
         if (!active) return;
         const addresses = data.addresses || [];
@@ -1009,7 +1010,7 @@ function CheckoutView({ store, cart, products, onBack, onDone, scCustomer, varia
         }
       }).catch(() => {});
     return () => { active = false; };
-  }, [scCustomer?.id]);
+  }, [scCustomer?.id, store.slug]);
 
   function applySavedAddress(id) {
     setSelectedAddressId(id);
@@ -1091,7 +1092,7 @@ function CheckoutView({ store, cart, products, onBack, onDone, scCustomer, varia
     }
     setBusy(true); setError("");
     try {
-      const scToken = (() => { try { return localStorage.getItem("sc_token"); } catch (_) { return null; } })();
+      const scToken = getCustomerToken(store.slug);
       const order = await api.placePublicOrder(orgId, {
         shipping_name: form.name,
         shipping_phone: phone,
@@ -1655,37 +1656,33 @@ export default function StorePage() {
   const [confirmedOrder, setConfirmedOrder] = useState(null);
   const [detailQty, setDetailQty] = useState(1);
 
-  // Bootstrap logged-in store customer from localStorage token
+  // Bootstrap the customer account from the correct backend for this storefront.
   useEffect(() => {
-    const token = (() => { try { return localStorage.getItem("sc_token"); } catch (_) { return null; } })();
-    if (!token) return;
-    fetch("/api/sc/me", { headers: { Authorization: `Bearer ${token}` } })
-      .then(r => r.ok ? r.json() : null)
-      .then(c => { if (c) setScCustomer(c); })
-      .catch(() => {});
-  }, []);
+    let active = true;
+    const token = getCustomerToken(storeId);
+    if (!token) { setScCustomer(null); return () => { active = false; }; }
+    customerFetch(storeId, "/me", {}, token)
+      .then(c => { if (active) setScCustomer(c.customer || c); })
+      .catch(() => { if (active) setScCustomer(null); });
+    return () => { active = false; };
+  }, [storeId]);
 
   // Load this customer's cross-store wishlist and persist a pending favourite
   // after sign-in. The API enforces customer ownership and active store listings.
   useEffect(() => {
     if (!scCustomer || !store?.slug) { setWishlistIds({}); return; }
-    const token = (() => { try { return localStorage.getItem("sc_token"); } catch (_) { return null; } })();
+    const token = getCustomerToken(store.slug);
     if (!token) return;
     let active = true;
     const pending = pendingWishlistRef.current;
     if (pending) pendingWishlistRef.current = null;
-    const load = () => fetch(`/api/sc/wishlist?store_slug=${encodeURIComponent(store.slug)}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    }).then(r => r.ok ? r.json() : Promise.reject(new Error("পছন্দের তালিকা লোড করা যায়নি")))
+    const load = () => customerFetch(store.slug, `/wishlist?store_slug=${encodeURIComponent(store.slug)}`, {}, token)
       .then(d => { if (active) setWishlistIds(Object.fromEntries((d.items || []).map(item => [item.product_id, true]))); });
     load().then(async () => {
       if (!pending || !active) return;
-      const response = await fetch("/api/sc/wishlist", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ store_slug: store.slug, product_id: pending.id }),
-      });
-      if (!response.ok) { const d = await response.json().catch(() => ({})); throw new Error(d.detail || "পণ্যটি পছন্দের তালিকায় রাখা যায়নি"); }
+      await customerFetch(store.slug, "/wishlist", {
+        method: "POST", body: { store_slug: store.slug, product_id: pending.id },
+      }, token);
       await load();
     }).catch(e => { if (active) window.alert(e.message || "পছন্দের তালিকা আপডেট করা যায়নি"); });
     return () => { active = false; };
@@ -1698,10 +1695,9 @@ export default function StorePage() {
     if (!cartScope || !store?.organization_id) { setCartReadyScope(""); return; }
     let active = true;
     setCartReadyScope("");
-    const token = (() => { try { return localStorage.getItem("sc_token"); } catch (_) { return null; } })();
+    const token = getCustomerToken(store.slug);
     if (!token) { setCartReadyScope(cartScope); return; }
-    fetch(`/api/sc/cart/${encodeURIComponent(store.slug)}`, { headers: { Authorization: `Bearer ${token}` } })
-      .then(r => r.ok ? r.json() : Promise.reject(new Error("সেভ করা কার্ট লোড করা যায়নি")))
+    customerFetch(store.slug, `/cart/${encodeURIComponent(store.slug)}`, {}, token)
       .then(data => {
         if (!active) return;
         const allowed = new Set((store.products || []).filter(p => p.price != null).map(p => p.id));
@@ -1725,16 +1721,14 @@ export default function StorePage() {
 
   useEffect(() => {
     if (!cartScope || cartReadyScope !== cartScope || !store?.slug) return;
-    const token = (() => { try { return localStorage.getItem("sc_token"); } catch (_) { return null; } })();
+    const token = getCustomerToken(store.slug);
     if (!token) return;
     const timeout = window.setTimeout(() => {
       const items = Object.entries(cart).filter(([id, quantity]) => quantity > 0 && productMap[id]?.price != null)
         .map(([product_id, quantity]) => ({ product_id, quantity: Math.min(99, Number(quantity)), variant_label: variantSelections[product_id] || undefined }));
-      fetch(`/api/sc/cart/${encodeURIComponent(store.slug)}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ items }),
-      }).catch(() => {});
+      customerFetch(store.slug, `/cart/${encodeURIComponent(store.slug)}`, {
+        method: "PUT", body: { items },
+      }, token).catch(() => {});
     }, 450);
     return () => window.clearTimeout(timeout);
   }, [cart, variantSelections, cartScope, cartReadyScope, store?.slug]);
@@ -1742,11 +1736,10 @@ export default function StorePage() {
   // Poll unread chat count for account button badge
   useEffect(() => {
     if (!scCustomer || !store?.slug) return;
-    const token = (() => { try { return localStorage.getItem("sc_token"); } catch (_) { return null; } })();
-    if (!token) return;
-    const poll = () => fetch(`/api/sc/unread/${store.slug}`, { headers: { Authorization: `Bearer ${token}` } })
-      .then(r => r.ok ? r.json() : { count: 0 })
-      .then(d => setChatUnread(d.count))
+    const token = getCustomerToken(store.slug);
+    if (!token) { setChatUnread(0); return; }
+    const poll = () => customerFetch(store.slug, `/unread/${encodeURIComponent(store.slug)}`, {}, token)
+      .then(d => setChatUnread(Number(d.count || 0)))
       .catch(() => {});
     poll();
     const id = setInterval(poll, 15000);
@@ -1794,7 +1787,10 @@ export default function StorePage() {
   const cartTotal = useMemo(() => Object.entries(cart).reduce((s, [id, q]) => s + q * (productMap[id]?.price || 0), 0), [cart, productMap]);
   const allCats = useMemo(() => {
     const cats = new Set();
-    products.forEach(p => { const category = p.tags?.[0]?.trim(); if (category) cats.add(category); });
+    products.forEach(p => {
+      if (p.category?.trim()) cats.add(p.category.trim());
+      (p.tags || []).forEach(tag => { if (tag?.trim()) cats.add(tag.trim()); });
+    });
     return [...cats].sort((a, b) => a.localeCompare(b, "bn"));
   }, [products]);
 
@@ -1802,9 +1798,9 @@ export default function StorePage() {
     let list = [...products];
     if (search) {
       const q = search.toLowerCase();
-      list = list.filter(p => `${p.name} ${p.sku || ""} ${(p.tags || []).join(" ")} ${p.description || ""}`.toLowerCase().includes(q));
+      list = list.filter(p => `${p.name} ${p.sku || ""} ${p.category || ""} ${p.brand || ""} ${(p.tags || []).join(" ")} ${p.description || ""}`.toLowerCase().includes(q));
     }
-    if (activeCat) list = list.filter(p => p.tags?.includes(activeCat));
+    if (activeCat) list = list.filter(p => p.category === activeCat || p.tags?.includes(activeCat));
     return list;
   }, [products, search, activeCat]);
 
@@ -1849,7 +1845,7 @@ export default function StorePage() {
       setPortalOpen(true);
       return;
     }
-    const token = (() => { try { return localStorage.getItem("sc_token"); } catch (_) { return null; } })();
+    const token = getCustomerToken(store.slug);
     if (!token) { setPortalOpen(true); return; }
     const wasSaved = !!wishlistIds[product.id];
     setWishlistBusy(current => ({ ...current, [product.id]: true }));
@@ -1859,14 +1855,11 @@ export default function StorePage() {
       return next;
     });
     try {
-      const response = await fetch(wasSaved
-        ? `/api/sc/wishlist/${encodeURIComponent(store.slug)}/${encodeURIComponent(product.id)}`
-        : "/api/sc/wishlist", {
-        method: wasSaved ? "DELETE" : "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        ...(wasSaved ? {} : { body: JSON.stringify({ store_slug: store.slug, product_id: product.id }) }),
-      });
-      if (!response.ok) { const d = await response.json().catch(() => ({})); throw new Error(d.detail || "পছন্দের তালিকা আপডেট করা যায়নি"); }
+      if (wasSaved) {
+        await customerFetch(store.slug, `/wishlist/${encodeURIComponent(store.slug)}/${encodeURIComponent(product.id)}`, { method: "DELETE" }, token);
+      } else {
+        await customerFetch(store.slug, "/wishlist", { method: "POST", body: { store_slug: store.slug, product_id: product.id } }, token);
+      }
     } catch (e) {
       setWishlistIds(current => {
         const next = { ...current };
