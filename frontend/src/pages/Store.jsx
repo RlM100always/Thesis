@@ -974,6 +974,8 @@ function CheckoutView({ store, cart, products, onBack, onDone, scCustomer, varia
     note: "",
     payment_screenshot: null,
   });
+  const [savedAddresses, setSavedAddresses] = useState([]);
+  const [selectedAddressId, setSelectedAddressId] = useState("");
   const [busy, setBusy] = useState(false);
   const [submitCooldown, setSubmitCooldown] = useState(0);
   const [error, setError] = useState("");
@@ -982,6 +984,45 @@ function CheckoutView({ store, cart, products, onBack, onDone, scCustomer, varia
   const [couponErr, setCouponErr] = useState("");
   const [couponBusy, setCouponBusy] = useState(false);
   const set = (k) => (e) => setForm(f => ({ ...f, [k]: e.target.value }));
+
+  useEffect(() => {
+    if (!scCustomer?.id) { setSavedAddresses([]); setSelectedAddressId(""); return; }
+    const token = (() => { try { return localStorage.getItem("sc_token"); } catch (_) { return null; } })();
+    if (!token) return;
+    let active = true;
+    fetch("/api/sc/addresses", { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.ok ? r.json() : Promise.reject(new Error("সংরক্ষিত ঠিকানা লোড করা যায়নি")))
+      .then(data => {
+        if (!active) return;
+        const addresses = data.addresses || [];
+        setSavedAddresses(addresses);
+        const preferred = addresses.find(a => a.is_default) || addresses[0];
+        if (preferred) {
+          setSelectedAddressId(preferred.id);
+          setForm(current => ({
+            ...current,
+            name: preferred.recipient_name || current.name,
+            phone: preferred.phone || current.phone,
+            address: [preferred.address_detail, preferred.thana, preferred.district, preferred.division, preferred.postal_code].filter(Boolean).join(", "),
+            division: preferred.division || current.division,
+          }));
+        }
+      }).catch(() => {});
+    return () => { active = false; };
+  }, [scCustomer?.id]);
+
+  function applySavedAddress(id) {
+    setSelectedAddressId(id);
+    const address = savedAddresses.find(a => a.id === id);
+    if (!address) return;
+    setForm(current => ({
+      ...current,
+      name: address.recipient_name || current.name,
+      phone: address.phone || current.phone,
+      address: [address.address_detail, address.thana, address.district, address.division, address.postal_code].filter(Boolean).join(", "),
+      division: address.division || current.division,
+    }));
+  }
 
   const items = Object.entries(cart).filter(([, q]) => q > 0);
   const subtotal = items.reduce((s, [id, q]) => s + q * (products[id]?.price || 0), 0);
@@ -1135,6 +1176,17 @@ function CheckoutView({ store, cart, products, onBack, onDone, scCustomer, varia
       {error && <div className="s-error-box">{error}</div>}
 
       <form onSubmit={place}>
+        {scCustomer && savedAddresses.length > 0 && (
+          <div className="s-form-group">
+            <label>সংরক্ষিত ঠিকানা থেকে বেছে নিন</label>
+            <select className="s-input" value={selectedAddressId} onChange={e => applySavedAddress(e.target.value)}>
+              <option value="">অন্য ঠিকানা লিখুন</option>
+              {savedAddresses.map(address => <option key={address.id} value={address.id}>
+                {address.label}{address.is_default ? " · ডিফল্ট" : ""} — {address.district}, {address.division}
+              </option>)}
+            </select>
+          </div>
+        )}
         <div className="s-form-group">
           <label>আপনার নাম <span>*</span></label>
           <input className="s-input" autoComplete="name" value={form.name} onChange={set("name")} required />
