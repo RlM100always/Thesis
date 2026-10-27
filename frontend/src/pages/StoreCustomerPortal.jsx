@@ -316,7 +316,7 @@ const RETURN_LABEL = {
 
 // ── Orders View ───────────────────────────────────────────────────────────────
 
-const STATUS_STEPS = ["placed", "confirmed", "ready", "dispatched", "delivered"];
+const STATUS_STEPS = ["placed", "confirmed", "processing", "ready", "dispatched", "delivered"];
 const STATUS_LABEL = { placed: "অর্ডার দেওয়া হয়েছে", confirmed: "নিশ্চিত", ready: "প্রস্তুত", processing: "প্রস্তুত হচ্ছে", dispatched: "পাঠানো হয়েছে", shipped: "পাঠানো হয়েছে", fulfilled: "সম্পন্ন", delivered: "ডেলিভারি হয়েছে", cancelled: "বাতিল" };
 const STATUS_COLOR = { placed: "#f59e0b", confirmed: "#3b82f6", processing: "#8b5cf6", ready: "#8b5cf6", shipped: "#06b6d4", dispatched: "#06b6d4", fulfilled: "#22c55e", delivered: "#22c55e", cancelled: "#ef4444" };
 const STATUS_ICON = { placed: "📝", confirmed: "✅", ready: "⚙️", processing: "⚙️", dispatched: "🚚", shipped: "🚚", fulfilled: "🎉", delivered: "🎉", cancelled: "❌" };
@@ -325,7 +325,7 @@ function OrderTimeline({ status }) {
   if (status === "cancelled") return (
     <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 0", color: "#ef4444", fontSize: 12, fontWeight: 600 }}>❌ অর্ডার বাতিল হয়েছে</div>
   );
-  const normalizedStatus = status === "processing" ? "ready" : status === "shipped" ? "dispatched" : ["fulfilled", "delivered"].includes(status) ? "delivered" : status;
+  const normalizedStatus = status === "shipped" ? "dispatched" : status === "fulfilled" ? "delivered" : status;
   const cur = STATUS_STEPS.indexOf(normalizedStatus);
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 0, padding: "10px 0 6px", overflowX: "auto" }}>

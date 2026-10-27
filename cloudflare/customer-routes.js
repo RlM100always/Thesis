@@ -1,3 +1,5 @@
+import { defaultOrderStatusNote } from "./order-workflow.js";
+
 /* Global customer identity and account-owned shopping state for the D1 storefronts.
  * D1 demo accounts are shared across D1 stores, but remain separate from the
  * operational FastAPI customer database until a deliberate identity migration.
@@ -110,8 +112,8 @@ async function orderHistory(env, account, url) {
     ? await env.DB.prepare("SELECT COUNT(*) AS total FROM commerce_orders WHERE account_id=? AND status=?").bind(account.id, status).first()
     : await env.DB.prepare("SELECT COUNT(*) AS total FROM commerce_orders WHERE account_id=?").bind(account.id).first();
   const query = status
-    ? env.DB.prepare("SELECT o.*,s.slug AS store_slug,s.name AS store_name FROM commerce_orders o JOIN commerce_stores s ON s.id=o.store_id WHERE o.account_id=? AND o.status=? ORDER BY o.placed_at DESC LIMIT ? OFFSET ?").bind(account.id, status, perPage, (page-1)*perPage)
-    : env.DB.prepare("SELECT o.*,s.slug AS store_slug,s.name AS store_name FROM commerce_orders o JOIN commerce_stores s ON s.id=o.store_id WHERE o.account_id=? ORDER BY o.placed_at DESC LIMIT ? OFFSET ?").bind(account.id, perPage, (page-1)*perPage);
+    ? env.DB.prepare("SELECT o.*,s.slug AS store_slug,s.name AS store_name,s.is_demo AS store_is_demo FROM commerce_orders o JOIN commerce_stores s ON s.id=o.store_id WHERE o.account_id=? AND o.status=? ORDER BY o.placed_at DESC LIMIT ? OFFSET ?").bind(account.id, status, perPage, (page-1)*perPage)
+    : env.DB.prepare("SELECT o.*,s.slug AS store_slug,s.name AS store_name,s.is_demo AS store_is_demo FROM commerce_orders o JOIN commerce_stores s ON s.id=o.store_id WHERE o.account_id=? ORDER BY o.placed_at DESC LIMIT ? OFFSET ?").bind(account.id, perPage, (page-1)*perPage);
   const { results: orders } = await query.all();
   if (!orders.length) return { total: Number(count?.total || 0), page, per_page: perPage, orders: [] };
   const ids = orders.map(o => o.id);
@@ -138,11 +140,11 @@ async function orderHistory(env, account, url) {
       const ret = byReturn.get(o.id);
       return {
         id: o.id, document_number: o.order_number, order_number: o.order_number,
-        access_token: o.access_token, status: o.status, status_note: o.status_note || "পরীক্ষামূলক অর্ডার; বাস্তব ডেলিভারি বা পেমেন্ট নেই",
+        access_token: o.access_token, status: o.status, status_note: o.status_note || defaultOrderStatusNote(o.status, !!o.store_is_demo),
         issued_at: o.placed_at, placed_at: o.placed_at,
         subtotal: o.subtotal_bdt, total: o.total_bdt, tax_amount: 0, delivery_fee: 0,
         discount_amount: 0, organization_id: o.store_id, store_slug: o.store_slug,
-        store_name: o.store_name, is_demo: true, payment_method: o.payment_method || "demo",
+        store_name: o.store_name, is_demo: !!o.store_is_demo, payment_method: o.payment_method || "demo",
         payment_status: "demo_no_payment", shipping_name: o.shipping_name || "",
         shipping_phone: o.shipping_phone || "", shipping_address: o.shipping_address || "",
         return_id: ret?.id || null, return_status: ret?.status || null,

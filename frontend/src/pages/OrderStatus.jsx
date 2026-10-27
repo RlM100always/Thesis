@@ -10,16 +10,20 @@ import "./OrderStatus.css";
 const LABEL = {
   placed: ["অর্ডারটি গ্রহণ করা হয়েছে", "warn"],
   confirmed: ["দোকান অর্ডারটি নিশ্চিত করেছে", "info"],
-  ready: ["অর্ডার প্রস্তুত করা হচ্ছে", "warn"],
+  processing: ["পণ্য প্রস্তুত করা হচ্ছে", "warn"],
+  ready: ["পণ্য প্রস্তুত; পাঠানোর অপেক্ষায়", "warn"],
   dispatched: ["ডেলিভারির জন্য পাঠানো হয়েছে", "info"],
+  shipped: ["অর্ডার পথে রয়েছে", "info"],
+  fulfilled: ["অর্ডার সম্পন্ন হয়েছে", "success"],
   delivered: ["ডেলিভারি সম্পন্ন হয়েছে", "success"],
   cancelled: ["অর্ডার বাতিল হয়েছে", "danger"],
 };
 
-const STEPS = ["placed", "confirmed", "ready", "dispatched", "delivered"];
+const STEPS = ["placed", "confirmed", "processing", "ready", "dispatched", "delivered"];
 
 function StatusTimeline({ status }) {
-  const currentIdx = STEPS.indexOf(status);
+  const normalizedStatus = status === "shipped" ? "dispatched" : status === "fulfilled" ? "delivered" : status;
+  const currentIdx = STEPS.indexOf(normalizedStatus);
   if (status === "cancelled") return (
     <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "12px 0", color: "var(--order-danger)", fontWeight: 600, fontSize: 13 }}>
       ❌ অর্ডার বাতিল হয়েছে

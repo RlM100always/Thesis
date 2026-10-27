@@ -4,7 +4,23 @@ import { useUi } from "../UiContext";
 
 const BASE=(import.meta.env.VITE_D1_COMMERCE_URL || "https://bsmart-commerce-api.bcs-written-rakib.workers.dev").replace(/\/$/,"");
 const fmt=n=>"৳"+Number(n||0).toLocaleString("bn-BD");
-const ORDER_STATUS_BN={placed:"অর্ডার জমা হয়েছে",confirmed:"নিশ্চিত হয়েছে",fulfilled:"ডেমো অর্ডার সম্পন্ন",cancelled:"বাতিল হয়েছে"};
+const ORDER_STATUS_BN={placed:"অর্ডার জমা হয়েছে",confirmed:"নিশ্চিত হয়েছে",processing:"প্রস্তুত হচ্ছে",ready:"পণ্য প্রস্তুত",dispatched:"পাঠানো হয়েছে",shipped:"পাঠানো হয়েছে",fulfilled:"সম্পন্ন",delivered:"ডেলিভারি সম্পন্ন",cancelled:"বাতিল হয়েছে"};
+const ORDER_ACTIONS={
+  placed:[{status:"confirmed",label:"নিশ্চিত করুন"},{status:"cancelled",label:"বাতিল করুন",danger:true}],
+  confirmed:[{status:"processing",label:"প্রস্তুত করা শুরু করুন"},{status:"cancelled",label:"বাতিল করুন",danger:true}],
+  processing:[{status:"ready",label:"পণ্য প্রস্তুত"},{status:"cancelled",label:"বাতিল করুন",danger:true}],
+  ready:[{status:"dispatched",label:"কুরিয়ারে পাঠান"}],
+  dispatched:[{status:"delivered",label:"ডেলিভারি সম্পন্ন"}],
+  shipped:[{status:"delivered",label:"ডেলিভারি সম্পন্ন"}],
+};
+const ORDER_ACTION_SUCCESS={
+  confirmed:"অর্ডার নিশ্চিত করা হয়েছে।",
+  processing:"পণ্য প্রস্তুতের কাজ শুরু হয়েছে।",
+  ready:"পণ্য প্রস্তুত হয়েছে।",
+  dispatched:"অর্ডার ডেলিভারির জন্য পাঠানো হয়েছে।",
+  delivered:"ডেলিভারি সম্পন্ন হয়েছে।",
+  cancelled:"অর্ডার বাতিল হয়েছে এবং মজুত আগের অবস্থায় ফিরেছে।",
+};
 const RETURN_STATUS_BN={requested:"অনুরোধ এসেছে",approved:"অনুমোদিত",rejected:"প্রত্যাখ্যাত",received:"ফেরত পণ্য গ্রহণ",closed_demo:"পরীক্ষামূলকভাবে বন্ধ"};
 const CASH_KIND_BN={receipt:"টাকা গ্রহণ",expense:"খরচ"};
 const empty={email:"",access_key:""};
@@ -161,9 +177,7 @@ export default function D1MerchantCenter(){
           </section>
         </div>}
         {view==="orders"&&<div className="dm-panel"><h2>পরীক্ষামূলক অর্ডার ({orders.length})</h2><p className="dm-muted">অর্ডারের তথ্য Cloudflare D1-তে সংরক্ষিত থাকে। পরীক্ষামূলক অর্ডারে বাস্তব ক্রেতার পরিচয় ব্যবহার করা হয় না।</p>
-          {orders.length===0?<Empty>অর্ডার আসলে এখানে দেখা যাবে।</Empty>:<div className="dm-scroll"><table><thead><tr><th>অর্ডার</th><th>তারিখ</th><th>মোট</th><th>অবস্থা</th><th>করণীয়</th></tr></thead><tbody>{orders.map(o=><tr key={o.id}><td>{o.order_number}</td><td>{o.placed_at}</td><td>{fmt(o.total_bdt)}</td><td>{ORDER_STATUS_BN[o.status]||o.status}</td><td>{o.status==="placed"?<>
-            <button className="dm-secondary" disabled={busy} onClick={()=>run(()=>call("/api/merchant/orders/"+o.id+"/status",{method:"PATCH",token,body:{status:"confirmed"}}),"অর্ডার নিশ্চিত করা হয়েছে।")}>নিশ্চিত করুন</button> <button className="dm-danger" disabled={busy} onClick={()=>run(()=>call("/api/merchant/orders/"+o.id+"/status",{method:"PATCH",token,body:{status:"cancelled"}}),"অর্ডার বাতিল হয়েছে এবং মজুত আগের অবস্থায় ফিরেছে।")}>বাতিল করুন</button></>:
-            o.status==="confirmed"?<><button className="dm-secondary" disabled={busy} onClick={()=>run(()=>call("/api/merchant/orders/"+o.id+"/status",{method:"PATCH",token,body:{status:"fulfilled"}}),"পরীক্ষামূলক অর্ডার সম্পন্ন বলে চিহ্নিত হয়েছে।")}>ডেমো অর্ডার সম্পন্ন করুন</button> <button className="dm-danger" disabled={busy} onClick={()=>run(()=>call("/api/merchant/orders/"+o.id+"/status",{method:"PATCH",token,body:{status:"cancelled"}}),"অর্ডার বাতিল করা হয়েছে।")}>বাতিল করুন</button></>:<span>—</span>}</td></tr>)}</tbody></table></div>}
+          {orders.length===0?<Empty>অর্ডার আসলে এখানে দেখা যাবে।</Empty>:<div className="dm-scroll"><table><thead><tr><th>অর্ডার</th><th>তারিখ</th><th>মোট</th><th>অবস্থা</th><th>করণীয়</th></tr></thead><tbody>{orders.map(o=><tr key={o.id}><td>{o.order_number}</td><td>{o.placed_at}</td><td>{fmt(o.total_bdt)}</td><td>{ORDER_STATUS_BN[o.status]||o.status}{o.status_note&&<><br/><small>{o.status_note}</small></>}</td><td>{(ORDER_ACTIONS[o.status]||[]).length ? ORDER_ACTIONS[o.status].map(action=><button key={action.status} className={action.danger?"dm-danger":"dm-secondary"} style={{marginRight:6,marginBottom:4}} disabled={busy} onClick={()=>run(()=>call("/api/merchant/orders/"+o.id+"/status",{method:"PATCH",token,body:{status:action.status}}),ORDER_ACTION_SUCCESS[action.status])}>{action.label}</button>) : <span>—</span>}</td></tr>)}</tbody></table></div>}
         </div>}
         {view==="returns"&&<section className="dm-panel"><h2>ক্রেতার ফেরত অনুরোধ ({returnRequests.length})</h2><p className="dm-muted">ফেরত পণ্য গ্রহণ করলে পরীক্ষামূলক মজুত একবার পুনরুদ্ধার হবে। এখানে কোনো অর্থ ফেরত দেওয়া হয় না।</p>
           {returnRequests.length===0?<Empty>এখনো কোনো ফেরত অনুরোধ আসেনি।</Empty>:<div className="dm-scroll"><table><thead><tr><th>অর্ডার/ক্রেতা</th><th>কারণ</th><th>নোট</th><th>অবস্থা</th><th>করণীয়</th></tr></thead><tbody>{returnRequests.map(r=><tr key={r.id}><td>{r.order_number}<br/><small>{r.customer_name}</small></td><td>{({damaged:"ক্ষতিগ্রস্ত",wrong_item:"ভুল পণ্য",missing_item:"পণ্য অনুপস্থিত",not_as_described:"বর্ণনার সঙ্গে মিল নেই",other:"অন্যান্য"})[r.reason]||r.reason}</td><td>{r.customer_note||"—"}</td><td>{RETURN_STATUS_BN[r.status]||r.status}<br/><small>{r.merchant_note||""}</small></td><td>{r.status==="requested"?<><button className="dm-secondary" disabled={busy} onClick={()=>run(()=>call("/api/merchant/returns/"+r.id,{method:"PATCH",token,body:{status:"approved"}}),"ফেরত অনুরোধ অনুমোদন করা হয়েছে।")}>অনুমোদন</button> <button className="dm-danger" disabled={busy} onClick={()=>run(()=>call("/api/merchant/returns/"+r.id,{method:"PATCH",token,body:{status:"rejected",merchant_note:"অনুরোধটি অনুমোদন করা হয়নি"}}),"ফেরত অনুরোধ প্রত্যাখ্যান করা হয়েছে।")}>প্রত্যাখ্যান</button></>:r.status==="approved"?<button className="dm-secondary" disabled={busy} onClick={()=>run(()=>call("/api/merchant/returns/"+r.id,{method:"PATCH",token,body:{status:"received"}}),"ফেরত পণ্য গ্রহণ হয়েছে; পরীক্ষামূলক মজুত পুনরুদ্ধার হয়েছে।")}>পণ্য গ্রহণ হয়েছে</button>:r.status==="received"?<button className="dm-secondary" disabled={busy} onClick={()=>run(()=>call("/api/merchant/returns/"+r.id,{method:"PATCH",token,body:{status:"closed_demo"}}),"ফেরত প্রক্রিয়া বন্ধ হয়েছে।")}>বন্ধ করুন</button>: "—"}</td></tr>)}</tbody></table></div>}</section>}

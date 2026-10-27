@@ -1,3 +1,5 @@
+import { canTransitionOrderStatus, defaultOrderStatusNote } from "./order-workflow.js";
+
 /* Authenticated Cloudflare D1 merchant console (separate from legacy FastAPI).
    Public demo checkout does not accept any real payment or delivery.
    IMPORTANT: This owner identity is not imported from ephemeral SQLite.
@@ -258,10 +260,13 @@ export async function merchantRouter(req,env,path,output,error){
    const order=await env.DB.prepare("SELECT * FROM commerce_orders WHERE store_id=? AND id=?").bind(store.id,oo[1]).first();
    if(!order)return bad(req,error,404,"Order not found");
    const status=short(b.status,30);
-   const next={placed:["confirmed","cancelled"],confirmed:["fulfilled","cancelled"],fulfilled:[],cancelled:[]};
-   if(!next[order.status]?.includes(status))return bad(req,error,409,"Invalid order status transition");
-   await env.DB.prepare("UPDATE commerce_orders SET status=? WHERE id=? AND store_id=? AND status=?").bind(status,order.id,store.id,order.status).run();
-   return output(req,{status});
+   if(!canTransitionOrderStatus(order.status,status))return bad(req,error,409,"Invalid order status transition");
+   const note=short(b.status_note,300)||defaultOrderStatusNote(status,!!store.is_demo);
+   const cancellationReason=status==="cancelled"?(short(b.cancellation_reason,250)||"দোকানের পক্ষ থেকে অর্ডার বাতিল করা হয়েছে"):null;
+   const updated=await env.DB.prepare("UPDATE commerce_orders SET status=?,status_note=?,cancellation_reason=COALESCE(?,cancellation_reason) WHERE id=? AND store_id=? AND status=?")
+    .bind(status,note,cancellationReason,order.id,store.id,order.status).run();
+   if(!updated.meta?.changes)return bad(req,error,409,"Order status changed; refresh and retry");
+   return output(req,{status,status_note:note});
   }
   return bad(req,error,404,"Merchant route not found");
  }catch(e){

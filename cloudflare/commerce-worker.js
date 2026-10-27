@@ -1,6 +1,7 @@
 import { merchantRouter } from "./merchant-routes.js";
 import { customerRouter, customerFromToken } from "./customer-routes.js";
 import { platformAdminRouter } from "./platform-admin-routes.js";
+import { defaultOrderStatusNote } from "./order-workflow.js";
 /*
  B-SMART Cloudflare D1 Commerce API.
  Public demo-store catalogues, customer accounts, saved addresses, account-linked
@@ -79,12 +80,12 @@ async function orderDetails(env,request,id,token) {
  ]);
  return output(request,{
   id:order.id,order_number:order.order_number,document_number:order.order_number,access_token:order.access_token,
-  status:order.status,payment_status:"demo_no_payment",status_note:"পরীক্ষামূলক অর্ডার; বাস্তব ডেলিভারি বা পেমেন্ট নেই",
+  status:order.status,payment_status:"demo_no_payment",status_note:order.status_note||defaultOrderStatusNote(order.status,!!store?.is_demo),
   placed_at:order.placed_at,issued_at:order.placed_at,
   shipping_name:order.shipping_name||"",shipping_phone:order.shipping_phone||"",shipping_address:order.shipping_address||"",
   subtotal:order.subtotal_bdt,tax_amount:0,delivery_fee:0,discount_amount:0,
   coupon_code:null,coupon_discount:0,total:order.total_bdt,organization_id:id,
-  store_slug:store?.slug||null,store_name:store?.name||"পরীক্ষামূলক দোকান",is_demo:true,
+  store_slug:store?.slug||null,store_name:store?.name||"পরীক্ষামূলক দোকান",is_demo:!!store?.is_demo,
   payment_method:order.payment_method||"demo",
   items:results.map(p=>({product_id:p.product_id,description:p.product_name,product_name:p.product_name,quantity:p.quantity,unit_price:p.price_bdt,line_total:p.line_total_bdt,variant_label:null})),
   whatsapp_notify_url:null,coupon_applied:false,referral_discount:0
@@ -202,7 +203,7 @@ export default {
       return orderDetails(env,request,id,action.slice(7));
     if(method==="POST"&&action.startsWith("cancel/")) {
      const token=action.slice(7);
-     const d=await env.DB.prepare("UPDATE commerce_orders SET status='cancelled' WHERE store_id=? AND access_token=? AND status='placed'").bind(id,token).run();
+     const d=await env.DB.prepare("UPDATE commerce_orders SET status='cancelled',status_note='ক্রেতার অনুরোধে অর্ডার বাতিল হয়েছে' WHERE store_id=? AND access_token=? AND status='placed'").bind(id,token).run();
      if(!d.meta?.changes)return error(request,409,"Order cannot be cancelled");
      return orderDetails(env,request,id,token);
     }
