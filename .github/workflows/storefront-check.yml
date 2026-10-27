@@ -20,7 +20,7 @@ jobs:
       - run: npm run build
         working-directory: frontend
       - name: Check public copy and dark/light contrast
-        run: node --test tests/public-copy-theme.test.mjs tests/store-display-text.test.mjs tests/public-cms-display.test.mjs tests/d1-order-workflow.test.mjs
+        run: node --test tests/public-copy-theme.test.mjs tests/store-display-text.test.mjs tests/public-cms-display.test.mjs tests/d1-order-workflow.test.mjs tests/d1-platform-admin-payment.test.mjs
         working-directory: frontend
   d1-schema-smoke:
     runs-on: ubuntu-latest

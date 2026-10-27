@@ -73,12 +73,12 @@ export async function platformAdminRouter(req,env,path,output,error) {
     }
     if(method==="GET"&&path==="/api/platform-admin/orders") {
       const {results}=await env.DB.prepare(
-        "SELECT o.id,o.order_number,o.status,o.status_note,o.cancellation_reason,o.subtotal_bdt,o.total_bdt,o.payment_method,o.placed_at,o.shipping_name,o.shipping_phone,o.shipping_address,"+
+        "SELECT o.id,o.order_number,o.status,o.status_note,o.cancellation_reason,o.subtotal_bdt,o.total_bdt,o.payment_method,o.payment_status,o.payment_received_at,o.payment_received_by,o.payment_note,o.placed_at,o.shipping_name,o.shipping_phone,o.shipping_address,"+
         "s.id AS store_id,s.slug AS store_slug,s.name AS store_name,a.id AS account_id,a.display_name AS customer_name,a.email AS customer_email "+
         "FROM commerce_orders o JOIN commerce_stores s ON s.id=o.store_id "+
         "LEFT JOIN commerce_customer_accounts a ON a.id=o.account_id ORDER BY o.placed_at DESC LIMIT 500"
       ).all();
-      return output(req,{orders:results,note:"Amounts are demo order values, not money received."});
+      return output(req,{orders:results,note:"Demo order values are not revenue. COD collection is merchant-confirmed and is not independently verified by this system."});
     }
     if(method==="GET"&&path==="/api/platform-admin/returns") {
       const {results}=await env.DB.prepare(
