@@ -49,7 +49,7 @@ const baseView=(s)=>({
 const productView=(p)=>({
   id:p.id,name:p.name,sku:p.sku,unit:p.unit_label||"pcs",price:p.price_bdt,
   selling_price:p.price_bdt,description:p.description||"পরীক্ষামূলক পণ্য; বাস্তব বিক্রেতা বা ডেলিভারি যাচাই করা হয়নি",
-  brand:p.brand||null,sale_price:p.compare_at_price_bdt||null,sale_end:null,image_data_url:p.image_url||null,
+  brand:p.brand||null,compare_at_price:p.compare_at_price_bdt||null,sale_price:null,sale_end:null,image_data_url:p.image_url||null,
   tags:(()=>{try{return JSON.parse(p.tags||"[]")}catch{return []}})(),
   is_featured:!!p.is_featured,sort_order:0,max_order_qty:Math.min(p.stock_qty,10),
   review_avg:Number(p.review_avg||0),review_count:Number(p.review_count||0),
