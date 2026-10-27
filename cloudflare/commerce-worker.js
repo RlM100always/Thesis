@@ -80,7 +80,7 @@ async function orderDetails(env,request,id,token) {
  ]);
  return output(request,{
   id:order.id,order_number:order.order_number,document_number:order.order_number,access_token:order.access_token,
-  status:order.status,payment_status:store?.is_demo?"demo_no_payment":(order.payment_method==="cod"?"pending_cod":"unpaid"),status_note:order.status_note||defaultOrderStatusNote(order.status,!!store?.is_demo),
+  status:order.status,payment_status:order.payment_status||(store?.is_demo?"demo_no_payment":(order.payment_method==="cod"?(order.status==="cancelled"?"cancelled_no_payment":"pending_cod"):"unpaid")),payment_received_at:order.payment_received_at||null,payment_received_by:order.payment_received_by||null,payment_note:order.payment_note||null,status_note:order.status_note||defaultOrderStatusNote(order.status,!!store?.is_demo),
   placed_at:order.placed_at,issued_at:order.placed_at,
   shipping_name:order.shipping_name||"",shipping_phone:order.shipping_phone||"",shipping_address:order.shipping_address||"",
   subtotal:order.subtotal_bdt,tax_amount:0,delivery_fee:0,discount_amount:0,

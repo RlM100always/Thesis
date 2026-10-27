@@ -34,7 +34,7 @@ async function dashboard(env,owner){
  if(!store)return {account:{email:owner.email},store:null,products:[],orders:[],metrics:{orders:0,inventory_units:0,placed_total_bdt:0},stock_adjustments:[],cashbook:[]};
  const [products,orders,stats,adjustments,cashbook]=await Promise.all([
   env.DB.prepare("SELECT id,sku,name,category,description,brand,tags,compare_at_price_bdt,unit_label,price_bdt,stock_qty,is_listed,created_at,updated_at FROM commerce_products WHERE store_id=? ORDER BY created_at DESC LIMIT 200").bind(store.id).all(),
-  env.DB.prepare("SELECT id,order_number,status,status_note,cancellation_reason,total_bdt,placed_at,payment_method,shipping_name,shipping_phone,shipping_address FROM commerce_orders WHERE store_id=? ORDER BY placed_at DESC LIMIT 150").bind(store.id).all(),
+  env.DB.prepare("SELECT id,order_number,status,status_note,cancellation_reason,total_bdt,placed_at,payment_method,payment_status,payment_received_at,payment_received_by,payment_note,shipping_name,shipping_phone,shipping_address FROM commerce_orders WHERE store_id=? ORDER BY placed_at DESC LIMIT 150").bind(store.id).all(),
   env.DB.prepare("SELECT (SELECT COUNT(*) FROM commerce_orders WHERE store_id=?) AS orders,(SELECT COALESCE(SUM(stock_qty),0) FROM commerce_products WHERE store_id=?) AS inventory_units,(SELECT COALESCE(SUM(total_bdt),0) FROM commerce_orders WHERE store_id=? AND status!='cancelled') AS placed_total_bdt").bind(store.id,store.id,store.id).first(),
   env.DB.prepare("SELECT product_id,old_quantity,new_quantity,delta,reason,created_at FROM commerce_stock_adjustments WHERE store_id=? ORDER BY created_at DESC LIMIT 25").bind(store.id).all(),
   env.DB.prepare("SELECT id,kind,amount_bdt,description,created_at,related_order_id FROM commerce_cashbook WHERE store_id=? ORDER BY created_at DESC LIMIT 75").bind(store.id).all()
@@ -139,7 +139,7 @@ export async function merchantRouter(req,env,path,output,error){
     const result=await env.DB.prepare("UPDATE commerce_order_returns SET status=?,merchant_note=?,updated_at=CURRENT_TIMESTAMP WHERE id=? AND store_id=? AND status=?")
      .bind(status,note||null,id,store.id,row.status).run();
     if(!result.meta?.changes)return bad(req,error,409,"Return request changed; refresh and retry");
-    return output(req,{updated:true,status,inventory_restocked:status==="received",note:"Demo return workflow only; no money was refunded"});
+    return output(req,{updated:true,status,inventory_restocked:status==="received",note:store.is_demo?"Demo return workflow only; no money was refunded":"Return received and inventory restocked; no automated refund was issued."});
    }
    if(method==="GET"&&path==="/api/merchant/chat"){
     const store=await storeOnly(env,owner),url=new URL(req.url),accountId=short(url.searchParams.get("account_id"),80);
@@ -253,6 +253,23 @@ export async function merchantRouter(req,env,path,output,error){
     await env.DB.batch([update,env.DB.prepare("INSERT INTO commerce_stock_adjustments(id,store_id,product_id,old_quantity,new_quantity,delta,reason) VALUES(?,?,?,?,?,?,?)").bind(crypto.randomUUID(),store.id,p.id,p.stock_qty,qty,diff,"Owner manual inventory correction")]);
    } else await update.run();
    return output(req,{updated:true,stock_change:diff});
+  }
+  const paymentMatch=/^\/api\/merchant\/orders\/([a-zA-Z0-9-]{2,90})\/payment$/.exec(path);
+  if(method==="PATCH"&&paymentMatch){
+   const store=await storeOnly(env,owner),body=await json(req,error),id=paymentMatch[1];
+   if(store.is_demo)return bad(req,error,409,"Demo orders have no real payment to collect");
+   const order=await env.DB.prepare("SELECT id,status,payment_method,payment_status FROM commerce_orders WHERE store_id=? AND id=?").bind(store.id,id).first();
+   if(!order)return bad(req,error,404,"Order not found");
+   if(order.payment_method!=="cod")return bad(req,error,409,"Only cash-on-delivery orders can be recorded here");
+   if(!["delivered","fulfilled"].includes(order.status))return bad(req,error,409,"Confirm delivery before recording COD collection");
+   if(order.payment_status==="paid")return output(req,{updated:false,payment_status:"paid",note:"COD collection was already recorded"});
+   if(order.payment_status!=="pending_cod")return bad(req,error,409,"This order is not awaiting COD collection");
+   const paymentNote=short(body.payment_note,300);
+   const updated=await env.DB.prepare("UPDATE commerce_orders SET payment_status='paid',payment_received_at=CURRENT_TIMESTAMP,payment_received_by=?,payment_note=? WHERE id=? AND store_id=? AND payment_method='cod' AND payment_status='pending_cod' AND status IN ('delivered','fulfilled')")
+    .bind(owner.email,paymentNote||null,id,store.id).run();
+   if(!updated.meta?.changes)return bad(req,error,409,"Payment status changed; refresh and retry");
+   const saved=await env.DB.prepare("SELECT payment_status,payment_received_at,payment_received_by,payment_note FROM commerce_orders WHERE id=? AND store_id=?").bind(id,store.id).first();
+   return output(req,{updated:true,...saved});
   }
   const oo=/^\/api\/merchant\/orders\/([a-zA-Z0-9-]{2,90})\/status$/.exec(path);
   if(method==="PATCH"&&oo){

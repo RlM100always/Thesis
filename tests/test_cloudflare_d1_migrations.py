@@ -37,7 +37,7 @@ def test_all_d1_migrations_apply_in_order_and_create_commerce_tables():
     order_columns = {
         row["name"] for row in db.execute("PRAGMA table_info(commerce_orders)")
     }
-    assert {"account_id", "cancellation_reason", "status_note"} <= order_columns
+    assert {"account_id", "cancellation_reason", "status_note", "payment_status", "payment_received_at", "payment_received_by", "payment_note"} <= order_columns
     db.close()
 
 
@@ -68,6 +68,7 @@ def test_cancel_and_received_return_restore_stock_once():
         ("order-cancel", "product-1", "Test item", 2, 100, 200),
     )
     assert db.execute("SELECT stock_qty FROM commerce_products WHERE id='product-1'").fetchone()[0] == 8
+    assert db.execute("SELECT payment_status FROM commerce_orders WHERE id='order-cancel'").fetchone()[0] == "demo_no_payment"
     db.execute("UPDATE commerce_orders SET status='cancelled' WHERE id='order-cancel'")
     assert db.execute("SELECT stock_qty FROM commerce_products WHERE id='product-1'").fetchone()[0] == 10
     db.execute("UPDATE commerce_orders SET status='cancelled' WHERE id='order-cancel'")
@@ -92,4 +93,34 @@ def test_cancel_and_received_return_restore_stock_once():
     assert db.execute("SELECT stock_qty FROM commerce_products WHERE id='product-1'").fetchone()[0] == 10
     db.execute("UPDATE commerce_order_returns SET status='closed_demo' WHERE id='return-1'")
     assert db.execute("SELECT stock_qty FROM commerce_products WHERE id='product-1'").fetchone()[0] == 10
+    db.close()
+
+
+def test_cod_payment_state_is_persisted_and_cancellation_is_not_marked_paid():
+    db = _migrated_db()
+    db.execute(
+        "INSERT INTO commerce_stores(id,slug,name,is_demo,is_active) VALUES(?,?,?,?,?)",
+        ("merchant-cod", "cod-shop", "COD Shop", 0, 1),
+    )
+    db.execute(
+        "INSERT INTO commerce_orders(id,store_id,order_number,access_token,status,subtotal_bdt,total_bdt,payment_method) VALUES(?,?,?,?,?,?,?,?)",
+        ("cod-pending", "merchant-cod", "ORD-COD-1", "cod-token-1", "placed", 500, 500, "cod"),
+    )
+    assert db.execute("SELECT payment_status FROM commerce_orders WHERE id='cod-pending'").fetchone()[0] == "pending_cod"
+    db.execute("UPDATE commerce_orders SET status='cancelled' WHERE id='cod-pending'")
+    assert db.execute("SELECT payment_status FROM commerce_orders WHERE id='cod-pending'").fetchone()[0] == "cancelled_no_payment"
+
+    db.execute(
+        "INSERT INTO commerce_orders(id,store_id,order_number,access_token,status,subtotal_bdt,total_bdt,payment_method) VALUES(?,?,?,?,?,?,?,?)",
+        ("cod-paid", "merchant-cod", "ORD-COD-2", "cod-token-2", "delivered", 800, 800, "cod"),
+    )
+    assert db.execute("SELECT payment_status FROM commerce_orders WHERE id='cod-paid'").fetchone()[0] == "pending_cod"
+    db.execute(
+        "UPDATE commerce_orders SET payment_status='paid',payment_received_at=CURRENT_TIMESTAMP,payment_received_by='owner@example.invalid',payment_note='Collected at delivery' WHERE id='cod-paid' AND payment_status='pending_cod'"
+    )
+    row = db.execute("SELECT payment_status,payment_received_at,payment_received_by,payment_note FROM commerce_orders WHERE id='cod-paid'").fetchone()
+    assert row["payment_status"] == "paid"
+    assert row["payment_received_at"]
+    assert row["payment_received_by"] == "owner@example.invalid"
+    assert row["payment_note"] == "Collected at delivery"
     db.close()
