@@ -638,8 +638,9 @@ function StarRating({ value, count }) {
 function ProductCard({ product, cartQty, onAdd, onQtyChange, onView, storeCategory, showStockLevel, isWishlisted = false, wishlistBusy = false, onToggleWishlist }) {
   const outOfStock = product.in_stock === false;
   const inCart = (cartQty || 0) > 0;
-  const hasFlashSale = product.sale_price != null;
-  const displayPrice = hasFlashSale ? product.sale_price : product.price;
+  const hasFlashSale = product.sale_price != null || product.compare_at_price != null;
+  const displayPrice = product.sale_price != null ? product.sale_price : product.price;
+  const comparePrice = product.sale_price != null ? product.price : product.compare_at_price;
   return (
     <div className="s-product-card-wrap">
       {product.is_featured && <span className="s-featured-badge">⭐ বিশেষ</span>}
