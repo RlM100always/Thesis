@@ -22,6 +22,7 @@ export async function customerFetch(storeSlug, path, options = {}, token = getCu
   if (isD1Store(storeSlug)) {
     const result = await d1Commerce(`/api/customer${path}`, {
       method,
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
       ...(body !== undefined ? { body } : {}),
     });
     // Keep one response shape for the shared account UI.
