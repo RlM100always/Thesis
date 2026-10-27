@@ -9,7 +9,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import { api } from "../api";
-import { customerFetch, getCustomerToken, isD1Store } from "../storeCustomerApi";
+import { customerFetch, getCustomerToken } from "../storeCustomerApi";
 import { explain } from "../errors";
 import { productImage, storeCoverImage } from "../storeImages";
 import StoreCustomerPortal from "./StoreCustomerPortal";
@@ -1736,12 +1736,10 @@ export default function StorePage() {
   // Poll unread chat count for account button badge
   useEffect(() => {
     if (!scCustomer || !store?.slug) return;
-    if (isD1Store(store.slug)) { setChatUnread(0); return; }
     const token = getCustomerToken(store.slug);
-    if (!token) return;
-    const poll = () => fetch(`/api/sc/unread/${store.slug}`, { headers: { Authorization: `Bearer ${token}` } })
-      .then(r => r.ok ? r.json() : { count: 0 })
-      .then(d => setChatUnread(d.count))
+    if (!token) { setChatUnread(0); return; }
+    const poll = () => customerFetch(store.slug, `/unread/${encodeURIComponent(store.slug)}`, {}, token)
+      .then(d => setChatUnread(Number(d.count || 0)))
       .catch(() => {});
     poll();
     const id = setInterval(poll, 15000);
