@@ -113,7 +113,7 @@ function AuthView({ onLogin }) {
         {mode === "login" && (
           <input {...inp} placeholder="ইমেইল বা ফোন নম্বর" value={form.email_or_phone} onChange={set("email_or_phone")} required />
         )}
-        <input {...inp} type="password" placeholder="পাসওয়ার্ড *" value={form.password} onChange={set("password")} required />
+        <input {...inp} type="password" autoComplete={mode === "login" ? "current-password" : "new-password"} minLength={mode === "register" ? 8 : undefined} placeholder={mode === "register" ? "পাসওয়ার্ড (কমপক্ষে ৮ অক্ষর) *" : "পাসওয়ার্ড *"} value={form.password} onChange={set("password")} required />
         <button type="submit" disabled={loading} style={{ width: "100%", padding: "11px 0", borderRadius: 10, border: "none", background: "var(--green)", color: "var(--sc-on-green)", fontWeight: 700, fontSize: 14, cursor: loading ? "not-allowed" : "pointer", opacity: loading ? .7 : 1 }}>
           {loading ? "অপেক্ষা করুন…" : mode === "login" ? "লগইন করুন" : "অ্যাকাউন্ট তৈরি করুন"}
         </button>
