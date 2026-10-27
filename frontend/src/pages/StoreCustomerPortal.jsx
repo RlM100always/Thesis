@@ -271,6 +271,46 @@ function OrderReviewForm({ order, item, token, storeSlug }) {
   </form>;
 }
 
+function OrderReturnForm({ order, token, storeSlug, onSubmitted }) {
+  const [reason, setReason] = useState("damaged");
+  const [note, setNote] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  async function submit(event) {
+    event.preventDefault(); setBusy(true); setError("");
+    try {
+      const result = await scFetch(storeSlug, `/orders/${encodeURIComponent(order.id)}/return`, {
+        method: "POST", body: JSON.stringify({ reason, note: note.trim() }),
+      }, token);
+      onSubmitted?.(result);
+    } catch (e) { setError(e.message || "ফেরতের অনুরোধ জমা দেওয়া যায়নি"); }
+    finally { setBusy(false); }
+  }
+  const reasons = [
+    ["damaged", "পণ্য ক্ষতিগ্রস্ত"],
+    ["wrong_item", "ভুল পণ্য এসেছে"],
+    ["missing_item", "পণ্য/অংশ অনুপস্থিত"],
+    ["not_as_described", "বর্ণনার সঙ্গে মিল নেই"],
+    ["other", "অন্য কারণ"],
+  ];
+  return <form onSubmit={submit} style={{ marginTop: 12, padding: 10, border: "1px solid var(--border)", borderRadius: 10, display: "grid", gap: 8 }}>
+    <strong style={{ fontSize: 12, color: "var(--text)" }}>ফেরত/সমস্যার অনুরোধ</strong>
+    <select value={reason} onChange={e => setReason(e.target.value)} style={{ width: "100%", padding: 9, borderRadius: 8, border: "1px solid var(--border)", background: "var(--bg)", color: "var(--text)", fontSize: 12 }}>
+      {reasons.map(([value,label]) => <option key={value} value={value}>{label}</option>)}
+    </select>
+    <textarea value={note} onChange={e => setNote(e.target.value)} maxLength={1000} rows={2} placeholder="অতিরিক্ত তথ্য (ঐচ্ছিক)" style={{ width: "100%", boxSizing: "border-box", padding: 9, borderRadius: 8, border: "1px solid var(--border)", background: "var(--bg)", color: "var(--text)", fontSize: 12, resize: "vertical" }}/>
+    {error && <div role="alert" style={{ color: "#dc2626", fontSize: 11 }}>{error}</div>}
+    <button type="submit" disabled={busy} style={{ padding: "9px 12px", borderRadius: 8, border: 0, background: "var(--green)", color: "var(--sc-on-green)", fontWeight: 700, cursor: busy ? "wait" : "pointer", fontSize: 12 }}>{busy ? "জমা হচ্ছে…" : "ফেরতের অনুরোধ জমা দিন"}</button>
+    <div style={{ fontSize: 10, color: "var(--text-muted)" }}>পরীক্ষামূলক ব্যবস্থা: কোনো অর্থ ফেরত দেওয়া হয় না।</div>
+  </form>;
+}
+
+const RETURN_LABEL = {
+  requested: "অনুরোধ জমা হয়েছে", approved: "দোকান অনুমোদন করেছে",
+  rejected: "দোকান অনুরোধ প্রত্যাখ্যান করেছে", received: "ফেরত পণ্য গ্রহণ করা হয়েছে",
+  closed_demo: "পরীক্ষামূলকভাবে বন্ধ",
+};
+
 // ── Orders View ───────────────────────────────────────────────────────────────
 
 const STATUS_STEPS = ["placed", "confirmed", "ready", "dispatched", "delivered"];
@@ -405,11 +445,21 @@ function OrdersView({ storeSlug, token, onReorder }) {
                     💬 দোকান থেকে: {o.status_note}
                   </div>
                 )}
+                {o.return_status && (
+                  <div style={{ marginTop: 8, padding: "9px 11px", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 9, fontSize: 12, color: "var(--text)" }}>
+                    <strong>↩ ফেরতের অবস্থা:</strong> {RETURN_LABEL[o.return_status] || o.return_status}
+                    {o.return_note && <div style={{ marginTop: 4, color: "var(--text-muted)" }}>দোকানের নোট: {o.return_note}</div>}
+                  </div>
+                )}
                 {["delivered", "fulfilled"].includes(o.status) && o.items?.length > 0 && (
                   <div style={{ marginTop: 12, paddingTop: 10, borderTop: "1px solid var(--border)" }}>
                     <div style={{ color: "var(--text)", fontSize: 13, fontWeight: 750 }}>⭐ কেনা পণ্যের রিভিউ</div>
                     {o.items.map((item, index) => <OrderReviewForm key={`${o.id}-${item.product_id}-${index}`} order={o} item={item} token={token} storeSlug={storeSlug} />)}
                   </div>
+                )}
+                {isD1Store(storeSlug) && ["delivered", "fulfilled"].includes(o.status) && !o.return_status && (
+                  <OrderReturnForm order={o} token={token} storeSlug={storeSlug}
+                    onSubmitted={result => setOrders(current => current.map(item => item.id === o.id ? { ...item, return_id: result.id, return_status: result.status } : item))} />
                 )}
                 {Number(o.delivery_fee) > 0 && (
                   <div style={{ marginTop: 6, fontSize: 12, color: "var(--text-muted)" }}>🚚 ডেলিভারি খরচ: ৳{Number(o.delivery_fee).toLocaleString("bn-BD")}</div>
