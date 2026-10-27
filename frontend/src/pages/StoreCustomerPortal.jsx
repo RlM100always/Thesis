@@ -239,7 +239,8 @@ function OrderTimeline({ status }) {
   if (status === "cancelled") return (
     <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 0", color: "#ef4444", fontSize: 12, fontWeight: 600 }}>❌ অর্ডার বাতিল হয়েছে</div>
   );
-  const cur = STATUS_STEPS.indexOf(status);
+  const normalizedStatus = status === "processing" ? "ready" : status === "shipped" ? "dispatched" : status;
+  const cur = STATUS_STEPS.indexOf(normalizedStatus);
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 0, padding: "10px 0 6px", overflowX: "auto" }}>
       {STATUS_STEPS.map((s, i) => {
