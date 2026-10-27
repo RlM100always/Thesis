@@ -1,3 +1,5 @@
+import { canTransitionOrderStatus, defaultOrderStatusNote } from "./order-workflow.js";
+
 /* Privileged controls for the isolated Cloudflare D1 commerce demo.
  * Configure PLATFORM_ADMIN_KEY as a Worker secret; never hard-code it here.
  */
@@ -68,7 +70,7 @@ export async function platformAdminRouter(req,env,path,output,error) {
     }
     if(method==="GET"&&path==="/api/platform-admin/orders") {
       const {results}=await env.DB.prepare(
-        "SELECT o.id,o.order_number,o.status,o.subtotal_bdt,o.total_bdt,o.payment_method,o.placed_at,o.shipping_name,o.shipping_phone,o.shipping_address,"+
+        "SELECT o.id,o.order_number,o.status,o.status_note,o.cancellation_reason,o.subtotal_bdt,o.total_bdt,o.payment_method,o.placed_at,o.shipping_name,o.shipping_phone,o.shipping_address,"+
         "s.id AS store_id,s.slug AS store_slug,s.name AS store_name,a.id AS account_id,a.display_name AS customer_name,a.email AS customer_email "+
         "FROM commerce_orders o JOIN commerce_stores s ON s.id=o.store_id "+
         "LEFT JOIN commerce_customer_accounts a ON a.id=o.account_id ORDER BY o.placed_at DESC LIMIT 500"
@@ -102,15 +104,15 @@ export async function platformAdminRouter(req,env,path,output,error) {
     const orderMatch=path.match(/^\/api\/platform-admin\/orders\/([^/]+)$/);
     if(method==="PATCH"&&orderMatch) {
       const id=decodeURIComponent(orderMatch[1]),body=await readBody(req),status=short(body.status,30),reason=short(body.reason,250);
-      const order=await env.DB.prepare("SELECT id,store_id,order_number,status,total_bdt FROM commerce_orders WHERE id=?").bind(id).first();
+      const order=await env.DB.prepare("SELECT o.id,o.store_id,o.order_number,o.status,o.total_bdt,s.is_demo AS store_is_demo FROM commerce_orders o JOIN commerce_stores s ON s.id=o.store_id WHERE o.id=?").bind(id).first();
       if(!order)return error(req,404,"Order not found");
-      const next={placed:["confirmed","cancelled"],confirmed:["fulfilled","cancelled"],fulfilled:[],cancelled:[]};
-      if(!next[order.status]?.includes(status))return error(req,409,"Invalid order status transition");
-      const result=await env.DB.prepare("UPDATE commerce_orders SET status=?,cancellation_reason=?,status_note=? WHERE id=? AND status=?")
-        .bind(status,status==="cancelled"?reason||"Platform admin cancellation":null,short(body.status_note,500)||null,id,order.status).run();
+      if(!canTransitionOrderStatus(order.status,status))return error(req,409,"Invalid order status transition");
+      const statusNote=short(body.status_note,500)||defaultOrderStatusNote(status,!!order.store_is_demo);
+      const result=await env.DB.prepare("UPDATE commerce_orders SET status=?,cancellation_reason=COALESCE(?,cancellation_reason),status_note=? WHERE id=? AND status=?")
+        .bind(status,status==="cancelled"?reason||"Platform admin cancellation":null,statusNote,id,order.status).run();
       if(!result.meta?.changes)return error(req,409,"Order status changed; reload before retrying");
       await audit(env,"order_status_changed","order",id,{order_number:order.order_number,from:order.status,to:status,reason});
-      return output(req,{updated:true,status,inventory_restored:status==="cancelled",note:"D1 inventory cancellation trigger handles demo stock; no real payment was reversed."});
+      return output(req,{updated:true,status,status_note:statusNote,inventory_restored:status==="cancelled",note:"D1 inventory cancellation trigger handles demo stock; no real payment was reversed."});
     }
     return error(req,404,"Platform admin route not found");
   } catch(e) {

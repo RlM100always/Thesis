@@ -17,6 +17,14 @@ test("order status advances through the customer-visible fulfilment stages", () 
   for (const [current, next] of flow) assert.equal(canTransitionOrderStatus(current, next), true);
 });
 
+test("platform and merchant order transitions share the same guarded workflow", () => {
+  assert.equal(canTransitionOrderStatus("placed", "confirmed"), true);
+  assert.equal(canTransitionOrderStatus("confirmed", "processing"), true);
+  assert.equal(canTransitionOrderStatus("processing", "ready"), true);
+  assert.equal(canTransitionOrderStatus("ready", "dispatched"), true);
+  assert.equal(canTransitionOrderStatus("dispatched", "delivered"), true);
+});
+
 test("cancellation is unavailable after dispatch and terminal states cannot advance", () => {
   assert.equal(canTransitionOrderStatus("placed", "cancelled"), true);
   assert.equal(canTransitionOrderStatus("confirmed", "cancelled"), true);
