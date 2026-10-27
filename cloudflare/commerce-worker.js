@@ -1,5 +1,6 @@
 import { merchantRouter } from "./merchant-routes.js";
 import { customerRouter, customerFromToken } from "./customer-routes.js";
+import { platformAdminRouter } from "./platform-admin-routes.js";
 /*
  B-SMART Cloudflare D1 Commerce API.
  Public read-only directory & example-store catalogues, demo checkout (no
@@ -145,6 +146,8 @@ export default {
   if(method==="OPTIONS")
    return new Response(null,{status:204,headers:cors(request)});
   try{
+    const platformAdmin=await platformAdminRouter(request,env,path,output,error);
+    if(platformAdmin!==null)return platformAdmin;
    const customer=await customerRouter(request,env,path,output,error);
    if(customer!==null)return customer;
    const merchant=await merchantRouter(request,env,path,output,error);
