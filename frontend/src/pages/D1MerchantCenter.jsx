@@ -93,7 +93,7 @@ export default function D1MerchantCenter(){
   const totalProducts=useMemo(()=>products.filter(p=>p.is_listed).length,[products]);
   return <main className="dm-page">
     <header className="dm-header"><a href="#/" className="dm-logo">B-SMART <span>দোকান পরিচালনা</span></a>
-      <div className="dm-header-side"><span className="dm-d1">D1-তে তথ্য সংরক্ষিত</span><a href="#/stores">সব দোকান</a><button type="button" className="dm-theme-toggle" onClick={toggleTheme} aria-pressed={theme==="dark"} aria-label={theme==="dark"?"লাইট মোড চালু করুন":"ডার্ক মোড চালু করুন"} title={theme==="dark"?"লাইট মোড চালু করুন":"ডার্ক মোড চালু করুন"}>{theme==="dark"?"☀️":"🌙"}</button>{token&&<button className="dm-text-btn" onClick={logout}>লগআউট</button>}</div>
+      <div className="dm-header-side"><span className="dm-d1">D1-তে তথ্য সংরক্ষিত</span><a href="#/stores">সব দোকান</a><a href="#/d1-platform-admin">Platform admin</a><button type="button" className="dm-theme-toggle" onClick={toggleTheme} aria-pressed={theme==="dark"} aria-label={theme==="dark"?"লাইট মোড চালু করুন":"ডার্ক মোড চালু করুন"} title={theme==="dark"?"লাইট মোড চালু করুন":"ডার্ক মোড চালু করুন"}>{theme==="dark"?"☀️":"🌙"}</button>{token&&<button className="dm-text-btn" onClick={logout}>লগআউট</button>}</div>
     </header>
     <div className="dm-main">
       <section className="dm-heading"><div><p className="dm-overline">Cloudflare D1 · পরীক্ষামূলক দোকান পরিচালনা</p><h1>স্টোর ম্যানেজমেন্ট</h1>
