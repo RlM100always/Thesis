@@ -104,7 +104,7 @@ async function orderHistory(env, account, url) {
   const page = Math.min(100000, Math.max(1, Number(url.searchParams.get("page") || 1)));
   const perPage = 10;
   const status = short(url.searchParams.get("status"), 20);
-  const allowed = new Set(["placed", "confirmed", "ready", "dispatched", "shipped", "fulfilled", "delivered", "cancelled"]);
+  const allowed = new Set(["placed", "confirmed", "processing", "ready", "dispatched", "shipped", "fulfilled", "delivered", "cancelled"]);
   if (status && !allowed.has(status)) return { error: "অর্ডারের অবস্থা সঠিক নয়", status: 422 };
   const count = status
     ? await env.DB.prepare("SELECT COUNT(*) AS total FROM commerce_orders WHERE account_id=? AND status=?").bind(account.id, status).first()
@@ -119,6 +119,10 @@ async function orderHistory(env, account, url) {
   const { results: lines } = await env.DB.prepare(
     `SELECT * FROM commerce_order_lines WHERE order_id IN (${placeholders}) ORDER BY rowid`
   ).bind(...ids).all();
+  const [{ results: returns }] = await Promise.all([
+    env.DB.prepare(`SELECT * FROM commerce_order_returns WHERE order_id IN (${placeholders})`).bind(...ids).all(),
+  ]);
+  const byReturn = new Map(returns.map(r => [r.order_id, r]));
   const byOrder = new Map();
   for (const line of lines) {
     if (!byOrder.has(line.order_id)) byOrder.set(line.order_id, []);
@@ -130,17 +134,22 @@ async function orderHistory(env, account, url) {
   }
   return {
     total: Number(count?.total || 0), page, per_page: perPage,
-    orders: orders.map(o => ({
-      id: o.id, document_number: o.order_number, order_number: o.order_number,
-      access_token: o.access_token, status: o.status, status_note: "পরীক্ষামূলক অর্ডার; বাস্তব ডেলিভারি বা পেমেন্ট নেই",
-      issued_at: o.placed_at, placed_at: o.placed_at,
-      subtotal: o.subtotal_bdt, total: o.total_bdt, tax_amount: 0, delivery_fee: 0,
-      discount_amount: 0, organization_id: o.store_id, store_slug: o.store_slug,
-      store_name: o.store_name, is_demo: true, payment_method: o.payment_method || "demo",
-      payment_status: "demo_no_payment", shipping_name: o.shipping_name || "",
-      shipping_phone: o.shipping_phone || "", shipping_address: o.shipping_address || "",
-      items: byOrder.get(o.id) || [],
-    })),
+    orders: orders.map(o => {
+      const ret = byReturn.get(o.id);
+      return {
+        id: o.id, document_number: o.order_number, order_number: o.order_number,
+        access_token: o.access_token, status: o.status, status_note: o.status_note || "পরীক্ষামূলক অর্ডার; বাস্তব ডেলিভারি বা পেমেন্ট নেই",
+        issued_at: o.placed_at, placed_at: o.placed_at,
+        subtotal: o.subtotal_bdt, total: o.total_bdt, tax_amount: 0, delivery_fee: 0,
+        discount_amount: 0, organization_id: o.store_id, store_slug: o.store_slug,
+        store_name: o.store_name, is_demo: true, payment_method: o.payment_method || "demo",
+        payment_status: "demo_no_payment", shipping_name: o.shipping_name || "",
+        shipping_phone: o.shipping_phone || "", shipping_address: o.shipping_address || "",
+        return_id: ret?.id || null, return_status: ret?.status || null,
+        return_reason: ret?.reason || null, return_note: ret?.merchant_note || null,
+        items: byOrder.get(o.id) || [],
+      };
+    }),
   };
 }
 async function customerReviewList(env, storeId, productId) {
@@ -151,7 +160,7 @@ async function customerReviewList(env, storeId, productId) {
     env.DB.prepare("SELECT r.id,r.rating,r.comment,r.created_at,a.display_name AS reviewer_name FROM commerce_product_reviews r JOIN commerce_customer_accounts a ON a.id=r.account_id WHERE r.store_id=? AND r.product_id=? ORDER BY r.created_at DESC LIMIT 50").bind(storeId, productId).all(),
     env.DB.prepare("SELECT COUNT(*) AS count,COALESCE(AVG(rating),0) AS average FROM commerce_product_reviews WHERE store_id=? AND product_id=?").bind(storeId, productId).first(),
   ]);
-  return { reviews: reviews.results, count: Number(summary?.count || 0), average_rating: Number(summary?.average || 0) };
+  return { reviews: reviews.results, count: Number(summary?.count || 0), average: Number(summary?.average || 0), average_rating: Number(summary?.average || 0) };
 }
 
 export async function customerRouter(request, env, path, output, error) {
@@ -387,6 +396,78 @@ export async function customerRouter(request, env, path, output, error) {
     if (path === "/api/customer/orders" && method === "GET") {
       const result = await orderHistory(env,account,new URL(request.url));
       return result.error ? error(request,result.status,result.error) : output(request,result);
+    }
+    const customerCancelMatch = path.match(/^\/api\/customer\/orders\/([^/]+)\/cancel$/);
+    if (customerCancelMatch && method === "POST") {
+      const orderId = decodeURIComponent(customerCancelMatch[1]);
+      const body = await readJson(request);
+      const reason = short(body.reason, 250);
+      const order = await env.DB.prepare("SELECT id,status FROM commerce_orders WHERE id=? AND account_id=?")
+        .bind(orderId,account.id).first();
+      if (!order) return error(request,404,"অর্ডারটি পাওয়া যায়নি");
+      if (order.status !== "placed") return error(request,409,"শুধু নতুন অর্ডার বাতিল করা যাবে");
+      const result = await env.DB.prepare("UPDATE commerce_orders SET status='cancelled',cancellation_reason=?,status_note='ক্রেতার অনুরোধে বাতিল' WHERE id=? AND account_id=? AND status='placed'")
+        .bind(reason || null,orderId,account.id).run();
+      if (!result.meta?.changes) return error(request,409,"অর্ডারটির অবস্থা বদলে গেছে; আবার লোড করুন");
+      return output(request,{ok:true,status:"cancelled",inventory_restored:true});
+    }
+    const returnOrderMatch = path.match(/^\/api\/customer\/orders\/([^/]+)\/return$/);
+    if (returnOrderMatch && method === "POST") {
+      const orderId = decodeURIComponent(returnOrderMatch[1]), body = await readJson(request);
+      const reason = short(body.reason,100), note = short(body.note,1000);
+      if (!["damaged","wrong_item","missing_item","not_as_described","other"].includes(reason))
+        return error(request,422,"ফেরতের একটি কারণ নির্বাচন করুন");
+      const order = await env.DB.prepare("SELECT id,store_id,status,placed_at FROM commerce_orders WHERE id=? AND account_id=?")
+        .bind(orderId,account.id).first();
+      if (!order) return error(request,404,"অর্ডারটি পাওয়া যায়নি");
+      if (!["fulfilled","delivered"].includes(order.status)) return error(request,409,"অর্ডার সম্পন্ন হলে ফেরতের অনুরোধ করা যাবে");
+      const previous = await env.DB.prepare("SELECT id,status FROM commerce_order_returns WHERE order_id=?").bind(orderId).first();
+      if (previous) return error(request,409,"এই অর্ডারের ফেরতের অনুরোধ আগেই জমা হয়েছে");
+      const id = crypto.randomUUID();
+      await env.DB.prepare("INSERT INTO commerce_order_returns(id,store_id,order_id,account_id,reason,customer_note) VALUES(?,?,?,?,?,?)")
+        .bind(id,order.store_id,order.id,account.id,reason,note||null).run();
+      return output(request,{created:true,id,status:"requested",note:"এটি পরীক্ষামূলক ফেরত অনুরোধ; কোনো অর্থ ফেরত দেওয়া হয়নি"},201);
+    }
+    if (path === "/api/customer/returns" && method === "GET") {
+      const {results} = await env.DB.prepare(
+        "SELECT r.id,r.order_id,r.reason,r.customer_note,r.merchant_note,r.status,r.requested_at,r.updated_at,o.order_number,o.total_bdt,s.slug AS store_slug,s.name AS store_name " +
+        "FROM commerce_order_returns r JOIN commerce_orders o ON o.id=r.order_id JOIN commerce_stores s ON s.id=r.store_id " +
+        "WHERE r.account_id=? ORDER BY r.requested_at DESC LIMIT 100"
+      ).bind(account.id).all();
+      return output(request,{returns:results});
+    }
+    const chatMatch = path.match(/^\/api\/customer\/chat\/([^/]+)$/);
+    if (chatMatch) {
+      const slug = decodeURIComponent(chatMatch[1]), store = await storeBySlug(env,slug);
+      if (!store) return error(request,404,"দোকানটি পাওয়া যায়নি");
+      if (method === "GET") {
+        await env.DB.prepare("UPDATE commerce_customer_messages SET read_by_customer_at=CURRENT_TIMESTAMP WHERE store_id=? AND account_id=? AND sender_role='merchant' AND read_by_customer_at IS NULL")
+          .bind(store.id,account.id).run();
+        const {results} = await env.DB.prepare("SELECT id,store_id,account_id,order_id,sender_role,message,created_at,read_by_customer_at,read_by_merchant_at FROM commerce_customer_messages WHERE store_id=? AND account_id=? ORDER BY created_at DESC LIMIT 100")
+          .bind(store.id,account.id).all();
+        return output(request,{messages:results.reverse()});
+      }
+      if (method === "POST") {
+        const body = await readJson(request), message = short(body.message || body.body,2000);
+        if (message.length < 1) return error(request,422,"বার্তা লিখুন");
+        const orderId = short(body.order_id,80) || null;
+        if (orderId) {
+          const owned = await env.DB.prepare("SELECT id FROM commerce_orders WHERE id=? AND store_id=? AND account_id=?").bind(orderId,store.id,account.id).first();
+          if (!owned) return error(request,403,"এই অর্ডারের সঙ্গে বার্তাটি যুক্ত করা যাবে না");
+        }
+        const id = crypto.randomUUID();
+        await env.DB.prepare("INSERT INTO commerce_customer_messages(id,store_id,account_id,order_id,sender_role,message) VALUES(?,?,?,?,?,?)")
+          .bind(id,store.id,account.id,orderId,"customer",message).run();
+        return output(request,{id,sender_role:"customer",message,created_at:new Date().toISOString()},201);
+      }
+    }
+    const unreadMatch = path.match(/^\/api\/customer\/unread\/([^/]+)$/);
+    if (unreadMatch && method === "GET") {
+      const store = await storeBySlug(env,decodeURIComponent(unreadMatch[1]));
+      if (!store) return error(request,404,"দোকানটি পাওয়া যায়নি");
+      const row = await env.DB.prepare("SELECT COUNT(*) AS count FROM commerce_customer_messages WHERE store_id=? AND account_id=? AND sender_role='merchant' AND read_by_customer_at IS NULL")
+        .bind(store.id,account.id).first();
+      return output(request,{count:Number(row?.count||0)});
     }
     const reviewMatch = path.match(/^\/api\/customer\/reviews\/([^/]+)$/);
     if (reviewMatch && method === "POST") {
