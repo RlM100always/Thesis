@@ -197,7 +197,7 @@ export function AddressesView({ token }) {
   </section>;
 }
 
-export function WishlistView({ token, storeSlug, onReorder }) {
+export function WishlistView({ token, storeSlug, onAddToCart }) {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState("");
@@ -237,7 +237,7 @@ export function WishlistView({ token, storeSlug, onReorder }) {
             <div style={{ color: "var(--green)", fontWeight: 800, fontSize: 14, marginTop: 7 }}>{item.price == null ? "দাম জানতে যোগাযোগ করুন" : `৳${Number(item.price).toLocaleString("bn-BD")}`}</div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, marginTop: 10 }}>
               <button style={buttonStyle} onClick={() => visit(item)}>{item.store_slug === storeSlug ? "এই দোকানে" : "দোকান দেখুন"}</button>
-              {item.store_slug === storeSlug && onReorder && <button style={primaryStyle} onClick={() => onReorder([{ product_id: item.product_id, quantity: 1 }])}>কার্টে যোগ</button>}
+              {item.store_slug === storeSlug && onAddToCart && <button style={primaryStyle} onClick={() => onAddToCart(item.product_id)}>কার্টে যোগ</button>}
             </div>
             <button style={{ ...buttonStyle, width: "100%", marginTop: 6, color: "#dc2626" }} disabled={busy === item.id} onClick={() => remove(item)}>{busy === item.id ? "মুছছে…" : "♡ তালিকা থেকে সরান"}</button>
           </div>
