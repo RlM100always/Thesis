@@ -337,7 +337,7 @@ function OrdersView({ storeSlug, token, onReorder }) {
     if (!window.confirm("এই অর্ডারটি বাতিল করতে চান?")) return;
     setCancelling(o.id);
     try {
-      await cancelCustomerOrder(storeSlug, o.organization_id, o.access_token);
+      await cancelCustomerOrder(storeSlug, o, token);
       // Refresh orders
       const d = await scFetch(storeSlug, `/orders?page=${page}${statusFilter ? `&status=${statusFilter}` : ""}`, {}, token);
       setOrders(d.orders || []);
@@ -489,18 +489,18 @@ function ChatView({ storeSlug, token, storeName }) {
             দোকানে বার্তা পাঠিয়ে আপনার প্রশ্ন জানাতে পারেন।
           </div>
         ) : msgs.map(m => (
-          <div key={m.id} style={{ display: "flex", justifyContent: m.sender === "customer" ? "flex-end" : "flex-start", marginBottom: 8 }}>
+          <div key={m.id} style={{ display: "flex", justifyContent: (m.sender_role || m.sender) === "customer" ? "flex-end" : "flex-start", marginBottom: 8 }}>
             <div style={{
-              maxWidth: "75%", padding: "9px 13px", borderRadius: m.sender === "customer" ? "14px 14px 4px 14px" : "14px 14px 14px 4px",
-              background: m.sender === "customer" ? "var(--green)" : "var(--surface)",
-              color: m.sender === "customer" ? "var(--sc-on-green)" : "var(--text)",
-              border: m.sender === "store" ? "1px solid var(--border)" : "none",
+              maxWidth: "75%", padding: "9px 13px", borderRadius: (m.sender_role || m.sender) === "customer" ? "14px 14px 4px 14px" : "14px 14px 14px 4px",
+              background: (m.sender_role || m.sender) === "customer" ? "var(--green)" : "var(--surface)",
+              color: (m.sender_role || m.sender) === "customer" ? "var(--sc-on-green)" : "var(--text)",
+              border: (m.sender_role || m.sender) !== "customer" ? "1px solid var(--border)" : "none",
               fontSize: 13, lineHeight: 1.5,
             }}>
-              {m.body}
+              {m.message || m.body}
               <div style={{ fontSize: 10, opacity: .65, marginTop: 3, textAlign: "right" }}>
                 {m.created_at ? new Date(m.created_at).toLocaleTimeString("bn-BD", { hour: "2-digit", minute: "2-digit" }) : ""}
-                {m.sender === "customer" && m.read_at ? " ✓✓" : m.sender === "customer" ? " ✓" : ""}
+                {(m.sender_role || m.sender) === "customer" && (m.read_by_merchant_at || m.read_at) ? " ✓✓" : (m.sender_role || m.sender) === "customer" ? " ✓" : ""}
               </div>
             </div>
           </div>
@@ -596,7 +596,7 @@ export default function StoreCustomerPortal({ storeSlug, storeName, onClose, onA
             <>
               {/* Tabs */}
               <div className="sc-account-tabs" role="tablist" aria-label="অ্যাকাউন্ট ব্যবস্থাপনা" style={{ display: "flex", gap: 5, marginBottom: 18, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 12, padding: 4, overflowX: "auto", flexShrink: 0 }}>
-                {TABS.filter(t => !isD1Store(storeSlug) || t.id !== "chat").map(t => (
+                {TABS.map(t => (
                   <button key={t.id} role="tab" aria-selected={tab === t.id} onClick={() => setTab(t.id)}
                     style={{ flex: "1 0 auto", minWidth: 86, padding: "9px 10px", borderRadius: 9, border: "none", cursor: "pointer", fontWeight: 700, fontSize: 12, transition: "all .15s",
                       background: tab === t.id ? "var(--green)" : "transparent",
