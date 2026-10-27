@@ -661,7 +661,7 @@ function ProductCard({ product, cartQty, onAdd, onQtyChange, onView, storeCatego
           {product.review_avg && <StarRating value={product.review_avg} count={product.review_count || 0} />}
           {product.price != null ? (
             <div className="s-product-price">
-              {hasFlashSale && <span style={{ textDecoration: "line-through", color: "#9ca3af", fontSize: 13, marginRight: 6 }}>{money(product.price)}</span>}
+              {hasFlashSale && <span style={{ textDecoration: "line-through", color: "#9ca3af", fontSize: 13, marginRight: 6 }}>{money(comparePrice)}</span>}
               <span style={hasFlashSale ? { color: "#dc2626" } : {}}>{money(displayPrice)}</span>
               {hasFlashSale && product.sale_end && <div><FlashSaleCountdown saleEnd={product.sale_end} /></div>}
             </div>
@@ -750,7 +750,7 @@ function ProductModal({ product, cartQty, onClose, onAdd, onQtyChange, onViewFul
           {reviews?.average && <StarRating value={reviews.average} count={reviews.count} />}
           {product.price != null && (
             <div style={{ fontSize: 26, fontWeight: 700, color: hasFlashSale ? "#dc2626" : "var(--sa)", marginBottom: 4 }}>
-              {hasFlashSale && <span style={{ textDecoration: "line-through", color: "#9ca3af", fontSize: 16, marginRight: 8 }}>{money(product.price)}</span>}
+              {hasFlashSale && <span style={{ textDecoration: "line-through", color: "#9ca3af", fontSize: 16, marginRight: 8 }}>{money(comparePrice)}</span>}
               {money(displayPrice)}
             </div>
           )}
