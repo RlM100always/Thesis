@@ -761,15 +761,17 @@ export const api = {
 
   deleteCoupon: (id) => appRequest(`/api/app/store/coupons/${encodeURIComponent(id)}`, { method: "DELETE" }),
 
-  getReviews: (orgId, productId) => request(`/api/public/reviews/${encodeURIComponent(orgId)}/${encodeURIComponent(productId)}`),
+  getReviews: (orgId, productId) => isD1Store(orgId)
+    ? d1Commerce(`/api/public/reviews/${encodeURIComponent(orgId)}/${encodeURIComponent(productId)}`)
+    : request(`/api/public/reviews/${encodeURIComponent(orgId)}/${encodeURIComponent(productId)}`),
 
-  submitReview: (orgId, body, scToken) => {
-    return fetch(`/api/public/reviews/${encodeURIComponent(orgId)}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", ...(scToken ? { Authorization: `Bearer ${scToken}` } : {}) },
-      body: JSON.stringify(body),
-    }).then(r => r.ok ? r.json() : r.json().then(e => Promise.reject(new Error(e.detail || "Review failed"))));
-  },
+  submitReview: (orgId, body, scToken) => isD1Store(orgId)
+    ? d1Commerce(`/api/customer/reviews/${encodeURIComponent(orgId)}`, { method: "POST", headers: scToken ? { Authorization: `Bearer ${scToken}` } : {}, body })
+    : fetch(`/api/public/reviews/${encodeURIComponent(orgId)}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...(scToken ? { Authorization: `Bearer ${scToken}` } : {}) },
+        body: JSON.stringify(body),
+      }).then(r => r.ok ? r.json() : r.json().then(e => Promise.reject(new Error(e.detail || "Review failed")))),
 
   validateCoupon: (orgId, code, orderSubtotal) => isD1Store(orgId) ? Promise.reject(new Error("ডেমো দোকানে কুপন প্রযোজ্য নয়")) : post(`/api/public/store/${encodeURIComponent(orgId)}/coupon/validate`, {code, order_subtotal:orderSubtotal}),
 
