@@ -63,11 +63,11 @@ export async function submitCustomerReview(storeSlug, order, item, rating, comme
   return data;
 }
 
-export async function cancelCustomerOrder(storeSlug, organizationId, accessToken) {
+export async function cancelCustomerOrder(storeSlug, order, token) {
   if (isD1Store(storeSlug)) {
-    return d1Commerce(`/api/public/orders/${encodeURIComponent(organizationId)}/cancel/${encodeURIComponent(accessToken)}`, { method: "POST" });
+    return customerFetch(storeSlug, `/orders/${encodeURIComponent(order.id)}/cancel`, { method: "POST", body: {} }, token);
   }
-  const response = await fetch(`/api/public/orders/${encodeURIComponent(organizationId)}/cancel/${encodeURIComponent(accessToken)}`, { method: "POST" });
+  const response = await fetch(`/api/public/orders/${encodeURIComponent(order.organization_id)}/cancel/${encodeURIComponent(order.access_token)}`, { method: "POST" });
   const data = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(data.detail || "অর্ডার বাতিল করা যায়নি");
   return data;
