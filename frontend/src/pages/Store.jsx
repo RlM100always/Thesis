@@ -634,7 +634,7 @@ function StarRating({ value, count }) {
   );
 }
 
-function ProductCard({ product, cartQty, onAdd, onQtyChange, onView, storeCategory, showStockLevel, isWishlisted = false, onToggleWishlist }) {
+function ProductCard({ product, cartQty, onAdd, onQtyChange, onView, storeCategory, showStockLevel, isWishlisted = false, wishlistBusy = false, onToggleWishlist }) {
   const outOfStock = product.in_stock === false;
   const inCart = (cartQty || 0) > 0;
   const hasFlashSale = product.sale_price != null;
@@ -644,7 +644,7 @@ function ProductCard({ product, cartQty, onAdd, onQtyChange, onView, storeCatego
       {product.is_featured && <span className="s-featured-badge">⭐ বিশেষ</span>}
       {hasFlashSale && <span className="s-featured-badge" style={{ background: "#dc2626", right: 8, left: "auto" }}>🔥 সেল</span>}
       <button type="button" className={`s-product-favorite ${isWishlisted ? "selected" : ""}`}
-        aria-label={isWishlisted ? "পছন্দের তালিকা থেকে সরান" : "পছন্দের তালিকায় রাখুন"}
+        disabled={wishlistBusy} aria-label={isWishlisted ? "পছন্দের তালিকা থেকে সরান" : "পছন্দের তালিকায় রাখুন"}
         title={isWishlisted ? "পছন্দের তালিকা থেকে সরান" : "পছন্দের তালিকায় রাখুন"}
         onClick={e => { e.stopPropagation(); onToggleWishlist?.(product); }}
         style={{ position: "absolute", top: 42, right: 9, zIndex: 4, width: 36, height: 36, borderRadius: "50%", border: "1px solid rgba(0,0,0,.08)", display: "grid", placeItems: "center", fontSize: 22, lineHeight: 1, cursor: "pointer", boxShadow: "0 3px 12px rgba(0,0,0,.14)" }}>
@@ -699,7 +699,7 @@ function ProductCard({ product, cartQty, onAdd, onQtyChange, onView, storeCatego
   );
 }
 
-function ProductModal({ product, cartQty, onClose, onAdd, onQtyChange, onViewFull, storeCategory, showStockLevel, orgId, isWishlisted = false, onToggleWishlist }) {
+function ProductModal({ product, cartQty, onClose, onAdd, onQtyChange, onViewFull, storeCategory, showStockLevel, orgId, isWishlisted = false, wishlistBusy = false, onToggleWishlist }) {
   const outOfStock = product.in_stock === false;
   const [qty, setQty] = useState(1);
   const [selectedVariants, setSelectedVariants] = useState({});  // variantId → option
@@ -759,7 +759,7 @@ function ProductModal({ product, cartQty, onClose, onAdd, onQtyChange, onViewFul
             <p style={{ fontSize: 14, color: "var(--s-ink)", lineHeight: 1.65, margin: "0 0 14px" }}>{product.description}</p>
           )}
           <button type="button" className={`s-detail-favorite ${isWishlisted ? "selected" : ""}`}
-            onClick={() => onToggleWishlist?.(product)}
+            disabled={wishlistBusy} onClick={() => onToggleWishlist?.(product)}
             style={{ width: "100%", margin: "0 0 14px", padding: "9px 12px", borderRadius: 10, border: "1px solid var(--s-border)", background: isWishlisted ? "rgba(190,18,60,.09)" : "var(--s-card)", color: isWishlisted ? "#be123c" : "var(--s-ink)", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
             {isWishlisted ? "♥ পছন্দের তালিকায় আছে" : "♡ পছন্দের তালিকায় রাখুন"}
           </button>
@@ -1902,7 +1902,7 @@ export default function StorePage() {
           storeCategory={store?.category}
           showStockLevel={store?.show_stock_level}
           orgId={orgId}
-          isWishlisted={!!wishlistIds[modalProduct.id]} onToggleWishlist={toggleWishlist}
+          isWishlisted={!!wishlistIds[modalProduct.id]} wishlistBusy={!!wishlistBusy[modalProduct.id]} onToggleWishlist={toggleWishlist}
           onClose={() => setModalProduct(null)}
           onViewFull={p => { setModalProduct(null); viewProductFull(p); }}
           onAdd={(p, qty, variantLabel) => { addToCart(p, qty, variantLabel); }}
@@ -2107,7 +2107,7 @@ export default function StorePage() {
                 <ProductCard key={p.id} product={p} cartQty={cart[p.id] || 0}
                   storeCategory={store.category}
                   showStockLevel={store.show_stock_level}
-                  isWishlisted={!!wishlistIds[p.id]} onToggleWishlist={toggleWishlist}
+                  isWishlisted={!!wishlistIds[p.id]} wishlistBusy={!!wishlistBusy[p.id]} onToggleWishlist={toggleWishlist}
                   onAdd={addToCart} onQtyChange={setQty} onView={viewProduct} />
               ))}
             </div>
@@ -2163,7 +2163,7 @@ export default function StorePage() {
                 <span style={{ fontSize: 13, color: "#6b8a7a", marginLeft: 4 }}>{displayProductUnit(selectedProduct.unit)}</span>
               </div>
               <button type="button" className={`s-detail-favorite ${wishlistIds[selectedProduct.id] ? "selected" : ""}`}
-                onClick={() => toggleWishlist(selectedProduct)}
+                disabled={!!wishlistBusy[selectedProduct.id]} onClick={() => toggleWishlist(selectedProduct)}
                 style={{ width: "100%", marginBottom: 10, padding: "9px 12px", borderRadius: 10, border: "1px solid var(--s-border)", background: wishlistIds[selectedProduct.id] ? "rgba(190,18,60,.09)" : "var(--s-card)", color: wishlistIds[selectedProduct.id] ? "#be123c" : "var(--s-ink)", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
                 {wishlistIds[selectedProduct.id] ? "♥ পছন্দের তালিকায় আছে" : "♡ পছন্দের তালিকায় রাখুন"}
               </button>
