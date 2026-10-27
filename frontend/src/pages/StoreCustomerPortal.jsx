@@ -6,6 +6,7 @@
 import { useEffect, useRef, useState } from "react";
 import { getDistricts, getThanas, BD_DIVISIONS } from "../bd_address";
 import "./StoreCustomerPortal.css";
+import { AddressesView, WishlistView, SecurityView } from "./StoreCustomerAccountViews";
 
 // ── API helpers ───────────────────────────────────────────────────────────────
 
@@ -205,10 +206,10 @@ function ProfileView({ customer, token, onUpdate }) {
 
 // ── Orders View ───────────────────────────────────────────────────────────────
 
-const STATUS_STEPS = ["placed", "confirmed", "processing", "shipped", "delivered"];
-const STATUS_LABEL = { placed: "অর্ডার দেওয়া হয়েছে", confirmed: "নিশ্চিত", processing: "প্রস্তুত হচ্ছে", shipped: "পাঠানো হয়েছে", delivered: "ডেলিভারি হয়েছে", cancelled: "বাতিল" };
+const STATUS_STEPS = ["placed", "confirmed", "ready", "dispatched", "delivered"];
+const STATUS_LABEL = { placed: "অর্ডার দেওয়া হয়েছে", confirmed: "নিশ্চিত", ready: "প্রস্তুত", processing: "প্রস্তুত হচ্ছে", dispatched: "পাঠানো হয়েছে", shipped: "পাঠানো হয়েছে", delivered: "ডেলিভারি হয়েছে", cancelled: "বাতিল" };
 const STATUS_COLOR = { placed: "#f59e0b", confirmed: "#3b82f6", processing: "#8b5cf6", shipped: "#06b6d4", delivered: "#22c55e", cancelled: "#ef4444" };
-const STATUS_ICON = { placed: "📝", confirmed: "✅", processing: "⚙️", shipped: "🚚", delivered: "🎉", cancelled: "❌" };
+const STATUS_ICON = { placed: "📝", confirmed: "✅", ready: "⚙️", processing: "⚙️", dispatched: "🚚", shipped: "🚚", delivered: "🎉", cancelled: "❌" };
 
 function OrderTimeline({ status }) {
   if (status === "cancelled") return (
@@ -257,11 +258,11 @@ function OrdersView({ storeSlug, token, onReorder }) {
 
   useEffect(() => {
     setLoading(true); setErr("");
-    scFetch(`/orders/${storeSlug}?page=${page}${statusFilter ? `&status=${statusFilter}` : ""}`, {}, token)
+    scFetch(`/orders?page=${page}${statusFilter ? `&status=${statusFilter}` : ""}`, {}, token)
       .then(d => { setOrders(d.orders || []); setTotal(d.total || 0); })
       .catch(ex => setErr(ex.message))
       .finally(() => setLoading(false));
-  }, [storeSlug, page, statusFilter, token]);
+  }, [page, statusFilter, token]);
 
   async function cancelOrder(o) {
     if (!o.organization_id || !o.access_token) { setErr("এই অর্ডারটি বাতিল করা যাচ্ছে না।"); return; }
@@ -271,7 +272,7 @@ function OrdersView({ storeSlug, token, onReorder }) {
       const res = await fetch(`/api/public/orders/${o.organization_id}/cancel/${o.access_token}`, { method: "POST" });
       if (!res.ok) { const d = await res.json(); throw new Error(d.detail || "অর্ডার বাতিল করা যায়নি।"); }
       // Refresh orders
-      const d = await scFetch(`/orders/${storeSlug}?page=${page}${statusFilter ? `&status=${statusFilter}` : ""}`, {}, token);
+      const d = await scFetch(`/orders?page=${page}${statusFilter ? `&status=${statusFilter}` : ""}`, {}, token);
       setOrders(d.orders || []);
     } catch (ex) { setErr(ex.message); }
     finally { setCancelling(null); }
@@ -304,6 +305,7 @@ function OrdersView({ storeSlug, token, onReorder }) {
               style={{ padding: "12px 14px", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
               <div>
                 <div style={{ fontWeight: 700, fontSize: 13, color: "var(--text)" }}>{o.document_number}</div>
+                {o.store_name && <div style={{ fontSize: 11, color: "var(--green)", marginTop: 2 }}>{o.store_name}{o.is_demo ? " · পরীক্ষামূলক দোকান" : ""}</div>}
                 <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>
                   {o.issued_at ? new Date(o.issued_at).toLocaleDateString("bn-BD", { day: "numeric", month: "long", year: "numeric" }) : "—"} · ৳{Number(o.total).toLocaleString("bn-BD")}
                 </div>
@@ -349,7 +351,11 @@ function OrdersView({ storeSlug, token, onReorder }) {
                 )}
 
                 {/* Reorder */}
-                {o.status !== "cancelled" && o.items?.length > 0 && onReorder && (
+                {o.status !== "cancelled" && o.items?.length > 0 && o.store_slug && o.store_slug !== storeSlug ? (
+                  <button onClick={() => window.location.assign(`/store/${encodeURIComponent(o.store_slug)}`)} style={{ marginTop: 12, width: "100%", padding: "9px 0", borderRadius: 10, border: "1px solid var(--green)", background: "var(--surface)", color: "var(--green)", fontWeight: 700, fontSize: 13, cursor: "pointer" }}>
+                    🏪 এই দোকানে যান
+                  </button>
+                ) : o.status !== "cancelled" && o.items?.length > 0 && onReorder && (
                   <button onClick={() => onReorder(o.items)} style={{ marginTop: 12, width: "100%", padding: "9px 0", borderRadius: 10, border: "2px solid var(--green)", background: "transparent", color: "var(--green)", fontWeight: 700, fontSize: 13, cursor: "pointer" }}>
                     🔄 আবার অর্ডার করুন
                   </button>
@@ -445,7 +451,10 @@ function ChatView({ storeSlug, token, storeName }) {
 
 const TABS = [
   { id: "profile", label: "প্রোফাইল", icon: "👤" },
+  { id: "addresses", label: "ঠিকানা", icon: "📍" },
   { id: "orders", label: "অর্ডার", icon: "📦" },
+  { id: "wishlist", label: "পছন্দ", icon: "♡" },
+  { id: "security", label: "নিরাপত্তা", icon: "🔐" },
   { id: "chat", label: "চ্যাট", icon: "💬" },
 ];
 
@@ -466,15 +475,22 @@ export default function StoreCustomerPortal({ storeSlug, storeName, onClose, onA
   }, [token]);
 
   function handleLogin(t, c) { setToken(t); setCustomer(c); saveToken(t); onAuthChange?.(c); }
-  function handleLogout() { clearToken(); setToken(null); setCustomer(null); onAuthChange?.(null); }
+  async function handleLogout() {
+    const current = token;
+    try { if (current) await scFetch("/logout", { method: "POST" }, current); } catch (_) {}
+    clearToken(); setToken(null); setCustomer(null); onAuthChange?.(null);
+  }
+  function handleTokenChange(nextToken, nextCustomer) {
+    saveToken(nextToken); setToken(nextToken); setCustomer(nextCustomer); onAuthChange?.(nextCustomer);
+  }
 
   return (
-    <div className="store-customer-portal" style={{ position: "fixed", inset: 0, zIndex: 1200, display: "flex", alignItems: "flex-end", justifyContent: "flex-end", pointerEvents: "none" }}>
+    <div className="store-customer-portal" style={{ position: "fixed", inset: 0, zIndex: 1200, display: "flex", alignItems: "center", justifyContent: "center", padding: 20, pointerEvents: "none" }}>
       {/* Backdrop */}
       <div onClick={onClose} style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,.4)", pointerEvents: "all" }} />
 
       {/* Panel */}
-      <div style={{ position: "relative", width: "min(420px, 100vw)", height: "min(700px, 100vh)", background: "var(--bg)", borderRadius: "20px 20px 0 0", boxShadow: "0 -4px 40px rgba(0,0,0,.25)", display: "flex", flexDirection: "column", pointerEvents: "all", overflow: "hidden" }}>
+      <div className="sc-account-panel" style={{ position: "relative", width: "min(980px, calc(100vw - 40px))", height: "min(820px, calc(100vh - 40px))", background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 22, boxShadow: "0 24px 80px rgba(0,0,0,.28)", display: "flex", flexDirection: "column", pointerEvents: "all", overflow: "hidden" }}>
         {/* Header */}
         <div style={{ padding: "16px 18px 12px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
           <div style={{ flex: 1 }}>
@@ -498,19 +514,22 @@ export default function StoreCustomerPortal({ storeSlug, storeName, onClose, onA
           ) : (
             <>
               {/* Tabs */}
-              <div style={{ display: "flex", gap: 6, marginBottom: 18, background: "var(--surface)", borderRadius: 12, padding: 4 }}>
+              <div className="sc-account-tabs" role="tablist" aria-label="অ্যাকাউন্ট ব্যবস্থাপনা" style={{ display: "flex", gap: 5, marginBottom: 18, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 12, padding: 4, overflowX: "auto", flexShrink: 0 }}>
                 {TABS.map(t => (
-                  <button key={t.id} onClick={() => setTab(t.id)}
-                    style={{ flex: 1, padding: "8px 4px", borderRadius: 9, border: "none", cursor: "pointer", fontWeight: 600, fontSize: 12, transition: "all .15s",
+                  <button key={t.id} role="tab" aria-selected={tab === t.id} onClick={() => setTab(t.id)}
+                    style={{ flex: "1 0 auto", minWidth: 86, padding: "9px 10px", borderRadius: 9, border: "none", cursor: "pointer", fontWeight: 700, fontSize: 12, transition: "all .15s",
                       background: tab === t.id ? "var(--green)" : "transparent",
                       color: tab === t.id ? "var(--sc-on-green)" : "var(--text-muted)" }}>
-                    {t.icon} {t.label}
+                    <span style={{ marginRight: 4 }}>{t.icon}</span>{t.label}
                   </button>
                 ))}
               </div>
 
               {tab === "profile" && <ProfileView customer={customer} token={token} onUpdate={setCustomer} />}
+              {tab === "addresses" && <AddressesView token={token} />}
               {tab === "orders" && <OrdersView storeSlug={storeSlug} token={token} onReorder={onReorder ? (items) => { onReorder(items); onClose(); } : null} />}
+              {tab === "wishlist" && <WishlistView token={token} storeSlug={storeSlug} onReorder={onReorder ? (items) => { onReorder(items); onClose(); } : null} />}
+              {tab === "security" && <SecurityView token={token} onTokenChange={handleTokenChange} />}
               {tab === "chat" && <ChatView storeSlug={storeSlug} token={token} storeName={storeName} />}
             </>
           )}
