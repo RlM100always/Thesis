@@ -35,6 +35,14 @@ function error(request,status,message) {
   return output(request,{detail:message},status);
 }
 function safe(v) {return String(v||"").slice(0,110);}
+
+// Accept ordinary Bangladeshi/international phone formatting while requiring
+// 7–15 digits. Keeping this in a named helper makes checkout validation testable.
+export function isValidShippingPhone(value) {
+ const phone=String(value??"").trim();
+ const digits=phone.replace(/\D/g,"");
+ return /^\+?[0-9()\s-]{7,20}$/.test(phone) && digits.length>=7 && digits.length<=15;
+}
 const baseView=(s)=>({
   organization_id:s.id,slug:s.slug,is_demo:!!s.is_demo,is_active:!!s.is_active,
   display_name:s.name,tagline:s.tagline,logo_data_url:null,cover_data_url:null,
@@ -105,7 +113,7 @@ async function checkout(env,request,id) {
  const shippingName=safe(data.shipping_name||(store.is_demo?"Demo customer":""));
  const shippingPhone=String(data.shipping_phone||"").trim().slice(0,30);
  const shippingAddress=String(data.shipping_address||"").trim().slice(0,500);
- if(!store.is_demo && (shippingName.length<2 || !/^[+()\\d\\-\\s]{7,20}$/.test(shippingPhone) || shippingAddress.length<8))
+ if(!store.is_demo && (shippingName.length<2 || !isValidShippingPhone(shippingPhone) || shippingAddress.length<8))
    return error(request,422,"Enter a valid customer name, phone number and delivery address for COD.");
  const customerToken=String(data.store_customer_token||data.customer_token||"").trim();
  let account=null;
