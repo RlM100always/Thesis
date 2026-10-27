@@ -7,6 +7,7 @@ import { useEffect, useRef, useState } from "react";
 import { getDistricts, getThanas, BD_DIVISIONS } from "../bd_address";
 import "./StoreCustomerPortal.css";
 import { AddressesView, WishlistView, SecurityView } from "./StoreCustomerAccountViews";
+import { cancelCustomerOrder, clearCustomerToken, customerFetch, getCustomerToken, isD1Store, saveCustomerToken, submitCustomerReview } from "../storeCustomerApi";
 
 // ── API helpers ───────────────────────────────────────────────────────────────
 
@@ -16,10 +17,16 @@ function scHeaders(token) {
   return { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) };
 }
 
-async function scFetch(path, opts = {}, token = null) {
+async function scFetch(storeSlug, path, opts = {}, token) {
+  if (isD1Store(storeSlug)) {
+    const method = opts.method || "GET";
+    const apiPath = path === "/me" && method === "PATCH" ? "/profile" : path;
+    const authToken = token === undefined ? getCustomerToken(storeSlug) : token;
+    return customerFetch(storeSlug, apiPath, opts, authToken);
+  }
   const res = await fetch(`${SC_BASE}${path}`, {
     ...opts,
-    headers: { ...scHeaders(token), ...(opts.headers || {}) },
+    headers: { ...scHeaders(token === undefined ? getCustomerToken(storeSlug) : token), ...(opts.headers || {}) },
   });
   const json = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(json.detail || "অনুরোধটি সম্পন্ন করা যায়নি। আবার চেষ্টা করুন।");
@@ -28,10 +35,18 @@ async function scFetch(path, opts = {}, token = null) {
 
 // ── Storage ───────────────────────────────────────────────────────────────────
 
-const SC_KEY = "sc_token";
-function saveToken(t) { try { localStorage.setItem(SC_KEY, t); } catch (_) {} }
-function loadToken() { try { return localStorage.getItem(SC_KEY); } catch (_) { return null; } }
-function clearToken() { try { localStorage.removeItem(SC_KEY); } catch (_) {} }
+function saveToken(t, storeSlug) {
+  if (isD1Store(storeSlug)) saveCustomerToken(t, storeSlug);
+  else { try { localStorage.setItem("sc_token", t); } catch (_) {} }
+}
+function loadToken(storeSlug) {
+  if (isD1Store(storeSlug)) return getCustomerToken(storeSlug);
+  try { return localStorage.getItem("sc_token"); } catch (_) { return null; }
+}
+function clearToken(storeSlug) {
+  if (isD1Store(storeSlug)) clearCustomerToken(storeSlug);
+  else { try { localStorage.removeItem("sc_token"); } catch (_) {} }
+}
 
 // ── Sub-components ────────────────────────────────────────────────────────────
 
@@ -51,7 +66,7 @@ function Ok({ msg }) {
 
 // ── Auth View ─────────────────────────────────────────────────────────────────
 
-function AuthView({ onLogin }) {
+function AuthView({ storeSlug, onLogin }) {
   const [mode, setMode] = useState("login"); // login | register
   const [form, setForm] = useState({ display_name: "", email_or_phone: "", email: "", phone: "", password: "" });
   const [err, setErr] = useState("");
@@ -65,10 +80,10 @@ function AuthView({ onLogin }) {
     try {
       let data;
       if (mode === "login") {
-        data = await scFetch("/login", { method: "POST", body: JSON.stringify({ email_or_phone: form.email_or_phone, password: form.password }) });
+        data = await scFetch(storeSlug, "/login", { method: "POST", body: JSON.stringify({ email_or_phone: form.email_or_phone, password: form.password }) }, null);
       } else {
         if (!form.email && !form.phone) { setErr("ইমেইল অথবা ফোন নম্বর লিখুন।"); setLoading(false); return; }
-        data = await scFetch("/register", { method: "POST", body: JSON.stringify({ display_name: form.display_name, email: form.email || undefined, phone: form.phone || undefined, password: form.password }) });
+        data = await scFetch(storeSlug, "/register", { method: "POST", body: JSON.stringify({ display_name: form.display_name, email: form.email || undefined, phone: form.phone || undefined, password: form.password }) }, null);
       }
       saveToken(data.token);
       onLogin(data.token, data.customer);
@@ -124,7 +139,7 @@ function AuthView({ onLogin }) {
 
 // ── Profile View ──────────────────────────────────────────────────────────────
 
-function ProfileView({ customer, token, onUpdate }) {
+function ProfileView({ customer, token, storeSlug, onUpdate }) {
   const [form, setForm] = useState({
     display_name: customer.display_name || "",
     phone: customer.phone || "",
@@ -162,7 +177,7 @@ function ProfileView({ customer, token, onUpdate }) {
   async function save(e) {
     e.preventDefault(); setSaving(true); setErr(""); setOk("");
     try {
-      const updated = await scFetch("/me", { method: "PATCH", body: JSON.stringify(form) }, token);
+      const updated = await scFetch(storeSlug, "/me", { method: "PATCH", body: JSON.stringify(form) }, token);
       setOk("প্রোফাইল সংরক্ষিত হয়েছে ✓");
       onUpdate(updated);
     } catch (ex) { setErr(ex.message); }
@@ -228,7 +243,7 @@ function ProfileView({ customer, token, onUpdate }) {
   );
 }
 
-function OrderReviewForm({ order, item, token }) {
+function OrderReviewForm({ order, item, token, storeSlug }) {
   const [rating, setRating] = useState("5");
   const [comment, setComment] = useState("");
   const [busy, setBusy] = useState(false);
@@ -237,13 +252,7 @@ function OrderReviewForm({ order, item, token }) {
   async function submit(event) {
     event.preventDefault(); setBusy(true); setError(""); setSuccess("");
     try {
-      const response = await fetch(`/api/public/reviews/${encodeURIComponent(order.organization_id)}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ product_id: item.product_id, order_id: order.id, rating: Number(rating), comment: comment.trim() || null }),
-      });
-      const body = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(body.detail || "রিভিউ জমা দেওয়া যায়নি।");
+      await submitCustomerReview(storeSlug, order, item, Number(rating), comment, token);
       setSuccess("রিভিউ সংরক্ষণ হয়েছে। ধন্যবাদ!");
     } catch (e) { setError(e.message); }
     finally { setBusy(false); }
@@ -265,9 +274,9 @@ function OrderReviewForm({ order, item, token }) {
 // ── Orders View ───────────────────────────────────────────────────────────────
 
 const STATUS_STEPS = ["placed", "confirmed", "ready", "dispatched", "delivered"];
-const STATUS_LABEL = { placed: "অর্ডার দেওয়া হয়েছে", confirmed: "নিশ্চিত", ready: "প্রস্তুত", processing: "প্রস্তুত হচ্ছে", dispatched: "পাঠানো হয়েছে", shipped: "পাঠানো হয়েছে", delivered: "ডেলিভারি হয়েছে", cancelled: "বাতিল" };
-const STATUS_COLOR = { placed: "#f59e0b", confirmed: "#3b82f6", processing: "#8b5cf6", shipped: "#06b6d4", delivered: "#22c55e", cancelled: "#ef4444" };
-const STATUS_ICON = { placed: "📝", confirmed: "✅", ready: "⚙️", processing: "⚙️", dispatched: "🚚", shipped: "🚚", delivered: "🎉", cancelled: "❌" };
+const STATUS_LABEL = { placed: "অর্ডার দেওয়া হয়েছে", confirmed: "নিশ্চিত", ready: "প্রস্তুত", processing: "প্রস্তুত হচ্ছে", dispatched: "পাঠানো হয়েছে", shipped: "পাঠানো হয়েছে", fulfilled: "সম্পন্ন", delivered: "ডেলিভারি হয়েছে", cancelled: "বাতিল" };
+const STATUS_COLOR = { placed: "#f59e0b", confirmed: "#3b82f6", processing: "#8b5cf6", ready: "#8b5cf6", shipped: "#06b6d4", dispatched: "#06b6d4", fulfilled: "#22c55e", delivered: "#22c55e", cancelled: "#ef4444" };
+const STATUS_ICON = { placed: "📝", confirmed: "✅", ready: "⚙️", processing: "⚙️", dispatched: "🚚", shipped: "🚚", fulfilled: "🎉", delivered: "🎉", cancelled: "❌" };
 
 function OrderTimeline({ status }) {
   if (status === "cancelled") return (
@@ -317,7 +326,7 @@ function OrdersView({ storeSlug, token, onReorder }) {
 
   useEffect(() => {
     setLoading(true); setErr("");
-    scFetch(`/orders?page=${page}${statusFilter ? `&status=${statusFilter}` : ""}`, {}, token)
+    scFetch(storeSlug, `/orders?page=${page}${statusFilter ? `&status=${statusFilter}` : ""}`, {}, token)
       .then(d => { setOrders(d.orders || []); setTotal(d.total || 0); })
       .catch(ex => setErr(ex.message))
       .finally(() => setLoading(false));
@@ -328,10 +337,9 @@ function OrdersView({ storeSlug, token, onReorder }) {
     if (!window.confirm("এই অর্ডারটি বাতিল করতে চান?")) return;
     setCancelling(o.id);
     try {
-      const res = await fetch(`/api/public/orders/${o.organization_id}/cancel/${o.access_token}`, { method: "POST" });
-      if (!res.ok) { const d = await res.json(); throw new Error(d.detail || "অর্ডার বাতিল করা যায়নি।"); }
+      await cancelCustomerOrder(storeSlug, o.organization_id, o.access_token);
       // Refresh orders
-      const d = await scFetch(`/orders?page=${page}${statusFilter ? `&status=${statusFilter}` : ""}`, {}, token);
+      const d = await scFetch(storeSlug, `/orders?page=${page}${statusFilter ? `&status=${statusFilter}` : ""}`, {}, token);
       setOrders(d.orders || []);
     } catch (ex) { setErr(ex.message); }
     finally { setCancelling(null); }
@@ -397,10 +405,10 @@ function OrdersView({ storeSlug, token, onReorder }) {
                     💬 দোকান থেকে: {o.status_note}
                   </div>
                 )}
-                {o.status === "delivered" && o.items?.length > 0 && (
+                {["delivered", "fulfilled"].includes(o.status) && o.items?.length > 0 && (
                   <div style={{ marginTop: 12, paddingTop: 10, borderTop: "1px solid var(--border)" }}>
                     <div style={{ color: "var(--text)", fontSize: 13, fontWeight: 750 }}>⭐ কেনা পণ্যের রিভিউ</div>
-                    {o.items.map((item, index) => <OrderReviewForm key={`${o.id}-${item.product_id}-${index}`} order={o} item={item} token={token} />)}
+                    {o.items.map((item, index) => <OrderReviewForm key={`${o.id}-${item.product_id}-${index}`} order={o} item={item} token={token} storeSlug={storeSlug} />)}
                   </div>
                 )}
                 {Number(o.delivery_fee) > 0 && (
@@ -524,29 +532,36 @@ const TABS = [
 ];
 
 export default function StoreCustomerPortal({ storeSlug, storeName, onClose, onAuthChange, onReorder, onAddToCart }) {
-  const [token, setToken] = useState(() => loadToken());
+  const [token, setToken] = useState(() => loadToken(storeSlug));
   const [customer, setCustomer] = useState(null);
   const [tab, setTab] = useState("profile");
-  const [loading, setLoading] = useState(!!loadToken());
+  const [loading, setLoading] = useState(!!loadToken(storeSlug));
 
   useEffect(() => {
+    const saved = loadToken(storeSlug);
+    setToken(saved); setCustomer(null); setLoading(!!saved); setTab("profile");
+  }, [storeSlug]);
+
+  useEffect(() => {
+    let active = true;
     if (token && !customer) {
-      scFetch("/me", {}, token)
-        .then(c => { setCustomer(c); setLoading(false); })
-        .catch(() => { clearToken(); setToken(null); setLoading(false); });
-    } else {
+      scFetch(storeSlug, "/me", {}, token)
+        .then(c => { if (active) { setCustomer(c); setLoading(false); onAuthChange?.(c); } })
+        .catch(() => { if (active) { clearToken(storeSlug); setToken(null); setLoading(false); } });
+    } else if (!token) {
       setLoading(false);
     }
-  }, [token]);
+    return () => { active = false; };
+  }, [token, storeSlug]);
 
-  function handleLogin(t, c) { setToken(t); setCustomer(c); saveToken(t); onAuthChange?.(c); }
+  function handleLogin(t, c) { setToken(t); setCustomer(c); saveToken(t, storeSlug); onAuthChange?.(c); }
   async function handleLogout() {
     const current = token;
-    try { if (current) await scFetch("/logout", { method: "POST" }, current); } catch (_) {}
-    clearToken(); setToken(null); setCustomer(null); onAuthChange?.(null);
+    try { if (current) await scFetch(storeSlug, "/logout", { method: "POST" }, current); } catch (_) {}
+    clearToken(storeSlug); setToken(null); setCustomer(null); onAuthChange?.(null);
   }
   function handleTokenChange(nextToken, nextCustomer) {
-    saveToken(nextToken); setToken(nextToken); setCustomer(nextCustomer); onAuthChange?.(nextCustomer);
+    saveToken(nextToken, storeSlug); setToken(nextToken); setCustomer(nextCustomer); onAuthChange?.(nextCustomer);
   }
 
   return (
@@ -575,12 +590,12 @@ export default function StoreCustomerPortal({ storeSlug, storeName, onClose, onA
         {/* Content */}
         <div style={{ flex: 1, overflowY: "auto", padding: "16px 18px" }}>
           {loading ? <Spinner /> : !token || !customer ? (
-            <AuthView onLogin={handleLogin} />
+            <AuthView storeSlug={storeSlug} onLogin={handleLogin} />
           ) : (
             <>
               {/* Tabs */}
               <div className="sc-account-tabs" role="tablist" aria-label="অ্যাকাউন্ট ব্যবস্থাপনা" style={{ display: "flex", gap: 5, marginBottom: 18, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 12, padding: 4, overflowX: "auto", flexShrink: 0 }}>
-                {TABS.map(t => (
+                {TABS.filter(t => !isD1Store(storeSlug) || t.id !== "chat").map(t => (
                   <button key={t.id} role="tab" aria-selected={tab === t.id} onClick={() => setTab(t.id)}
                     style={{ flex: "1 0 auto", minWidth: 86, padding: "9px 10px", borderRadius: 9, border: "none", cursor: "pointer", fontWeight: 700, fontSize: 12, transition: "all .15s",
                       background: tab === t.id ? "var(--green)" : "transparent",
@@ -590,12 +605,13 @@ export default function StoreCustomerPortal({ storeSlug, storeName, onClose, onA
                 ))}
               </div>
 
-              {tab === "profile" && <ProfileView customer={customer} token={token} onUpdate={setCustomer} />}
-              {tab === "addresses" && <AddressesView token={token} />}
+              {tab === "profile" && <ProfileView customer={customer} token={token} storeSlug={storeSlug} onUpdate={setCustomer} />}
+              {tab === "addresses" && <AddressesView token={token} storeSlug={storeSlug} />}
               {tab === "orders" && <OrdersView storeSlug={storeSlug} token={token} onReorder={onReorder ? (items) => { onReorder(items); onClose(); } : null} />}
               {tab === "wishlist" && <WishlistView token={token} storeSlug={storeSlug} onAddToCart={onAddToCart ? (productId) => { onAddToCart(productId); onClose(); } : null} />}
-              {tab === "security" && <SecurityView token={token} onTokenChange={handleTokenChange} />}
-              {tab === "chat" && <ChatView storeSlug={storeSlug} token={token} storeName={storeName} />}
+              {tab === "security" && <SecurityView token={token} storeSlug={storeSlug} onTokenChange={handleTokenChange} />}
+              {tab === "chat" && !isD1Store(storeSlug) && <ChatView storeSlug={storeSlug} token={token} storeName={storeName} />}
+              {tab === "chat" && isD1Store(storeSlug) && <div style={{padding:20,textAlign:"center",color:"var(--text-muted)",fontSize:13}}>এই পরীক্ষামূলক দোকানে লাইভ চ্যাট এখনো চালু হয়নি। অর্ডার ও ঠিকানা ব্যবস্থাপনা ব্যবহার করতে পারবেন।</div>}
             </>
           )}
         </div>
