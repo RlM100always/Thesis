@@ -85,7 +85,7 @@ function AuthView({ storeSlug, onLogin }) {
         if (!form.email && !form.phone) { setErr("ইমেইল অথবা ফোন নম্বর লিখুন।"); setLoading(false); return; }
         data = await scFetch(storeSlug, "/register", { method: "POST", body: JSON.stringify({ display_name: form.display_name, email: form.email || undefined, phone: form.phone || undefined, password: form.password }) }, null);
       }
-      saveToken(data.token);
+      saveToken(data.token, storeSlug);
       onLogin(data.token, data.customer);
     } catch (ex) {
       setErr(ex.message);
