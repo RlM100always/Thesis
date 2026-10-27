@@ -4,7 +4,8 @@ import { useUi } from "../UiContext";
 
 const BASE=(import.meta.env.VITE_D1_COMMERCE_URL || "https://bsmart-commerce-api.bcs-written-rakib.workers.dev").replace(/\/$/,"");
 const fmt=n=>"৳"+Number(n||0).toLocaleString("bn-BD");
-const ORDER_STATUS_BN={placed:"অর্ডার জমা হয়েছে",confirmed:"নিশ্চিত হয়েছে",fulfilled:"ডেমো অর্ডার সম্পন্ন",cancelled:"বাতিল হয়েছে"};\nconst RETURN_STATUS_BN={requested:"অনুরোধ এসেছে",approved:"অনুমোদিত",rejected:"প্রত্যাখ্যাত",received:"ফেরত পণ্য গ্রহণ",closed_demo:"পরীক্ষামূলকভাবে বন্ধ"};
+const ORDER_STATUS_BN={placed:"অর্ডার জমা হয়েছে",confirmed:"নিশ্চিত হয়েছে",fulfilled:"ডেমো অর্ডার সম্পন্ন",cancelled:"বাতিল হয়েছে"};
+const RETURN_STATUS_BN={requested:"অনুরোধ এসেছে",approved:"অনুমোদিত",rejected:"প্রত্যাখ্যাত",received:"ফেরত পণ্য গ্রহণ",closed_demo:"পরীক্ষামূলকভাবে বন্ধ"};
 const CASH_KIND_BN={receipt:"টাকা গ্রহণ",expense:"খরচ"};
 const empty={email:"",access_key:""};
 async function call(path,{method="GET",body,token}={}){
@@ -28,8 +29,14 @@ export default function D1MerchantCenter(){
   const [edit,setEdit]=useState(null);
   const [posProduct,setPosProduct]=useState("");
   const [posQty,setPosQty]=useState("1");
-  const [cashForm,setCashForm]=useState({kind:"expense",amount_bdt:"",description:""});\n  const [returnRequests,setReturnRequests]=useState([]);\n  const [chatMessages,setChatMessages]=useState([]);\n  const [threadMessages,setThreadMessages]=useState([]);\n  const [activeCustomerId,setActiveCustomerId]=useState("");\n  const [replyText,setReplyText]=useState("");
+  const [cashForm,setCashForm]=useState({kind:"expense",amount_bdt:"",description:""});
+  const [returnRequests,setReturnRequests]=useState([]);
+  const [chatMessages,setChatMessages]=useState([]);
+  const [threadMessages,setThreadMessages]=useState([]);
+  const [activeCustomerId,setActiveCustomerId]=useState("");
+  const [replyText,setReplyText]=useState("");
   const [oneTimeKey,setOneTimeKey]=useState("");
+  const store=data?.store;
   const load=useCallback(async tk=>{
     const latest=await call("/api/merchant/dashboard",{token:tk});
     setData(latest);
@@ -82,7 +89,7 @@ export default function D1MerchantCenter(){
     try{if(token)await call("/api/merchant/logout",{method:"POST",token});}catch{/* local logout even offline */}
     sessionStorage.removeItem("bsmart_d1_merchant");setToken("");setData(null);setNote("");setError("");
   }
-  const store=data?.store,products=data?.products||[],orders=data?.orders||[],stats=data?.metrics||{};
+  const products=data?.products||[],orders=data?.orders||[],stats=data?.metrics||{};
   const totalProducts=useMemo(()=>products.filter(p=>p.is_listed).length,[products]);
   return <main className="dm-page">
     <header className="dm-header"><a href="#/" className="dm-logo">B-SMART <span>দোকান পরিচালনা</span></a>
