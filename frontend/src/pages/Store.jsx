@@ -1685,7 +1685,7 @@ export default function StorePage() {
       }).catch(() => {});
     }, 450);
     return () => window.clearTimeout(timeout);
-  }, [cart, variantSelections, cartScope, cartReadyScope, store?.slug, productMap]);
+  }, [cart, variantSelections, cartScope, cartReadyScope, store?.slug]);
 
   // Poll unread chat count for account button badge
   useEffect(() => {
