@@ -61,6 +61,7 @@ const Onboarding = lazy(() => import("./pages/Onboarding"));
 const StorePage = lazy(() => import("./pages/Store"));
 const StoreDirectoryPage = lazy(() => import("./pages/StoreDirectory"));
 const D1MerchantCenter = lazy(() => import("./pages/D1MerchantCenter"));
+const D1PlatformAdmin = lazy(() => import("./pages/D1PlatformAdmin"));
 const OrderStatusPage = lazy(() => import("./pages/OrderStatus"));
 const StoreAdminPage = lazy(() => import("./pages/StoreAdmin"));
 const ResearchPortal = lazy(() => import("./pages/ResearchPortal"));
@@ -190,6 +191,8 @@ function Shell() {
   if (pathname === "/signup") return <Login initialMode="register" />;
   // Standalone Cloudflare D1 demo owner system; no legacy SQLite dependency.
   if (pathname === "/d1-owner") return <D1MerchantCenter />;
+  // Privileged Cloudflare D1 demo commerce console; separately protected by Worker secret.
+  if (pathname === "/d1-platform-admin") return <D1PlatformAdmin />;
   // The public storefront and order-status lookup need no account at all —
   // a visitor opens these from a link the shop shares, not through the app.
   if (pathname.startsWith("/store/") || pathname.startsWith("/order-status/") || pathname === "/stores") {
