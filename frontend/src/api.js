@@ -12,10 +12,10 @@ const BASE = import.meta.env.VITE_API_URL ?? (import.meta.env.PROD ? "" : "http:
 export const D1_COMMERCE = (import.meta.env.VITE_D1_COMMERCE_URL ||
   "https://bsmart-commerce-api.bcs-written-rakib.workers.dev").replace(/\/$/, "");
 export const isD1Store = (id) => /^(demo-bsmart-|merchant-|shop-)/.test(String(id || ""));
-export async function d1Commerce(path, { method = "GET", body } = {}) {
+export async function d1Commerce(path, { method = "GET", body, headers = {} } = {}) {
   const response = await fetch(D1_COMMERCE + path, {
     method,
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...headers },
     ...(body !== undefined ? {body: JSON.stringify(body)} : {}),
   });
   if (!response.ok) {
