@@ -1787,7 +1787,10 @@ export default function StorePage() {
   const cartTotal = useMemo(() => Object.entries(cart).reduce((s, [id, q]) => s + q * (productMap[id]?.price || 0), 0), [cart, productMap]);
   const allCats = useMemo(() => {
     const cats = new Set();
-    products.forEach(p => { const category = p.tags?.[0]?.trim(); if (category) cats.add(category); });
+    products.forEach(p => {
+      if (p.category?.trim()) cats.add(p.category.trim());
+      (p.tags || []).forEach(tag => { if (tag?.trim()) cats.add(tag.trim()); });
+    });
     return [...cats].sort((a, b) => a.localeCompare(b, "bn"));
   }, [products]);
 
@@ -1795,9 +1798,9 @@ export default function StorePage() {
     let list = [...products];
     if (search) {
       const q = search.toLowerCase();
-      list = list.filter(p => `${p.name} ${p.sku || ""} ${(p.tags || []).join(" ")} ${p.description || ""}`.toLowerCase().includes(q));
+      list = list.filter(p => `${p.name} ${p.sku || ""} ${p.category || ""} ${p.brand || ""} ${(p.tags || []).join(" ")} ${p.description || ""}`.toLowerCase().includes(q));
     }
-    if (activeCat) list = list.filter(p => p.tags?.includes(activeCat));
+    if (activeCat) list = list.filter(p => p.category === activeCat || p.tags?.includes(activeCat));
     return list;
   }, [products, search, activeCat]);
 
