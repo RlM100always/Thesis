@@ -94,7 +94,6 @@ async function orderDetails(env,request,id,token) {
 async function checkout(env,request,id) {
  const store=await getStore(env,id,false);
  if(!store)return error(request,404,"Store not active");
- if(!store.is_demo && String((await request.clone().json().catch(()=>({}))).payment_method||"")!=="cod")return error(request,409,"This approved store currently accepts cash on delivery only.");
  const size=Number(request.headers.get("content-length")||0);
  if(size>10000)return error(request,413,"Order request too large");
  let data;
