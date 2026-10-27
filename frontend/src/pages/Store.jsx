@@ -9,6 +9,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import { api } from "../api";
+import { customerFetch, getCustomerToken, isD1Store } from "../storeCustomerApi";
 import { explain } from "../errors";
 import { productImage, storeCoverImage } from "../storeImages";
 import StoreCustomerPortal from "./StoreCustomerPortal";
@@ -1091,7 +1092,7 @@ function CheckoutView({ store, cart, products, onBack, onDone, scCustomer, varia
     }
     setBusy(true); setError("");
     try {
-      const scToken = (() => { try { return localStorage.getItem("sc_token"); } catch (_) { return null; } })();
+      const scToken = getCustomerToken(store.slug);
       const order = await api.placePublicOrder(orgId, {
         shipping_name: form.name,
         shipping_phone: phone,
@@ -1655,37 +1656,33 @@ export default function StorePage() {
   const [confirmedOrder, setConfirmedOrder] = useState(null);
   const [detailQty, setDetailQty] = useState(1);
 
-  // Bootstrap logged-in store customer from localStorage token
+  // Bootstrap the customer account from the correct backend for this storefront.
   useEffect(() => {
-    const token = (() => { try { return localStorage.getItem("sc_token"); } catch (_) { return null; } })();
-    if (!token) return;
-    fetch("/api/sc/me", { headers: { Authorization: `Bearer ${token}` } })
-      .then(r => r.ok ? r.json() : null)
-      .then(c => { if (c) setScCustomer(c); })
-      .catch(() => {});
-  }, []);
+    let active = true;
+    const token = getCustomerToken(storeId);
+    if (!token) { setScCustomer(null); return () => { active = false; }; }
+    customerFetch(storeId, "/me", {}, token)
+      .then(c => { if (active) setScCustomer(c.customer || c); })
+      .catch(() => { if (active) setScCustomer(null); });
+    return () => { active = false; };
+  }, [storeId]);
 
   // Load this customer's cross-store wishlist and persist a pending favourite
   // after sign-in. The API enforces customer ownership and active store listings.
   useEffect(() => {
     if (!scCustomer || !store?.slug) { setWishlistIds({}); return; }
-    const token = (() => { try { return localStorage.getItem("sc_token"); } catch (_) { return null; } })();
+    const token = getCustomerToken(store.slug);
     if (!token) return;
     let active = true;
     const pending = pendingWishlistRef.current;
     if (pending) pendingWishlistRef.current = null;
-    const load = () => fetch(`/api/sc/wishlist?store_slug=${encodeURIComponent(store.slug)}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    }).then(r => r.ok ? r.json() : Promise.reject(new Error("পছন্দের তালিকা লোড করা যায়নি")))
+    const load = () => customerFetch(store.slug, `/wishlist?store_slug=${encodeURIComponent(store.slug)}`, {}, token)
       .then(d => { if (active) setWishlistIds(Object.fromEntries((d.items || []).map(item => [item.product_id, true]))); });
     load().then(async () => {
       if (!pending || !active) return;
-      const response = await fetch("/api/sc/wishlist", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ store_slug: store.slug, product_id: pending.id }),
-      });
-      if (!response.ok) { const d = await response.json().catch(() => ({})); throw new Error(d.detail || "পণ্যটি পছন্দের তালিকায় রাখা যায়নি"); }
+      await customerFetch(store.slug, "/wishlist", {
+        method: "POST", body: { store_slug: store.slug, product_id: pending.id },
+      }, token);
       await load();
     }).catch(e => { if (active) window.alert(e.message || "পছন্দের তালিকা আপডেট করা যায়নি"); });
     return () => { active = false; };
@@ -1698,10 +1695,9 @@ export default function StorePage() {
     if (!cartScope || !store?.organization_id) { setCartReadyScope(""); return; }
     let active = true;
     setCartReadyScope("");
-    const token = (() => { try { return localStorage.getItem("sc_token"); } catch (_) { return null; } })();
+    const token = getCustomerToken(store.slug);
     if (!token) { setCartReadyScope(cartScope); return; }
-    fetch(`/api/sc/cart/${encodeURIComponent(store.slug)}`, { headers: { Authorization: `Bearer ${token}` } })
-      .then(r => r.ok ? r.json() : Promise.reject(new Error("সেভ করা কার্ট লোড করা যায়নি")))
+    customerFetch(store.slug, `/cart/${encodeURIComponent(store.slug)}`, {}, token)
       .then(data => {
         if (!active) return;
         const allowed = new Set((store.products || []).filter(p => p.price != null).map(p => p.id));
@@ -1725,16 +1721,14 @@ export default function StorePage() {
 
   useEffect(() => {
     if (!cartScope || cartReadyScope !== cartScope || !store?.slug) return;
-    const token = (() => { try { return localStorage.getItem("sc_token"); } catch (_) { return null; } })();
+    const token = getCustomerToken(store.slug);
     if (!token) return;
     const timeout = window.setTimeout(() => {
       const items = Object.entries(cart).filter(([id, quantity]) => quantity > 0 && productMap[id]?.price != null)
         .map(([product_id, quantity]) => ({ product_id, quantity: Math.min(99, Number(quantity)), variant_label: variantSelections[product_id] || undefined }));
-      fetch(`/api/sc/cart/${encodeURIComponent(store.slug)}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ items }),
-      }).catch(() => {});
+      customerFetch(store.slug, `/cart/${encodeURIComponent(store.slug)}`, {
+        method: "PUT", body: { items },
+      }, token).catch(() => {});
     }, 450);
     return () => window.clearTimeout(timeout);
   }, [cart, variantSelections, cartScope, cartReadyScope, store?.slug]);
@@ -1742,7 +1736,8 @@ export default function StorePage() {
   // Poll unread chat count for account button badge
   useEffect(() => {
     if (!scCustomer || !store?.slug) return;
-    const token = (() => { try { return localStorage.getItem("sc_token"); } catch (_) { return null; } })();
+    if (isD1Store(store.slug)) { setChatUnread(0); return; }
+    const token = getCustomerToken(store.slug);
     if (!token) return;
     const poll = () => fetch(`/api/sc/unread/${store.slug}`, { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.ok ? r.json() : { count: 0 })
@@ -1849,7 +1844,7 @@ export default function StorePage() {
       setPortalOpen(true);
       return;
     }
-    const token = (() => { try { return localStorage.getItem("sc_token"); } catch (_) { return null; } })();
+    const token = getCustomerToken(store.slug);
     if (!token) { setPortalOpen(true); return; }
     const wasSaved = !!wishlistIds[product.id];
     setWishlistBusy(current => ({ ...current, [product.id]: true }));
@@ -1859,14 +1854,11 @@ export default function StorePage() {
       return next;
     });
     try {
-      const response = await fetch(wasSaved
-        ? `/api/sc/wishlist/${encodeURIComponent(store.slug)}/${encodeURIComponent(product.id)}`
-        : "/api/sc/wishlist", {
-        method: wasSaved ? "DELETE" : "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        ...(wasSaved ? {} : { body: JSON.stringify({ store_slug: store.slug, product_id: product.id }) }),
-      });
-      if (!response.ok) { const d = await response.json().catch(() => ({})); throw new Error(d.detail || "পছন্দের তালিকা আপডেট করা যায়নি"); }
+      if (wasSaved) {
+        await customerFetch(store.slug, `/wishlist/${encodeURIComponent(store.slug)}/${encodeURIComponent(product.id)}`, { method: "DELETE" }, token);
+      } else {
+        await customerFetch(store.slug, "/wishlist", { method: "POST", body: { store_slug: store.slug, product_id: product.id } }, token);
+      }
     } catch (e) {
       setWishlistIds(current => {
         const next = { ...current };
