@@ -64,7 +64,7 @@ export function AddressesView({ token, storeSlug }) {
     } catch (e) { setError(e.message); }
     finally { setLoading(false); }
   }
-  useEffect(() => { load(); }, [token]);
+  useEffect(() => { load(); }, [token, storeSlug]);
 
   function setField(key, value) {
     setForm(current => {
@@ -117,7 +117,7 @@ export function AddressesView({ token, storeSlug }) {
     if (!window.confirm("এই সংরক্ষিত ঠিকানাটি মুছে ফেলতে চান?")) return;
     setBusyId(address.id); setError(""); setNotice("");
     try {
-      await customerFetch(`/addresses/${encodeURIComponent(address.id)}`, { method: "DELETE" }, token);
+      await customerFetch(storeSlug, `/addresses/${encodeURIComponent(address.id)}`, { method: "DELETE" }, token);
       await load(); setNotice("ঠিকানা মুছে ফেলা হয়েছে।");
       if (editingId === address.id) { setShowForm(false); setEditingId(null); }
     } catch (e) { setError(e.message); }
