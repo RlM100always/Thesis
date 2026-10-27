@@ -460,7 +460,7 @@ function ChatView({ storeSlug, token, storeName }) {
   const bottomRef = useRef(null);
 
   const load = () => {
-    scFetch(`/chat/${storeSlug}`, {}, token)
+    scFetch(storeSlug, `/chat/${storeSlug}`, {}, token)
       .then(d => { setMsgs(d.messages || []); setLoading(false); })
       .catch(ex => { setErr(ex.message); setLoading(false); });
   };
@@ -473,7 +473,7 @@ function ChatView({ storeSlug, token, storeName }) {
     if (!text.trim()) return;
     setSending(true); setErr("");
     try {
-      const msg = await scFetch(`/chat/${storeSlug}`, { method: "POST", body: JSON.stringify({ body: text.trim() }) }, token);
+      const msg = await scFetch(storeSlug, `/chat/${storeSlug}`, { method: "POST", body: JSON.stringify({ body: text.trim() }) }, token);
       setMsgs(m => [...m, msg]);
       setText("");
     } catch (ex) { setErr(ex.message); }
@@ -536,10 +536,11 @@ export default function StoreCustomerPortal({ storeSlug, storeName, onClose, onA
   const [customer, setCustomer] = useState(null);
   const [tab, setTab] = useState("profile");
   const [loading, setLoading] = useState(!!loadToken(storeSlug));
+  const [tokenScope, setTokenScope] = useState(storeSlug);
 
   useEffect(() => {
     const saved = loadToken(storeSlug);
-    setToken(saved); setCustomer(null); setLoading(!!saved); setTab("profile");
+    setTokenScope(storeSlug); setToken(saved); setCustomer(null); setLoading(!!saved); setTab("profile");
   }, [storeSlug]);
 
   useEffect(() => {
