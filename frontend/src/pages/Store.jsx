@@ -988,11 +988,10 @@ function CheckoutView({ store, cart, products, onBack, onDone, scCustomer, varia
 
   useEffect(() => {
     if (!scCustomer?.id) { setSavedAddresses([]); setSelectedAddressId(""); return; }
-    const token = (() => { try { return localStorage.getItem("sc_token"); } catch (_) { return null; } })();
+    const token = getCustomerToken(store.slug);
     if (!token) return;
     let active = true;
-    fetch("/api/sc/addresses", { headers: { Authorization: `Bearer ${token}` } })
-      .then(r => r.ok ? r.json() : Promise.reject(new Error("সংরক্ষিত ঠিকানা লোড করা যায়নি")))
+    customerFetch(store.slug, "/addresses", {}, token)
       .then(data => {
         if (!active) return;
         const addresses = data.addresses || [];
