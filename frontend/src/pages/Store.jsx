@@ -2015,6 +2015,10 @@ export default function StorePage() {
           storeName={store.display_name}
           onClose={() => setPortalOpen(false)}
           onAuthChange={(c) => { setScCustomer(c); if (!c) { setChatUnread(0); setWishlistIds({}); } }}
+          onAddToCart={(productId) => {
+            const product = productMap[productId];
+            if (product?.price != null) { addToCart(product, 1); setCartOpen(true); }
+          }}
           onReorder={(items) => {
             // items: [{product_id, quantity, description}]
             const newCart = { ...cart };
