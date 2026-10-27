@@ -1,6 +1,6 @@
 # Cloudflare D1 — B-SMART demo commerce and merchant console
 
-**Verified:** 26 October 2026. Database **`bsmart-commerce`** (Cloudflare D1, APAC), Worker **`bsmart-commerce-api`**, URL https://bsmart-commerce-api.bcs-written-rakib.workers.dev .
+**Project reference:** Database **`bsmart-commerce`**, Worker **`bsmart-commerce-api`**, URL https://bsmart-commerce-api.bcs-written-rakib.workers.dev. Source and deployed Worker code may differ until deployment is verified.
 
 Frontend site https://thesis-j0n8.onrender.com uses a dual adapter in `frontend/src/api.js`:
 
@@ -11,17 +11,29 @@ Frontend site https://thesis-j0n8.onrender.com uses a dual adapter in `frontend/
 
 - 10 labelled synthetic business demo stores plus 259 example products, and persistent D1 product/stock listing via Worker.
 - Guest **demo-only** checkout with transactional D1 batch and stock/price-check triggers, order lines, order status token, cancellation and stock return to inventory.
-- Anonymous demo customer reference (real entered phone/address not retained).
+- Shared D1 customer accounts across demo stores: registration/login, profile/avatar, password change with session revocation, saved Bangladesh addresses, account-wide order history, server-side per-store carts, cross-store wishlist, verified-purchase reviews, support chat and return requests. Customer contact/address details are stored in D1; use synthetic/test data only.
 - New owner onboarding and login via **one-time cryptographically random 256-bit owner access key**, stored as SHA-256 digest in D1; 12-hour hashed bearer sessions. PBKDF2 was unavailable in this particular Worker runtime, so password authentication is intentionally **not** used. Email is *unverified*. Owner access key must be saved; lost-key recovery not implemented. Avoid using this as a production identity system.
-- Owner store creation (draft until explicitly made public), product publishing/editing, stock adjustment logs and owner-scoped order status workflow.
+- Owner store creation (draft until explicitly made public), product publishing/editing, product descriptions/brands/tags/compare-at prices, stock adjustment logs, owner-scoped order status workflow, customer message inbox and return management.
 - Demo counter POS, recorded atomically with inventory and order rows in D1, and a small example **cashbook**. Not double-entry accounting or actual cash collection.
-- React Owner Center page at `/#/d1-owner` with a compact Android-style bottom navigation on mobile.
+- React Owner Center at `/#/d1-owner` with mobile navigation, plus a secret-protected Platform Admin page at `/#/d1-platform-admin` for store moderation, order oversight and audit history.
 
 ## D1 schema
 
-`migrations/0001_commerce.sql` through `migrations/0005_demo_cashbook.sql`, source Worker `commerce-worker.js` importing `merchant-routes.js`, config `wrangler.toml`. The existing remote database schema has been advanced to `commerce_meta.schema_version=5` by Cloudflare REST calls.
+Source migrations extend through `migrations/0007_customer_commerce_workflows.sql`. The Worker imports `customer-routes.js`, `merchant-routes.js`, and `platform-admin-routes.js`. The last documented remote schema level is 5; do not assume migrations 0006–0007 have been applied remotely until queried and verified.
 
-**Do not blindly run `wrangler d1 migrations apply --remote` on this existing database.** Migrations were applied manually via Cloudflare API, not registered in Wrangler's `d1_migrations` table. One-time `ALTER TABLE` statements would fail if replayed. These migrations are source-controlled for application to a *fresh* new D1 instance once, in order. Before any future changes, align the Wrangler migration ledger or use independently reviewed idempotent migrations, take a backup, and verify `commerce_meta`.
+**Do not blindly run `wrangler d1 migrations apply --remote` on this existing database.** Migrations were applied manually via Cloudflare API, not registered in Wrangler's `d1_migrations` table. One-time `ALTER TABLE` statements would fail if replayed. The source migration sequence is tested locally in CI, but that does not prove remote D1 is migrated. Before deploying 0006–0007: take and verify a D1 backup/export, query the live schema and `commerce_meta`, apply only the reviewed additive SQL that is missing, then re-query new tables/columns/triggers.
+
+
+## Platform admin secret setup
+
+Configure the Worker secret after the platform-admin code is deployed:
+
+```sh
+cd cloudflare
+npx wrangler secret put PLATFORM_ADMIN_KEY
+```
+
+Use a long, unique random value of at least 32 characters. Enter it at `/#/d1-platform-admin`. The UI keeps the key in memory only. Never commit the value to `wrangler.toml`, GitHub, browser storage, or source code. The route returns HTTP 503 until the secret is configured.
 
 ## Verification
 
@@ -33,7 +45,7 @@ GitHub frontend build and API live smoke workflows have passed. The Worker's cod
 
 ## Critical NOT YET migrated
 
-Previous B-SMART business login, true merchant tenant memberships, original POS and full cashflow, stock purchasing, live inventory, receivables, accounting journals, invoicing, supplier/customer CRM, chats, promotional coupons, reviews, fulfillment, app reporting, permission controls and historical customers/orders. All remain in FastAPI's old operational SQLite system. They are **not** Cloudflare D1 primary and not kept in sync with this D1 demo store.
+The previous B-SMART operational business database is still separate: business login/memberships, original POS/cashflow, purchasing, live stock, receivables, accounting journals, invoicing, operational CRM/coupons/reviews/fulfilment, reporting, permissions, and historical business customers/orders remain in FastAPI. D1 customer identities are not synchronized with the legacy customer identity.
 
 No real payment gateways, credential verification, merchant identity validation, email recovery, abuse protection (Turnstile/rate limits), full privacy compliance, DB restore plan or production backup automation have been completed. Do not collect live money or sensitive shopper data here.
 
