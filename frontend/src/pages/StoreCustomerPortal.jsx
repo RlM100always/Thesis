@@ -104,6 +104,9 @@ function AuthView({ storeSlug, onLogin }) {
         <p style={{ margin: "6px 0 0", fontSize: 13, color: "var(--text-muted)" }}>
           {mode === "login" ? "আপনার অর্ডার দেখুন এবং দোকানের সঙ্গে যোগাযোগ করুন" : "নতুন অ্যাকাউন্ট খুলুন"}
         </p>
+        {isD1Store(storeSlug) && <div role="note" style={{ marginTop: 12, padding: "10px 12px", borderRadius: 10, border: "1px solid #f0c36a", background: "color-mix(in srgb,#f59e0b 9%,var(--surface,#fff))", color: "var(--text)", fontSize: 11, lineHeight: 1.6, textAlign: "left" }}>
+          পরীক্ষামূলক অ্যাকাউন্ট: এই ডেমোতে দেওয়া ইমেইল, ফোন ও ঠিকানা D1-তে সংরক্ষিত হবে। বাস্তব ব্যক্তিগত তথ্য বা অন্য সাইটে ব্যবহৃত পাসওয়ার্ড দেবেন না।
+        </div>}
       </div>
 
       <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
