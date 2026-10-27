@@ -46,10 +46,11 @@ const baseView=(s)=>({
   meta_title:s.name,meta_desc:s.tagline
 });
 const productView=(p)=>({
-  id:p.id,name:p.name,sku:p.sku,unit:"pcs",price:p.price_bdt,
-  selling_price:p.price_bdt,description:"Demo product; not a real merchant listing",
-  sale_price:null,sale_end:null,image_data_url:p.image_url||null,
-  tags:[],is_featured:!!p.is_featured,sort_order:0,max_order_qty:Math.min(p.stock_qty,10),
+  id:p.id,name:p.name,sku:p.sku,unit:p.unit_label||"pcs",price:p.price_bdt,
+  selling_price:p.price_bdt,description:p.description||"পরীক্ষামূলক পণ্য; বাস্তব বিক্রেতা বা ডেলিভারি যাচাই করা হয়নি",
+  brand:p.brand||null,sale_price:p.compare_at_price_bdt||null,sale_end:null,image_data_url:p.image_url||null,
+  tags:(()=>{try{return JSON.parse(p.tags||"[]")}catch{return []}})(),
+  is_featured:!!p.is_featured,sort_order:0,max_order_qty:Math.min(p.stock_qty,10),
   variants:[],in_stock:p.stock_qty>0,quantity:p.stock_qty,category:p.category
 });
 async function getStore(env,term,slugMode) {
