@@ -128,7 +128,7 @@ def all_store_orders(
     status: str | None = Query(default=None, max_length=20),
     page: int = Query(default=1, ge=1, le=100000),
     authorization: Annotated[str | None, Header()] = None,
-    db: Db = None,
+    db: Session = Depends(get_db),
 ):
     """Account-wide order history across every store, never phone-matched to strangers."""
     customer = _get_customer(authorization, db)
@@ -168,7 +168,7 @@ def all_store_orders(
 @router.get("/addresses", tags=["customer-addresses"])
 def list_addresses(
     authorization: Annotated[str | None, Header()] = None,
-    db: Db = None,
+    db: Session = Depends(get_db),
 ):
     customer = _get_customer(authorization, db)
     rows = db.scalars(select(StoreCustomerAddress).where(
@@ -181,7 +181,7 @@ def list_addresses(
 def create_address(
     payload: ScAddressCreate,
     authorization: Annotated[str | None, Header()] = None,
-    db: Db = None,
+    db: Session = Depends(get_db),
 ):
     customer = _get_customer(authorization, db)
     exists = db.scalar(select(StoreCustomerAddress.id).where(
@@ -205,7 +205,7 @@ def update_address(
     address_id: str,
     payload: ScAddressUpdate,
     authorization: Annotated[str | None, Header()] = None,
-    db: Db = None,
+    db: Session = Depends(get_db),
 ):
     customer = _get_customer(authorization, db)
     address = db.scalar(select(StoreCustomerAddress).where(
@@ -237,7 +237,7 @@ def update_address(
 def delete_address(
     address_id: str,
     authorization: Annotated[str | None, Header()] = None,
-    db: Db = None,
+    db: Session = Depends(get_db),
 ):
     customer = _get_customer(authorization, db)
     address = db.scalar(select(StoreCustomerAddress).where(
@@ -263,7 +263,7 @@ def delete_address(
 def list_wishlist(
     store_slug: str | None = Query(default=None, max_length=80),
     authorization: Annotated[str | None, Header()] = None,
-    db: Db = None,
+    db: Session = Depends(get_db),
 ):
     customer = _get_customer(authorization, db)
     query = select(StoreCustomerWishlistItem).where(
@@ -307,7 +307,7 @@ def list_wishlist(
 def add_wishlist_item(
     payload: ScWishlistAdd,
     authorization: Annotated[str | None, Header()] = None,
-    db: Db = None,
+    db: Session = Depends(get_db),
 ):
     customer = _get_customer(authorization, db)
     store = _store_for_customer(db, payload.store_slug)
@@ -342,7 +342,7 @@ def remove_wishlist_item(
     store_slug: str,
     product_id: str,
     authorization: Annotated[str | None, Header()] = None,
-    db: Db = None,
+    db: Session = Depends(get_db),
 ):
     customer = _get_customer(authorization, db)
     store = db.scalar(select(Store).where(Store.slug == store_slug))
@@ -363,7 +363,7 @@ def remove_wishlist_item(
 def get_saved_cart(
     store_slug: str,
     authorization: Annotated[str | None, Header()] = None,
-    db: Db = None,
+    db: Session = Depends(get_db),
 ):
     customer = _get_customer(authorization, db)
     store = _store_for_customer(db, store_slug)
@@ -393,7 +393,7 @@ def replace_saved_cart(
     store_slug: str,
     payload: ScCartReplace,
     authorization: Annotated[str | None, Header()] = None,
-    db: Db = None,
+    db: Session = Depends(get_db),
 ):
     customer = _get_customer(authorization, db)
     store = _store_for_customer(db, store_slug)
@@ -426,7 +426,7 @@ def replace_saved_cart(
 def clear_saved_cart(
     store_slug: str,
     authorization: Annotated[str | None, Header()] = None,
-    db: Db = None,
+    db: Session = Depends(get_db),
 ):
     customer = _get_customer(authorization, db)
     store = db.scalar(select(Store).where(Store.slug == store_slug))
@@ -446,7 +446,7 @@ def clear_saved_cart(
 def change_password(
     payload: ScPasswordChange,
     authorization: Annotated[str | None, Header()] = None,
-    db: Db = None,
+    db: Session = Depends(get_db),
 ):
     customer = _get_customer(authorization, db)
     if not customer.password_hash or not verify_password(payload.current_password, customer.password_hash):
@@ -463,7 +463,7 @@ def change_password(
 @router.post("/logout", tags=["customer-security"])
 def revoke_customer_sessions(
     authorization: Annotated[str | None, Header()] = None,
-    db: Db = None,
+    db: Session = Depends(get_db),
 ):
     customer = _get_customer(authorization, db)
     customer.token_version = int(customer.token_version or 0) + 1
