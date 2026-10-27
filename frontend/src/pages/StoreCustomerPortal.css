@@ -38,3 +38,16 @@
 .s-site .store-customer-portal .sc-alert-success{background:color-mix(in srgb,#179f69 13%,var(--s-card));color:var(--s-ink);border-color:color-mix(in srgb,#179f69 55%,var(--s-border))}
 .s-site .store-customer-portal :is(button,input,select,textarea){min-height:34px}
 .s-site .store-customer-portal :is(button,a):focus-visible{outline:3px solid var(--green);outline-offset:3px}
+
+.s-site .store-customer-portal .sc-account-panel{color:var(--s-ink);isolation:isolate}
+.s-site .store-customer-portal .sc-account-tabs{scrollbar-width:thin;scrollbar-color:var(--s-border) transparent}
+.s-site .store-customer-portal .sc-account-tabs button{white-space:nowrap}
+.s-site .store-customer-portal .sc-account-panel input[type="file"]{padding:6px;min-height:38px}
+@media(max-width:640px){
+ .s-site .store-customer-portal{padding:0!important}
+ .s-site .store-customer-portal .sc-account-panel{
+   width:100vw!important;height:100dvh!important;max-height:100dvh;border-radius:0!important;
+   border:0!important;padding-bottom:env(safe-area-inset-bottom,0px);
+ }
+ .s-site .store-customer-portal .sc-account-tabs{margin-bottom:12px!important}
+}
