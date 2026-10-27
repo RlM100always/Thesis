@@ -344,7 +344,7 @@ function OrdersView({ storeSlug, token, onReorder }) {
 
   return (
     <div>
-      <h3 style={{ fontSize: 15, fontWeight: 700, marginBottom: 14, color: "var(--text)" }}>আগের অর্ডারগুলো</h3>
+      <h3 style={{ fontSize: 15, fontWeight: 700, marginBottom: 14, color: "var(--text)" }}>সব দোকানের অর্ডার</h3>
       <div style={{ display: "flex", gap: 8, marginBottom: 14, flexWrap: "wrap" }}>
         <input value={search} onChange={e => setSearch(e.target.value)} placeholder="অর্ডার নম্বর / পণ্য খুঁজুন"
           style={{ flex: 1, minWidth: 140, padding: "8px 12px", borderRadius: 10, border: "1px solid var(--border)", background: "var(--bg)", color: "var(--text)", fontSize: 13 }} />
@@ -562,7 +562,7 @@ export default function StoreCustomerPortal({ storeSlug, storeName, onClose, onA
             <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text)" }}>
               {customer ? `স্বাগতম, ${customer.display_name}` : "ক্রেতার অ্যাকাউন্ট"}
             </div>
-            <div style={{ fontSize: 11, color: "var(--text-muted)" }}>{storeName}</div>
+            <div style={{ fontSize: 11, color: "var(--text-muted)" }}>{storeName} · সব দোকানে একই অ্যাকাউন্ট</div>
           </div>
           {customer && (
             <button onClick={handleLogout} style={{ fontSize: 11, color: "var(--text-muted)", background: "none", border: "1px solid var(--border)", borderRadius: 8, padding: "4px 10px", cursor: "pointer" }}>
