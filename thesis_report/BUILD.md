@@ -5,10 +5,12 @@ initial submission completes Introduction, Background Study and Related Work,
 Proposed Methodology, and a current-stage Conclusion. Implementation and
 Experimental Results remain heading-only placeholders.
 
-> Scope note dated 8 September 2026: the report now uses Bangladeshi retail
-> pharmacies as its initial empirical vertical and incorporates the
-> supervisor-guided, shop-constraint-aware architecture recorded in
-> `../docs/PHARMACY_VERTICAL_SCOPE_AND_SUPERVISOR_GUIDELINE.md`.
+> Current scope (2 November 2026): the report covers Bangladeshi SME businesses
+> across sectors. A shared operational core is extended for inventory-based and
+> service businesses, with sector-specific constraints and evidence-bounded
+> business/sector transfer evaluation. This supersedes the report's former
+> pharmacy-only scope. Historical documents outside this report may retain that
+> earlier scope; they do not define this revision's research population.
 
 ## Tectonic (portable, recommended)
 
@@ -24,10 +26,11 @@ Tectonic resolves the bibliography and repeated references automatically.
 
 ## Overleaf or Prism
 
-Upload `../Thesis_LaTeX_Minimal_Overleaf.zip` as a new project and set
-`main.tex` as the main document. The minimal archive contains only the complete,
-self-contained `main.tex` and the required `logo.pdf`; chapter text, template
-definitions and the resolved bibliography are already embedded in `main.tex`.
+Upload the current `main.tex` and `Figures/logo.pdf` as a new project, placing
+the logo at the project root, and set `main.tex` as the main document. Chapter
+text, template definitions and the resolved bibliography are embedded in
+`main.tex`. Diagrams use editable TikZ. Older exported ZIPs are not the source
+of truth for this revision.
 Use pdfLaTeX or XeLaTeX.
 
 ## TeX Live or MiKTeX

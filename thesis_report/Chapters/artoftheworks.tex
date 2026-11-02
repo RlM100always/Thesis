@@ -44,34 +44,30 @@ and settlement status as ordinary business fields. The research does not infer
 that a particular provider causes better performance; it asks whether locally
 recognizable records and explanations make the analytical workflow more usable.
 
-\subsection{Retail Pharmacy as the Initial SME Vertical}
+\subsection{Shared SME Core and Sector-Specific Requirements}
 
-The empirical scope is deliberately limited to retail pharmacies rather than a
-mixture of unrelated SME categories. Pharmacies share the ordinary retail need
-to reconcile sales, purchases, suppliers, payments and stock, but their
-inventory decisions additionally depend on batch identity, expiry, remaining
-shelf life, box--strip--piece conversion and, for temperature-sensitive items,
-storage conditions. These fields affect action feasibility even when they do not
-improve a demand model. A recommendation that ignores them may be statistically
-plausible yet unusable for the shop.
+The research scope covers SME businesses across sectors. Shared entities
+support comparable performance indicators, while sector-specific extensions
+capture differences in products, service capacity, sales cycles, procurement
+and operating constraints. Inventory-based firms may require SKU, stock, pack,
+batch and shelf-life fields; service firms may require service type, bookings,
+staff availability and delivery capacity. Fields that do not apply are marked
+not applicable rather than populated with invented values.
 
 The cross-shop learning problem also requires a clear distinction between a
 category-level pattern and a shop-level decision. Approved, de-identified data
-from multiple pharmacies may support a pooled pharmacy model or a held-out-shop
+from multiple businesses may support a pooled business model or a held-out-shop
 transfer test. Raw operational records, customer identifiers and constraint
-profiles remain isolated by pharmacy. A deployed recommendation combines the
+profiles remain isolated by business. A deployed recommendation combines the
 selected forecast or risk estimate with the active shop's budget, stock,
 supplier, pack, expiry, storage and consent constraints. Evidence from generic
-retail or another country can test a method, but it cannot establish pharmacy
+retail or another country can test a method, but it cannot establish business
 effectiveness in Bangladesh.
 
-This is a business decision-support boundary, not a clinical one. The artifact
-may prioritize replenishment, stock-out, overstock, near-expiry or operational
-investigation actions; it does not diagnose a patient, select a prescription or
-recommend a dosage. A dedicated pharmacy-domain literature extension remains
-necessary before the final thesis so that batch-, expiry- and storage-aware
-design choices are evaluated against verified sector evidence rather than
-asserted from the software design alone.
+The artifact supports business performance evaluation, insight extraction
+and feasible strategy recommendations. Owners retain authority over actions.
+Sector-specific requirements and owner constraints are assessed before an
+analytical task is enabled; unsupported tasks return an explicit evidence gap.
 
 \subsection{Performance Evaluation and Data Foundations}
 
@@ -84,7 +80,7 @@ The canonical layer therefore preserves invoice lines and stock movements while
 deriving analytical measures in documented views.
 
 Data provenance answers where a record came from, when it was received and how
-it was transformed. For primary pharmacy data, provenance must be joined with
+it was transformed. For primary business data, provenance must be joined with
 organization isolation and pseudonymous customer identifiers. For public data,
 the license, original context and permissible inference must be recorded. A
 foreign transaction dataset can test whether code handles real invoices but
@@ -130,7 +126,7 @@ source columns, transformation version and cutoff; each reported result should
 identify the dataset manifest, split and model or rule version that produced
 it. This lineage does not guarantee correctness, but it makes errors auditable
 and results reproducible. It also prevents a public or generated dataset from
-quietly inheriting the claim status of primary Bangladesh pharmacy evidence.
+quietly inheriting the claim status of primary Bangladesh business evidence.
 
 \subsection{Customer Analytics: RFM, CLV and Segmentation}
 
@@ -717,7 +713,7 @@ functions \cite{chen2012business}. The forecasting, segmentation and
 churn studies in the matrix generally begin from an already prepared analytical
 dataset. They do not jointly evaluate the path from an auditable business event,
 through a reproducible historical snapshot, to the prediction and later action
-outcome. For the target pharmacy, this missing path matters because a model cannot be
+outcome. For the target business, this missing path matters because a model cannot be
 reproduced if invoice corrections, stock movements, organization scope and
 feature cutoffs are not traceable.
 
@@ -763,9 +759,9 @@ recommendation remained appropriate after business conditions changed.
 
 \begin{quote}
 \textbf{Central research gap.} Within the reviewed evidence, there is no jointly
-evaluated, Bangladesh-oriented retail-pharmacy framework that connects
+evaluated, Bangladesh-oriented multi-sector SME framework that connects
 traceable multi-shop operational records to leakage-controlled and calibrated
-analytics, compares a baseline, pooled pharmacy model and eligible shop-adapted
+analytics, compares a baseline, pooled business model and eligible shop-adapted
 model, and then converts those outputs into shop-constrained,
 owner-understandable actions whose use and outcomes can be monitored over time.
 \end{quote}
@@ -787,10 +783,10 @@ evaluated before the artifact can support a bounded effectiveness claim.
 \node[gap] (g12) at (-4.4,2.2) {\textbf{G1--G2}\\context and operational-to-analytical integration};
 \node[gap] (g34) at (0,2.2) {\textbf{G3--G4}\\methodological validity and prediction-to-decision};
 \node[gap] (g56) at (4.4,2.2) {\textbf{G5--G6}\\owner explanation and lifecycle accountability};
-\node[bridge] (b1) at (-4.4,0.35) {Local multi-pharmacy evidence with auditable events and snapshots};
+\node[bridge] (b1) at (-4.4,0.35) {Local multi-business evidence with auditable events and snapshots};
 \node[bridge] (b2) at (0,0.35) {Baseline-controlled estimates linked to feasible constrained actions};
 \node[bridge] (b3) at (4.4,0.35) {Understandable evidence, owner response, outcomes and revalidation};
-\node[result] (artifact) at (0,-1.5) {\textbf{Jointly evaluated \system{} artifact}\\claims remain limited to the evidence tier and target pharmacy setting};
+\node[result] (artifact) at (0,-1.5) {\textbf{Jointly evaluated \system{} artifact}\\claims remain limited to the evidence tier and target business setting};
 \draw[flow] (g12) -- (b1);
 \draw[flow] (g34) -- (b2);
 \draw[flow] (g56) -- (b3);
@@ -817,7 +813,7 @@ linking it to a proposed response and evaluation.
 \hline
 \textbf{Gap} & \textbf{Proposed response} & \textbf{Evidence required to close the gap} & \textbf{Study link} \\
 \hline
-G1: Context & Tier-1 multi-pharmacy study with explicit external-data boundaries & Primary pharmacy records, constraints and shop descriptions; no transfer of foreign/generated or cross-sector claims & RQ1--RQ4 \\
+G1: Context & Tier-1 multi-business study with explicit external-data boundaries & Primary business records, constraints and shop descriptions; no transfer of foreign/generated or cross-sector claims & RQ1--RQ4 \\
 G2: Integration & Canonical events, manifests and versioned historical snapshots & Reproducible trace from source row to feature, output, action and later outcome & O1, O2 \\
 G3: Validity & Temporal/entity-safe splits, baseline ladder, calibration and frozen test & Out-of-time metrics, ablations, intervals and leakage audit & RQ1, RQ2 \\
 G4: Decision & Constraint and expected-utility layer for reorder/retention actions & Same-path policy comparison and sensitivity to cost assumptions & RQ3 \\
@@ -829,7 +825,7 @@ G6: Lifecycle & Version, drift, response and outcome monitoring protocol & Reval
 
 \system{} is positioned as the proposed response to this combined gap. Public or
 generated evidence can test parts of the procedure; closing the contextual,
-decision and owner-centred gaps requires consenting pharmacy data and participant
+decision and owner-centred gaps requires consenting business data and participant
 evaluation. If those data are unavailable, the final thesis must report the
 corresponding gaps as still open rather than treating a prototype or external
 benchmark as proof of local effectiveness.

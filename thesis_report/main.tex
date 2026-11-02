@@ -415,11 +415,11 @@
   pdftitle={AI-Powered Business Analytics System for Performance Evaluation, Insight Extraction, and Strategy Optimization},
   pdfauthor={Md. Rakib Hossain and Shah Jamal Islam},
   pdfsubject={Initial Thesis Progress Report, February 2026 - February 2027},
-  pdfkeywords={Bangladesh pharmacy SMEs, pharmacy inventory, expiry-aware replenishment, demand forecasting, customer segmentation, explainable AI, B-SMART}
+  pdfkeywords={Bangladesh SMEs, business performance, constraint-aware strategy recommendations, demand forecasting, customer segmentation, explainable AI, B-SMART}
 }
 
 \newcommand{\system}{B-SMART}
-\newcommand{\reportdate}{7 September 2026}
+\newcommand{\reportdate}{2 November 2026}
 \newcommand{\projectperiod}{February 2026 - February 2027}
 \newcommand{\cmark}{\cellcolor{softgreen}\textbf{C}}
 \newcommand{\amark}{\cellcolor{softorange}\textbf{A}}
@@ -455,7 +455,7 @@
     Strategy Optimization\par}
     \vspace{0.30cm}
     {\large\bfseries Initial Thesis Progress Report\par}
-    {\normalsize Initial Application Domain: Bangladeshi Retail Pharmacies\par}
+    {\normalsize Application Scope: Bangladeshi SME Businesses\par}
     \vspace{0.15cm}
     {\normalsize Project Period: \projectperiod\par}
     {\normalsize Status Date: \reportdate\par}
@@ -558,7 +558,7 @@ remains in progress until February 2027.
 
 Operational data is used for business intelligence and analytics to structure the data for decision-making. Decision-makers can explain performance, predict future performance, and select an appropriate response \cite{chen2012business}. In a small or medium enterprise (SME), the journey towards analytics starts with familiar records: invoice lines, product movements, purchase receipts, expenses, payments, and customer visits. These records can shed light on revenue and stock position, but their value becomes limited if they remain on paper ledgers, spreadsheets, and separate applications. The owner might be aware of a sales drop last month but not realize what products, customers, or operating conditions were responsible for the reduction, whether the pattern is likely to persist, or whether an inexpensive course of action should be followed.
 
-This is a more challenging decision than making a dashboard. In retail, to ensure product availability, an owner of a pharmacy should make an early estimate of product demand and order in advance from a supplier. The order should be determined with respect to limited cash, storage capacity, pack multiples, and delivery time. Too little stock will result in stock-outs and lost sales, while too much will lead to high inventory levels and obsolescence. Much of the capital tied up in excess inventory can lead to near-expiry or expired stock, which can vary based on batch, remaining shelf life, and temperature-sensitive storage. Otherwise, an attractive order may still be possible.
+This is a more challenging decision than making a dashboard. In retail, to ensure product availability, an owner of a business should make an early estimate of product demand and order in advance from a supplier. The order should be determined with respect to limited cash, storage capacity, pack multiples, and delivery time. Too little stock will result in stock-outs and lost sales, while too much will lead to high inventory levels and obsolescence. Much of the capital tied up in excess inventory can lead to near-expiry or expired stock, which can vary based on batch, remaining shelf life, and temperature-sensitive storage. Otherwise, an attractive order may still be possible.
 
 Meanwhile, a once-valuable customer may become inactive, or a product may appear profitable because the costs were incompletely recorded. A promotion might lead to an increase in volume without a corresponding increase in contribution. These questions are based on the same operational history but involve different analytical activities within the same decision context.
 
@@ -567,15 +567,21 @@ Hierarchy, intermittency, promotions, and local events are all identified as fac
 So, the problem investigated in this research is not to put a pretty face on a sales file. It is to construct a defensible path from business events to out-of-time predictions and then from predictions to actionable, explainable decisions.
 
 
-\section{Bangladesh Pharmacy SME Context}
+\section{Bangladesh SME Business Context}
 
-The first application and empirical application is an inventory-holding retail pharmacy in Bangladesh. Several consenting pharmacies make up one similar vertical for model development and evaluation. The framework might subsequently be adapted to grocery, fashion, electronics, or other SME categories, but those extensions need to have their own data, constraints, and validation. This scope is shorter than the approved thesis title, but it makes the business entities, prediction units, and decisions that can be tested clear.
+The framework targets small and medium enterprises (SMEs) in Bangladesh
+across business sectors, including retail, wholesale, distribution and services.
+A shared operational core covers sales, purchases, expenses, payments, customers
+and performance indicators. Inventory, batch, expiry and capacity modules apply
+only where relevant to the business. Sector and business characteristics are
+retained explicitly; a common framework does not imply a universal model or
+already demonstrated effectiveness in every sector.
 
 Bangladesh-specific studies show that perceived benefit, management and organisational readiness, government support, cost, complexity, and organisational and environmental context influence the adoption of ICT in SMEs \cite{hoque2016ict,shahadat2023digital}. Research on mobile financial services also demonstrates the importance of ease of use and the affordances of everyday practice, such as mobility and self-control \cite{hazra2021mfs}. These results suggest that local payment channels and low-friction data entry, together with owner-readable explanations, are requirements for the design rather than optional details for presentation.
 
-This study is based on a functional definition of its population instead of relying on a regulatory size threshold that is subject to change. The set of target pharmacies has stock, records sales and purchases, makes branch-, product-, or batch-level decisions, and has limited specialist analytics capability. The unit of analysis can be a pharmacy, branch, stock-keeping unit (SKU), batch, customer, or historical customer snapshot, depending on the research question. A customer snapshot is either used or not used depending on the specific research question.
+This study is based on a functional definition of its population instead of relying on a regulatory size threshold that is subject to change. The set of target businesses has stock, records sales and purchases, makes branch-, product-, or batch-level decisions, and has limited specialist analytics capability. The unit of analysis can be a business, branch, stock-keeping unit (SKU), batch, customer, or historical customer snapshot, depending on the research question. A customer snapshot is either used or not used depending on the specific research question.
 
-Conclusions will be limited to those pharmacies and the evidence actually collected. The system can only be used for business and inventory decisions, not for diagnosis. It does not include prescription selection or dosage recommendations.
+Conclusions will be limited to the sampled businesses, sectors and evidence actually collected. Recommendations remain subject to owner approval and business-specific feasibility checks.
 
 
 \section{Decision Environment and Stakeholder Requirements}
@@ -642,7 +648,7 @@ This analysis leads to four owner-facing qualities: that the output is a decisio
 
 \section{Problem Statement}
 
-The middle problem is the lack of a reliable and convenient link between data from these logs and the analysis of the resulting information. These logs are used for three activities: recording pharmacy operations, extracting predictive insights from the data, and choosing an action that is viable for the business.
+The middle problem is the lack of a reliable and convenient link between data from these logs and the analysis of the resulting information. These logs are used for three activities: recording business operations, extracting predictive insights from the data, and choosing an action that is viable for the business.
 
 Orders can be stored in a transaction system, but even when the data are available, there may be no forecasts. A stand-alone model can report an accuracy score after evaluation, but it can still be untrustworthy because the features may not have existed at the time the prediction was supposed to be made. Its test data may have contained information from the training period, or it may be unable to deliver an output that is related to budget, stock, lead time, and customer consent. A recommendation can therefore be technically correct but not feasible for the business.
 
@@ -710,7 +716,7 @@ Negative and conditional findings are therefore informative within these boundar
 
 \subsection{General Objective}
 
-The overall goal is to create and test an AI-based business solution. The analytics framework is designed as a solution that allows Bangladeshi retail pharmacies to track their business performance, extract reliable and explainable insights, and prioritise feasible strategies while maintaining owner control.
+The overall goal is to create and test an AI-based business solution. The analytics framework is designed as a solution that allows Bangladeshi SME businesses to track their business performance, extract reliable and explainable insights, and prioritise feasible strategies while maintaining owner control.
 
 
 \subsection{Specific Objectives}
@@ -719,11 +725,11 @@ The study will:
 
 \begin{enumerate}[label=O\arabic*.]
 
-\item specify an auditable canonical data model for sales, with a focus on the pharmacy and its activities, including products, stock, batches, expiry, purchases, returns, customers, suppliers, payments, and expenses;
+\item specify an auditable canonical data model for sales, with a focus on the business and its activities, including products, stock, batches, expiry, purchases, returns, customers, suppliers, payments, and expenses;
 
 \item build reproducible preprocessing and feature pipelines for performance analysis, SKU demand, customer inactivity, and segmentation;
 
-\item compare transparent baselines, a pooled multi-pharmacy model, and shop-adapted models using chronological and held-out-pharmacy validation, with both predictive and decision-oriented measures;
+\item compare transparent baselines, a pooled multi-business model, and shop-adapted models using chronological and held-out-business validation, with both predictive and decision-oriented measures;
 
 \item measure uncertainty and provide explanations at both global and case levels, while recognising that association does not imply causation;
 
@@ -736,9 +742,13 @@ The study will:
 
 \section{Initial Solution Concept}
 
-The suggested solution is \system{}: the Bangladesh SME Monitoring, Analytics, Recommendations, and Tracking System. The first validated vertical is retail pharmacy, but the framework is architecturally separated into SME categories so that it can be extended and separately validated for other categories. It is not simply a new analytical tool; rather, it provides an end-to-end decision-support process.
+The proposed solution is \system{}: the Bangladesh SME Monitoring,
+Analytics, Recommendations, and Tracking System. It is a multi-sector business
+decision-support framework with a shared operational core and configurable
+sector-specific analytical tasks and constraints. It does not assume that one
+trained model is suitable for all businesses.
 
-Pharmacy business events are brought into a governed operational layer, where validated events are converted into time-frozen analytical views. A clear comparison is then made among transparent baselines, a pooled multi-pharmacy model, and shop-adapted candidates, where sufficient evidence is available. The selected model produces forecasts, risk estimates, and segment profiles for an active strategy layer. This strategy layer maps the forecasts, risks, and segment profiles to feasible strategies. Before listing and prioritising actions, the shop owner provides the relevant constraints. Each displayed action is accompanied by the data cutoff, model or baseline source, uncertainty or error range, source documentation, and supporting factors. The owner's response and the subsequent outcome are retained in the system for evaluation and monitoring.
+SME business events are brought into a governed operational layer, where validated events are converted into time-frozen analytical views. A clear comparison is then made among transparent baselines, a pooled multi-business model, and shop-adapted candidates, where sufficient evidence is available. The selected model produces forecasts, risk estimates, and segment profiles for an active strategy layer. This strategy layer maps the forecasts, risks, and segment profiles to feasible strategies. Before listing and prioritising actions, the shop owner provides the relevant constraints. Each displayed action is accompanied by the data cutoff, model or baseline source, uncertainty or error range, source documentation, and supporting factors. The owner's response and the subsequent outcome are retained in the system for evaluation and monitoring.
 
 The three analytical outputs match the approved title. \emph{Performance evaluation} tabulates customer behaviour, stock movement, and margin, all of which are associated with revenue from reconciled records. \emph{Insight extraction} estimates future demand, identifies meaningful behavioural groups, and detects customer inactivity. These estimates are then used in \emph{strategy optimisation} to generate candidate actions, such as adjusting order quantities and/or retention priorities, subject to cash, storage, lead time, minimum order quantity, current stock, and customer-contact consent.
 
@@ -762,7 +772,7 @@ subsequent learning.
 \node[stage,right=of records] (views) {\textbf{Historical views}\\validated KPIs and cutoff-safe features};
 \node[stage,right=of views] (insights) {\textbf{Analytical insight}\\demand, inactivity, segments, uncertainty};
 \node[stage,right=of insights] (decision) {\textbf{Owner decision}\\feasible ranked action and later outcome};
-\node[guard,below=1.35cm of $(views)!0.5!(insights)$] (guard) {Cross-cutting controls: pharmacy scope, provenance, privacy, leakage prevention, active constraints, explanation and audit trail};
+\node[guard,below=1.35cm of $(views)!0.5!(insights)$] (guard) {Cross-cutting controls: business scope, provenance, privacy, leakage prevention, active constraints, explanation and audit trail};
 \draw[flow] (records) -- (views);
 \draw[flow] (views) -- (insights);
 \draw[flow] (insights) -- (decision);
@@ -771,7 +781,7 @@ subsequent learning.
 \draw[flow] (insights.south) -- (insights.south |- guard.north);
 \draw[flow] (decision.south) -- (decision.south |- guard.north);
 \end{tikzpicture}}
-\caption{Functional scope of \system{} from pharmacy evidence to an accountable owner decision.}
+\caption{Functional scope of \system{} from business evidence to an accountable owner decision.}
 \label{fig:solution_scope}
 \end{figure}
 
@@ -782,7 +792,7 @@ The thesis is based on four research questions:
 
 \begin{description}[style=nextline,leftmargin=2em]
 
-\item[RQ1.] Do features such as calendar effects, price, promotion, and market context enhance out-of-time branch--SKU demand forecasts over seasonal and statistical baselines in the target pharmacy setting?
+\item[RQ1.] Do features such as calendar effects, price, promotion, and market context enhance out-of-time branch--SKU demand forecasts over seasonal and statistical baselines in the target business setting?
 
 \item[RQ2.] How accurately and reliably can a historical customer snapshot predict whether there will be no repeat purchase within a predetermined future time period?
 
@@ -795,25 +805,25 @@ The thesis is based on four research questions:
 
 \section{Scope and Boundaries}
 
-The study focuses on Bangladeshi retail pharmacies, structured operational data, descriptive indicators, demand forecasting, customer inactivity, behavioural segment identification, explainability, and pharmacy business strategies such as replenishment, stock-out review, overstock or near-expiry review, and consent-aware customer retention.
+The study focuses on Bangladeshi SME businesses, structured operational data, descriptive indicators, demand forecasting, customer inactivity, behavioural segment identification, explainability, and business strategies such as replenishment, stock-out review, overstock or near-expiry review, and consent-aware customer retention.
 
-Participating pharmacies contribute only their own portion of the data. Installed and anonymised research fields are used for cross-shop modelling, while the raw records and constraint profile of each shop remain tenant-isolated. External portability testing on a different dataset does not, by itself, validate the portability of the method to Bangladeshi pharmacy settings. Public price information can provide background information but cannot replace evidence at the invoice, stock, batch, and constraint levels.
+Participating businesses contribute only their own portion of the data. Installed and anonymised research fields are used for cross-shop modelling, while the raw records and constraint profile of each shop remain tenant-isolated. External portability testing on a different dataset does not, by itself, validate the portability of the method to Bangladeshi business settings. Public price information can provide background information but cannot replace evidence at the invoice, stock, batch, and constraint levels.
 
-The study does not include clinical diagnosis, prescription or dosage recommendations, manufacturing scheduling, credit scoring, employee surveillance, uncontrolled price changes, or unrestricted customer profiling. It does not claim causal inferences based on attributions of observational features. It will not treat generated data as field evidence or mix synthetic and observed materials without clear identification. Reported real-world scores will not be extrapolated by assuming that they are equivalent to the performance of participating pharmacies.
+The study does not include manufacturing scheduling, credit scoring, employee surveillance, uncontrolled price changes, or unrestricted customer profiling. It does not claim causal inferences based on attributions of observational features. It will not treat generated data as field evidence or mix synthetic and observed materials without clear identification. Reported real-world scores will not be extrapolated by assuming that they are equivalent to the performance of participating businesses.
 
 The study does not claim to transfer its results automatically to other SME verticals or to non-validated settings. The implementation details, experimental results, and final conclusions are presented in Chapters~\ref{chapter_implementation}--\ref{chapter_conclusion}. Any optional feature can be deliberately enabled and evaluated within the defined experimental scope.
 
 
 \section{Expected Contributions and Significance}
 
-The evaluated integration of established research methods, constrained within the context and relevance of small retail pharmacies, is expected to be a research contribution. Specifically, the work is expected to include (i) a traceable pharmacy operational-to-analytical data design; (ii) reusable historical-snapshot protocols designed to avoid common forms of data leakage; (iii) a Bangladesh-aware comparison of forecasting and customer-inactivity approaches; and (iv) a clear link between prediction and constrained, actionable recommendations.
+The evaluated integration of established research methods, constrained within the context and relevance of small SME businesses, is expected to be a research contribution. Specifically, the work is expected to include (i) a traceable business operational-to-analytical data design; (ii) reusable historical-snapshot protocols designed to avoid common forms of data leakage; (iii) a Bangladesh-aware comparison of forecasting and customer-inactivity approaches; and (iv) a clear link between prediction and constrained, actionable recommendations.
 
 The work also provides evidence of the ability of owners to interpret and apply the information presented to them. When making a recommendation, the system presents supporting evidence to help the owner understand the ``how and why'' of the recommendation, while using familiar rules and maintaining the owner's control over the action. It is not intended to exclude the owner from the decision or to label a numerical output as profitable without considering the business context. Before measuring the impact on the business, the system must first establish that its outputs are accurate, interpretable, and actionable.
 
 
 \section{Anticipated Challenges}
 
-The most crucial dependency is on relevant primary data obtained from several consenting pharmacies. The purpose of the aggregated history is to obtain invoice lines, inventory, products, batches, expiration dates, prices, and customers. It may not be easy to estimate the number of products, batches, expiration date data, prices, and customers present in a particular pharmacy. Available publicly sourced data in Bangladesh may not contain the identifiers needed, and partner data may be lacking. Change in SKU codes, lack of consistency between box/strip/piece units, and missing cost or measurement data are some reasons for such issues.
+The most crucial dependency is on relevant primary data obtained from several consenting businesses. The purpose of the aggregated history is to obtain invoice lines, inventory, products, batches, expiration dates, prices, and customers. It may not be easy to estimate the number of products, batches, expiration date data, prices, and customers present in a particular business. Available publicly sourced data in Bangladesh may not contain the identifiers needed, and partner data may be lacking. Change in SKU codes, lack of consistency between box/pack/unit units, and missing cost or measurement data are some reasons for such issues.
 
 The technical risks are intermittent demand, short history, new products, stock-out censoring, class imbalance, and data drift. The scientific risks are optimistic, underwhelming, or unsafe results of the models, incompatible comparison between datasets, conclusion drawn from a single model, and the disruptive to-and-fro process of data between several models. The human risks are time constraint, disparity in digital skills, lack of trust in the digital setting, and excessive confidence in explanations.
 
@@ -847,18 +857,27 @@ This operating context also includes mobile financial services. Through in-depth
 
 
 
-\subsection{Retail Pharmacy as the Initial SME Vertical}
+\subsection{Shared SME Core and Sector-Specific Requirements}
 
-The empirical focus is intentionally restricted to retail pharmacies rather than other health services. A blend of various SME categories that are not directly related to each other would make the analytical setting less consistent. Pharmacies share regular retail requirements that need to be considered within a common operational context. The system needs to reconcile sales, purchasing, suppliers, payments, and stock records, while also accounting for batch identity, expiry dates, and remaining inventory, as these factors influence inventory decisions. Other relevant considerations include shelf life, box--strip--piece conversion, and, where necessary, temperature-sensitive items and their storage conditions. These fields can affect the feasibility of an action even when they are not directly used to improve a demand model. A purchasing recommendation that does not consider such constraints may be ``statistically'' plausible but not suitable for use in the shop.
+The research scope covers SME businesses across sectors. Shared entities
+support comparable performance indicators, while sector-specific extensions
+capture differences in products, service capacity, sales cycles, procurement
+and operating constraints. Inventory-based firms may require SKU, stock, pack,
+batch and shelf-life fields; service firms may require service type, bookings,
+staff availability and delivery capacity. Fields that do not apply are marked
+not applicable rather than populated with invented values.
 
-This is a business decision-support boundary, not a clinical boundary. The artifact may focus on replenishment, stock-outs, overstock, near-expiry items, and other operational issues, but it does not diagnose a patient, prescribe medication or a treatment plan, or recommend a dosage. A specialised extension of the literature for the pharmacy domain is still required before the final thesis, particularly regarding storage- and expiry-aware batch processing. The design decisions are therefore made with reference to sector-specific evidence rather than being stated solely from the software design.
+The artifact supports business performance evaluation, insight extraction
+and feasible strategy recommendations. Owners retain authority over actions.
+Sector-specific requirements and owner constraints are assessed before an
+analytical task is enabled; unsupported tasks return an explicit evidence gap.
 
 
 \subsection{Performance Evaluation and Data Foundations}
 
 Well-defined measures are the starting point for performance evaluation. Revenue, gross margin, average order value, stock turnover, return rate, and customer repeat rate each need to include a defined time window, an aggregation method, and appropriate treatment of events such as rescheduling, refunds, and lost fees. If any of these elements are not incorporated into a dashboard value, the resulting measure may be misleading or ignored. Definitions may also differ from the accounting records or may refer to different time periods. The canonical layer therefore maintains invoice lines and stock movements while creating analytical measures through documented views.
 
-Data provenance concerns where a record came from, when it was received, and how it was transformed. Primary pharmacy data should be accompanied by provenance information, together with appropriate customer anonymisation and organisational anonymisation. For public data, the context and reasonable implications of the applicable licence should also be documented.
+Data provenance concerns where a record came from, when it was received, and how it was transformed. Primary business data should be accompanied by provenance information, together with appropriate customer anonymisation and organisational anonymisation. For public data, the context and reasonable implications of the applicable licence should also be documented.
 
 
 \subsection{Data Quality, Provenance and Temporal Semantics}
@@ -869,7 +888,7 @@ A cancelled invoice can be exported, a return can occur days after the original 
 
 Missingness also needs to be interpreted rather than automatically imputed. Missing customer identity does not necessarily indicate an unsuccessful import; it may represent an anonymous cash sale. Unit cost may be missing, which makes a record unsuitable for gross-margin analysis. Similarly, missing values may make a record unsuitable for unit-demand forecasting. A zero sale can represent zero demand, a closed location, a missing file, or an unobserved stock-out. These states have different meanings and should be separated when the source provides sufficient evidence to distinguish them. Eligibility is therefore proposed at the level of a research task, business, and period rather than by declaring an entire dataset universally `clean'' or `dirty''.
 
-This quality model is completed by provenance. Each derived field should be identified by its source columns, transformation version, and analytical cut-off. Each reported result should also record the dataset manifest, data split, and model or rule version that generated it. This is not merely corrective inheritance; it is an auditable process that makes the analytical results reproducible. It also helps ensure that a public or generated dataset is not silently substituted for the primary Bangladeshi pharmacy evidence.
+This quality model is completed by provenance. Each derived field should be identified by its source columns, transformation version, and analytical cut-off. Each reported result should also record the dataset manifest, data split, and model or rule version that generated it. This is not merely corrective inheritance; it is an auditable process that makes the analytical results reproducible. It also helps ensure that a public or generated dataset is not silently substituted for the primary Bangladeshi business evidence.
 
 
 \subsection{Customer Analytics: RFM, CLV and Segmentation}
@@ -1143,7 +1162,7 @@ Bangladesh-focused research explains important determinants and lived affordance
 \paragraph{G2---Operational-to-Analytical Integration Gap.}
 BI and CRM research demonstrates how operational data can support multiple analytical functions \cite{chen2012business}. However, many forecasting, segmentation, and churn studies represented in the literature matrix begin with a pre-prepared analytical dataset. They do not necessarily examine the complete path from an auditable business event, through a historically valid snapshot, to prediction, action, and subsequent outcome.
 
-This missing path is particularly important for the target pharmacy context. Corrections to invoices, stock adjustments, changes in organizational records, and other operational updates can alter the data from which analytical features are derived. If these changes are not versioned and historically traceable, previously generated rows, features, and analytical cutoffs may become difficult or impossible to reproduce. Therefore, an integrated mechanism is required to preserve lineage from source events to analytical outputs and subsequent decisions.
+This missing path is particularly important for the target business context. Corrections to invoices, stock adjustments, changes in organizational records, and other operational updates can alter the data from which analytical features are derived. If these changes are not versioned and historically traceable, previously generated rows, features, and analytical cutoffs may become difficult or impossible to reproduce. Therefore, an integrated mechanism is required to preserve lineage from source events to analytical outputs and subsequent decisions.
 
 \paragraph{G3---Methodological-Validity Gap.}
 Previous research has established several methodological risks and safeguards separately. Data leakage has been examined in \cite{kaufman2012leakage}; intermittent-demand forecasting has been addressed in \cite{croston1972intermittent,syntetos2005intermittent}; hierarchical forecast coherence has been studied in \cite{hyndman2011hierarchical}; forecast-error measurement has been discussed in \cite{hyndman2006accuracy}; and probability calibration has been examined in \cite{niculescu2005calibration}.
@@ -1166,7 +1185,7 @@ Relationships between business inputs, model outputs, actions, and subsequent ou
 Without such lifecycle accountability, a system cannot reliably determine whether a previously generated recommendation remains appropriate after business conditions, input distributions, operating constraints, or model behaviour have changed. A complete SME analytical system therefore requires explicit versioning, monitoring, outcome recording, and revalidation mechanisms.
 
 \begin{quote}
-From the evidence reviewed, the central research gap is the absence, within the bounded scholarly evidence base, of a jointly evaluated and Bangladesh-centred retail-pharmacy system that connects auditable operational records from multiple shops with leakage-controlled and calibrated analytical models; compares appropriate baselines, pooled pharmacy models, and eligible pharmacy-adapted models; and translates those analytical outputs into shop-constrained, owner-understandable actions whose use and subsequent outcomes can be monitored over time.
+From the evidence reviewed, the central research gap is the absence, within the bounded scholarly evidence base, of a jointly evaluated and Bangladesh-centred multi-sector SME system that connects auditable operational records from multiple shops with leakage-controlled and calibrated analytical models; compares appropriate baselines, pooled business models, and eligible business-adapted models; and translates those analytical outputs into shop-constrained, owner-understandable actions whose use and subsequent outcomes can be monitored over time.
 \end{quote}
 
 Figure~\ref{fig:gap_bridge} groups the six gaps into three connected bridges.
@@ -1186,10 +1205,10 @@ evaluated before the artifact can support a bounded effectiveness claim.
 \node[gap] (g12) at (-4.4,2.2) {\textbf{G1--G2}\\context and operational-to-analytical integration};
 \node[gap] (g34) at (0,2.2) {\textbf{G3--G4}\\methodological validity and prediction-to-decision};
 \node[gap] (g56) at (4.4,2.2) {\textbf{G5--G6}\\owner explanation and lifecycle accountability};
-\node[bridge] (b1) at (-4.4,0.35) {Local multi-pharmacy evidence with auditable events and snapshots};
+\node[bridge] (b1) at (-4.4,0.35) {Local multi-business evidence with auditable events and snapshots};
 \node[bridge] (b2) at (0,0.35) {Baseline-controlled estimates linked to feasible constrained actions};
 \node[bridge] (b3) at (4.4,0.35) {Understandable evidence, owner response, outcomes and revalidation};
-\node[result] (artifact) at (0,-1.5) {\textbf{Jointly evaluated \system{} artifact}\\claims remain limited to the evidence tier and target pharmacy setting};
+\node[result] (artifact) at (0,-1.5) {\textbf{Jointly evaluated \system{} artifact}\\claims remain limited to the evidence tier and target business setting};
 \draw[flow] (g12) -- (b1);
 \draw[flow] (g34) -- (b2);
 \draw[flow] (g56) -- (b3);
@@ -1221,8 +1240,8 @@ Table~\ref{tab:gap_traceability} makes each identified gap operationally testabl
 \hline
 
 G1: Context &
-Explicit external-data boundaries and a Tier-1 multi-pharmacy study &
-Primary pharmacy records, explicit separation of local evidence from foreign or generated evidence, and clearly bounded cross-context claims &
+Explicit external-data boundaries and a Tier-1 multi-business study &
+Primary business records, explicit separation of local evidence from foreign or generated evidence, and clearly bounded cross-context claims &
 RQ1--RQ4 \\
 \hline
 
@@ -1259,7 +1278,7 @@ O6 \\
 \end{tabularx}
 \end{table}
 
-\system{} is designed to address this combined contextual, analytical, and operational gap. Public or generated evidence may be used to test selected components of the methodology, but such evidence cannot by itself close the contextual, decision-oriented, or owner-centred gaps. Closing those gaps requires appropriately consented pharmacy data and participant-based evaluation from the target context.
+\system{} is designed to address this combined contextual, analytical, and operational gap. Public or generated evidence may be used to test selected components of the methodology, but such evidence cannot by itself close the contextual, decision-oriented, or owner-centred gaps. Closing those gaps requires appropriately consented business data and participant-based evaluation from the target context.
 
 Accordingly, the final thesis should report the extent to which such local evidence is available and should distinguish clearly between gaps that are empirically closed, gaps that are only partially addressed, and gaps that remain open. The existence of a prototype, successful benchmark result, or external dataset should not be treated as evidence that a corresponding local research gap has been closed. Benchmark evidence may establish methodological or technical performance, whereas claims of local effectiveness require evidence from the intended operational context.
 
@@ -1269,6 +1288,26 @@ Accordingly, the final thesis should report the extent to which such local evide
 
 \chapter{Proposed Methodology}
 \label{chapter_methodology}
+
+\section{Multi-Sector Applicability and Validation}
+
+The intended scope is SME business analytics across sectors, rather than one
+industry. A common core models organizations, branches, transactions, expenses,
+payments, customers and suppliers. Configurable sector extensions preserve
+differences in products, services, inventory, resource capacity and operating
+rules. Demand and reorder experiments apply to inventory-based firms; service
+firms require service-demand and capacity tasks. Customer-risk tasks require
+stable pseudonymous identifiers and adequate follow-up in either setting.
+
+Sampling and reporting will retain sector and business identifiers. Results
+will be reported per business and per sector before aggregation. Pooled models
+will be compared with sector-specific and business-adapted alternatives using
+the same chronological cutoffs. Held-out-business tests assess transfer within
+represented sectors; held-out-sector tests assess transfer across sectors when
+enough independent sectors and businesses are available. In their absence,
+cross-sector transfer remains untested. Preprocessing is fitted only on training
+data, and firms with many rows must not dominate business-level conclusions.
+No universal accuracy or business-value claim follows from framework coverage.
 
 \section{Research Approach}
 \label{sec:research_approach}
@@ -1288,7 +1327,7 @@ alone is insufficient to establish predictive validity, business usefulness,
 operational feasibility, or usability. Accordingly, the research evaluates not
 only whether the proposed system can be implemented, but also whether its
 analytical outputs remain temporally valid, whether its recommendations respect
-the operating constraints of participating pharmacies, and whether intended
+the operating constraints of participating businesses, and whether intended
 users can interpret and appropriately use those recommendations.
 
 
@@ -1298,7 +1337,7 @@ The research is organized into four related stages:
 
 \begin{enumerate}[label=P\arabic*.]
     \item \textbf{Problem and evidence definition:}
-    define the target pharmacy-SME setting, research questions, literature-derived
+    define the target business-SME setting, research questions, literature-derived
     requirements, admissible forms of evidence, analytical units, and success
     measures.
 
@@ -1355,15 +1394,15 @@ alter the already frozen final evaluation result.
 \end{figure}
 
 The unit of analysis differs according to the analytical task. For demand
-forecasting, the primary unit is a pharmacy--branch--SKU--day or
-pharmacy--branch--SKU--week observation, selected according to the density and
+forecasting, the primary unit is a business--branch--SKU--day or
+business--branch--SKU--week observation, selected according to the density and
 reliability of the available data. Batch and expiry information is retained for
 inventory-related decisions even when demand itself is forecast at the SKU level.
 
 For customer-risk modelling, the analytical unit is a customer feature snapshot
 constructed at a declared historical cutoff. For strategy evaluation, the unit is
 an eligible action evaluated under the same information set and relevant
-product-, pharmacy-, or customer-specific constraints as the comparison policy.
+product-, business-, or customer-specific constraints as the comparison policy.
 These task-specific units prevent evidence from one analytical level from being
 incorrectly interpreted as evidence at another level.
 
@@ -1384,7 +1423,7 @@ easiest to demonstrate.
     actionable recommendation.
 
     \item[DR2: Operational integrity]
-    Source events shall preserve pharmacy and branch scope, stable product, batch,
+    Source events shall preserve business and branch scope, stable product, batch,
     and invoice identifiers, event time, receipt or ingestion time, expiry
     information where available, transaction status, and correction history.
     KPIs, analytical features, and model outputs shall be reproducible from these
@@ -1412,7 +1451,7 @@ easiest to demonstrate.
     \item[DR6: Feasible and responsible action]
     Recommendation generation shall account for purchasing budget, current and
     incoming stock, lead time, pack size or minimum-order quantity, storage
-    capacity, remaining shelf life, expiry risk, cold-chain requirements,
+    capacity, remaining shelf life, expiry risk, temperature-controlled storage requirements,
     contact consent, and relevant policy constraints. Infeasible actions shall be
     filtered or explicitly withheld rather than merely assigned a low score.
 
@@ -1457,7 +1496,7 @@ operationalized as follows:
 \begin{description}[style=nextline,leftmargin=2em]
 
     \item[RQ1 / H1]
-    A pharmacy demand model incorporating locally available calendar, price,
+    A business demand model incorporating locally available calendar, price,
     promotion, and market-context features will reduce out-of-time WAPE or MASE
     relative to both an otherwise identical model without those feature groups
     and a seasonal-naive benchmark.
@@ -1536,30 +1575,31 @@ material to the target decision.
 
 \subsection{Target Population and Sampling Plan}
 
-The target population consists of operating retail pharmacies in Bangladesh that
-maintain inventory and transaction records relevant to the analytical tasks
-defined in this study. Recruitment will initially target approximately three to
-five independent pharmacies, where feasible, within the same retail-pharmacy
-vertical.
+The target population consists of SMEs operating in Bangladesh across
+retail, wholesale, distribution and service sectors. Recruitment will seek
+multiple independent businesses and record sector, size and operating model.
+An initial three-to-five-business pilot can test collection and usability,
+but cannot establish population-wide or cross-sector effectiveness. Broader
+sector comparisons require adequate independent businesses in each stratum.
 
 The intended analytical target is approximately 12--24 months of longitudinal
-records across participating pharmacies, subject to data availability, data
-quality, owner consent, and ethics approval. A pharmacy with substantially less
+records across participating businesses, subject to data availability, data
+quality, owner consent, and ethics approval. A business with substantially less
 history may still contribute to testing data collection, mapping, schema, and
-data-quality procedures, but such a pharmacy shall not independently determine
-claims of temporal or cross-pharmacy generalization.
+data-quality procedures, but such a business shall not independently determine
+claims of temporal or cross-business generalization.
 
-Pharmacies will be purposively recruited because participation depends on access
+Businesses will be purposively recruited because participation depends on access
 to relevant longitudinal evidence, including invoice, stock, purchase, batch,
 and expiry information where available, together with owner agreement. At a
 minimum, included transaction data shall contain interpretable dates, product
 identifiers, quantities, and sufficient contextual information to reconstruct
-the relevant business process. Participating pharmacies shall also have an owner
+the relevant business process. Participating businesses shall also have an owner
 or responsible operator capable of describing the current replenishment process.
 
 Customer-level analysis imposes additional eligibility requirements. It requires
 stable pseudonymous customer identifiers and sufficient follow-up after each
-historical cutoff to determine the relevant outcome. If a pharmacy, analytical
+historical cutoff to determine the relevant outcome. If a business, analytical
 task, or time period does not satisfy the minimum evidence requirements for a
 specific analysis, that unit will be excluded from that analysis rather than
 being repaired through invented identifiers, fabricated constraints, or assumed
@@ -1585,10 +1625,10 @@ public, or generated data cannot silently alter the claim being tested.
 \hline
 
 1 &
-Consenting Bangladesh pharmacy invoice, stock, purchase, batch, expiry, customer,
+Consenting Bangladesh business invoice, stock, purchase, batch, expiry, customer,
 and constraint records &
-Primary pharmacy forecasting, customer-risk, strategy, and usability evaluation &
-Generalization beyond sampled pharmacies or automatic transfer to other SME
+Primary business forecasting, customer-risk, strategy, and usability evaluation &
+Generalization beyond sampled businesses or untested transfer across SME
 verticals \\
 \hline
 
@@ -1596,14 +1636,14 @@ verticals \\
 Bangladesh market-price data, including relevant WFP/DAM sources
 \cite{wfp2026prices} &
 Local external context and separate market-price analysis &
-Direct inference of SKU-level pharmacy sales, customer behaviour, or pharmacy
+Direct inference of SKU-level business sales, customer behaviour, or business
 revenue when those variables are not observed \\
 \hline
 
 2b &
 UCI Online Retail II data from the United Kingdom \cite{chen2012uci} &
 Real-invoice pipeline testing and portability checks for selected methods &
-Claims about Bangladeshi purchasing behaviour or local pharmacy effectiveness \\
+Claims about Bangladeshi purchasing behaviour or local business effectiveness \\
 \hline
 
 2c &
@@ -1637,7 +1677,7 @@ is available.
 
 \subsection{Data Acquisition and Variable Availability}
 
-Primary data acquisition will preferentially use exports from the pharmacy's
+Primary data acquisition will preferentially use exports from the business's
 existing point-of-sale, accounting, inventory, or spreadsheet workflow. Where no
 consistent export mechanism exists, a controlled collection template will be
 provided.
@@ -1648,11 +1688,10 @@ cancellation or return status. Recommended additional fields include unit cost,
 promotion status, payment mode, pseudonymous customer identifier, stock on hand,
 stock movement, purchase receipt, supplier lead time, and incoming quantity.
 
-The pharmacy-specific data extension may additionally include generic and brand
-name, product strength, dosage form, manufacturer, box--strip--piece conversion,
-batch or lot identifier, expiry date, minimum acceptable remaining shelf life,
-cold-chain requirement, and recall or damaged-stock status when these records
-exist.
+Sector-specific extensions capture product category, brand, unit conversion,
+lot and shelf life where relevant for inventory businesses. Service businesses
+may instead provide service type, booking and completion timestamps, resource
+availability and capacity. Non-applicable fields remain explicitly not applicable.
 
 Owner-maintained constraint inputs may include purchasing budget, storage
 capacity, minimum-order quantity or pack multiple, category-specific limits, and
@@ -1780,7 +1819,7 @@ requires recorded or defensibly reconstructed inventory, lead-time assumptions,
 relevant operational constraints, and cost ranges. Customer-retention actions
 require an appropriate contact and consent mechanism.
 
-Any pharmacy--task--period combination that violates a required condition will
+Any business--task--period combination that violates a required condition will
 be declared ineligible for that analysis, and the reason will be included in the
 audit record.
 
@@ -1834,9 +1873,9 @@ customer names, phone numbers, email addresses, national identifiers, account
 numbers, or mobile-wallet numbers are not required for the research analytical
 tables.
 
-Where customer-level analysis is permitted, each participating pharmacy will use
+Where customer-level analysis is permitted, each participating business will use
 a separate salted pseudonymous customer key. Any mapping capable of
-re-identification will remain under the control of the participating pharmacy
+re-identification will remain under the control of the participating business
 and will not be stored in the research repository.
 
 The data-sharing agreement will specify the research purpose, authorized
@@ -1846,7 +1885,7 @@ follow least-privilege principles, while published outputs will consist of
 aggregated results or individually reviewed de-identified examples.
 
 A model-generated customer-retention recommendation does not itself authorize
-contact with that customer. Customer consent and the participating pharmacy's
+contact with that customer. Customer consent and the participating business's
 contact policy remain independent feasibility constraints. Similarly, system
 outputs are intended to support rather than replace the decision-making authority
 of the owner.
@@ -1857,7 +1896,7 @@ of the owner.
 The proposed operational schema includes the principal entities and events
 required to preserve business context and analytical traceability. These include
 \texttt{Organization}, \texttt{Branch}, \texttt{Product},
-\texttt{PharmacyProductProfile}, \texttt{InventoryLot},
+\texttt{SectorProductProfile}, \texttt{InventoryLot},
 \texttt{ConstraintProfile}, \texttt{Customer}, \texttt{Supplier},
 \texttt{SalesOrder}, \texttt{SalesOrderItem}, \texttt{Payment},
 \texttt{InventoryBalance}, \texttt{StockMovement}, \texttt{PurchaseOrder},
@@ -1901,7 +1940,7 @@ updated.
 \node[entity] (org) {Organization\\Branch};
 
 \node[entity, right=1.2cm of org] (product)
-{Product + Pharmacy Profile\\Supplier + Constraint};
+{Product + Sector Profile\\Supplier + Constraint};
 
 \node[entity, right=1.2cm of product] (customer)
 {Customer\\Consent};
@@ -1940,7 +1979,7 @@ updated.
 \label{fig:data_model}
 \end{figure}
 
-Validation rules will examine the uniqueness of pharmacy-scoped identifiers,
+Validation rules will examine the uniqueness of business-scoped identifiers,
 chronological consistency, nonnegative physical quantities where appropriate,
 payment and order reconciliation, cancellation handling, pack conversion,
 batch and expiry consistency, inventory balances, and stock movements.
@@ -1956,7 +1995,7 @@ subsequent evaluation.
 \section{Formal Problem Formulation}
 \label{sec:formal_problem_formulation}
 
-Let \(b\) denote a pharmacy, \(l\) a branch, \(p\) a product, \(r\) an
+Let \(b\) denote a business, \(l\) a branch, \(p\) a product, \(r\) an
 inventory batch, \(c\) a customer, and \(t\) a decision time. Let
 
 \begin{equation}
@@ -2036,7 +2075,7 @@ business performance.
 \subsection{Demand Prediction}
 \label{subsec:demand_prediction}
 
-Demand for pharmacy \(b\), branch \(l\), product \(p\), and forecast horizon
+Demand for business \(b\), branch \(l\), product \(p\), and forecast horizon
 \(h\) is represented as
 
 \begin{equation}
@@ -2104,7 +2143,7 @@ U(a\mid D_t)
 
 subject to operational constraints including budget, storage, minimum-order
 quantity, supplier lead time, pack multiple, remaining shelf life, expiry,
-cold-chain capacity, incoming stock, available inventory, and customer-contact
+temperature-controlled storage capacity, incoming stock, available inventory, and customer-contact
 consent where applicable.
 
 This transparent objective represents the transition from predictive outputs to
@@ -2220,7 +2259,7 @@ into model development \cite{kaufman2012leakage}.
 Demand features may include lagged demand, rolling location and variability
 statistics, day of week, month, distance to relevant festivals, price,
 discount, known promotions, stock-out indicators, pack units, remaining shelf
-life, and external market context. Batch-expiry and cold-chain variables
+life, and external market context. Batch-expiry and temperature-controlled storage variables
 primarily constrain action feasibility and enter prediction only when their
 decision-time availability and analytical role are defensible.
 
@@ -2281,7 +2320,7 @@ the available evidence volume and task structure.
 \end{itemize}
 
 
-\subsection{Model Eligibility and Pharmacy-Domain Adaptation}
+\subsection{Model Eligibility and Sector-Aware SME Adaptation}
 
 A complex candidate will be rejected when insufficient training history is
 available, when it fails to outperform the relevant baseline on development
@@ -2290,10 +2329,10 @@ operational cost provides no material value. This rule keeps the proposed system
 useful when the scientifically appropriate solution is a simple forecast or
 business rule.
 
-Model eligibility also follows the available pharmacy-domain evidence. A new or
-data-limited pharmacy uses a transparent baseline and may use a pooled model
-trained on authorized, de-identified evidence from the participating pharmacy
-vertical.
+Model eligibility also follows the available sector-aware SME evidence. A new or
+data-limited business uses a transparent baseline and may use a pooled model
+trained on authorized, de-identified evidence from comparable businesses
+with sector and operating-model context.
 
 With moderate history, shop- and branch-specific context may be used to
 calibrate the pooled model. A fully shop-adapted candidate is considered only
@@ -2303,8 +2342,8 @@ Baseline, pooled, and shop-adapted candidates are compared from common
 chronological origins wherever possible. Additional complexity is accepted only
 after a material and stable improvement has been demonstrated.
 
-Held-out-pharmacy evaluation tests transfer to a pharmacy excluded from training
-and prevents high pooled transaction volume from concealing weak cross-pharmacy
+Held-out-business evaluation tests transfer to a business excluded from training
+and prevents high pooled transaction volume from concealing weak cross-business
 generalization.
 
 Figure~\ref{fig:model_ladder} visualizes this conservative promotion rule. The
@@ -2323,7 +2362,7 @@ the transparent baseline.
 ]
 \node[level] (base) at (-4.8,1.3) {\textbf{Level 1: transparent baseline}\\always required and reproducible};
 \node[test] (t1) at (-1.55,1.3) {Enough approved cross-shop evidence and stable gain?};
-\node[level] (pooled) at (1.65,1.3) {\textbf{Level 2: pooled pharmacy model}\\held-out-shop transfer tested};
+\node[level] (pooled) at (1.65,1.3) {\textbf{Level 2: pooled business model}\\held-out-shop transfer tested};
 \node[test] (t2) at (4.9,1.3) {Enough local history and material shop-specific gain?};
 \node[level] (adapted) at (4.9,-1.05) {\textbf{Level 3: shop-adapted model}\\same-origin comparison required};
 \node[stop] (retain1) at (-1.55,-1.05) {No: retain baseline and report the reason};
@@ -2335,7 +2374,7 @@ the transparent baseline.
 \draw[flow] (t2) -- node[right,font=\scriptsize]{yes} (adapted);
 \draw[flow] (t2.south west) -- node[above left,font=\scriptsize]{no} (retain2.north east);
 \end{tikzpicture}}
-\caption{Evidence-dependent model promotion ladder for each pharmacy analytical task.}
+\caption{Evidence-dependent model promotion ladder for each business analytical task.}
 \label{fig:model_ladder}
 \end{figure}
 
@@ -2365,7 +2404,7 @@ Create the historical feature snapshot \(X_t\)\;
 
 Apply transformations fitted on the appropriate training evidence\;
 
-Compare eligible baseline, pooled-pharmacy, and shop-adapted candidates\;
+Compare eligible baseline, pooled-business, and shop-adapted candidates\;
 
 Estimate demand uncertainty and customer inactivity probabilities\;
 
@@ -2375,7 +2414,7 @@ Generate candidate actions with source and decision-time metadata\;
 
 \ForEach{\(a\in A\)}{
 
-    Check budget, stock, pack, expiry, storage, lead-time, and consent
+    Check budget, stock, pack, applicable shelf-life, storage, lead-time, capacity, and consent
     feasibility under \(C_t\)\;
 
     Estimate benefit, cost, and uncertainty using declared assumptions\;
@@ -2429,9 +2468,6 @@ does not retrain the model within the request path.
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.88\textwidth]{bsmart_architecture_square.png}
-% The original TikZ source is retained below as an editable fallback.
-\iffalse
 \resizebox{\textwidth}{!}{%
 \begin{tikzpicture}[
     block/.style={
@@ -2479,19 +2515,19 @@ does not retrain the model within the request path.
 benchmarks, context, and baselines};
 
 \node[input] (shops) at (-4.7,1.25)
-{\textbf{Multiple Consenting Pharmacies}\\
-sales, stock, purchases, batches, and returns};
+{\textbf{Multiple Consenting Businesses}\\
+sales, costs, customers, stock or service events};
 
 \node[input] (constraints) at (-4.7,-1.25)
 {\textbf{Active Shop Constraint Profile}\\
-budget, pack/MOQ, lead time, expiry, storage, and consent};
+budget, capacity, supply rules, and consent};
 
 \node[block,fill=softorange] (base) at (0,3.75)
 {\textbf{Base Candidates}\\
-transparent baselines and pooled pharmacy model};
+transparent baselines and pooled business model};
 
 \node[block,fill=softblue] (canon) at (0,1.25)
-{\textbf{Governed Pharmacy Evidence}\\
+{\textbf{Governed SME Evidence}\\
 validation, tenant isolation, provenance, and snapshots};
 
 \node[block,fill=softorange] (selection) at (0,-1.25)
@@ -2508,7 +2544,7 @@ feasibility, benefit, cost, risk, and ranking};
 
 \node[output] (actions) at (4.7,-3.75)
 {\textbf{Shop-Specific Recommendations}\\
-reorder, stock-out, overstock, expiry, and retention};
+purchasing, capacity, cost review, and retention};
 
 \node[block,fill=gray!15] (owner) at (0,-3.75)
 {\textbf{Owner Decision}\\
@@ -2520,31 +2556,32 @@ observed result, drift, revalidation, and rollback};
 
 \draw[arrow] (reference) -- (base);
 \draw[arrow] (shops) -- (canon);
-\draw[arrow] (base) -- (selection);
+\draw[arrow] (base.east) -- ++(0.45,0) |- (selection.north east);
 \draw[arrow] (canon) -- (selection);
 \draw[arrow] (selection) -- (analytics);
 \draw[arrow] (analytics) -- (strategy);
-\draw[arrow] (constraints) -- (strategy);
+\draw[arrow] (constraints.south) -- ++(0,-0.35) -| (strategy.south);
 \draw[arrow] (strategy) -- (actions);
 \draw[arrow] (actions) -- (owner);
 \draw[arrow] (owner) -- (monitor);
-\draw[feedback] (monitor.north) |- (selection.west);
+\draw[feedback] (monitor.north) -- ++(0,0.25) -| (selection.south);
 
 \end{tikzpicture}
 }
-\fi
-\caption{Pharmacy-specific constraint-aware \system{} architecture based on the supervisor-guided flow.}
+\caption{SME-specific constraint-aware \system{} architecture based on the supervisor-guided flow.}
 \label{fig:bsmartarchitecture}
 \end{figure}
 
-The architecture separates the pooled pharmacy-level model from shop-level
-personalization. Authorized and de-identified records from multiple pharmacies
-may support a pooled pharmacy model, while each deployed pharmacy retains its
+
+
+The architecture separates the pooled business-level model from shop-level
+personalization. Authorized and de-identified records from multiple businesses
+may support a pooled business model, while each deployed business retains its
 isolated operational data and active constraint profile.
 
 The selected analytical model produces estimates rather than explicit orders.
 The strategy layer combines those estimates with the shop's budget, inventory,
-pack, expiry, storage, lead-time, and consent constraints to generate feasible
+pack, applicable shelf-life, storage, lead-time, capacity, and consent constraints to generate feasible
 recommendations.
 
 
@@ -2918,14 +2955,14 @@ that natural or causal customer types exist.
 Planned ablations include local-calendar features, price and promotion features,
 market context, pack and expiry context, and customer-history extensions.
 
-Comparisons will include the transparent baseline, eligible pooled-pharmacy
+Comparisons will include the transparent baseline, eligible pooled-business
 models, and shop-adapted models where the available evidence permits them.
 Where augmentation is used, real-only and augmented variants will be evaluated
 under controlled comparisons.
 
-Results will be presented by pharmacy, with paired comparisons conducted over
-common forecast origins or comparable analytical instances. A held-out-pharmacy
-transfer test will be used where sufficient participating pharmacies are
+Results will be presented by business, with paired comparisons conducted over
+common forecast origins or comparable analytical instances. A held-out-business
+transfer test will be used where sufficient participating businesses are
 available.
 
 Uncertainty will be summarized using paired block-bootstrap intervals across
@@ -2963,10 +3000,10 @@ structure. Forecast errors from neighbouring dates will not be treated as
 independent observations. Block-bootstrap resampling will preserve local
 temporal dependence.
 
-When multiple pharmacies are available, between-shop differences will be
+When multiple businesses are available, between-shop differences will be
 reported rather than hidden within a pooled transaction count. A
-leave-one-pharmacy-out or held-out-pharmacy analysis will assess whether a
-pooled pharmacy model transfers to an unseen shop.
+leave-one-business-out or held-out-business analysis will assess whether a
+pooled business model transfers to an unseen shop.
 
 Customer comparisons will account for repeated snapshots from the same
 customers. Usability-task comparisons will be paired within participants where
@@ -3228,20 +3265,19 @@ before model replacement \\
 \label{sec:expected_methodological_outputs}
 
 At completion, the methodology is expected to produce a documented canonical
-pharmacy schema and data dictionary, a versioned feature and partner-data
+business schema and data dictionary, a versioned feature and partner-data
 protocol, and explicit specifications for transparent baselines,
-pooled-pharmacy models, and eligible shop-adapted models.
+pooled-business models, and eligible shop-adapted models.
 
 The study will also produce a reproducible evaluation package, a
 constraint-aware recommendation procedure, and an owner-study instrument.
 
-Initial effectiveness claims will remain restricted to the participating
-pharmacy vertical and to the evidence actually collected. Extension to another
-SME category would require a new domain schema, new operational constraints,
-additional data collection, and a separate validation cycle.
+Effectiveness claims will be restricted to the sampled businesses,
+sectors, tasks and periods actually evaluated. Transfer to a new sector requires
+schema and constraint mapping, new evidence and held-out-sector evaluation.
 
-The artifact is intended to provide business decision support. It does not
-diagnose medical conditions, prescribe medicine, or recommend medicine dosage.
+The system supports business decisions under owner oversight; automated
+actions outside the evaluated business tasks remain excluded.
 
 Implementation details, observed numerical results, and conclusions will be
 reported only when the corresponding empirical evidence is available.
@@ -3262,21 +3298,24 @@ reported only when the corresponding empirical evidence is available.
 \cleardoublepage
 \chapter{Conclusions}
 \label{chapter_conclusion}
-This report provides the first strong foundation for developing an AI-driven business intelligence system focused on Bangladeshi retail pharmacies. It presents the first implementation and empirical testing of an analytics system targeting one of its intended applications: Bangladeshi retail pharmacies. The framework could be extended to other SME sectors in the future. However, each extension would require its own data, operational constraints, and validation. Therefore, the framework is intended as a transferable foundation rather than a one-size-fits-all solution.
+This progress report establishes a research foundation for an AI-powered business analytics framework for Bangladeshi SMEs across sectors. A shared operational core supports performance evaluation, insight extraction and strategy recommendations, with sector-specific extensions and business-specific constraints. Implementation and empirical evaluation remain future work; broad intended coverage is not evidence of effectiveness in every sector.
 
 The central issue is not simply the absence of a prediction model. Rather, the critical gap is the lack of a trustworthy link between operational records, temporally valid analytics, and feasible owner decisions. The value of a forecast is seriously reduced when its data source is unclear, future information is included in the test data, or the resulting recommendation fails to account for practical factors such as cash availability, stock levels, supplier lead time, or purchasing constraints. Similarly, a probability of customer risk is incomplete as a decision-support output if it is uncalibrated or if the proposed customer contact does not consider consent.
 
 Four main conclusions can be drawn from the existing evidence. First, Bangladesh-specific studies highlight design considerations that are essential for workflow fit, perceived value, cost, and local technology adoption \cite{hoque2016ict,shahadat2023digital,hazra2021mfs}. Second, retail inventory research identifies several characteristics that need to be explicitly addressed, including intermittency, hierarchy, causality, and interactions between different inventory items \cite{fildes2022retail,syntetos2005intermittent,hyndman2011hierarchical,syntetos2010stock}. Third, leakage control, imbalance-aware evaluation, probability calibration, and understandable evidence represent important scientific and disciplinary safeguards \cite{kaufman2012leakage,saito2015pr,niculescu2005calibration,lundberg2017shap}. Fourth, these principles have not yet been integrated and evaluated together within a bounded, Bangladesh-oriented SME workflow. This constitutes the central research gap addressed by this study.
 
-The proposed framework, \system{}, responds to this gap through a traceable sequence that connects multi-pharmacy operational evidence, historical data snapshots, model comparison, uncertainty estimation, explanation, shop-specific constraint-aware action ranking, owner response, and subsequent outcome monitoring. The transparent baseline represents the model that the pharmacy should follow, whereas the pooled model and the eligible shop-adapted model are intended primarily as reference models for comparison.
+The proposed framework, \system{}, responds to this gap through a traceable sequence that connects multi-business operational evidence, historical data snapshots, model comparison, uncertainty estimation, explanation, shop-specific constraint-aware action ranking, owner response, and subsequent outcome monitoring. The baseline, eligible sector-aware pooled model and business-adapted model are compared on common chronological evaluation periods; the deployed choice may remain the baseline when additional complexity provides no stable improvement.
 
 The framework incorporates practical constraints that can affect whether an inventory action is feasible, including purchasing budget, available stock, pack-size or minimum-order requirements, supplier lead time, product expiry, storage conditions, and customer consent. The intended contribution is therefore a governed decision-support sequence and its empirical assessment, rather than the introduction of a new classification algorithm or the assumption that a more complex model will always produce better business outcomes.
 
-The framework is also designed to support continuous operation. Current data and recommendations can be refreshed as the software is used in the pharmacy, while model drift and decision outcomes are monitored over time. Continuous operation does not mean uncontrolled retraining after every transaction. Any replacement model should be versioned and evaluated chronologically against both the currently deployed model and the established baseline before it is promoted to production.
+The framework is also designed to support continuous operation. Current data and recommendations can be refreshed as the software is used in the business, while model drift and decision outcomes are monitored over time. Continuous operation does not mean uncontrolled retraining after every transaction. Any replacement model should be versioned and evaluated chronologically against both the currently deployed model and the established baseline before it is promoted to production.
 
-The system remains a business decision-support tool. It does not diagnose medical conditions, prescribe medicines, or recommend medicine dosages.
+The artifact supports business performance evaluation, insight extraction
+and feasible strategy recommendations. Owners retain authority over actions.
+Sector-specific requirements and owner constraints are assessed before an
+analytical task is enabled; unsupported tasks return an explicit evidence gap.
 
-The study provides a testable step toward the next stage of research, particularly in relation to ethics and multi-pharmacy partner-data readiness. The next stage should address pharmacy-specific schema and constraint inputs, model transparency and monitoring, model freezing, held-out-pharmacy evaluation, untouched-period evaluation, usability tasks, and decision-impact analysis. These areas are necessary for determining whether the system provides measurable practical value in real pharmacy workflows.
+The study provides a testable step toward the next stage of research, particularly in relation to ethics and multi-business partner-data readiness. The next stage should address sector-specific schema and constraint inputs, model transparency and monitoring, model freezing, held-out-business evaluation, untouched-period evaluation, usability tasks, and decision-impact analysis. These areas are necessary for determining whether the system provides measurable practical value in real business workflows.
 
 At this stage, however, the study does not yet establish overall system effectiveness. Final claims should therefore remain proportional to the observed evidence. For example, when the evaluation shows no meaningful difference between models or decision-support conditions, it would be inappropriate to claim that the additional complexity or explanations improved decision-making. Such findings should instead be reported as evidence about the limits of the proposed approach and used to refine the corresponding research questions.
 

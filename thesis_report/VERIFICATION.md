@@ -1,5 +1,21 @@
 # Verification record
 
+## Current SME scope revision — 2 November 2026
+
+- Active LaTeX sources now cover Bangladeshi SMEs across sectors, with a shared
+  operational core and inventory/service-specific extensions.
+- Research population, data plan, model hierarchy, architecture, evaluation and
+  conclusions were revised; no experimental results were invented.
+- Added explicit per-business, per-sector, held-out-business and conditional
+  held-out-sector evaluation. Broad framework coverage is not universal validity.
+- `main.tex` uses the editable TikZ architecture instead of the old domain raster.
+- Compiled with pdfLaTeX through repeated passes; citations and references resolve
+  without undefined references/citations or overfull-box diagnostics.
+- Title and architecture pages were rendered for visual inspection.
+- The archived submitted report is retained unchanged as a historical document.
+
+## Historical verification — pharmacy revision
+
 Verified on 8 September 2026 from the project repository.
 
 The verified build incorporates the Bangladeshi retail-pharmacy scope and the
