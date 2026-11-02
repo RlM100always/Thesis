@@ -1,4 +1,57 @@
 \chapter{Experimental Results}
 \label{chapter_experimentalResults}
 
-% This chapter is intentionally reserved until the proposed experiments are run.
+\section{Experimental Scope and Provenance}
+The analysis dated 2 November 2026 used exports supplied through the researcher's Google Drive. The tables contain 32 shops, all classified as Grocery \& FMCG Retail, 480 product records and 16 categories. The sales-order export has 365,447 distinct order IDs, covering 1 January 2023 to 31 December 2025, with recorded net sales totalling BDT 258,266,572.34. These are descriptive properties of the supplied files; merchant origin, business consent, and whether the data were generated or collected from live business systems have not been independently verified. In particular, all 32 shop records give the same opening date, 1 January 2021. The shop and order-line datasets must not be treated as validated independent merchant observations without a documented provenance chain.
+
+The three spreadsheets titled \texttt{sales\_lines} appear to be overlapping or alternate exports: each reports about 736,685 rows and their inspected terminal line IDs coincide. Consequently, their rows were not naively concatenated or counted as three independent datasets. Only one copy of each named research target table was used for the experiments. Source-file SHA-256 values and detailed model settings are recorded in the accompanying local experiment package.
+
+\section{RQ1: Rolling One-Day-Ahead Demand Forecast}
+The prediction unit was one shop--category--day. Features included lagged units at 1, 7, 14 and 28 days; trailing seven- and 28-day means using observations from earlier days; calendar indicators; and shop and category identifiers. After the 28-day warm-up, the model used 468,480 training observations before August 2025, 31,232 validation observations in August--September 2025, and 47,104 test observations from 1 October to 31 December 2025. Test observations were zero in 39.82\% of cases. A fixed-seed LightGBM model stopped at iteration 224 on validation error.
+
+\begin{table}[htbp]\centering\small
+\caption{RQ1 held-out day-ahead forecast metrics (47,104 observations).}
+\label{tab:rq1_experiments}
+\begin{tabular}{lrrr}\toprule
+Model & WAPE (\%) & MAE (units) & RMSE (units)\\ \midrule
+Seasonal naive (lag 7) & 110.45 & 2.841 & 4.419\\
+Trailing seven-day mean & 89.70 & 2.307 & 3.367\\
+LightGBM & 83.98 & 2.160 & 3.120\\ \bottomrule
+\end{tabular}\end{table}
+
+The LightGBM WAPE improved on the trailing mean by 5.71 percentage points. Resampling the 32 shop clusters yielded a descriptive 95\% bootstrap interval of 5.36--6.07 percentage points for that difference. Test-period prior-day sales were permitted to update subsequent one-step predictions: this is not a 92-day fixed-origin forecast. The target is observed units sold; unrecorded stockouts could make sales understate true demand.
+
+\section{RQ2: Customer Inactivity Within the Next 90 Days}
+The provided customer-snapshot labels were evaluated with a temporal TEST set. Training records whose target horizons ended on or after the first test snapshot date, 31 March 2025, were embargoed (10,483 excluded). The resulting training sample comprised 40,499 snapshots. The test included 21,164 snapshots from 10,613 distinct customers, with 41.18\% positive inactivity outcomes. No future purchase, label, customer ID or snapshot ID was used as a predictor.
+
+\begin{table}[htbp]\centering\small
+\caption{RQ2 90-day inactivity risk on the held-out test.}
+\label{tab:rq2_experiments}
+\begin{tabular}{lrrrr}\toprule
+Model & PR-AUC & ROC-AUC & Brier & Lift@10\%\\ \midrule
+Recency-only score & 0.6528 & 0.7498 & 0.2269 & 1.703\\
+Logistic regression & 0.7346 & 0.8211 & 0.1771 & 2.011\\
+LightGBM & 0.7405 & 0.8271 & 0.1681 & 2.022\\ \bottomrule
+\end{tabular}\end{table}
+
+The LightGBM PR-AUC improvement over logistic regression was 0.0059, with a 95\% customer-cluster bootstrap interval of 0.0022--0.0102. The gain is modest. The same customer can have snapshots in both training and testing at different chronological dates, so generalisation to entirely new customers requires another test. Calibration and a predeclared contact policy are required before any real intervention.
+
+\section{RQ3: Offline Inventory-Policy Scenarios}
+The policy comparison file has 2,500 paired cases across 32 shops. It contains a field explicitly named \path{synthetic_future_30_day_oracle_demand_units}, along with assumed lead times, assumed budgets and simulated cost/lost-sales outputs. The following are scenario computations, not observed interventions.
+
+\begin{table}[htbp]\centering\small
+\caption{RQ3 supplied scenario outcomes: service-cost trade-off.}
+\label{tab:rq3_experiments}
+\begin{tabular}{lrr}\toprule
+Measure & Baseline & Trend policy\\ \midrule
+Scenario cost (BDT) & 2,227,690.07 & 2,208,289.47\\
+Scenario lost units & 45 & 100\\ \bottomrule
+\end{tabular}\end{table}
+
+Trend cost was BDT 19,400.60 lower (0.87\%), but modelled lost units increased by 55. Trend cost was lower in 5.16\% of cases and equal in 94.80\%. Without a defensible cost of lost demand or a real prospective pilot, these results do not demonstrate superior practical utility.
+
+\section{RQ4: Explanation-Case Audit}
+The 1,800 generated explanation cases have a recorded completeness flag of YES in all rows. There are 199 REORDER and 1,601 NO\_ACTION outcomes. Their constraint reasons are sufficient stock (1,600), under reorder point with budget available (199), and insufficient budget (1). These records describe generated recommendations, not human-subject measurements. No evidence of participant comprehension, task completion, time, trust or usability improvement is provided.
+
+\section{Overall Interpretation and Threats to Validity}
+On the researcher-provided exports, supervised models improve upon specified simple baselines for one-step category demand and 90-day inactivity classification. The offline strategy scenarios show a cost-versus-lost-units trade-off. Explanation records support an internal evidence audit only. Neither statistical accuracy nor the presence of a working software interface establishes merchant-level value or cross-sector validity. Before final submission, source authenticity and permissions, duplicate-aware order-line validation, held-out-shop experiments, multi-cutoff robustness, independently observed inventory outcomes and a real owner usability study are required. Cross-sector generalisation cannot be claimed from an exclusively grocery/FMCG sample.
