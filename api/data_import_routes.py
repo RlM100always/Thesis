@@ -175,10 +175,17 @@ def export_anonymized_sales(membership: CurrentMembership, db: Db):
 
 @router.post("/train-demand-model", tags=["research"])
 def train_demand_model(membership: CurrentMembership, db: Db):
-    """Block legacy model training until the new dataset-specific pipeline exists."""
+    """Keep training closed until a validated, provenance-backed real-data
+    pipeline is installed for the current multi-sector SME thesis.
+
+    A tenant's operational import and the thesis evaluation package are
+    deliberately separate. This route must not silently train on the old
+    synthetic simulation or turn a demo fixture into a reported result.
+    """
     require_permission(membership, "model:train")
     raise HTTPException(
         status_code=503,
-        detail="Old trained models have been retired. Import and validate the new "
-               "Bangladesh SME synthetic relational dataset before training new models.",
+        detail="Old trained models have been retired. A validated real SME dataset "
+               "with provenance, schema checks and an approved run manifest is "
+               "required before training new models.",
     )
