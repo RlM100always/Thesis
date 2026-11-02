@@ -1,5 +1,11 @@
 # B-SMART thesis and product master plan
 
+> **Current thesis scope (2 November 2026):** the research report now covers
+> Bangladeshi SME businesses across sectors. This product plan contains earlier
+> pharmacy-oriented planning language in places; treat that language as legacy
+> product context until it is rewritten against the real-data onboarding
+> contract. It does not establish a dataset or an empirical result.
+
 Supersedes the previous version of this file. Consolidates the original
 proposal, the codebase built so far, and the supervisor's structural
 directions (chapter layout, literature-review scale, plagiarism/AI-use

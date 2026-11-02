@@ -1,5 +1,13 @@
 # B-SMART — Full System Architecture (10 layers)
 
+> **Scope notice (2 November 2026).** This file contains the earlier
+> pharmacy-oriented architecture and simulation-era measurements. It is kept
+> as historical design context, not as the current multi-sector SME thesis
+> evidence. The active data contract is
+> [`REAL_DATA_ONBOARDING.md`](REAL_DATA_ONBOARDING.md); no numbers below may be
+> reported as results until the collected real dataset is independently
+> validated and a new run manifest is frozen.
+
 This is the authoritative architecture for the thesis. Every layer below is
 either **[IMPLEMENTED]**, **[PARTIAL]** or **[PROPOSED]** — that status is not
 decoration, it is the rule that stops a proposal being presented as a result.
