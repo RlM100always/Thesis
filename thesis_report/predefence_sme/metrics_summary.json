@@ -1,0 +1,102 @@
+{
+  "execution_date": "2026-11-02",
+  "scope": "32 grocery/FMCG retail shops; 480 products; 16 categories",
+  "rq1": {
+    "test_rows": 47104,
+    "test_period": "2025-10-01 to 2025-12-31",
+    "zero_observation_fraction": 0.3982,
+    "methods": {
+      "seasonal_naive_7": {
+        "wape": 1.1045,
+        "mae": 2.841,
+        "rmse": 4.419
+      },
+      "trailing_mean_7": {
+        "wape": 0.897,
+        "mae": 2.307,
+        "rmse": 3.367
+      },
+      "lightgbm": {
+        "wape": 0.8398,
+        "mae": 2.16,
+        "rmse": 3.12
+      }
+    },
+    "shop_cluster_bootstrap": {
+      "replicates": 1500,
+      "mean_wape_improvement_pp": 5.71,
+      "ci95_pp": [
+        5.36,
+        6.07
+      ]
+    }
+  },
+  "rq2": {
+    "snapshots": 72146,
+    "customers": 10613,
+    "train_after_embargo": 40499,
+    "embargoed_train_rows": 10483,
+    "test_rows": 21164,
+    "positive_rate": 0.4118,
+    "methods": {
+      "recency_rule": {
+        "pr_auc": 0.6528,
+        "roc_auc": 0.7498,
+        "brier": 0.2269,
+        "lift_at_10": 1.7033
+      },
+      "logistic_regression": {
+        "pr_auc": 0.7346,
+        "roc_auc": 0.8211,
+        "brier": 0.1771,
+        "lift_at_10": 2.0107
+      },
+      "lightgbm": {
+        "pr_auc": 0.7405,
+        "roc_auc": 0.8271,
+        "brier": 0.1681,
+        "lift_at_10": 2.0221
+      }
+    },
+    "customer_cluster_bootstrap": {
+      "replicates": 300,
+      "delta_pr_auc": 0.00593,
+      "ci95": [
+        0.00224,
+        0.01019
+      ]
+    }
+  },
+  "rfm_exploratory": {
+    "customers": 10613,
+    "selected_k": 3,
+    "silhouette": 0.5892,
+    "cluster_sizes": [
+      299,
+      6364,
+      3950
+    ]
+  },
+  "rq3": {
+    "cases": 2500,
+    "baseline_cost_bdt": 2227690.07,
+    "trend_cost_bdt": 2208289.47,
+    "cost_gap_trend_minus_baseline_bdt": -19400.6,
+    "baseline_lost_units": 45,
+    "trend_lost_units": 100,
+    "case_share_trend_cheaper": 0.0516,
+    "case_share_equal": 0.948,
+    "case_share_trend_more_expensive": 0.0004,
+    "interpretation": "scenario-only; future demand field is explicitly synthetic/oracle"
+  },
+  "rq4": {
+    "cases": 1800,
+    "evidence_complete": 1800,
+    "no_action": 1601,
+    "reorder": 199,
+    "sufficient_stock": 1600,
+    "below_reorder_budget_available": 199,
+    "budget_insufficient": 1,
+    "interpretation": "structured case audit only; no human usability study"
+  }
+}
