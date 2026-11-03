@@ -42,6 +42,7 @@ jobs:
           SHOTS_DIR: ${{ github.workspace }}/artifacts/screenshots
         run: python -m pytest e2e/test_thesis_screenshots.py -q
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: thesis-operational-ui-screenshots
           path: artifacts/screenshots/*.png
