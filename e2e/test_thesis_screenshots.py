@@ -101,7 +101,7 @@ def test_capture_real_operational_ui(shop, new_session):
     page = session.page
 
     pages = [
-        ("01-dashboard.png", "/"),
+        ("01-dashboard.png", "/app"),
         ("02-sales-pos.png", "/sales"),
         ("03-inventory.png", "/inventory"),
         ("04-insights.png", "/insights"),
