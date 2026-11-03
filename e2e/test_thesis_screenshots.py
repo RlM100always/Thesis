@@ -93,7 +93,11 @@ def test_capture_real_operational_ui(shop, new_session):
     page.get_by_label("ইমেইল").fill(data["email"])
     page.locator('input[type="password"]').fill("correct horse battery")
     page.get_by_role("button", name="লগইন", exact=True).click()
-    page.locator("main.main").wait_for(state="visible", timeout=20000)
+    page.wait_for_timeout(2500)
+    if not page.locator("main.main").is_visible():
+        (out / "00-login-debug.png").parent.mkdir(parents=True, exist_ok=True)
+        page.screenshot(path=str(out / "00-login-debug.png"), full_page=True)
+        raise AssertionError("Login did not reach the expected main layout. URL=" + page.url + " BODY=" + page.locator("body").inner_text()[:3000])
     page = session.page
 
     pages = [
