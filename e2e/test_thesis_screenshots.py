@@ -88,7 +88,12 @@ def test_capture_real_operational_ui(shop, new_session):
     out = Path(SHOTS)
     out.mkdir(parents=True, exist_ok=True)
     session = new_session(1440, 1000)
-    sign_in(session, data["email"])
+    page = session.page
+    page.goto(f"{WEB}/#/login")
+    page.get_by_label("ইমেইল").fill(data["email"])
+    page.locator('input[type="password"]').fill("correct horse battery")
+    page.get_by_role("button", name="লগইন", exact=True).click()
+    page.locator("main.main").wait_for(state="visible", timeout=20000)
     page = session.page
 
     pages = [
