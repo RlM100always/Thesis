@@ -414,7 +414,7 @@
   urlcolor=blue,
   pdftitle={AI-Powered Business Analytics System for Performance Evaluation, Insight Extraction, and Strategy Optimization},
   pdfauthor={Md. Rakib Hossain and Shah Jamal Islam},
-  pdfsubject={Initial Thesis Progress Report, February 2026 - February 2027},
+  pdfsubject={Thesis Research Report: Evidence-Aware RQ Integration, February 2026 - February 2027},
   pdfkeywords={Bangladesh SMEs, business performance, constraint-aware strategy recommendations, demand forecasting, customer segmentation, explainable AI, B-SMART}
 }
 
@@ -3284,45 +3284,25 @@ reported only when the corresponding empirical evidence is available.
 
 \clearpage
 
+\input{Chapters/evidence_aware_methodology_2026_11_05.tex}
+\clearpage
+
 \chapter{Implementation}
 \label{chapter_implementation}
 
-% This chapter is intentionally reserved for the second-semester report.
+\input{Chapters/evidence_aware_implementation_2026_11_05.tex}
 
 \cleardoublepage
 \chapter{Experimental Results}
 \label{chapter_experimentalResults}
 
-% This chapter is intentionally reserved until the proposed experiments are run.
+\input{Chapters/evidence_aware_results_2026_11_05.tex}
 
 \cleardoublepage
 \chapter{Conclusions}
 \label{chapter_conclusion}
-This progress report establishes a research foundation for an AI-powered business analytics framework for Bangladeshi SMEs across sectors. A shared operational core supports performance evaluation, insight extraction and strategy recommendations, with sector-specific extensions and business-specific constraints. Implementation and empirical evaluation remain future work; broad intended coverage is not evidence of effectiveness in every sector.
+\input{Chapters/evidence_aware_conclusion_2026_11_05.tex}
 
-The central issue is not simply the absence of a prediction model. Rather, the critical gap is the lack of a trustworthy link between operational records, temporally valid analytics, and feasible owner decisions. The value of a forecast is seriously reduced when its data source is unclear, future information is included in the test data, or the resulting recommendation fails to account for practical factors such as cash availability, stock levels, supplier lead time, or purchasing constraints. Similarly, a probability of customer risk is incomplete as a decision-support output if it is uncalibrated or if the proposed customer contact does not consider consent.
-
-Four main conclusions can be drawn from the existing evidence. First, Bangladesh-specific studies highlight design considerations that are essential for workflow fit, perceived value, cost, and local technology adoption \cite{hoque2016ict,shahadat2023digital,hazra2021mfs}. Second, retail inventory research identifies several characteristics that need to be explicitly addressed, including intermittency, hierarchy, causality, and interactions between different inventory items \cite{fildes2022retail,syntetos2005intermittent,hyndman2011hierarchical,syntetos2010stock}. Third, leakage control, imbalance-aware evaluation, probability calibration, and understandable evidence represent important scientific and disciplinary safeguards \cite{kaufman2012leakage,saito2015pr,niculescu2005calibration,lundberg2017shap}. Fourth, these principles have not yet been integrated and evaluated together within a bounded, Bangladesh-oriented SME workflow. This constitutes the central research gap addressed by this study.
-
-The proposed framework, \system{}, responds to this gap through a traceable sequence that connects multi-business operational evidence, historical data snapshots, model comparison, uncertainty estimation, explanation, shop-specific constraint-aware action ranking, owner response, and subsequent outcome monitoring. The baseline, eligible sector-aware pooled model and business-adapted model are compared on common chronological evaluation periods; the deployed choice may remain the baseline when additional complexity provides no stable improvement.
-
-The framework incorporates practical constraints that can affect whether an inventory action is feasible, including purchasing budget, available stock, pack-size or minimum-order requirements, supplier lead time, product expiry, storage conditions, and customer consent. The intended contribution is therefore a governed decision-support sequence and its empirical assessment, rather than the introduction of a new classification algorithm or the assumption that a more complex model will always produce better business outcomes.
-
-The framework is also designed to support continuous operation. Current data and recommendations can be refreshed as the software is used in the business, while model drift and decision outcomes are monitored over time. Continuous operation does not mean uncontrolled retraining after every transaction. Any replacement model should be versioned and evaluated chronologically against both the currently deployed model and the established baseline before it is promoted to production.
-
-The artifact supports business performance evaluation, insight extraction
-and feasible strategy recommendations. Owners retain authority over actions.
-Sector-specific requirements and owner constraints are assessed before an
-analytical task is enabled; unsupported tasks return an explicit evidence gap.
-
-The study provides a testable step toward the next stage of research, particularly in relation to ethics and multi-business partner-data readiness. The next stage should address sector-specific schema and constraint inputs, model transparency and monitoring, model freezing, held-out-business evaluation, untouched-period evaluation, usability tasks, and decision-impact analysis. These areas are necessary for determining whether the system provides measurable practical value in real business workflows.
-
-At this stage, however, the study does not yet establish overall system effectiveness. Final claims should therefore remain proportional to the observed evidence. For example, when the evaluation shows no meaningful difference between models or decision-support conditions, it would be inappropriate to claim that the additional complexity or explanations improved decision-making. Such findings should instead be reported as evidence about the limits of the proposed approach and used to refine the corresponding research questions.
-
-
-\cleardoublepage
-
-\addtocontents{toc}{\vspace{1em}}
 \backmatter
 \label{Bibliography}
 \lhead{\emph{Bibliography}}
