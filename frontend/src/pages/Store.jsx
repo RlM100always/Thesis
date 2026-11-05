@@ -1931,7 +1931,7 @@ export default function StorePage() {
   return (
     <div className="s-site">
       {store.is_demo && <div role="status" style={{position:"relative",zIndex:50,padding:"12px 16px",background:"#fef3c7",color:"#78350f",fontWeight:700,textAlign:"center"}}>
-        এটি একটি পরীক্ষামূলক দোকান। এখানে দেওয়া অর্ডার শুধু ডেমো হিসেবে সংরক্ষিত হবে; কোনো বাস্তব পেমেন্ট বা ডেলিভারি হবে না। অনুগ্রহ করে নমুনা নাম, ফোন নম্বর ও ঠিকানা ব্যবহার করুন। কাউকে টাকা পাঠাবেন না।
+        ডেমো স্টোর — এখানে বাস্তব পেমেন্ট বা ডেলিভারি চালু নেই।
       </div>}
       {/* Floating cart button (mobile) */}
       {cartCount > 0 && (

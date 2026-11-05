@@ -31,7 +31,7 @@ test("old misleading and mixed public copy stays removed",()=>{
  const store=read("pages/Store.jsx");
  const directory=read("pages/StoreDirectory.jsx");
  const tracking=read("pages/OrderStatus.jsx");
- assert.match(store,/এটি একটি পরীক্ষামূলক দোকান/);
+ assert.match(store,/ডেমো স্টোর — এখানে বাস্তব পেমেন্ট বা ডেলিভারি চালু নেই/);
  assert.match(tracking,/অর্ডারের সর্বশেষ অবস্থা/);
  for(const obsolete of ["operational database-এ","Activate করে পণ্য Publish","independent owner account"]){
   assert.ok(!directory.includes(obsolete),obsolete);
