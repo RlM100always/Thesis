@@ -859,6 +859,12 @@ Chapter~\ref{chapter_backStudy} builds up the technical and contextual backgroun
 
 
 \cleardoublepage
+
+\section{How the Four Research Questions Form One Evidence Chain}
+The four research questions are maintained without changing their target definitions. RQ1 evaluates whether next-day observed shop--category sales can be forecast from historical data. RQ2 estimates customer inactivity risk at a temporally valid 90-day horizon. RQ3 tests a proposed reorder policy under declared scenario constraints, with a clear distinction between simulated savings and observed business outcomes. RQ4 audits whether action records include explicit reasons and constraints, while owner comprehension remains a separate human-evaluation requirement. Taken together they motivate an evidence-aware decision cycle: operational events, historical snapshot, prediction, constraints, accountable recommendation, owner response and later outcome.
+
+A new audit of RQ1 clarifies the intended decision unit: WAPE was 6.02\% for the daily network total but 83.98\% for individual shop--category--day observations on the \emph{same} predictions. Therefore a low aggregate error does not imply that a product reorder decision can be trusted. A defensible integrated system must validate predictions at the level of the actual decision and abstain when essential stock, source or consent evidence is absent. This study establishes a methodological and software foundation, not verified end-to-end field business impact.
+
 \chapter{Background Study and Related Work}
 \label{chapter_backStudy}
 
@@ -1305,6 +1311,12 @@ O6 \\
 \system{} is designed to address this combined contextual, analytical, and operational gap. Public or generated evidence may be used to test selected components of the methodology, but such evidence cannot by itself close the contextual, decision-oriented, or owner-centred gaps. Closing those gaps requires appropriately consented business data and participant-based evaluation from the target context.
 
 Accordingly, the final thesis should report the extent to which such local evidence is available and should distinguish clearly between gaps that are empirically closed, gaps that are only partially addressed, and gaps that remain open. The existence of a prototype, successful benchmark result, or external dataset should not be treated as evidence that a corresponding local research gap has been closed. Benchmark evidence may establish methodological or technical performance, whereas claims of local effectiveness require evidence from the intended operational context.
+
+
+\section{Synthesis: From Forecasting Skill to Accountable SME Actions}
+The literature on intermittent demand, hierarchical forecasting, data leakage, calibration and human-centred explainability suggests that model accuracy must be defined at the decision unit and evaluated alongside action feasibility and outcome quality. In multi-shop data, positive and negative forecast errors can cancel when sales are aggregated. A network-level total may therefore appear highly accurate even if the same predictions are unreliable for individual products and shops. Inactivity risk scores have a similar limitation: predictive association does not estimate whether contacting a customer will change future purchasing.
+
+The present thesis adds a reproducible four-level aggregation audit, a comparison with fixed-parameter two-stage and boosted-tree alternatives, and a clearly separated strategy and explanation evaluation. Crucially, the added models did not improve granular WAPE; this negative result is reported rather than suppressed. A new lead-time inventory replay and a consented human decision study remain necessary before attributing operational savings or better owner decisions to the combined framework. This is an evidence-aware integration design, not a claim to have discovered a new forecasting algorithm.
 
 \clearpage
 
