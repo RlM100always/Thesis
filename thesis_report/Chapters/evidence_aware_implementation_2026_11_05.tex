@@ -1,0 +1,52 @@
+% B-SMART evidence-aware implementation chapter, 5 November 2026.
+% Included by the original six-chapter thesis_report/main.tex.
+\section{Implementation Scope and Research--Software Boundary}
+
+B-SMART includes a multi-organisation operational web application and a separate offline empirical research workflow. The operational software supports SME transaction entry, sales, catalogue, inventory, purchasing, finance, role-scoped analytics, and a recommendation review/decision log. The experiments in Chapter~\ref{chapter_experimentalResults} use an independently executed Python evaluation pipeline. The saved LightGBM and XGBoost model artefacts are \emph{not} deployed as production predictive API endpoints. A page labelled Forecast or Segments is not by itself evidence that the thesis models are served in production.
+
+\section{Operational Software Implementation}
+\subsection{Application Architecture}
+The repository uses React and Vite for its frontend, FastAPI and SQLAlchemy for the Python API, and configurable SQLite/PostgreSQL relational storage. A tenant/organisation and branch scope is retained throughout the business data model. The backend enforces capabilities through role-based permission checks; frontend visibility is not treated as sufficient isolation. Operational event records, import events, and recommendation decisions are tracked through auditable routes.
+
+\subsection{Business Modules and Outputs}
+The operational workflow includes authenticated organisation/branch configuration; product catalogue and point-of-sale orders; inventory movements; supplier and purchasing records; sales returns; expense/payment/ledger reporting; and dashboard summary indicators. The application computes traceable operational KPIs where source evidence is adequate. Cost coverage is distinguished from revenue rather than assuming that missing costs represent zero. All time-window definitions and eligible transaction statuses should be documented for reported figures.
+
+\subsection{Recommendation and Owner Decision Contract}
+Operational candidates may be produced for reorder, near-expiry and eligible retention review. For a candidate to be actionable, its evidence bundle should contain the decision cutoff, eligible source snapshot, suggested action, estimated benefit and uncertainty (where supported), budget/stock/lead-time/capacity/consent constraints, and reason for abstaining when essential data are absent. The user can accept, reject, modify, or defer a recommendation; later outcome capture is a separate event. No predicted retention benefit is a causal campaign-uplift estimate.
+
+\section{Reproducible Offline Model Implementation}
+\subsection{RQ1 Feature Pipeline and Validation}
+The offline demand target is one-day-ahead observed shop--category--day sales, not latent uncensored SKU demand. Feature values are drawn from previous observations: lags 1, 7, 14 and 28 days; trailing 7- and 28-day means; shop/category encodings and calendar terms. Chronological development uses records before August 2025 for training, August--September for validation and October--December for held-out evaluation. An additional exploratory comparison refits LightGBM and trains fixed-parameter XGBoost and two-stage hurdle models on the same target. Reused final test results are explicitly marked exploratory, not pristine model-selection evidence.
+
+\subsection{RQ2 Inactivity Prediction and SHAP}
+The offline customer target is no qualifying purchase during the next 90 days. Training snapshots with outcome windows overlapping the evaluation period are excluded through temporal embargo. Stored Logistic Regression and LightGBM models can be analysed through feature attribution. Global mean absolute TreeSHAP contributions were recomputed over a fixed 1,200-row sample of test snapshots using the LightGBM model. The prominent predictors were lifetime order count, order count over the past 180 days, tenure and recency. Attribution is associational and does not prove a campaign effect or that an owner understands the explanation. SHAP values are in the model's raw score (log-odds) space, not probabilities.
+
+\section{RQ1-to-RQ3 and RQ2-to-RQ4 Integration Design}
+An integrated evidence-aware workflow is:
+\[
+\text{Business events}\rightarrow\text{Validated snapshot}
+\rightarrow\text{Forecast/risk estimate}\rightarrow
+\text{Feasibility checks}\rightarrow
+\text{Explanation}\rightarrow
+\text{Owner decision}\rightarrow\text{Outcome audit}.
+\]
+For inventory action, the intended forecast should cover the replenishment lead time, with explicit uncertainty and a service-level constraint. The executed RQ1 experiment is one-day-ahead; it is \emph{not} yet a validated 7-, 14- or lead-time-horizon input to RQ3. The current RQ3 policy cases are separately generated scenarios and are not a backtest driven by RQ1 predictions. For customer retention, a predictive inactivity score can support review priority; RQ4 must additionally validate explanation faithfulness and human usability.
+
+\section{Implementation Evidence and Missing Acceptance Tests}
+\begin{table}[htbp]\centering\small
+\caption{Current status of software and empirical components.}
+\begin{tabular}{p{0.38\textwidth}p{0.18\textwidth}p{0.34\textwidth}}
+\toprule
+Component & Status & Evidence boundary\\
+\midrule
+Core transaction and tenant-aware API & Implemented & Code inspection; not a new security certification\\
+Operational recommendation and decision log & Implemented/partial & Rule-based and heuristic path; outcomes require source records\\
+Offline demand and customer risk models & Executed offline & Training and held-out metrics exist\\
+Trained-model serving integration & Pending & No deployed model API established\\
+Real inventory historical replay & Pending & Current RQ3 has synthetic-oracle demand\\
+Human explanation usability evaluation & Pending & Current RQ4 cases are not participant observations\\
+Cross-sector generalisation & Pending & All supplied shops are labelled grocery/FMCG\\
+\bottomrule
+\end{tabular}
+\end{table}
+Screenshots should be obtained from the running application and added only after confirming that the pictured route and dataset are real. No invented interface image is presented as an implementation test.
