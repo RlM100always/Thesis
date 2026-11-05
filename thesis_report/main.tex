@@ -419,7 +419,7 @@
 }
 
 \newcommand{\system}{B-SMART}
-\newcommand{\reportdate}{2 November 2026}
+\newcommand{\reportdate}{5 November 2026}
 \newcommand{\projectperiod}{February 2026 - February 2027}
 \newcommand{\cmark}{\cellcolor{softgreen}\textbf{C}}
 \newcommand{\amark}{\cellcolor{softorange}\textbf{A}}
@@ -454,7 +454,7 @@
     Performance Evaluation, Insight Extraction, and\\[0.15cm]
     Strategy Optimization\par}
     \vspace{0.30cm}
-    {\large\bfseries Initial Thesis Progress Report\par}
+    {\large\bfseries Revised Thesis Research Report\par}
     {\normalsize Application Scope: Bangladeshi SME Businesses\par}
     \vspace{0.15cm}
     {\normalsize Project Period: \projectperiod\par}
@@ -491,16 +491,17 @@
 \rhead{\thepage}
 
 \Declaration{
-  This initial report presents the foundation of the thesis project entitled
-\emph{AI-Powered Business Analytics System for Performance Evaluation,
-Insight Extraction, and Strategy Optimization}. We declare that the background
-study, problem formulation and proposed methodology presented here are the work
-of the authors under the supervision of Dr. Saifuddin Md. Tareeq. Ideas,
-methods, datasets and findings originating from prior work are cited. The
-implementation and experimental results are intentionally reserved for later
-stages of the thesis. The present conclusion is limited to the background study
-and proposed methodology. This report is current to \reportdate; the project
-remains in progress until February 2027.
+This revised research report develops the B-SMART evidence-aware business analytics
+framework for SMEs and presents the existing six-chapter thesis structure, the
+operational software implementation, and explicitly bounded offline empirical
+results for four research questions. We declare that this is our work under the
+supervision of Dr. Saifuddin Md. Tareeq. Ideas, methods and findings from other
+sources are cited. The reader should distinguish the executed forecasting and
+customer-risk tests from synthetic policy scenarios and explanation-case audits.
+The supplied merchant data have not been independently authenticated, and
+human-participant validation and production model-serving integration are not
+claimed as complete. This is a research revision current to \reportdate, with
+remaining research and publication verification documented in the Conclusions.
 
 \vspace{1.2cm}
 \begin{tabularx}{\textwidth}{X X}
@@ -520,14 +521,37 @@ remains in progress until February 2027.
 \begin{center}
   {\huge\textit{Abstract}\par}
 \end{center}
-% Intentionally left blank for the initial progress submission.
-% The abstract will be completed in the final thesis.
+Small and medium enterprises (SMEs) record sales, customer, stock and payment
+events, yet often lack a traceable process connecting analysis to feasible
+managerial decisions. This thesis develops B-SMART, an evidence-aware analytics
+and decision-support framework with an operational multi-tenant software
+prototype and offline modelling experiments. Using a supplied dataset labelled
+as 32 grocery/FMCG retail shops, four research questions were evaluated.
+For rolling one-day-ahead shop--category forecasting, LightGBM achieved
+83.98\% WAPE, improving on a trailing seven-day mean at 89.70\% but retaining
+substantial error. A new four-level audit found network/day WAPE 6.02\%,
+shop/day 31.43\%, category/day 16.55\% and shop--category/day 83.98\%;
+92.83\% of granular absolute error magnitude cancels on aggregation.
+Neither a two-stage hurdle model (84.04\% WAPE) nor XGBoost (84.56\%)
+improved on the refitted LightGBM. In 90-day customer inactivity prediction,
+LightGBM PR-AUC was 0.7405, compared with 0.7346 for logistic regression;
+a sampled global TreeSHAP audit identified influential historical-behaviour
+features without claiming causality. An inventory policy scenario study found
+lower simulated cost but increased lost units, while a structured explanation
+audit did not establish human usability. The operational workflow and offline
+models are not presented as a deployed end-to-end predictive service.
+Source authenticity, consent, external validation and real-world impact remain
+to be established. The contribution is an auditable chain from data and
+prediction to constraints, explanation and owner decision, alongside a
+transparent account of its empirical limits.
 
 \clearpage
 
 \acknowledgements{
-  % Intentionally left blank for the initial progress submission.
-% The acknowledgement will be completed in the final thesis.
+The authors acknowledge the academic supervision of Dr. Saifuddin Md.
+Tareeq and the Department of Computer Science and Engineering at the
+University of Dhaka. This passage should be reviewed and approved by the
+authors before final submission.
 
 }
 \clearpage
