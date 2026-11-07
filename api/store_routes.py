@@ -111,7 +111,7 @@ def _store_public_view(store: Store, org: Organization) -> dict:
     return {
         "organization_id": store.organization_id,
         "slug": store.slug,
-        "is_demo": store.slug.startswith("demo-bsmart-"),
+        "is_verified": not store.slug.startswith("demo-bsmart-"),
         "is_active": store.is_active,
         "display_name": store.display_name,
         "tagline": store.tagline,
@@ -203,7 +203,7 @@ def list_public_stores(
     """Return all active stores for the public directory page."""
     q = select(Store, Organization).join(
         Organization, Organization.id == Store.organization_id
-    ).where(Store.is_active.is_(True)).order_by(Store.display_name)
+    ).where(Store.is_active.is_(True), Store.slug.not_like("demo-bsmart-%")).order_by(Store.display_name)
     rows = db.execute(q).all()
     result = []
     for store, org in rows:
@@ -214,7 +214,7 @@ def list_public_stores(
         result.append({
             "organization_id": store.organization_id,
             "slug": store.slug,
-            "is_demo": store.slug.startswith("demo-bsmart-"),
+            "is_verified": not store.slug.startswith("demo-bsmart-"),
             "display_name": store.display_name,
             "tagline": store.tagline,
             "logo_data_url": store.logo_data_url,
@@ -234,10 +234,10 @@ def list_public_stores(
 def public_store_diagnostics(db: Db):
     """Aggregate public catalog availability; no tenant/customer identifiers."""
     from sqlalchemy import func
-    active = db.scalar(select(func.count(Store.id)).where(Store.is_active.is_(True))) or 0
+    active = db.scalar(select(func.count(Store.id)).where(Store.is_active.is_(True), Store.slug.not_like("demo-bsmart-%"))) or 0
     listed = db.scalar(select(func.count(StoreProduct.id)).join(
         Store, Store.id == StoreProduct.store_id
-    ).where(Store.is_active.is_(True), StoreProduct.is_listed.is_(True))) or 0
+    ).where(Store.is_active.is_(True), Store.slug.not_like("demo-bsmart-%"), StoreProduct.is_listed.is_(True))) or 0
     return {
         "active_stores": int(active),
         "listed_products": int(listed),
@@ -254,7 +254,7 @@ def public_store_diagnostics(db: Db):
 def get_public_store_by_slug(slug: str, db: Db):
     """Lookup a store by its slug instead of org UUID."""
     store = db.scalar(select(Store).where(
-        Store.slug == slug, Store.is_active.is_(True)
+        Store.slug == slug, Store.is_active.is_(True), Store.slug.not_like("demo-bsmart-%")
     ))
     if store is None:
         raise HTTPException(status_code=404, detail="Store not found or not active")
@@ -296,7 +296,7 @@ def get_public_store(organization_id: str, db: Db):
     are genuinely invisible to the public.
     """
     store = db.scalar(select(Store).where(
-        Store.organization_id == organization_id, Store.is_active.is_(True)
+        Store.organization_id == organization_id, Store.is_active.is_(True), Store.slug.not_like("demo-bsmart-%")
     ))
     if store is None:
         raise HTTPException(status_code=404, detail="Store not found or not active")

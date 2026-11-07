@@ -6,7 +6,7 @@ import { isPublicStore, INTERNAL_TEST_STORE_SLUGS } from "./store-visibility.js"
 /*
  B-SMART Cloudflare D1 Commerce API.
  Public storefront catalogues, customer accounts, saved addresses, account-linked
- order history and support chat. Seeded/demo stores accept simulated orders only.
+ order history and support chat. Only approved merchant-owned stores are publicly accessible.
  An explicitly admin-approved merchant store may accept cash-on-delivery orders
  with manual fulfilment; no online payment gateway, courier integration or refund
  automation is active. Legacy FastAPI business and historical customer records
@@ -45,7 +45,7 @@ export function isValidShippingPhone(value) {
  return /^\+?[0-9()\s-]{7,20}$/.test(phone) && digits.length>=7 && digits.length<=15;
 }
 const baseView=(s)=>({
-  organization_id:s.id,slug:s.slug,is_demo:!!s.is_demo,is_active:!!s.is_active,
+  organization_id:s.id,slug:s.slug,is_verified:Number(s.is_demo)===0,is_active:!!s.is_active,
   display_name:s.name,tagline:s.tagline,logo_data_url:null,cover_data_url:null,
   category:s.category,area:s.area,theme_preset:s.theme,theme_color:s.color,
   phone:null,address:null,show_hours:false,hours_json:null,show_price:true,
@@ -68,8 +68,8 @@ const productView=(p)=>({
 });
 async function getStore(env,term,slugMode) {
  const sql=slugMode?
-  "SELECT * FROM commerce_stores WHERE slug=? AND is_active=1 LIMIT 1":
-  "SELECT * FROM commerce_stores WHERE id=? AND is_active=1 LIMIT 1";
+  "SELECT * FROM commerce_stores WHERE slug=? AND is_active=1 AND is_demo=0 LIMIT 1":
+  "SELECT * FROM commerce_stores WHERE id=? AND is_active=1 AND is_demo=0 LIMIT 1";
  const row=await env.DB.prepare(sql).bind(term).first();
  return isPublicStore(row)?row:null;
 }
@@ -86,17 +86,17 @@ async function orderDetails(env,request,id,token) {
  if(!order)return error(request,404,"Order not found");
  const [{results},store]=await Promise.all([
   env.DB.prepare("SELECT product_id,product_name,quantity,price_bdt,line_total_bdt FROM commerce_order_lines WHERE order_id=?").bind(order.id).all(),
-  env.DB.prepare("SELECT slug,name,is_demo FROM commerce_stores WHERE id=?").bind(id).first()
+  env.DB.prepare("SELECT slug,name FROM commerce_stores WHERE id=? AND is_demo=0").bind(id).first()
  ]);
  return output(request,{
   id:order.id,order_number:order.order_number,document_number:order.order_number,access_token:order.access_token,
-  status:order.status,payment_status:order.payment_status||(store?.is_demo?"demo_no_payment":(order.payment_method==="cod"?(order.status==="cancelled"?"cancelled_no_payment":"pending_cod"):"unpaid")),payment_received_at:order.payment_received_at||null,payment_received_by:order.payment_received_by||null,payment_note:order.payment_note||null,status_note:order.status_note||defaultOrderStatusNote(order.status,!!store?.is_demo),
+  status:order.status,payment_status:order.payment_status||(order.payment_method==="cod"?(order.status==="cancelled"?"cancelled_no_payment":"pending_cod"):"unpaid"),payment_received_at:order.payment_received_at||null,payment_received_by:order.payment_received_by||null,payment_note:order.payment_note||null,status_note:order.status_note||defaultOrderStatusNote(order.status,false),
   placed_at:order.placed_at,issued_at:order.placed_at,
   shipping_name:order.shipping_name||"",shipping_phone:order.shipping_phone||"",shipping_address:order.shipping_address||"",
   subtotal:order.subtotal_bdt,tax_amount:0,delivery_fee:0,discount_amount:0,
   coupon_code:null,coupon_discount:0,total:order.total_bdt,organization_id:id,
-  store_slug:store?.slug||null,store_name:store?.name||"দোকান",is_demo:!!store?.is_demo,
-  payment_method:order.payment_method||"demo",
+  store_slug:store?.slug||null,store_name:store?.name||"দোকান",
+  payment_method:order.payment_method||"cod",
   items:results.map(p=>({product_id:p.product_id,description:p.product_name,product_name:p.product_name,quantity:p.quantity,unit_price:p.price_bdt,line_total:p.line_total_bdt,variant_label:null})),
   whatsapp_notify_url:null,coupon_applied:false,referral_discount:0
  });
@@ -108,14 +108,12 @@ async function checkout(env,request,id) {
  if(size>10000)return error(request,413,"Order request too large");
  let data;
  try{data=await request.json();}catch{return error(request,400,"Invalid JSON");}
- if(store.is_demo && data.payment_method && !["cod","demo"].includes(data.payment_method))
-   return error(request,422,"Demo stores do not accept real payments.");
- if(!store.is_demo && data.payment_method!=="cod")
+ if((data.payment_method||"cod")!=="cod")
    return error(request,422,"This store accepts cash on delivery only; online payments are not configured.");
- const shippingName=safe(data.shipping_name||(store.is_demo?"Demo customer":""));
+ const shippingName=safe(data.shipping_name||"");
  const shippingPhone=String(data.shipping_phone||"").trim().slice(0,30);
  const shippingAddress=String(data.shipping_address||"").trim().slice(0,500);
- if(!store.is_demo && (shippingName.length<2 || !isValidShippingPhone(shippingPhone) || shippingAddress.length<8))
+ if(shippingName.length<2 || !isValidShippingPhone(shippingPhone) || shippingAddress.length<8)
    return error(request,422,"Enter a valid customer name, phone number and delivery address for COD.");
  const customerToken=String(data.store_customer_token||data.customer_token||"").trim();
  let account=null;
@@ -140,14 +138,14 @@ async function checkout(env,request,id) {
   subtotal+=qty*price;
   details.push({p,qty,price});
  }
- if(subtotal>(store.is_demo?500000:5000000))return error(request,422,store.is_demo?"Demo order total too high":"Order total exceeds the store limit.");
+ if(subtotal>5000000)return error(request,422,"Order total exceeds the store limit.");
  // A single D1.batch call is a transaction. SQL triggers reject stale/oversold
  // products and roll back every line and header together if stock runs out.
  const oid=crypto.randomUUID();
  const token=crypto.randomUUID().replaceAll("-","")+crypto.randomUUID().replaceAll("-","");
- const no=(store.is_demo?"DEMO-":"ORD-")+oid.slice(0,8).toUpperCase();
+ const no="ORD-"+oid.slice(0,8).toUpperCase();
  const customerId=crypto.randomUUID();
- const paymentMethod=store.is_demo?"demo":"cod";
+ const paymentMethod="cod";
  const statements=[
   env.DB.prepare("INSERT INTO commerce_customers(id,store_id,display_name) VALUES(?,?,?)")
    .bind(customerId,id,shippingName),
@@ -175,20 +173,20 @@ export default {
    if(merchant!==null)return merchant;
    if(path==="/health"&&method==="GET") {
     const excluded=[...INTERNAL_TEST_STORE_SLUGS],marks=excluded.map(()=>"?").join(",");
-    const row=await env.DB.prepare("SELECT COUNT(*) n FROM commerce_stores WHERE is_active=1 AND slug NOT IN ("+marks+")").bind(...excluded).first();
-    const pro=await env.DB.prepare("SELECT COUNT(*) n FROM commerce_products p JOIN commerce_stores s ON s.id=p.store_id WHERE p.is_listed=1 AND s.is_active=1 AND s.slug NOT IN ("+marks+")").bind(...excluded).first();
+    const row=await env.DB.prepare("SELECT COUNT(*) n FROM commerce_stores WHERE is_active=1 AND is_demo=0 AND slug NOT IN ("+marks+")").bind(...excluded).first();
+    const pro=await env.DB.prepare("SELECT COUNT(*) n FROM commerce_products p JOIN commerce_stores s ON s.id=p.store_id WHERE p.is_listed=1 AND s.is_active=1 AND s.is_demo=0 AND s.slug NOT IN ("+marks+")").bind(...excluded).first();
     return output(request,{status:"ok",database:"Cloudflare D1",scope:"public_storefronts",stores:row.n,products:pro.n,live_payments:false});
    }
    if((path==="/api/public/store"||path==="/api/public/store/")&&method==="GET") {
     const excluded=[...INTERNAL_TEST_STORE_SLUGS],marks=excluded.map(()=>"?").join(",");
-    const {results}=await env.DB.prepare("SELECT * FROM commerce_stores WHERE is_active=1 AND slug NOT IN ("+marks+") ORDER BY name").bind(...excluded).all();
+    const {results}=await env.DB.prepare("SELECT * FROM commerce_stores WHERE is_active=1 AND is_demo=0 AND slug NOT IN ("+marks+") ORDER BY name").bind(...excluded).all();
     return output(request,results.filter(isPublicStore).map(baseView));
    }
    if(path==="/api/public/store/diagnostics"&&method==="GET") {
     const excluded=[...INTERNAL_TEST_STORE_SLUGS],marks=excluded.map(()=>"?").join(",");
-    const stores=await env.DB.prepare("SELECT COUNT(*) n FROM commerce_stores WHERE is_active=1 AND slug NOT IN ("+marks+")").bind(...excluded).first();
-    const products=await env.DB.prepare("SELECT COUNT(*) n FROM commerce_products p JOIN commerce_stores s ON s.id=p.store_id WHERE p.is_listed=1 AND s.is_active=1 AND s.slug NOT IN ("+marks+")").bind(...excluded).first();
-    return output(request,{active_stores:stores.n,listed_products:products.n,catalog_ready:!!(stores.n&&products.n),source:"cloudflare_d1",mode:"demo"});
+    const stores=await env.DB.prepare("SELECT COUNT(*) n FROM commerce_stores WHERE is_active=1 AND is_demo=0 AND slug NOT IN ("+marks+")").bind(...excluded).first();
+    const products=await env.DB.prepare("SELECT COUNT(*) n FROM commerce_products p JOIN commerce_stores s ON s.id=p.store_id WHERE p.is_listed=1 AND s.is_active=1 AND s.is_demo=0 AND s.slug NOT IN ("+marks+")").bind(...excluded).first();
+    return output(request,{active_stores:stores.n,listed_products:products.n,catalog_ready:!!(stores.n&&products.n),source:"cloudflare_d1",mode:"live_only"});
    }
    if(path.startsWith("/api/public/store/slug/")&&method==="GET"){
     const slug=decodeURIComponent(path.slice("/api/public/store/slug/".length));
@@ -225,7 +223,7 @@ export default {
      return orderDetails(env,request,id,token);
     }
     if(method==="POST"&&action.startsWith("payment-screenshot/"))
-      return error(request,501,"Demo store does not accept payment evidence.");
+      return error(request,501,"Payment evidence is not available for this store.");
    }
    return error(request,404,"Route not found");
   }catch(e){

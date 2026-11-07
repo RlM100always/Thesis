@@ -1,5 +1,5 @@
 // Public presentation only. Never modify names or order payloads saved in the database.
-// Localize known catalog vocabulary and internal test/demo seed boilerplate.
+// Localize known catalog vocabulary and internal test/sample seed boilerplate.
 const CATEGORY_LABELS={
   grocery:"মুদি",groceries:"মুদি",pharmacy:"ফার্মেসি",medicine:"ফার্মেসি",
   fashion:"পোশাক",clothing:"পোশাক",apparel:"পোশাক",restaurant:"রেস্টুরেন্ট",
@@ -15,30 +15,30 @@ const UNIT_LABELS={
   packet:"প্যাকেট",packets:"প্যাকেট",bottle:"বোতল",bottles:"বোতল",
   pair:"জোড়া",pairs:"জোড়া",dozen:"ডজন",carton:"কার্টন"
 };
-const DEMO_TAGLINES={
-  "owner-managed demo storefront (not verified real commerce)":"পরীক্ষামূলক দোকান—বাস্তব কেনাকাটার জন্য নয়।",
-  "demo storefront (not verified real commerce)":"পরীক্ষামূলক দোকান—বাস্তব কেনাকাটার জন্য নয়।",
-  "synthetic demonstration store":"শুধু পরীক্ষামূলক ব্যবহারের দোকান।"
+const SAMPLE_TAGLINES={
+  "owner-managed sample storefront (not verified real commerce)":"যাচাইহীন নমুনা দোকান—বাস্তব কেনাকাটার জন্য নয়।",
+  "sample storefront (not verified real commerce)":"যাচাইহীন নমুনা দোকান—বাস্তব কেনাকাটার জন্য নয়।",
+  "synthetic sample store":"শুধু পরীক্ষামূলক ব্যবহারের দোকান।"
 };
-const DEMO_DELIVERY_NOTES={
-  "demo orders only; no real shipping or payment":"এখানে দেওয়া অর্ডার শুধু পরীক্ষামূলক। বাস্তব পেমেন্ট বা ডেলিভারি হবে না।",
-  "no real shipping or payment":"এটি ডেমো দোকান। বাস্তব পেমেন্ট বা ডেলিভারি হবে না।"
+const SAMPLE_DELIVERY_NOTES={
+  "sample orders only; no real shipping or payment":"এখানে দেওয়া অর্ডার শুধু পরীক্ষামূলক। বাস্তব পেমেন্ট বা ডেলিভারি হবে না।",
+  "no real shipping or payment":"এটি নমুনা দোকান। বাস্তব পেমেন্ট বা ডেলিভারি হবে না।"
 };
 const key=value=>String(value??"").trim().toLowerCase();
 export function displayStoreCategory(value){return CATEGORY_LABELS[key(value)]||value||"";}
 export function displayProductUnit(value){return UNIT_LABELS[key(value)]||value||"";}
-export function displayStoreTagline(value,isDemo=false){
+export function displayStoreTagline(value,isSample=false){
  const original=String(value??"").trim();
- return isDemo?DEMO_TAGLINES[key(original)]||original:original;
+ return isSample?SAMPLE_TAGLINES[key(original)]||original:original;
 }
-export function displayStoreDelivery(value,isDemo=false){
+export function displayStoreDelivery(value,isSample=false){
  const original=String(value??"").trim();
- return isDemo?DEMO_DELIVERY_NOTES[key(original)]||original:original;
+ return isSample?SAMPLE_DELIVERY_NOTES[key(original)]||original:original;
 }
-export function displayStoreArea(value,isDemo=false){
+export function displayStoreArea(value,isSample=false){
  const original=String(value??"").trim();
- return isDemo&&key(original)==="automated test only"?"শুধু পরীক্ষামূলক এলাকা":original;
+ return isSample&&key(original)==="automated test only"?"শুধু পরীক্ষামূলক এলাকা":original;
 }
-export function isSyntheticDemoArea(value,isDemo=false){
- return Boolean(isDemo&&key(value)==="automated test only");
+export function isSyntheticSampleArea(value,isSample=false){
+ return Boolean(isSample&&key(value)==="automated test only");
 }

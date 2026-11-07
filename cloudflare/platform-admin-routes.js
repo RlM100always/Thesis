@@ -1,6 +1,6 @@
 import { canTransitionOrderStatus, defaultOrderStatusNote } from "./order-workflow.js";
 
-/* Privileged controls for the isolated Cloudflare D1 commerce demo.
+/* Privileged controls for the Cloudflare D1 commerce platform.
  * Configure PLATFORM_ADMIN_KEY as a Worker secret; never hard-code it here.
  */
 const encoder = new TextEncoder();
@@ -37,28 +37,27 @@ export async function platformAdminRouter(req,env,path,output,error) {
   try {
     if(method==="GET"&&path==="/api/platform-admin/overview") {
       const row=await env.DB.prepare(
-        "SELECT (SELECT COUNT(*) FROM commerce_stores) AS stores_total,"+
-        "(SELECT COUNT(*) FROM commerce_stores WHERE is_active=1) AS stores_active,"+
-        "(SELECT COUNT(*) FROM commerce_products) AS products_total,"+
-        "(SELECT COUNT(*) FROM commerce_products WHERE is_listed=1) AS products_listed,"+
+        "SELECT (SELECT COUNT(*) FROM commerce_stores WHERE is_demo=0) AS stores_total,"+
+        "(SELECT COUNT(*) FROM commerce_stores WHERE is_active=1 AND is_demo=0) AS stores_active,"+
+        "(SELECT COUNT(*) FROM commerce_products p JOIN commerce_stores s ON s.id=p.store_id WHERE s.is_demo=0) AS products_total,"+
+        "(SELECT COUNT(*) FROM commerce_products p JOIN commerce_stores s ON s.id=p.store_id WHERE p.is_listed=1 AND s.is_demo=0) AS products_listed,"+
         "(SELECT COUNT(*) FROM commerce_customer_accounts) AS customers_total,"+
-        "(SELECT COUNT(*) FROM commerce_orders) AS orders_total,"+
-        "(SELECT COUNT(*) FROM commerce_orders WHERE status='cancelled') AS orders_cancelled,"+
-        "(SELECT COALESCE(SUM(o.total_bdt),0) FROM commerce_orders o JOIN commerce_stores s ON s.id=o.store_id WHERE o.status!='cancelled' AND s.is_demo=1) AS demo_order_value_bdt,"+
+        "(SELECT COUNT(*) FROM commerce_orders o JOIN commerce_stores s ON s.id=o.store_id WHERE s.is_demo=0) AS orders_total,"+
+        "(SELECT COUNT(*) FROM commerce_orders o JOIN commerce_stores s ON s.id=o.store_id WHERE o.status='cancelled' AND s.is_demo=0) AS orders_cancelled,"+
         "(SELECT COALESCE(SUM(o.total_bdt),0) FROM commerce_orders o JOIN commerce_stores s ON s.id=o.store_id WHERE o.status!='cancelled' AND s.is_demo=0 AND o.payment_method='cod') AS cod_order_value_bdt,"+
         "(SELECT COALESCE(SUM(o.total_bdt),0) FROM commerce_orders o JOIN commerce_stores s ON s.id=o.store_id WHERE o.status!='cancelled' AND s.is_demo=0 AND o.payment_method='cod' AND o.payment_status='paid') AS cod_paid_total_bdt,"+
         "(SELECT COALESCE(SUM(o.total_bdt),0) FROM commerce_orders o JOIN commerce_stores s ON s.id=o.store_id WHERE o.status!='cancelled' AND s.is_demo=0 AND o.payment_method='cod' AND o.payment_status='pending_cod') AS cod_pending_total_bdt,"+
-        "(SELECT COUNT(*) FROM commerce_order_returns WHERE status IN ('requested','approved')) AS returns_open,"+
-        "(SELECT COUNT(*) FROM commerce_customer_messages WHERE sender_role='customer' AND read_by_merchant_at IS NULL) AS unread_customer_messages"
+        "(SELECT COUNT(*) FROM commerce_order_returns r JOIN commerce_stores s ON s.id=r.store_id WHERE r.status IN ('requested','approved') AND s.is_demo=0) AS returns_open,"+
+        "(SELECT COUNT(*) FROM commerce_customer_messages m JOIN commerce_stores s ON s.id=m.store_id WHERE m.sender_role='customer' AND m.read_by_merchant_at IS NULL AND s.is_demo=0) AS unread_customer_messages"
       ).first();
-      return output(req,{scope:"Cloudflare D1 storefronts; approved stores support COD and merchant-managed fulfilment",online_payments:false,cash_on_delivery:true,merchant_managed_delivery:true,courier_integration:false,automated_refunds:false,metrics:row});
+      return output(req,{scope:"Cloudflare D1 live merchant storefronts; approved stores support COD and merchant-managed fulfilment",online_payments:false,cash_on_delivery:true,merchant_managed_delivery:true,courier_integration:false,automated_refunds:false,metrics:row});
     }
     if(method==="GET"&&path==="/api/platform-admin/stores") {
       const {results}=await env.DB.prepare(
-        "SELECT s.id,s.slug,s.name,s.category,s.area,s.is_demo,s.is_active,s.created_at,a.email AS owner_email,"+
+        "SELECT s.id,s.slug,s.name,s.category,s.area,s.is_active,s.created_at,a.email AS owner_email,"+
         "(SELECT COUNT(*) FROM commerce_products p WHERE p.store_id=s.id) AS products_count,"+
         "(SELECT COUNT(*) FROM commerce_orders o WHERE o.store_id=s.id) AS orders_count "+
-        "FROM commerce_stores s LEFT JOIN merchant_accounts a ON a.id=s.owner_id ORDER BY s.created_at DESC LIMIT 500"
+        "FROM commerce_stores s LEFT JOIN merchant_accounts a ON a.id=s.owner_id WHERE s.is_demo=0 ORDER BY s.created_at DESC LIMIT 500"
       ).all();
       return output(req,{stores:results});
     }
@@ -76,16 +75,16 @@ export async function platformAdminRouter(req,env,path,output,error) {
         "SELECT o.id,o.order_number,o.status,o.status_note,o.cancellation_reason,o.subtotal_bdt,o.total_bdt,o.payment_method,o.payment_status,o.payment_received_at,o.payment_received_by,o.payment_note,o.placed_at,o.shipping_name,o.shipping_phone,o.shipping_address,"+
         "s.id AS store_id,s.slug AS store_slug,s.name AS store_name,a.id AS account_id,a.display_name AS customer_name,a.email AS customer_email "+
         "FROM commerce_orders o JOIN commerce_stores s ON s.id=o.store_id "+
-        "LEFT JOIN commerce_customer_accounts a ON a.id=o.account_id ORDER BY o.placed_at DESC LIMIT 500"
+        "LEFT JOIN commerce_customer_accounts a ON a.id=o.account_id WHERE s.is_demo=0 ORDER BY o.placed_at DESC LIMIT 500"
       ).all();
-      return output(req,{orders:results,note:"Demo order values are not revenue. COD collection is merchant-confirmed and is not independently verified by this system."});
+      return output(req,{orders:results,note:"COD collection is merchant-confirmed and is not independently verified by this system."});
     }
     if(method==="GET"&&path==="/api/platform-admin/returns") {
       const {results}=await env.DB.prepare(
         "SELECT r.id,r.reason,r.customer_note,r.merchant_note,r.status,r.requested_at,r.updated_at,o.order_number,o.total_bdt,"+
         "s.id AS store_id,s.slug AS store_slug,s.name AS store_name,a.id AS account_id,a.display_name AS customer_name,a.email AS customer_email "+
         "FROM commerce_order_returns r JOIN commerce_orders o ON o.id=r.order_id JOIN commerce_stores s ON s.id=r.store_id "+
-        "JOIN commerce_customer_accounts a ON a.id=r.account_id ORDER BY r.requested_at DESC LIMIT 500"
+        "JOIN commerce_customer_accounts a ON a.id=r.account_id WHERE s.is_demo=0 ORDER BY r.requested_at DESC LIMIT 500"
       ).all();
       return output(req,{returns:results,note:"Return processing does not issue a financial refund."});
     }
@@ -96,34 +95,30 @@ export async function platformAdminRouter(req,env,path,output,error) {
     const storeMatch=path.match(/^\/api\/platform-admin\/stores\/([^/]+)$/);
     if(method==="PATCH"&&storeMatch) {
       const id=decodeURIComponent(storeMatch[1]),body=await readBody(req);
-      if(body.is_active===undefined && body.is_demo===undefined)return error(req,422,"Provide is_active or is_demo");
-      if(body.is_active!==undefined && typeof body.is_active!=="boolean")return error(req,422,"is_active must be true or false");
-      if(body.is_demo!==undefined && typeof body.is_demo!=="boolean")return error(req,422,"is_demo must be true or false");
+      if(body.is_demo!==undefined)return error(req,409,"Store provenance cannot be changed. Create a new owner-managed store instead.");
+      if(typeof body.is_active!=="boolean")return error(req,422,"is_active must be true or false");
       const store=await env.DB.prepare("SELECT id,slug,name,is_active,is_demo,owner_id FROM commerce_stores WHERE id=?").bind(id).first();
       if(!store)return error(req,404,"Store not found");
-      const nextActive=body.is_active===undefined?!!store.is_active:body.is_active;
-      const nextDemo=body.is_demo===undefined?!!store.is_demo:body.is_demo;
-      if(body.is_demo===false && !store.owner_id)return error(req,409,"Seeded demo stores cannot be promoted to operational checkout");
-      if(body.is_demo===false && body.confirm_production!=="ENABLE COD CHECKOUT")return error(req,422,"Explicit COD checkout confirmation required");
-      const deliveryNote=nextDemo?"Demo orders only":"Cash on delivery; delivery managed by the store.";
-      const result=await env.DB.prepare("UPDATE commerce_stores SET is_active=?,is_demo=?,delivery_note=? WHERE id=? AND is_active=? AND is_demo=?")
-        .bind(nextActive?1:0,nextDemo?1:0,deliveryNote,id,store.is_active,store.is_demo).run();
-      const action=body.is_demo===false?"store_promoted_to_cod":body.is_demo===true?"store_returned_to_demo":nextActive?"store_activated":"store_suspended";
-      await audit(env,action,"store",id,{slug:store.slug,name:store.name,previous_active:!!store.is_active,is_active:nextActive,previous_demo:!!store.is_demo,is_demo:nextDemo,reason:short(body.reason,250)});
-      return output(req,{updated:!!result.meta?.changes,store:{...store,is_active:nextActive?1:0,is_demo:nextDemo?1:0,delivery_note:deliveryNote},note:nextDemo?"Demo checkout only.":"COD/manual fulfilment enabled; no online payment or courier integration."});
+      if(Number(store.is_demo)!==0 || !store.owner_id)return error(req,409,"Only a new owner-managed store can be approved for publication.");
+      const nextActive=body.is_active;
+      const result=await env.DB.prepare("UPDATE commerce_stores SET is_active=? WHERE id=? AND is_demo=0 AND owner_id=? AND is_active=?")
+        .bind(nextActive?1:0,id,store.owner_id,store.is_active).run();
+      if(!result.meta?.changes)return error(req,409,"Store status changed; reload before retrying");
+      await audit(env,nextActive?"store_activated":"store_suspended","store",id,{slug:store.slug,name:store.name,previous_active:!!store.is_active,is_active:nextActive,reason:short(body.reason,250)});
+      return output(req,{updated:true,store:{id:store.id,slug:store.slug,name:store.name,is_verified:Number(store.is_demo)===0,is_active:nextActive?1:0},note:nextActive?"Owner-managed store approved for COD checkout and merchant-managed delivery.":"Store publication suspended."});
     }
     const orderMatch=path.match(/^\/api\/platform-admin\/orders\/([^/]+)$/);
     if(method==="PATCH"&&orderMatch) {
       const id=decodeURIComponent(orderMatch[1]),body=await readBody(req),status=short(body.status,30),reason=short(body.reason,250);
-      const order=await env.DB.prepare("SELECT o.id,o.store_id,o.order_number,o.status,o.total_bdt,s.is_demo AS store_is_demo FROM commerce_orders o JOIN commerce_stores s ON s.id=o.store_id WHERE o.id=?").bind(id).first();
+      const order=await env.DB.prepare("SELECT o.id,o.store_id,o.order_number,o.status,o.total_bdt FROM commerce_orders o JOIN commerce_stores s ON s.id=o.store_id WHERE o.id=? AND s.is_demo=0").bind(id).first();
       if(!order)return error(req,404,"Order not found");
       if(!canTransitionOrderStatus(order.status,status))return error(req,409,"Invalid order status transition");
-      const statusNote=short(body.status_note,500)||defaultOrderStatusNote(status,!!order.store_is_demo);
+      const statusNote=short(body.status_note,500)||defaultOrderStatusNote(status,false);
       const result=await env.DB.prepare("UPDATE commerce_orders SET status=?,cancellation_reason=COALESCE(?,cancellation_reason),status_note=? WHERE id=? AND status=?")
         .bind(status,status==="cancelled"?reason||"Platform admin cancellation":null,statusNote,id,order.status).run();
       if(!result.meta?.changes)return error(req,409,"Order status changed; reload before retrying");
       await audit(env,"order_status_changed","order",id,{order_number:order.order_number,from:order.status,to:status,reason});
-      return output(req,{updated:true,status,status_note:statusNote,inventory_restored:status==="cancelled",note:"D1 inventory cancellation trigger handles demo stock; no real payment was reversed."});
+      return output(req,{updated:true,status,status_note:statusNote,inventory_restored:status==="cancelled",note:"D1 inventory cancellation trigger restores reserved stock; any COD collection must be reconciled by the merchant."});
     }
     return error(req,404,"Platform admin route not found");
   } catch(e) {

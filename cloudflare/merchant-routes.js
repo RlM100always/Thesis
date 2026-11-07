@@ -1,7 +1,7 @@
 import { canTransitionOrderStatus, defaultOrderStatusNote } from "./order-workflow.js";
 
 /* Authenticated Cloudflare D1 merchant console (separate from legacy FastAPI).
-   Public demo checkout does not accept any real payment or delivery.
+   Only approved owner-managed stores can use merchant operations.
    IMPORTANT: This owner identity is not imported from ephemeral SQLite.
 */
 const encoder=new TextEncoder();
@@ -27,6 +27,8 @@ async function json(request,error,max=10000){
  try{return JSON.parse(text);}catch{throw new Error("Invalid JSON");}
 }
 const short=(value,n=120)=>String(value??"").trim().slice(0,n);
+const validPublicSlug=value=>/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(value)&&value.length>=3&&value.length<=64&&!/(^|-)(demo|sample|test)(-|$)/.test(value);
+const publicSlug=value=>{const raw=short(value,64).toLowerCase().replace(/^bsmart-/,"");return validPublicSlug(raw)?"bsmart-"+raw:null;};
 const validEmail=email=>/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)&&email.length<=180;
 const integer=(value,min,max)=>Number.isInteger(Number(value))&&Number(value)>=min&&Number(value)<=max;
 async function viewer(req,env){
@@ -39,8 +41,8 @@ async function viewer(req,env){
 async function myStore(env,owner){
  return env.DB.prepare("SELECT * FROM commerce_stores WHERE owner_id=? ORDER BY created_at LIMIT 1").bind(owner.id).first();
 }
-async function storeOnly(env,owner){const row=await myStore(env,owner);if(!row)throw new Error("Create a store first");return row;}
-function stripStore(s){return {id:s.id,slug:s.slug,name:s.name,tagline:s.tagline||"",category:s.category||"",area:s.area||"",is_active:!!s.is_active,is_demo:!!s.is_demo,created_at:s.created_at};}
+async function storeOnly(env,owner){const row=await myStore(env,owner);if(!row)throw new Error("Create a store first");if(Number(row.is_demo)!==0)throw new Error("Store not found");return row;}
+function stripStore(s){return {id:s.id,slug:s.slug,name:s.name,tagline:s.tagline||"",category:s.category||"",area:s.area||"",is_active:!!s.is_active,is_verified:Number(s.is_demo)===0,created_at:s.created_at};}
 async function dashboard(env,owner){
  const store=await myStore(env,owner);
  if(!store)return {account:{email:owner.email},store:null,products:[],orders:[],metrics:{orders:0,inventory_units:0,placed_total_bdt:0},stock_adjustments:[],cashbook:[]};
@@ -64,7 +66,7 @@ export async function merchantRouter(req,env,path,output,error){
   }
   if(method==="POST"&&path==="/api/merchant/register"){
    const b=await json(req,error),email=short(b.email,200).toLowerCase(),password=String(b.password||"");
-   if(!validEmail(email))return bad(req,error,422,"Valid email required");
+   if(!validEmail(email)||email.endsWith(".invalid"))return bad(req,error,422,"Use a valid business email address");
    if(password.length<12||password.length>128)return bad(req,error,422,"Password must contain 12-128 characters");
    const today=await env.DB.prepare("SELECT COUNT(*) AS n FROM merchant_accounts WHERE created_at >= datetime('now','start of day')").first();
    if(Number(today?.n||0)>=20)return bad(req,error,429,"Daily account registration limit reached");
@@ -78,7 +80,7 @@ export async function merchantRouter(req,env,path,output,error){
   if(method==="POST"&&path==="/api/merchant/login"){
    const b=await json(req,error),email=short(b.email,200).toLowerCase(),password=String(b.password||"");
    const legacyKey=String(b.access_key||(/^[0-9a-f]{64}$/i.test(password)?password:"")).trim().toLowerCase();
-   if(!validEmail(email)||(!password&&!legacyKey))return bad(req,error,401,"Invalid email or password");
+   if(!validEmail(email)||email.endsWith(".invalid")||(!password&&!legacyKey))return bad(req,error,401,"Invalid email or password");
    const now=new Date().toISOString();
    const lock=await env.DB.prepare("SELECT failures,lock_until FROM merchant_login_attempts WHERE email=?").bind(email).first();
    if(lock?.lock_until&&lock.lock_until>now)return bad(req,error,429,"Too many attempts; try again later");
@@ -109,7 +111,7 @@ export async function merchantRouter(req,env,path,output,error){
   }
   if(method==="POST"&&path==="/api/merchant/delete-account"){
    const body=await json(req,error);
-   if(body.confirm!=="DELETE DEMO ACCOUNT")return bad(req,error,422,"Explicit account deletion confirmation required");
+   if(body.confirm!=="DELETE ACCOUNT")return bad(req,error,422,"Explicit account deletion confirmation required");
    const store=await myStore(env,owner);
    if(store&&!store.id.startsWith("merchant-"))
      return bad(req,error,409,"Only owner-created merchant stores can be deleted automatically");
@@ -155,7 +157,7 @@ export async function merchantRouter(req,env,path,output,error){
     const result=await env.DB.prepare("UPDATE commerce_order_returns SET status=?,merchant_note=?,updated_at=CURRENT_TIMESTAMP WHERE id=? AND store_id=? AND status=?")
      .bind(status,note||null,id,store.id,row.status).run();
     if(!result.meta?.changes)return bad(req,error,409,"Return request changed; refresh and retry");
-    return output(req,{updated:true,status,inventory_restocked:status==="received",note:store.is_demo?"Demo return workflow only; no money was refunded":"Return received and inventory restocked; no automated refund was issued."});
+    return output(req,{updated:true,status,inventory_restocked:status==="received",note:"Return received and inventory restocked; no automated refund was issued."});
    }
    if(method==="GET"&&path==="/api/merchant/chat"){
     const store=await storeOnly(env,owner),url=new URL(req.url),accountId=short(url.searchParams.get("account_id"),80);
@@ -181,9 +183,9 @@ export async function merchantRouter(req,env,path,output,error){
    if(await myStore(env,owner))return bad(req,error,409,"Account already has a store");
    const b=await json(req,error);
    const name=short(b.name,110),tagline=short(b.tagline,160),category=short(b.category,50),area=short(b.area,100);
-   if(name.length<3||!category||!area)return bad(req,error,422,"Store name, category and area are required");
+   const slug=publicSlug(b.slug);
+   if(name.length<3||!category||!area||!slug)return bad(req,error,422,"Store name, category, area and a valid public URL are required");
    const id="merchant-"+crypto.randomUUID();
-   const slug="shop-"+crypto.randomUUID().slice(0,12);
    await env.DB.prepare("INSERT INTO commerce_stores(id,slug,name,tagline,category,area,theme,color,is_demo,is_active,owner_id,delivery_note) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)").bind(id,slug,name,tagline,category,area,"clean","#087e59",0,0,owner.id,"Awaiting platform review").run();
    return output(req,{created:true,store:stripStore(await myStore(env,owner))},201);
   }
@@ -191,10 +193,12 @@ export async function merchantRouter(req,env,path,output,error){
    const store=await storeOnly(env,owner),b=await json(req,error);
    const name=short(b.name??store.name,110),tagline=short(b.tagline??store.tagline,160);
    const area=short(b.area??store.area,100),category=short(b.category??store.category,50);
-   if(name.length<3||!area||!category)return bad(req,error,422,"Invalid store profile");
+   const requestedSlug=b.slug===undefined?store.slug:publicSlug(b.slug);
+   if(name.length<3||!area||!category||!requestedSlug)return bad(req,error,422,"Invalid store profile or public URL");
+   if(requestedSlug!==store.slug&&Number(store.is_active)===1)return bad(req,error,409,"A published store URL cannot be changed. Contact support for a managed URL migration.");
    if(b.is_active===true&&!store.is_active)return bad(req,error,403,"A platform administrator must approve and publish this store");
    const active=b.is_active===false?0:Number(store.is_active);
-   await env.DB.prepare("UPDATE commerce_stores SET name=?,tagline=?,category=?,area=?,is_active=? WHERE id=? AND owner_id=?").bind(name,tagline,category,area,active,store.id,owner.id).run();
+   await env.DB.prepare("UPDATE commerce_stores SET slug=?,name=?,tagline=?,category=?,area=?,is_active=? WHERE id=? AND owner_id=?").bind(requestedSlug,name,tagline,category,area,active,store.id,owner.id).run();
    return output(req,{store:stripStore(await myStore(env,owner))});
   }
   if(method==="POST"&&path==="/api/merchant/cashbook"){
@@ -206,7 +210,7 @@ export async function merchantRouter(req,env,path,output,error){
    return output(req,{created:true,note:"Cashbook entry saved"});
   }
   if(method==="POST"&&path==="/api/merchant/pos"){
-   const store=await storeOnly(env,owner),demo=!!store.is_demo;
+   const store=await storeOnly(env,owner);
    const b=await json(req,error);
    if(!Array.isArray(b.items)||!b.items.length||b.items.length>12)return bad(req,error,422,"1-12 distinct products are required");
    const details=[],seen=new Set();let total=0;
@@ -221,17 +225,17 @@ export async function merchantRouter(req,env,path,output,error){
    }
    if(!integer(total,1,5000000))return bad(req,error,422,"Invalid POS total");
    const oid=crypto.randomUUID(),cid=crypto.randomUUID(),token=newSession(),number="POS-"+oid.slice(0,8).toUpperCase();
-   const methodName=demo?"demo_pos":"cash";
-   const customerName=demo?"Anonymous demo counter customer":"Walk-in customer";
+   const methodName="cash";
+   const customerName="Walk-in customer";
    const statements=[
     env.DB.prepare("INSERT INTO commerce_customers(id,store_id,display_name) VALUES(?,?,?)").bind(cid,store.id,customerName),
     env.DB.prepare("INSERT INTO commerce_orders(id,store_id,order_number,access_token,status,subtotal_bdt,total_bdt,payment_method,shipping_name,shipping_phone,shipping_address,customer_id) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)").bind(oid,store.id,number,token,"fulfilled",total,total,methodName,customerName,"","",cid),
     ...details.map(({p,qty})=>env.DB.prepare("INSERT INTO commerce_order_lines(order_id,product_id,product_name,quantity,price_bdt,line_total_bdt) VALUES(?,?,?,?,?,?)").bind(oid,p.id,p.name,qty,p.price_bdt,p.price_bdt*qty)),
-    ...(!demo?[env.DB.prepare("UPDATE commerce_orders SET payment_status='paid',payment_received_at=CURRENT_TIMESTAMP,payment_received_by=?,payment_note='Cash collected at POS' WHERE id=?").bind(owner.email,oid)]:[]),
-    env.DB.prepare("INSERT INTO commerce_cashbook(id,store_id,kind,amount_bdt,description,related_order_id) VALUES(?,?,?,?,?,?)").bind(crypto.randomUUID(),store.id,"receipt",total,demo?"Simulated demo POS receipt":"POS cash sale",oid)
+    env.DB.prepare("UPDATE commerce_orders SET payment_status='paid',payment_received_at=CURRENT_TIMESTAMP,payment_received_by=?,payment_note='Cash collected at POS' WHERE id=?").bind(owner.email,oid),
+    env.DB.prepare("INSERT INTO commerce_cashbook(id,store_id,kind,amount_bdt,description,related_order_id) VALUES(?,?,?,?,?,?)").bind(crypto.randomUUID(),store.id,"receipt",total,"POS cash sale",oid)
    ];
    try{await env.DB.batch(statements);}catch(e){return bad(req,error,409,"Stock or product data changed; refresh and retry");}
-   return output(req,{created:true,order_number:number,total_bdt:total,payment_status:demo?"demo_no_payment":"paid",note:demo?"Demo sale recorded":"Cash sale, payment and stock movement recorded"},201);
+   return output(req,{created:true,order_number:number,total_bdt:total,payment_status:"paid",note:"Cash sale, payment and stock movement recorded"},201);
   }
   if(method==="POST"&&path==="/api/merchant/products"){
    const store=await storeOnly(env,owner),b=await json(req,error);
@@ -277,7 +281,7 @@ export async function merchantRouter(req,env,path,output,error){
   const paymentMatch=/^\/api\/merchant\/orders\/([a-zA-Z0-9-]{2,90})\/payment$/.exec(path);
   if(method==="PATCH"&&paymentMatch){
    const store=await storeOnly(env,owner),body=await json(req,error),id=paymentMatch[1];
-   if(store.is_demo)return bad(req,error,409,"Demo orders have no real payment to collect");
+   if(store.is_demo)return bad(req,error,409,"This order is not eligible for payment collection");
    const order=await env.DB.prepare("SELECT id,status,payment_method,payment_status FROM commerce_orders WHERE store_id=? AND id=?").bind(store.id,id).first();
    if(!order)return bad(req,error,404,"Order not found");
    if(order.payment_method!=="cod")return bad(req,error,409,"Only cash-on-delivery orders can be recorded here");
@@ -298,7 +302,7 @@ export async function merchantRouter(req,env,path,output,error){
    if(!order)return bad(req,error,404,"Order not found");
    const status=short(b.status,30);
    if(!canTransitionOrderStatus(order.status,status))return bad(req,error,409,"Invalid order status transition");
-   const note=short(b.status_note,300)||defaultOrderStatusNote(status,!!store.is_demo);
+   const note=short(b.status_note,300)||defaultOrderStatusNote(status,false);
    const cancellationReason=status==="cancelled"?(short(b.cancellation_reason,250)||"দোকানের পক্ষ থেকে অর্ডার বাতিল করা হয়েছে"):null;
    const updated=await env.DB.prepare("UPDATE commerce_orders SET status=?,status_note=?,cancellation_reason=COALESCE(?,cancellation_reason) WHERE id=? AND store_id=? AND status=?")
     .bind(status,note,cancellationReason,order.id,store.id,order.status).run();

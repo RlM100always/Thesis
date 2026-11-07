@@ -2,7 +2,7 @@ import { defaultOrderStatusNote } from "./order-workflow.js";
 import { isPublicStore } from "./store-visibility.js";
 
 /* Global customer identity and account-owned shopping state for the D1 storefronts.
- * D1 demo accounts are shared across D1 stores, but remain separate from the
+ * D1 customer accounts are shared across D1 stores, but remain separate from the
  * operational FastAPI customer database until a deliberate identity migration.
  */
 const encoder = new TextEncoder();
@@ -64,7 +64,7 @@ async function customerViewer(request, env) {
   return customerFromToken(env, match[1]);
 }
 async function storeBySlug(env, slug) {
-  const row=await env.DB.prepare("SELECT * FROM commerce_stores WHERE slug=? AND is_active=1 LIMIT 1").bind(short(slug, 100)).first();
+  const row=await env.DB.prepare("SELECT * FROM commerce_stores WHERE slug=? AND is_active=1 AND is_demo=0 LIMIT 1").bind(short(slug, 100)).first();
   return isPublicStore(row)?row:null;
 }
 async function listedProduct(env, storeId, productId) {
@@ -111,11 +111,11 @@ async function orderHistory(env, account, url) {
   const allowed = new Set(["placed", "confirmed", "processing", "ready", "dispatched", "shipped", "fulfilled", "delivered", "cancelled"]);
   if (status && !allowed.has(status)) return { error: "অর্ডারের অবস্থা সঠিক নয়", status: 422 };
   const count = status
-    ? await env.DB.prepare("SELECT COUNT(*) AS total FROM commerce_orders WHERE account_id=? AND status=?").bind(account.id, status).first()
-    : await env.DB.prepare("SELECT COUNT(*) AS total FROM commerce_orders WHERE account_id=?").bind(account.id).first();
+    ? await env.DB.prepare("SELECT COUNT(*) AS total FROM commerce_orders o JOIN commerce_stores s ON s.id=o.store_id WHERE o.account_id=? AND o.status=? AND s.is_demo=0").bind(account.id, status).first()
+    : await env.DB.prepare("SELECT COUNT(*) AS total FROM commerce_orders o JOIN commerce_stores s ON s.id=o.store_id WHERE o.account_id=? AND s.is_demo=0").bind(account.id).first();
   const query = status
-    ? env.DB.prepare("SELECT o.*,s.slug AS store_slug,s.name AS store_name,s.is_demo AS store_is_demo FROM commerce_orders o JOIN commerce_stores s ON s.id=o.store_id WHERE o.account_id=? AND o.status=? ORDER BY o.placed_at DESC LIMIT ? OFFSET ?").bind(account.id, status, perPage, (page-1)*perPage)
-    : env.DB.prepare("SELECT o.*,s.slug AS store_slug,s.name AS store_name,s.is_demo AS store_is_demo FROM commerce_orders o JOIN commerce_stores s ON s.id=o.store_id WHERE o.account_id=? ORDER BY o.placed_at DESC LIMIT ? OFFSET ?").bind(account.id, perPage, (page-1)*perPage);
+    ? env.DB.prepare("SELECT o.*,s.slug AS store_slug,s.name AS store_name FROM commerce_orders o JOIN commerce_stores s ON s.id=o.store_id WHERE o.account_id=? AND o.status=? AND s.is_demo=0 ORDER BY o.placed_at DESC LIMIT ? OFFSET ?").bind(account.id, status, perPage, (page-1)*perPage)
+    : env.DB.prepare("SELECT o.*,s.slug AS store_slug,s.name AS store_name FROM commerce_orders o JOIN commerce_stores s ON s.id=o.store_id WHERE o.account_id=? AND s.is_demo=0 ORDER BY o.placed_at DESC LIMIT ? OFFSET ?").bind(account.id, perPage, (page-1)*perPage);
   const { results: orders } = await query.all();
   if (!orders.length) return { total: Number(count?.total || 0), page, per_page: perPage, orders: [] };
   const ids = orders.map(o => o.id);
@@ -142,12 +142,12 @@ async function orderHistory(env, account, url) {
       const ret = byReturn.get(o.id);
       return {
         id: o.id, document_number: o.order_number, order_number: o.order_number,
-        access_token: o.access_token, status: o.status, status_note: o.status_note || defaultOrderStatusNote(o.status, !!o.store_is_demo),
+        access_token: o.access_token, status: o.status, status_note: o.status_note || defaultOrderStatusNote(o.status, false),
         issued_at: o.placed_at, placed_at: o.placed_at,
         subtotal: o.subtotal_bdt, total: o.total_bdt, tax_amount: 0, delivery_fee: 0,
         discount_amount: 0, organization_id: o.store_id, store_slug: o.store_slug,
-        store_name: o.store_name, is_demo: !!o.store_is_demo, payment_method: o.payment_method || "demo",
-        payment_status: o.payment_status || (o.store_is_demo ? "demo_no_payment" : (o.payment_method === "cod" ? (o.status === "cancelled" ? "cancelled_no_payment" : "pending_cod") : "unpaid")),
+        store_name: o.store_name, payment_method: o.payment_method || "cod",
+        payment_status: o.payment_status || (o.payment_method === "cod" ? (o.status === "cancelled" ? "cancelled_no_payment" : "pending_cod") : "unpaid"),
         payment_received_at: o.payment_received_at || null, payment_received_by: o.payment_received_by || null, payment_note: o.payment_note || null,
         shipping_name: o.shipping_name || "",
         shipping_phone: o.shipping_phone || "", shipping_address: o.shipping_address || "",
@@ -423,7 +423,7 @@ export async function customerRouter(request, env, path, output, error) {
       const reason = short(body.reason,100), note = short(body.note,1000);
       if (!["damaged","wrong_item","missing_item","not_as_described","other"].includes(reason))
         return error(request,422,"ফেরতের একটি কারণ নির্বাচন করুন");
-      const order = await env.DB.prepare("SELECT o.id,o.store_id,o.status,o.placed_at,s.is_demo FROM commerce_orders o JOIN commerce_stores s ON s.id=o.store_id WHERE o.id=? AND o.account_id=?")
+      const order = await env.DB.prepare("SELECT o.id,o.store_id,o.status,o.placed_at FROM commerce_orders o JOIN commerce_stores s ON s.id=o.store_id WHERE o.id=? AND o.account_id=? AND s.is_demo=0")
         .bind(orderId,account.id).first();
       if (!order) return error(request,404,"অর্ডারটি পাওয়া যায়নি");
       if (!["fulfilled","delivered"].includes(order.status)) return error(request,409,"অর্ডার সম্পন্ন হলে ফেরতের অনুরোধ করা যাবে");
@@ -432,7 +432,7 @@ export async function customerRouter(request, env, path, output, error) {
       const id = crypto.randomUUID();
       await env.DB.prepare("INSERT INTO commerce_order_returns(id,store_id,order_id,account_id,reason,customer_note) VALUES(?,?,?,?,?,?)")
         .bind(id,order.store_id,order.id,account.id,reason,note||null).run();
-      return output(request,{created:true,id,status:"requested",note:order.is_demo?"পরীক্ষামূলক ফেরত অনুরোধ জমা হয়েছে।":"ফেরতের অনুরোধ জমা হয়েছে; দোকান থেকে পরবর্তী নির্দেশনা জানানো হবে।"},201);
+      return output(request,{created:true,id,status:"requested",note:order.is_demo?"যাচাইহীন নমুনা ফেরত অনুরোধ জমা হয়েছে।":"ফেরতের অনুরোধ জমা হয়েছে; দোকান থেকে পরবর্তী নির্দেশনা জানানো হবে।"},201);
     }
     if (path === "/api/customer/returns" && method === "GET") {
       const {results} = await env.DB.prepare(

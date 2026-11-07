@@ -163,22 +163,8 @@ def initialize_application_database():
             raise RuntimeError("Production database migrations have not been applied")
     else:
         create_schema()
-    from .presentation_demo import ensure_presentation_demo
-    ensure_presentation_demo()
+    # Production startup never creates sample tenants, accounts, products or orders.
     _seed_site_defaults()
-    # Only creates clearly labelled demonstration storefronts on an explicitly
-    # configured PostgreSQL database. Never runs on the SQLite Render fallback.
-    from .demo_catalog_bootstrap import seed_demo_catalogue
-    try:
-        seed_demo_catalogue()
-    except Exception:
-        # Optional demonstration content must never take the production
-        # operational API offline if a tenant database has drifted.
-        import logging
-        logging.getLogger("bsmart.demo_catalog").exception(
-            "Optional demo bootstrap failed; preserving existing data and continuing"
-        )
-    # Diagnostic only: do not create or activate storefronts implicitly.
     _report_storefront_status()
 
 
@@ -224,7 +210,7 @@ def _seed_site_defaults():
 @app.get("/health", response_model=Health, tags=["system"])
 def health():
     return {"status": "ok", "artifacts_loaded": False,
-            "detail": "Research models reset; awaiting new synthetic dataset integration."}
+            "detail": "B-SMART operational API is available."}
 
 
 @app.get("/health/ready", tags=["system"])

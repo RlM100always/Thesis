@@ -1321,7 +1321,7 @@ function SettingsTab({ store, onRefresh }) {
         </div>
         {!form.sslcz_store_id && (
           <div style={{ marginTop: 12, background: "#f0f7ff", borderRadius: 8, padding: "10px 14px", fontSize: 12, color: "#1a4a7a", lineHeight: 1.6 }}>
-            💡 <strong>খালি রাখলে:</strong> demo sandbox credentials দিয়ে চলবে — real টাকা কাটবে না, শুধু flow test হবে।
+            💡 <strong>খালি রাখলে:</strong> gateway sandbox credentials দিয়ে চলবে — real টাকা কাটবে না, শুধু flow test হবে।
           </div>
         )}
       </div>
