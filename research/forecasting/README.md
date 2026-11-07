@@ -50,11 +50,12 @@ packages are recorded as skipped, not replaced with fabricated results.
 - Shop/category demand diagnostics: ADI, CV², zero ratio and four demand regimes
 - Lag, rolling, recency and calendar feature construction using past data only
 - Direct 1/7/14/28-day cumulative-demand targets
-- Seasonal-naive, Croston, SBA, TSB, HistGradientBoosting, optional LightGBM
-  and optional CatBoost candidates
+- Seasonal-naive, Croston, SBA, TSB, two-stage hurdle, HistGradientBoosting,
+  optional LightGBM and optional CatBoost candidates
 - Rolling-origin development comparisons with WAPE, MAE, RMSE, series-scaled MASE and bias
 - Per-origin forecasts plus pooled, per-shop, per-category and demand-regime metrics
 - Development-only model selection per demand regime, requiring at least two origins and ten series forecasts
+- `selected_model_by_regime.csv` records those validation-only selections
 - Validation figures: WAPE comparison, actual-versus-forecast example and shop-category error heatmap
 - Diagnostics, SHA-256 run manifest and automated contract tests
 - Tests for data contracts, zero demand, missingness, duplicates and metrics
