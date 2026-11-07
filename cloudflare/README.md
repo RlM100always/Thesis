@@ -30,7 +30,7 @@ The existing database was queried read-only. Its 22 application tables report `c
 - One retained POS CI fixture (`shop-752c1d2b-b92`) with one test product.
 - Three legacy generated orders, three order lines, three inventory movements and one historical cashbook receipt.
 - One legacy CI merchant account; zero customer accounts and zero real merchant-owned operational stores.
-- All 11 legacy store rows are unverified and remain excluded from public links and checkout.
+- All 11 legacy store rows are unverified and inactive; none can appear in public links or accept checkout.
 - Orphan-reference, order-total, payment-state and negative-stock checks returned zero exceptions.
 
 Legacy generated records are retained for audit/reconciliation only. They are not published, cannot accept customer orders and are not presented as real businesses.
