@@ -73,7 +73,7 @@ def test_direct_horizon_targets_are_future_sums_only():
 
 
 def test_rolling_origins_are_time_ordered():
-    panel = panel_frame(days=120)
+    panel = panel_frame(days=180)
     origins = rolling_origins(panel, horizon=7, folds=3, min_history=56)
     assert len(origins) == 3
     assert origins == sorted(origins)
@@ -146,3 +146,43 @@ def test_regime_selection_uses_only_supported_development_groups():
     selected = select_models_by_regime(pd.DataFrame(rows))
     assert selected.iloc[0]["selected_model"] == "lightgbm"
     assert selected.iloc[0]["status"] == "selected_on_development_cv"
+
+
+def test_drive_rq1_column_names_and_excel_serial_dates_are_supported(tmp_path):
+    frame = pd.DataFrame({
+        "shop_id": ["A"] * 60,
+        "category": ["Rice"] * 60,
+        "date": np.arange(44927, 44987),
+        "units_sold_observed": [0, 1] * 30,
+        "is_zero_observed_sales": [1, 0] * 30,
+    })
+    path = tmp_path / "drive_rq1.csv"
+    frame.to_csv(path, index=False)
+    loaded = load_daily_panel(path)
+    assert loaded.iloc[0]["date"] == pd.Timestamp("2023-01-01")
+    assert loaded.iloc[0]["category_id"] == "Rice"
+    assert loaded.iloc[1]["demand"] == 1
+
+
+def test_drive_zero_sales_flag_mismatch_is_rejected(tmp_path):
+    frame = pd.DataFrame({
+        "shop_id": ["A"] * 60,
+        "category": ["Rice"] * 60,
+        "date": pd.date_range("2023-01-01", periods=60).astype(str),
+        "units_sold_observed": [0, 1] * 30,
+        "is_zero_observed_sales": [0, 0] * 30,
+    })
+    path = tmp_path / "bad_zero_flag.csv"
+    frame.to_csv(path, index=False)
+    with pytest.raises(DataContractError, match="is_zero_observed_sales"):
+        load_daily_panel(path)
+
+
+def test_rolling_origins_never_cross_exclusive_development_cutoff():
+    panel = panel_frame(days=365)
+    cutoff = pd.Timestamp("2024-10-01")
+    origins = rolling_origins(panel, horizon=28, folds=3, min_history=56,
+                              development_end=cutoff)
+    assert len(origins) == 3
+    assert all(origin + pd.Timedelta(days=28) <= cutoff for origin in origins)
+    assert all(origin < cutoff for origin in origins)
