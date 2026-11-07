@@ -104,6 +104,8 @@ export async function customerAssistantRouter(request, env, path, output, error)
   const match = /^\\/api\\/public\\/assistant\\/([a-zA-Z0-9-]{2,90})$/.exec(path);
   if (!match || request.method !== "POST") return null;
   try {
+    const size=Number(request.headers.get("content-length")||0);
+    if(size>8000)return error(request,413,"Question payload too large");
     const slug = decodeURIComponent(match[1]);
     const store = await env.DB.prepare(
       "SELECT id,slug,name,tagline,category,delivery_note,is_demo,is_active,payment_cod FROM commerce_stores WHERE slug=? AND is_active=1 LIMIT 1"
@@ -117,11 +119,13 @@ export async function customerAssistantRouter(request, env, path, output, error)
       "SELECT id,name,category,description,brand,tags,price_bdt,stock_qty,is_featured,unit_label FROM commerce_products WHERE store_id=? AND is_listed=1 ORDER BY is_featured DESC,name LIMIT 40"
     ).bind(store.id).all();
     const words = question.toLowerCase().split(/[\\s,.;:!?।]+/).filter(x => x.length >= 2);
-    const products = (productRows.results || []).map(p => {
+    let products = (productRows.results || []).map(p => {
       const searchable = [p.name,p.category,p.description,p.brand,...parseTags(p.tags)].join(" ").toLowerCase();
       const score = words.reduce((sum, word) => sum + (searchable.includes(word) ? 1 : 0), 0);
       return { ...p, score };
     }).filter(p => p.score > 0).sort((a,b) => b.score-a.score || Number(b.is_featured)-Number(a.is_featured)).slice(0, 8);
+    if(contains(question,["কম দামে","সস্তা","cheap","low price"]))products=(productRows.results||[]).filter(p=>Number(p.stock_qty)>0).sort((a,b)=>Number(a.price_bdt)-Number(b.price_bdt)).slice(0,8);
+    else if(!products.length&&contains(question,["পণ্য","product","recommend","দেখান","suggest"]))products=(productRows.results||[]).filter(p=>Number(p.stock_qty)>0).sort((a,b)=>Number(b.is_featured)-Number(a.is_featured)).slice(0,8);
     const auth = /^Bearer ([a-f0-9]{64})$/i.exec(request.headers.get("Authorization") || "");
     const customer = auth ? await customerFromToken(env, auth[1]) : null;
     let orders = [];
@@ -159,10 +163,10 @@ export async function ownerAssistantAnswer(env, request, owner, store, question,
     env.DB.prepare(
       "SELECT " +
       "(SELECT COUNT(*) FROM commerce_orders WHERE store_id=? AND status!='cancelled') AS orders_total," +
-      "(SELECT COALESCE(SUM(total_bdt),0) FROM commerce_orders WHERE store_id=? AND status!='cancelled' AND date(placed_at)=date('now')) AS today_order_value_bdt," +
+      "(SELECT COALESCE(SUM(total_bdt),0) FROM commerce_orders WHERE store_id=? AND status!='cancelled' AND date(placed_at,'+6 hours')=date('now','+6 hours')) AS today_order_value_bdt," +
       "(SELECT COALESCE(SUM(total_bdt),0) FROM commerce_orders WHERE store_id=? AND status!='cancelled' AND payment_status='paid' AND date(placed_at)=date('now')) AS today_collected_bdt," +
       "(SELECT COALESCE(SUM(total_bdt),0) FROM commerce_orders WHERE store_id=? AND status!='cancelled' AND payment_method='cod' AND payment_status='pending_cod') AS cod_pending_total_bdt," +
-      "(SELECT COUNT(*) FROM commerce_products WHERE store_id=? AND stock_qty<=reorder_level) AS low_stock_count," +
+      "(SELECT COUNT(*) FROM commerce_products WHERE store_id=? AND is_listed=1 AND stock_qty<=reorder_level) AS low_stock_count," +
       "(SELECT COUNT(DISTINCT account_id) FROM commerce_orders WHERE store_id=? AND account_id IS NOT NULL) AS customer_count," +
       "(SELECT COUNT(*) FROM (SELECT account_id FROM commerce_orders WHERE store_id=? AND account_id IS NOT NULL GROUP BY account_id HAVING COUNT(*)>1)) AS repeat_customer_count"
     ).bind(store.id,store.id,store.id,store.id,store.id,store.id,store.id).first(),
