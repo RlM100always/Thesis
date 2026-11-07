@@ -20,7 +20,7 @@ from api.database import Base
 from api import domain_models  # noqa: F401 - register operational tables
 from api import admin_models  # noqa: F401 - register platform-control tables
 
-EXPECTED_MODEL_TABLES = 114
+EXPECTED_MODEL_TABLES = 122
 
 
 def generate_schema_sql() -> tuple[str, list[str]]:
