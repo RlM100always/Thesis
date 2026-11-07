@@ -93,7 +93,7 @@ async function orderDetails(env,request,id,token) {
   shipping_name:order.shipping_name||"",shipping_phone:order.shipping_phone||"",shipping_address:order.shipping_address||"",
   subtotal:order.subtotal_bdt,tax_amount:0,delivery_fee:0,discount_amount:0,
   coupon_code:null,coupon_discount:0,total:order.total_bdt,organization_id:id,
-  store_slug:store?.slug||null,store_name:store?.name||"পরীক্ষামূলক দোকান",is_demo:!!store?.is_demo,
+  store_slug:store?.slug||null,store_name:store?.name||"দোকান",is_demo:!!store?.is_demo,
   payment_method:order.payment_method||"demo",
   items:results.map(p=>({product_id:p.product_id,description:p.product_name,product_name:p.product_name,quantity:p.quantity,unit_price:p.price_bdt,line_total:p.line_total_bdt,variant_label:null})),
   whatsapp_notify_url:null,coupon_applied:false,referral_discount:0
@@ -119,7 +119,7 @@ async function checkout(env,request,id) {
  let account=null;
  if(customerToken){
   account=await customerFromToken(env,customerToken);
-  if(!account)return error(request,401,"Customer session expired. Sign in again before placing this demo order.");
+  if(!account)return error(request,401,"Customer session expired. Sign in again before placing the order.");
  }
  const items=data.items;
  if(!Array.isArray(items)||items.length<1||items.length>12)
