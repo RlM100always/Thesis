@@ -31,7 +31,7 @@ test("public copy states that only approved business stores can accept orders",(
  const store=read("pages/Store.jsx");
  const directory=read("pages/StoreDirectory.jsx");
  const tracking=read("pages/OrderStatus.jsx");
- assert.match(store,/এই দোকানটি এখনো বাস্তব অর্ডারের জন্য অনুমোদিত নয়/);
+ assert.match(store,/দোকানটি পাওয়া যায়নি অথবা বর্তমানে বন্ধ আছে/);
  assert.match(tracking,/অর্ডারের সর্বশেষ অবস্থা/);
  assert.doesNotMatch(directory,/ডেমো|Demo|demo/);
  for(const obsolete of ["operational database-এ","Activate করে পণ্য Publish","independent owner account"]){
