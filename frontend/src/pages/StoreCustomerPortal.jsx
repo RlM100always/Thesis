@@ -315,7 +315,7 @@ const PAYMENT_METHOD_LABEL = { cod: "Cash on Delivery" };
 const RETURN_LABEL = {
   requested: "অনুরোধ জমা হয়েছে", approved: "দোকান অনুমোদন করেছে",
   rejected: "দোকান অনুরোধ প্রত্যাখ্যান করেছে", received: "ফেরত পণ্য গ্রহণ করা হয়েছে",
-  closed_demo: "নমুনাভাবে বন্ধ",
+  closed_demo: "প্রক্রিয়া বন্ধ",
 };
 
 // ── Orders View ───────────────────────────────────────────────────────────────
