@@ -16,8 +16,9 @@
 3. Inspect current service environment variable names without printing secret values.
 4. Verify the GitHub repository secrets `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` are configured.
 5. Verify the Worker secret `PLATFORM_ADMIN_KEY` exists. Do not read or print its value.
-6. Take a D1 backup/export and verify it can be read before applying any migration.
-7. Confirm the selected branch and commit have passing CI.
+6. For owner verification and password recovery, configure Worker secret `RESEND_API_KEY`, verified sender variable `AUTH_EMAIL_FROM`, and `PUBLIC_APP_URL=https://thesis-j0n8.onrender.com`.
+7. Take a D1 backup/export and verify it can be read before applying any migration.
+8. Confirm the selected branch and commit have passing CI.
 
 ## Build and test
 
@@ -60,6 +61,7 @@ node --check --input-type=module < cloudflare/platform-admin-routes.js
 
 - Keep the existing D1 database ID and `DB` binding.
 - Never run historical migrations blindly against the live database. The earlier migrations were manually applied and may not be registered in Wrangler's migration ledger.
+- For owner email security, inspect the live `merchant_accounts` columns and `commerce_meta.schema_version`; only apply migration 0009 if those columns are absent. The currently recorded live version is 8, and migration 0009 is branch-only until approved.
 - Apply only reviewed additive SQL that is confirmed missing from the live schema.
 - Never switch SQLAlchemy to a D1 database ID. D1 is accessed through the Worker binding.
 - Do not delete or reset existing stores, customers, orders, inventory, cashbook or audit records to make a test pass.
@@ -71,3 +73,16 @@ node --check --input-type=module < cloudflare/platform-admin-routes.js
 3. If a schema migration was applied, use the verified backup/restore procedure and a reviewed rollback plan. Do not assume a code rollback reverses D1 schema/data changes.
 4. Re-run readiness and read-only integrity checks.
 5. Document the incident and the affected data boundary.
+
+## Owner email provider setup
+
+The owner registration and password-recovery branch uses Resend for outbound email. Before enabling it:
+
+1. Verify the sender domain in Resend.
+2. Add `RESEND_API_KEY` as a Cloudflare Worker secret. Never store it in `wrangler.toml` or GitHub source.
+3. Set `AUTH_EMAIL_FROM` to the exact verified sender identity.
+4. Set `PUBLIC_APP_URL` to the production Render URL.
+5. Apply the additive migration `cloudflare/migrations/0009_owner_email_security.sql` only after backing up D1 and confirming the columns are not already present.
+6. Test owner registration, verification link expiry, resend, password reset, token reuse rejection and session revocation in staging.
+
+The branch fails closed when the mail provider is not configured: it does not create a new owner account without sending a verification email. Do not publish temporary passwords or reset links in README files.
