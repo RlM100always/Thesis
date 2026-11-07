@@ -230,6 +230,65 @@ export async function merchantRouter(req,env,path,output,error){
    return output(req,{deleted:true});
   }
   if(method==="GET"&&path==="/api/merchant/dashboard")return output(req,await dashboard(env,owner));
+   if(method==="GET"&&path==="/api/merchant/coupons"){
+    const store=await storeOnly(env,owner);
+    const {results}=await env.DB.prepare("SELECT c.*,(SELECT COUNT(*) FROM commerce_coupon_redemptions r WHERE r.coupon_id=c.id) AS usage_count FROM commerce_coupons c WHERE c.store_id=? ORDER BY c.created_at DESC").bind(store.id).all();
+    return output(req,{coupons:results||[]});
+   }
+   if(method==="POST"&&path==="/api/merchant/coupons"){
+    const store=await storeOnly(env,owner),b=await json(req,error);
+    const code=short(b.code,32).toUpperCase(),type=String(b.discount_type||"percent");
+    const value=Number(b.discount_value),minimum=Number(b.min_order_bdt??0);
+    const maximum=b.max_discount_bdt===""||b.max_discount_bdt===null||b.max_discount_bdt===undefined?null:Number(b.max_discount_bdt);
+    const usage=b.usage_limit===""||b.usage_limit===null||b.usage_limit===undefined?null:Number(b.usage_limit);
+    const perCustomer=b.per_customer_limit===""||b.per_customer_limit===null||b.per_customer_limit===undefined?null:Number(b.per_customer_limit);
+    const starts=short(b.starts_at,40)||null,ends=short(b.ends_at,40)||null;
+    if(!/^[A-Z0-9_-]{3,32}$/.test(code)||!["percent","fixed"].includes(type)||
+       !integer(value,1,type==="percent"?100:10000000)||!integer(minimum,0,5000000)||
+       (maximum!==null&&!integer(maximum,1,5000000))||(usage!==null&&!integer(usage,1,10000000))||
+       (perCustomer!==null&&!integer(perCustomer,1,1000000))||
+       (starts&&!Number.isFinite(Date.parse(starts)))||(ends&&!Number.isFinite(Date.parse(ends)))||
+       (starts&&ends&&Date.parse(ends)<=Date.parse(starts)))
+      return bad(req,error,422,"কুপনের তথ্য সঠিক নয়। কোড, ছাড়, সীমা ও তারিখ যাচাই করুন।");
+    const id=crypto.randomUUID();
+    try{
+     await env.DB.prepare("INSERT INTO commerce_coupons(id,store_id,code,discount_type,discount_value,min_order_bdt,max_discount_bdt,usage_limit,per_customer_limit,starts_at,ends_at,is_active) VALUES(?,?,?,?,?,?,?,?,?,?,?,1)")
+      .bind(id,store.id,code,type,value,minimum,maximum,usage,perCustomer,starts,ends).run();
+    }catch(e){return bad(req,error,errorCode(e),"এই কুপন কোডটি আগে থেকেই আছে অথবা তথ্য সংরক্ষণ করা যায়নি।");}
+    return output(req,{created:true,id},201);
+   }
+   const couponPath=/^\/api\/merchant\/coupons\/([a-zA-Z0-9-]{2,90})$/.exec(path);
+   if(couponPath&&method==="PATCH"){
+    const store=await storeOnly(env,owner),b=await json(req,error);
+    const current=await env.DB.prepare("SELECT * FROM commerce_coupons WHERE id=? AND store_id=?").bind(couponPath[1],store.id).first();
+    if(!current)return bad(req,error,404,"কুপন পাওয়া যায়নি।");
+    const code=short(b.code??current.code,32).toUpperCase(),type=String(b.discount_type??current.discount_type);
+    const value=Number(b.discount_value??current.discount_value),minimum=Number(b.min_order_bdt??current.min_order_bdt);
+    const maximum=b.max_discount_bdt===undefined?current.max_discount_bdt:(b.max_discount_bdt===""||b.max_discount_bdt===null?null:Number(b.max_discount_bdt));
+    const usage=b.usage_limit===undefined?current.usage_limit:(b.usage_limit===""||b.usage_limit===null?null:Number(b.usage_limit));
+    const perCustomer=b.per_customer_limit===undefined?current.per_customer_limit:(b.per_customer_limit===""||b.per_customer_limit===null?null:Number(b.per_customer_limit));
+    const starts=b.starts_at===undefined?current.starts_at:(short(b.starts_at,40)||null),ends=b.ends_at===undefined?current.ends_at:(short(b.ends_at,40)||null);
+    const active=b.is_active===undefined?current.is_active:(b.is_active?1:0);
+    if(!/^[A-Z0-9_-]{3,32}$/.test(code)||!["percent","fixed"].includes(type)||
+       !integer(value,1,type==="percent"?100:10000000)||!integer(minimum,0,5000000)||
+       (maximum!==null&&!integer(maximum,1,5000000))||(usage!==null&&!integer(usage,1,10000000))||
+       (perCustomer!==null&&!integer(perCustomer,1,1000000))||
+       (starts&&!Number.isFinite(Date.parse(starts)))||(ends&&!Number.isFinite(Date.parse(ends)))||
+       (starts&&ends&&Date.parse(ends)<=Date.parse(starts)))
+      return bad(req,error,422,"কুপনের তথ্য সঠিক নয়।");
+    try{
+     await env.DB.prepare("UPDATE commerce_coupons SET code=?,discount_type=?,discount_value=?,min_order_bdt=?,max_discount_bdt=?,usage_limit=?,per_customer_limit=?,starts_at=?,ends_at=?,is_active=? WHERE id=? AND store_id=?")
+      .bind(code,type,value,minimum,maximum,usage,perCustomer,starts,ends,active,couponPath[1],store.id).run();
+    }catch(e){return bad(req,error,errorCode(e),"কুপন আপডেট করা যায়নি।");}
+    return output(req,{updated:true});
+   }
+   if(couponPath&&method==="DELETE"){
+    const store=await storeOnly(env,owner);
+    const result=await env.DB.prepare("UPDATE commerce_coupons SET is_active=0 WHERE id=? AND store_id=?").bind(couponPath[1],store.id).run();
+    if(!result.meta?.changes)return bad(req,error,404,"কুপন পাওয়া যায়নি।");
+    return output(req,{deactivated:true});
+   }
+
    if(method==="POST"&&path==="/api/merchant/assistant"){
     const store=await storeOnly(env,owner),b=await json(req,error,6000),question=short(b.question,500);
     if(question.length<2)return bad(req,error,422,"কমপক্ষে ২ অক্ষরের প্রশ্ন লিখুন।");
