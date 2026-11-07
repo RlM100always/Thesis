@@ -42,7 +42,8 @@ constructed from dates strictly before its forecast origin.
 
 Model fitting uses only training examples whose full target horizon ends before
 the validation origin. The development evaluation uses rolling origins. WAPE,
-MAE, RMSE, MASE and forecast bias are recorded; zero-total WAPE is null.
+MAE, RMSE, per-series scaled MASE and forecast bias are recorded; zero-total WAPE is null.
+Metrics are retained at pooled, per-shop, per-category and demand-regime levels.
 
 ## 4. Reproducibility outputs
 
@@ -55,13 +56,15 @@ Each run writes:
 
 The isolated research test suite checks panel integrity, duplicate rejection, missing-date
 handling, no-demand classification, Croston-family non-negativity, zero-total
-WAPE handling, series-specific MASE, direct-horizon target creation and chronological origins.
+WAPE handling, series-specific MASE, direct-horizon target creation, chronological
+origins, tree/hurdle model fitting, regime selection and figure generation.
 A dedicated GitHub Actions workflow runs these tests without loading the
-application-wide FastAPI test fixtures.
+application-wide FastAPI test fixtures. The hurdle classifier probability is
+not calibrated in v0.1.0 and must not be presented as a calibrated probability.
 
 ## 5. Limitations and deferred work
 
-The first implementation does not yet provide calibrated prediction intervals,
+The first implementation does not yet provide calibrated occurrence probabilities or prediction intervals,
 stockout-censoring correction, promotion/price/market-context covariates,
 hierarchical reconciliation or inventory-policy backtesting. These must not be
 claimed as implemented. They require verified fields and separate validation.
