@@ -1931,7 +1931,7 @@ export default function StorePage() {
   return (
     <div className="s-site">
       {store.is_demo && <div role="status" style={{position:"relative",zIndex:50,padding:"12px 16px",background:"#fef3c7",color:"#78350f",fontWeight:700,textAlign:"center"}}>
-        নমুনা স্টোর — এখানে বাস্তব পেমেন্ট বা ডেলিভারি চালু নেই।
+        এই দোকানটি এখনো বাস্তব অর্ডারের জন্য অনুমোদিত নয়।
       </div>}
       {/* Floating cart button (mobile) */}
       {cartCount > 0 && (
