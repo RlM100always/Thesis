@@ -47,7 +47,17 @@ def upgrade() -> None:
     from api import domain_models  # noqa: F401
     from api import admin_models  # noqa: F401
 
-    for name in NEW_TABLES:
+    # Older installations already had these operational tables. A clean
+    # production database does not, so create only the missing storefront base
+    # tables from the canonical SQLAlchemy models before adding their columns.
+    # checkfirst preserves all existing rows and never recreates an existing table.
+    BASE_TABLES = (
+        "stores",
+        "store_products",
+        "sales_documents",
+        "sales_document_lines",
+    )
+    for name in BASE_TABLES + NEW_TABLES:
         table = Base.metadata.tables.get(name)
         if table is None:
             raise RuntimeError("Expected storefront model table missing: " + name)

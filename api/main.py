@@ -7,8 +7,9 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import utf8_console  # noqa: E402,F401  — UTF-8 stdout before any printing
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import text
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
@@ -63,7 +64,8 @@ from .payment_routes import router as payment_router
 from .coupon_routes import router as coupon_router, public_router as public_coupon_router
 from .review_routes import router as review_router
 from .research_portal_routes import router as research_portal_router  # noqa: E402
-from .database import create_schema, SessionLocal  # noqa: E402
+from .config import get_settings  # noqa: E402
+from .database import create_schema, SessionLocal, engine  # noqa: E402
 from .schemas import Health  # noqa: E402
 
 app = FastAPI(
@@ -150,8 +152,17 @@ app.mount("/api/app/messages/uploads", _StaticFiles(directory=str(_chat_upload_d
 
 @app.on_event("startup")
 def initialize_application_database():
-    """Create the development schema; Alembic will own production upgrades."""
-    create_schema()
+    """Create local development tables; production schema is managed by Alembic."""
+    settings = get_settings()
+    if settings.is_production:
+        # The container entrypoint runs `alembic upgrade head` before Uvicorn.
+        # Refuse to serve traffic if a deployment skipped or failed migrations.
+        with engine.connect() as connection:
+            version = connection.execute(text("SELECT version_num FROM alembic_version")).scalar_one_or_none()
+        if not version:
+            raise RuntimeError("Production database migrations have not been applied")
+    else:
+        create_schema()
     from .presentation_demo import ensure_presentation_demo
     ensure_presentation_demo()
     _seed_site_defaults()
@@ -214,6 +225,32 @@ def _seed_site_defaults():
 def health():
     return {"status": "ok", "artifacts_loaded": False,
             "detail": "Research models reset; awaiting new synthetic dataset integration."}
+
+
+@app.get("/health/ready", tags=["system"])
+def readiness():
+    """Readiness probe: prove the configured database is reachable and persistent."""
+    settings = get_settings()
+    try:
+        with engine.connect() as connection:
+            connection.execute(text("SELECT 1"))
+            if settings.is_production:
+                version = connection.execute(
+                    text("SELECT version_num FROM alembic_version")
+                ).scalar_one_or_none()
+                if not version:
+                    raise RuntimeError("Database migrations are missing")
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail="Database readiness check failed") from exc
+    persistent = engine.dialect.name != "sqlite"
+    if settings.is_production and not persistent:
+        raise HTTPException(status_code=503, detail="Production requires a persistent database")
+    return {
+        "status": "ready",
+        "database": engine.dialect.name,
+        "persistent": persistent,
+        "environment": settings.app_env,
+    }
 
 
 @app.get("/", tags=["system"])
