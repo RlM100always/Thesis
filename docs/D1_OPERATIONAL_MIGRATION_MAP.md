@@ -11,23 +11,25 @@ The existing D1 database has schema version 8 and 22 application tables. Those t
 
 `commerce_cashbook`, `commerce_customer_accounts`, `commerce_customer_addresses`, `commerce_customer_cart_items`, `commerce_customer_login_attempts`, `commerce_customer_messages`, `commerce_customer_sessions`, `commerce_customer_wishlist_items`, `commerce_customers`, `commerce_inventory_movements`, `commerce_meta`, `commerce_order_lines`, `commerce_order_returns`, `commerce_orders`, `commerce_platform_admin_audit`, `commerce_product_reviews`, `commerce_products`, `commerce_stock_adjustments`, `commerce_stores`, `merchant_accounts`, `merchant_login_attempts`, `merchant_sessions`
 
-The current D1 dataset contains 10 fictional demo stores / 259 demo products plus one retained CI test fixture and its test product. All 11 store rows are marked demo. The fixture is hidden from customer discovery by the alignment change, but its rows remain in D1.
+The current D1 dataset contains 10 unverified seeded sample stores / 259 sample products plus one retained CI test fixture and its test product. These records are private and are not represented as real merchant businesses. All 11 store rows are marked as unverified sample data. The fixture is hidden from customer discovery by the alignment change, but its rows remain in D1.
 
 The Render-hosted FastAPI runtime is **not connected to D1**. Its latest startup diagnostic reports SQLite, one organization, zero stores, four catalogue products and zero listed store products. The existing Render Postgres resource is not configured as the running service's database. The separate Cloudflare D1 database `bcs-written` is another application and is excluded from this migration.
 
 ## 2. Existing SQLAlchemy schema that must be ported
 
-The current FastAPI code defines **78 operational tables** in `api/domain_models.py` and **36 platform-control tables** in `api/admin_models.py` (114 total). FastAPI currently registers **54 routers**. None of these model tables currently exists in the `bsmart-commerce` D1 database.
+The current FastAPI code defines **86 operational tables** in `api/domain_models.py` and **36 platform-control tables** in `api/admin_models.py` (122 total). FastAPI currently registers **54 routers**. None of these model tables currently exists in the `bsmart-commerce` D1 database.
 
-### Operational tables (78)
+### Operational tables (86)
 
 - `organizations` — Organization
 - `organization_settings` — OrganizationSetting
 - `reference_values` — ReferenceValue
 - `outbound_messages` — OutboundMessage
 - `users` — User
+- `user_sessions` — UserSession
 - `memberships` — Membership
 - `branches` — Branch
+- `warehouses` — Warehouse
 - `membership_branches` — MembershipBranch
 - `products` — Product
 - `customers` — Customer
@@ -52,9 +54,11 @@ The current FastAPI code defines **78 operational tables** in `api/domain_models
 - `stock_movements` — StockMovement
 - `batches` — Batch
 - `batch_stock` — BatchStock
+- `stock_counts` — StockCount
 - `stock_count_lines` — StockCountLine
 - `sale_item_batches` — SaleItemBatch
 - `cash_closes` — CashClose
+- `cashier_shifts` — CashierShift
 - `cash_movements` — CashMovement
 - `inventory_balances` — InventoryBalance
 - `expenses` — Expense
@@ -70,7 +74,9 @@ The current FastAPI code defines **78 operational tables** in `api/domain_models
 - `payroll_runs` — PayrollRun
 - `payroll_lines` — PayrollLine
 - `fiscal_periods` — FiscalPeriod
+- `reservations` — Reservation
 - `approval_rules` — ApprovalRule
+- `approval_requests` — ApprovalRequest
 - `purchase_orders` — PurchaseOrder
 - `purchase_order_items` — PurchaseOrderItem
 - `purchase_returns` — PurchaseReturn
@@ -87,10 +93,12 @@ The current FastAPI code defines **78 operational tables** in `api/domain_models
 - `recommendations` — Recommendation
 - `recommendation_decisions` — RecommendationDecision
 - `recommendation_outcomes` — RecommendationOutcome
+- `team_messages` — TeamMessage
 - `org_subscriptions` — OrgSubscription
 - `org_invoices` — OrgInvoice
 - `admin_conversations` — AdminConversation
 - `admin_messages` — AdminMessage
+- `site_content` — SiteContent
 - `store_customers` — StoreCustomer
 - `store_messages` — StoreMessage
 - `store_customer_addresses` — StoreCustomerAddress
@@ -156,9 +164,9 @@ The current FastAPI code defines **78 operational tables** in `api/domain_models
 
 1. Keep the existing D1 database ID `887fa347-9c22-46b1-a7cf-91a7dbdfc311` and Worker binding `DB`.
 2. Do not rename, truncate, reseed or repurpose existing `commerce_*` tables.
-3. Keep current demo store, product, order, line, inventory and cashbook IDs stable.
+3. Keep current unverified sample store, product, order, line, inventory and cashbook IDs stable.
 4. Never import the unrelated `bcs-written` study-content database into B-SMART.
-5. Do not treat the Render SQLite diagnostic's four catalogue products as a replacement for the 259 D1 demo products.
+5. Do not treat the Render SQLite diagnostic's four catalogue products as a replacement for the 259 D1 sample products.
 6. Do not point SQLAlchemy's `DATABASE_URL` at a D1 database ID. D1 is accessed through a Worker binding and requires Worker-native atomic batches for transactional writes.
 7. Do not dual-write the same sale, stock movement or payment to SQLite and D1. One module has one authoritative writer at a time.
 8. Every migrated tenant-owned row must carry and enforce its organization/branch ownership. Cross-tenant reads and writes must fail closed.
