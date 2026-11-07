@@ -198,7 +198,7 @@ export default function D1MerchantCenter(){
             <h2>ব্যবসার AI সহকারী</h2>
             <p className="dm-muted">আপনার নিজের দোকানের অর্ডার, বিক্রি, মজুত ও ক্রেতার সারাংশ থেকে উত্তর তৈরি করে। অন্য দোকানের তথ্য এতে ব্যবহার করা হয় না।</p>
             <p className="dm-muted">{assistantAiEnabled?"Workers AI চালু আছে। উত্তরগুলো দোকানের ডেটা দিয়ে যাচাই করা হয়।":"নিরাপদ ডেটা-ভিত্তিক সহকারী সক্রিয়। AI model এখনো চালু করা হয়নি।"}</p>
-            <div className="dm-ai-chat" aria-live="polite">
+            <div className="dm-ai-chat" aria-live="polite" style={{maxHeight:380,overflowY:"auto",padding:10,border:"1px solid var(--dm-line)",borderRadius:10}}>
               {assistantMessages.length===0&&<p className="dm-muted">প্রশ্ন করুন: আজকের বিক্রি কত? কোন পণ্যের স্টক কম? সেরা বিক্রিত পণ্য কোনটি?</p>}
               {assistantMessages.map((m,i)=><div key={i} style={{marginBottom:10,padding:11,borderRadius:10,background:m.role==="user"?"var(--dm-soft)":"var(--dm-surface)",border:"1px solid var(--dm-line)",whiteSpace:"pre-line",maxWidth:"100%"}}>
                 <strong>{m.role==="user"?"আপনি":"সহকারী"}</strong><p style={{margin:"5px 0 0"}}>{m.content}</p>
