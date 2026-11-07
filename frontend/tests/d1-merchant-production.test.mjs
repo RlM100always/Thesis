@@ -49,8 +49,8 @@ function createD1Mock() {
               return row ? {id:row.id} : null;
             }
             if (sql.startsWith("SELECT failures,lock_until FROM merchant_login_attempts")) return attempts.get(args[0]) || null;
-            if (sql.startsWith("SELECT id,email,password_hash,password_salt,access_key_digest,email_verified_at FROM merchant_accounts")) return accounts.get(args[0]) || null;
-            if (sql.startsWith("SELECT a.id,a.email FROM merchant_sessions")) {
+            if (sql.startsWith("SELECT id,email,password_hash,password_salt,access_key_digest,email_verified_at,is_active,role FROM merchant_accounts")) return accounts.get(args[0]) || null;
+            if (sql.startsWith("SELECT a.id,a.email,a.role FROM merchant_sessions")) {
               const session = sessions.get(args[0]);
               if (!session || session.expires_at <= args[1]) return null;
               const account = [...accounts.values()].find(row => row.id === session.account_id);
