@@ -62,6 +62,16 @@ export async function platformAdminRouter(req,env,path,output,error) {
       ).all();
       return output(req,{stores:results});
     }
+    if(method==="GET"&&path==="/api/platform-admin/owners") {
+      const {results}=await env.DB.prepare(
+        "SELECT a.id,a.email,a.role,a.is_active,a.email_verified_at,a.created_at,"+
+        "s.id AS store_id,s.slug AS store_slug,s.name AS store_name,"+
+        "(SELECT COUNT(*) FROM merchant_sessions ms WHERE ms.account_id=a.id AND ms.expires_at>CURRENT_TIMESTAMP) AS active_sessions "+
+        "FROM merchant_accounts a LEFT JOIN commerce_stores s ON s.owner_id=a.id "+
+        "ORDER BY a.created_at DESC LIMIT 500"
+      ).all();
+      return output(req,{owners:results,note:"Passwords and password hashes are never exposed. Owners use email verification and self-service password reset."});
+    }
     if(method==="GET"&&path==="/api/platform-admin/customers") {
       const {results}=await env.DB.prepare(
         "SELECT a.id,a.display_name,a.email,a.phone,a.created_at,"+
@@ -92,6 +102,18 @@ export async function platformAdminRouter(req,env,path,output,error) {
     if(method==="GET"&&path==="/api/platform-admin/audit") {
       const {results}=await env.DB.prepare("SELECT id,action,target_type,target_id,details,created_at FROM commerce_platform_admin_audit ORDER BY created_at DESC LIMIT 200").all();
       return output(req,{audit:results});
+    }
+        const ownerMatch=path.match(/^\\/api\\/platform-admin\\/owners\\/([^/]+)$/);
+    if(method==="PATCH"&&ownerMatch) {
+      const id=decodeURIComponent(ownerMatch[1]),body=await readBody(req);
+      if(typeof body.is_active!=="boolean")return error(req,422,"is_active must be true or false");
+      const owner=await env.DB.prepare("SELECT id,email,is_active,role FROM merchant_accounts WHERE id=?").bind(id).first();
+      if(!owner)return error(req,404,"Owner account not found");
+      const result=await env.DB.prepare("UPDATE merchant_accounts SET is_active=? WHERE id=? AND is_active=?")
+        .bind(body.is_active?1:0,id,owner.is_active).run();
+      if(!body.is_active)await env.DB.prepare("DELETE FROM merchant_sessions WHERE account_id=?").bind(id).run();
+      await audit(env,body.is_active?"owner_account_activated":"owner_account_suspended","merchant_account",id,{email:owner.email,previous_active:!!owner.is_active,is_active:body.is_active,reason:short(body.reason,250)});
+      return output(req,{updated:!!result.meta?.changes,is_active:body.is_active,sessions_revoked:!body.is_active});
     }
     const storeMatch=path.match(/^\/api\/platform-admin\/stores\/([^/]+)$/);
     if(method==="PATCH"&&storeMatch) {
