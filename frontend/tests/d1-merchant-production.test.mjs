@@ -128,9 +128,9 @@ test("new merchant stores are real but private until platform approval", async (
 });
 
 test("approved-store POS records real cash collection in D1 rather than a simulated sale", () => {
-  assert.match(source,/const methodName=isSample\?"sample_pos":"cash"/);
+  assert.match(source,/const methodName="cash"/);
   assert.match(source,/payment_status='paid',payment_received_at=CURRENT_TIMESTAMP,payment_received_by/);
-  assert.match(source,/isSample\?"Unverified sample POS receipt":"POS cash sale"/);
+  assert.match(source,/"POS cash sale"/);
 });
 
 test("merchant UI uses password auth and exposes POS for approved stores", () => {
