@@ -152,14 +152,14 @@ def _features(history: pd.DataFrame, origin: pd.Timestamp) -> dict:
     out["adi"] = profile.adi if np.isfinite(profile.adi) else float(len(y) + 1)
     out["cv2"] = profile.cv2 if np.isfinite(profile.cv2) else 0.0
     out["zero_ratio_all"] = profile.zero_ratio
-    out["day_of_week"] = int(origin.dayofweek)
+    out["day_of_week"] = int(origin.day_of_week)
     out["day_of_month"] = int(origin.day)
     out["month"] = int(origin.month)
     out["week_of_year"] = int(origin.isocalendar().week)
     out["is_month_start"] = int(origin.is_month_start)
     out["is_month_end"] = int(origin.is_month_end)
-    out["dow_sin"] = math.sin(2 * math.pi * origin.dayofweek / 7)
-    out["dow_cos"] = math.cos(2 * math.pi * origin.dayofweek / 7)
+    out["dow_sin"] = math.sin(2 * math.pi * origin.day_of_week / 7)
+    out["dow_cos"] = math.cos(2 * math.pi * origin.day_of_week / 7)
     out["month_sin"] = math.sin(2 * math.pi * (origin.month - 1) / 12)
     out["month_cos"] = math.cos(2 * math.pi * (origin.month - 1) / 12)
     return out
