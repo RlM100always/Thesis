@@ -60,20 +60,77 @@ export async function merchantRouter(req,env,path,output,error){
  try{
   if(method==="GET"&&path==="/api/merchant/health"){
    const secret=newSession(),digest=await sha256(secret);
-   return output(req,{status:"ok",db:"D1",password_auth_ready:true,password_hash:"PBKDF2-HMAC-SHA-256",password_iterations:100000,legacy_access_key_support:true,health_digest_ok:digest.length===64});
+   return output(req,{status:"ok",db:"D1",password_auth_ready:true,password_hash:"PBKDF2-HMAC-SHA-256",password_iterations:100000,legacy_access_key_support:true,email_verification_configured:authMailConfigured(env),password_reset_configured:authMailConfigured(env),health_digest_ok:digest.length===64});
   }
   if(method==="POST"&&path==="/api/merchant/register"){
    const b=await json(req,error),email=short(b.email,200).toLowerCase(),password=String(b.password||"");
    if(!validEmail(email))return bad(req,error,422,"Valid email required");
    if(password.length<12||password.length>128)return bad(req,error,422,"Password must contain 12-128 characters");
+   if(!authMailConfigured(env))return bad(req,error,503,"Owner email verification is not configured yet");
    const today=await env.DB.prepare("SELECT COUNT(*) AS n FROM merchant_accounts WHERE created_at >= datetime('now','start of day')").first();
    if(Number(today?.n||0)>=20)return bad(req,error,429,"Daily account registration limit reached");
    if(await env.DB.prepare("SELECT id FROM merchant_accounts WHERE email=?").bind(email).first())
      return bad(req,error,409,"Account already exists");
    const id=crypto.randomUUID(),salt=randomHex(16),hash=await passwordDigest(password,salt);
-   try{await env.DB.prepare("INSERT INTO merchant_accounts(id,email,password_hash,password_salt,access_key_digest) VALUES(?,?,?,?,NULL)").bind(id,email,hash,salt).run();}
-   catch(e){return bad(req,error,errorCode(e),"Unable to create owner account");}
-   return output(req,{created:true,requires_login:true},201);
+   const verificationToken=newSession(),verificationHash=await sha256(verificationToken);
+   const expires=new Date(Date.now()+24*60*60*1000).toISOString();
+   try{
+    await env.DB.prepare("INSERT INTO merchant_accounts(id,email,password_hash,password_salt,access_key_digest,email_verification_token_hash,email_verification_expires_at) VALUES(?,?,?,?,NULL,?,?)")
+     .bind(id,email,hash,salt,verificationHash,expires).run();
+   }catch(e){return bad(req,error,errorCode(e),"Unable to create owner account");}
+   if(!await sendOwnerVerification(env,email,verificationToken)){
+    await env.DB.prepare("DELETE FROM merchant_accounts WHERE id=? AND email_verified_at IS NULL").bind(id).run();
+    return bad(req,error,503,"Verification email could not be sent. Please try again later.");
+   }
+   return output(req,{created:true,requires_email_verification:true},201);
+  }
+  if(method==="POST"&&path==="/api/merchant/verify-email"){
+   const b=await json(req,error),token=String(b.token||"").trim();
+   if(!/^[a-f0-9]{64}$/i.test(token))return bad(req,error,400,"Invalid or expired verification link");
+   const row=await env.DB.prepare("SELECT id FROM merchant_accounts WHERE email_verification_token_hash=? AND email_verification_expires_at>?").bind(await sha256(token.toLowerCase()),new Date().toISOString()).first();
+   if(!row)return bad(req,error,400,"Invalid or expired verification link");
+   const result=await env.DB.prepare("UPDATE merchant_accounts SET email_verified_at=CURRENT_TIMESTAMP,email_verification_token_hash=NULL,email_verification_expires_at=NULL WHERE id=? AND email_verified_at IS NULL").bind(row.id).run();
+   if(!result.meta?.changes)return bad(req,error,409,"Email is already verified or the link has expired");
+   return output(req,{verified:true});
+  }
+  if(method==="POST"&&path==="/api/merchant/resend-verification"){
+   if(!authMailConfigured(env))return bad(req,error,503,"Owner email verification is not configured yet");
+   const b=await json(req,error),email=short(b.email,200).toLowerCase();
+   if(validEmail(email)){
+    const row=await env.DB.prepare("SELECT id,email,email_verified_at FROM merchant_accounts WHERE email=?").bind(email).first();
+    if(row&&!row.email_verified_at){
+     const token=await issueOwnerEmailToken(env,row.id,"verify");
+     if(!await sendOwnerVerification(env,row.email,token))return bad(req,error,503,"Verification email could not be sent. Please try again later.");
+    }
+   }
+   return output(req,{sent:true,message:"If the account needs verification, an email has been sent."},202);
+  }
+  if(method==="POST"&&path==="/api/merchant/forgot-password"){
+   if(!authMailConfigured(env))return bad(req,error,503,"Password recovery email is not configured yet");
+   const b=await json(req,error),email=short(b.email,200).toLowerCase();
+   if(validEmail(email)){
+    const row=await env.DB.prepare("SELECT id,email FROM merchant_accounts WHERE email=?").bind(email).first();
+    if(row){
+     const token=await issueOwnerEmailToken(env,row.id,"reset");
+     if(!await sendOwnerPasswordReset(env,row.email,token))return bad(req,error,503,"Password recovery email could not be sent. Please try again later.");
+    }
+   }
+   return output(req,{sent:true,message:"If an account exists for this email, a password reset link has been sent."},202);
+  }
+  if(method==="POST"&&path==="/api/merchant/reset-password"){
+   const b=await json(req,error),token=String(b.token||"").trim(),password=String(b.password||"");
+   if(!/^[a-f0-9]{64}$/i.test(token))return bad(req,error,400,"Invalid or expired password reset link");
+   if(password.length<12||password.length>128)return bad(req,error,422,"Password must contain 12-128 characters");
+   const row=await env.DB.prepare("SELECT id FROM merchant_accounts WHERE password_reset_token_hash=? AND password_reset_expires_at>?").bind(await sha256(token.toLowerCase()),new Date().toISOString()).first();
+   if(!row)return bad(req,error,400,"Invalid or expired password reset link");
+   const salt=randomHex(16),hash=await passwordDigest(password,salt);
+   const results=await env.DB.batch([
+    env.DB.prepare("UPDATE merchant_accounts SET password_hash=?,password_salt=?,email_verified_at=COALESCE(email_verified_at,CURRENT_TIMESTAMP),password_reset_token_hash=NULL,password_reset_expires_at=NULL,email_verification_token_hash=NULL,email_verification_expires_at=NULL WHERE id=? AND password_reset_token_hash=?").bind(hash,salt,row.id,await sha256(token.toLowerCase())),
+    env.DB.prepare("DELETE FROM merchant_sessions WHERE account_id=?").bind(row.id),
+    env.DB.prepare("DELETE FROM merchant_login_attempts WHERE email=(SELECT email FROM merchant_accounts WHERE id=?)").bind(row.id)
+   ]);
+   if(!results[0]?.meta?.changes)return bad(req,error,400,"Invalid or expired password reset link");
+   return output(req,{reset:true,sessions_revoked:true});
   }
   if(method==="POST"&&path==="/api/merchant/login"){
    const b=await json(req,error),email=short(b.email,200).toLowerCase(),password=String(b.password||"");
@@ -82,7 +139,7 @@ export async function merchantRouter(req,env,path,output,error){
    const now=new Date().toISOString();
    const lock=await env.DB.prepare("SELECT failures,lock_until FROM merchant_login_attempts WHERE email=?").bind(email).first();
    if(lock?.lock_until&&lock.lock_until>now)return bad(req,error,429,"Too many attempts; try again later");
-   const acc=await env.DB.prepare("SELECT id,email,password_hash,password_salt,access_key_digest FROM merchant_accounts WHERE email=?").bind(email).first();
+   const acc=await env.DB.prepare("SELECT id,email,password_hash,password_salt,access_key_digest,email_verified_at FROM merchant_accounts WHERE email=?").bind(email).first();
    let valid=false;
    if(acc&&password.length>=12&&acc.password_salt&&acc.password_salt!=="DISABLED"&&acc.password_hash!=="ACCESS_KEY_ONLY"){
     valid=constantTimeEqual(await passwordDigest(password,acc.password_salt),acc.password_hash);
@@ -90,6 +147,8 @@ export async function merchantRouter(req,env,path,output,error){
    if(!valid&&acc&&/^[0-9a-f]{64}$/.test(legacyKey)){
     valid=constantTimeEqual(await sha256(legacyKey),acc.access_key_digest||"");
    }
+   if(valid&&acc.password_hash!=="ACCESS_KEY_ONLY"&&!acc.email_verified_at)
+    return bad(req,error,403,"Please verify your email before signing in. Use the verification link sent to your inbox.");
    if(!valid){
     const failures=(lock?.failures||0)+1,until=failures>=6?new Date(Date.now()+15*60*1000).toISOString():null;
     await env.DB.prepare("INSERT INTO merchant_login_attempts(email,failures,lock_until) VALUES(?,?,?) ON CONFLICT(email) DO UPDATE SET failures=excluded.failures,lock_until=excluded.lock_until").bind(email,failures,until).run();
