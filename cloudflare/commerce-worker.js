@@ -59,6 +59,14 @@ export function calculateCouponDiscount(coupon,subtotal,now=Date.now()){
  if(!discount)throw new Error("Coupon does not apply to this order");
  return {code:String(coupon.code),discount_amount:discount,discount_type:coupon.discount_type};
 }
+async function allowCouponPreview(env,store,request){
+ const ip=String(request.headers.get("CF-Connecting-IP")||"unknown").slice(0,80);
+ const key=await hashValue("coupon-preview:"+store.id+":"+ip);
+ const windowId=Math.floor(Date.now()/60000);
+ await env.DB.prepare("INSERT INTO commerce_ai_rate_limits(key_hash,window_id,request_count) VALUES(?,?,1) ON CONFLICT(key_hash) DO UPDATE SET request_count=CASE WHEN commerce_ai_rate_limits.window_id=excluded.window_id THEN commerce_ai_rate_limits.request_count+1 ELSE 1 END,window_id=excluded.window_id,updated_at=CURRENT_TIMESTAMP").bind(key,windowId).run();
+ const row=await env.DB.prepare("SELECT request_count FROM commerce_ai_rate_limits WHERE key_hash=?").bind(key).first();
+ return Number(row?.request_count||0)<=12;
+}
 async function couponForOrder(env,store,code,subtotal,customerKeyHash=null){
  const normalised=String(code||"").trim().toUpperCase();
  if(!/^[A-Z0-9_-]{3,32}$/.test(normalised))throw new Error("Enter a valid coupon code");
@@ -184,6 +192,7 @@ async function checkout(env,request,id) {
   let coupon=null,couponDiscount=0,customerKeyHash=null;
   if(couponCode){
    if(store.is_demo)return error(request,422,"Coupons are not available on sample stores.");
+     if(!await allowCouponPreview(env,store,request))return error(request,429,"Too many coupon checks. Please wait a minute and try again.");
    const customerIdentity=account?.id?"account:"+account.id:"phone:"+shippingPhone.replace(/[^0-9]/g,"");
    customerKeyHash=await hashValue(store.id+":"+customerIdentity);
    try{
