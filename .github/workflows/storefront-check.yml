@@ -5,6 +5,8 @@ on:
   pull_request:
     branches: [main]
   workflow_dispatch:
+permissions:
+  contents: write
 jobs:
   frontend-build:
     runs-on: ubuntu-latest
@@ -26,6 +28,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref || github.ref_name }}
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
@@ -43,6 +47,22 @@ jobs:
           path: /tmp/bsmart-operational-schema.sql
           if-no-files-found: error
           retention-days: 7
+      - name: Save generated operational schema in the PR branch
+        if: github.event_name == 'pull_request'
+        env:
+          BRANCH_NAME: ${{ github.head_ref }}
+        run: |
+          mkdir -p cloudflare/generated
+          cp /tmp/bsmart-operational-schema.sql cloudflare/generated/operational-schema.sql
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add cloudflare/generated/operational-schema.sql
+          if git diff --cached --quiet; then
+            echo "Generated schema is unchanged."
+          else
+            git commit -m "chore: update generated operational D1 schema"
+            git push origin "HEAD:${BRANCH_NAME}"
+          fi
       - name: Validate Cloudflare Worker module syntax
         run: |
           set -euo pipefail
