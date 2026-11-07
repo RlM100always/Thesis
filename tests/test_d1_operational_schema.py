@@ -41,5 +41,5 @@ def test_generated_operational_schema_is_idempotent():
     db.executescript(sql)
     assert db.execute(
         "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'"
-    ).fetchone()[0] == 115
+    ).fetchone()[0] == 117
     db.close()
