@@ -41,7 +41,7 @@ export default function D1MerchantCenter(){
   const [token,setToken]=useState(()=>sessionStorage.getItem("bsmart_d1_merchant")||"");
   const [form,setForm]=useState(empty),[mode,setMode]=useState("login"),[view,setView]=useState("dashboard");
   const [data,setData]=useState(null),[busy,setBusy]=useState(false),[error,setError]=useState(""),[note,setNote]=useState("");
-  const [storeForm,setStoreForm]=useState({name:"",category:"মুদি",area:"",tagline:""});
+  const [storeForm,setStoreForm]=useState({name:"",slug:"",category:"মুদি",area:"",tagline:""});
   const [newProduct,setNewProduct]=useState({sku:"",name:"",category:"",description:"",brand:"",tags:"",compare_at_price_bdt:"",unit_label:"pcs",price_bdt:"",stock_qty:"",is_listed:true});
   const [edit,setEdit]=useState(null);
   const [posProduct,setPosProduct]=useState("");
@@ -57,7 +57,7 @@ export default function D1MerchantCenter(){
   const load=useCallback(async tk=>{
     const latest=await call("/api/merchant/dashboard",{token:tk});
     setData(latest);
-    if(latest.store)setStoreForm({name:latest.store.name,category:latest.store.category||"মুদি",area:latest.store.area||"",tagline:latest.store.tagline||""});
+    if(latest.store)setStoreForm({name:latest.store.name,slug:String(latest.store.slug||"").replace(/^bsmart-/,""),category:latest.store.category||"মুদি",area:latest.store.area||"",tagline:latest.store.tagline||""});
     return latest;
   },[]);
   useEffect(()=>{if(!token)return;load(token).catch(e=>{setError(e.message);if(e.status===401){sessionStorage.removeItem("bsmart_d1_merchant");setToken("");}});},[token,load]);
@@ -112,8 +112,7 @@ export default function D1MerchantCenter(){
       <div className="dm-header-side"><span className="dm-d1">D1-তে তথ্য সংরক্ষিত</span><a href="#/stores">সব দোকান</a><a href="#/d1-platform-admin">Platform admin</a><button type="button" className="dm-theme-toggle" onClick={toggleTheme} aria-pressed={theme==="dark"} aria-label={theme==="dark"?"লাইট মোড চালু করুন":"ডার্ক মোড চালু করুন"} title={theme==="dark"?"লাইট মোড চালু করুন":"ডার্ক মোড চালু করুন"}>{theme==="dark"?"☀️":"🌙"}</button>{token&&<button className="dm-text-btn" onClick={logout}>লগআউট</button>}</div>
     </header>
     <div className="dm-main">
-      <section className="dm-heading"><div><p className="dm-overline">Cloudflare D1 · {store?.is_active?"দোকান পরিচালনা":"ব্যবসা সেটআপ"}</p><h1>স্টোর ম্যানেজমেন্ট</h1><p>আপনার দোকানের পণ্য, মজুত, অর্ডার ও হিসাব পরিচালনা করুন।</p></div>
-      <p>{false===false?"পণ্য, মজুত, COD অর্ডার এবং হাতে পাওয়া পেমেন্টের তথ্য পরিচালনা করুন।":"নিজের যাচাইহীন নমুনা দোকান, পণ্য, মজুত ও অর্ডারের তথ্য এক জায়গা থেকে পরিচালনা করুন।"}</p></div>
+      <section className="dm-heading"><div><p className="dm-overline">B-SMART · {store?.is_active?"দোকান পরিচালনা":"ব্যবসা সেটআপ"}</p><h1>স্টোর ম্যানেজমেন্ট</h1><p>আপনার দোকানের পণ্য, মজুত, অর্ডার ও হিসাব পরিচালনা করুন।</p></div>
       {store&&<a className="dm-visit" href={"#/store/"+store.slug}>দোকানের প্রিভিউ দেখুন ↗</a>}</section>
       {store&&<div className="dm-warning" role="note">{!store.is_active ? "আপনার দোকানটি অনুমোদনের অপেক্ষায় আছে। পণ্য ও মজুত প্রস্তুত করুন; অনুমোদনের পর প্রকাশিত হবে।" : "আপনার দোকানে Cash on Delivery চালু। অর্ডার, মজুত ও পেমেন্টের অবস্থা Cloudflare D1-তে সংরক্ষিত হয়।"}</div>}
       {error&&<p className="dm-error" role="alert">{error}</p>}{note&&<p className="dm-success" role="status">{note}</p>}
@@ -129,6 +128,8 @@ export default function D1MerchantCenter(){
       <section className="dm-panel"><h2>আপনার প্রথম দোকান তৈরি করুন</h2><p className="dm-muted">দোকানটি প্রথমে ব্যক্তিগত থাকবে। পণ্য ও মজুত যোগ করে যাচাইয়ের জন্য জমা দিন। অনুমোদনের পর গ্রাহকরা অর্ডার করতে পারবেন।</p>
         <form className="dm-fields" onSubmit={e=>{e.preventDefault();run(async()=>{await call("/api/merchant/store",{method:"POST",token,body:storeForm});},"দোকানের তথ্য সংরক্ষিত হয়েছে।");}}>
         <Field label="দোকানের নাম"><input style={input} value={storeForm.name} minLength={3} required onChange={e=>setStoreForm(x=>({...x,name:e.target.value}))}/></Field>
+        <Field label="দোকানের URL (ইংরেজিতে)"><input style={input} value={storeForm.slug} minLength={3} maxLength={64} required pattern="[a-z0-9]+(-[a-z0-9]+)*" placeholder="restaurant" title="ইংরেজি ছোট হাতের অক্ষর, সংখ্যা ও হাইফেন ব্যবহার করুন" onChange={e=>setStoreForm(x=>({...x,slug:e.target.value.toLowerCase().replace(/[^a-z0-9-]/g,"").replace(/--+/g,"-")}))}/></Field>
+        <p className="dm-muted">আপনার দোকানের লিংক: <strong>/store/bsmart-{storeForm.slug||"your-store"}</strong></p>
         <Field label="বিভাগ"><select style={input} value={storeForm.category} onChange={e=>setStoreForm(x=>({...x,category:e.target.value}))}>{categories.map(c=><option key={c}>{c}</option>)}</select></Field>
         <Field label="এলাকা"><input style={input} required value={storeForm.area} onChange={e=>setStoreForm(x=>({...x,area:e.target.value}))} placeholder="যেমন: রাজশাহী"/></Field>
         <Field label="সংক্ষিপ্ত বিবরণ (ঐচ্ছিক)"><input style={input} maxLength={160} value={storeForm.tagline} onChange={e=>setStoreForm(x=>({...x,tagline:e.target.value}))}/></Field>
@@ -198,6 +199,8 @@ export default function D1MerchantCenter(){
          {view==="store"&&<section className="dm-panel"><h2>দোকানের সেটিংস</h2><p className="dm-muted">স্টোরের প্রকাশনার অবস্থা: {store.is_active?"প্রকাশিত":"অনুমোদনের অপেক্ষায়"}</p>
         <form className="dm-fields" onSubmit={e=>{e.preventDefault();run(()=>call("/api/merchant/store",{method:"PATCH",token,body:storeForm}),"দোকানের তথ্য সংরক্ষিত হয়েছে।");}}>
           <Field label="নাম"><input style={input} required minLength={3} value={storeForm.name} onChange={e=>setStoreForm(v=>({...v,name:e.target.value}))}/></Field>
+          <Field label="দোকানের URL"><input style={input} value={storeForm.slug} minLength={3} maxLength={64} required pattern="[a-z0-9]+(-[a-z0-9]+)*" disabled={!!store.is_active} onChange={e=>setStoreForm(v=>({...v,slug:e.target.value.toLowerCase().replace(/[^a-z0-9-]/g,"").replace(/--+/g,"-")}))}/></Field>
+          <p className="dm-muted">লিংক: <strong>/store/bsmart-{storeForm.slug}</strong>{store.is_active?" · প্রকাশিত দোকানের URL পরিবর্তন করা যাবে না।":""}</p>
           <Field label="বিভাগ"><select style={input} value={storeForm.category} onChange={e=>setStoreForm(v=>({...v,category:e.target.value}))}>{categories.map(c=><option key={c}>{c}</option>)}</select></Field>
           <Field label="এলাকা"><input style={input} required value={storeForm.area} onChange={e=>setStoreForm(v=>({...v,area:e.target.value}))}/></Field>
           <Field label="বিবরণ"><input style={input} value={storeForm.tagline} onChange={e=>setStoreForm(v=>({...v,tagline:e.target.value}))}/></Field>
