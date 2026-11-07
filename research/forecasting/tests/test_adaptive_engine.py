@@ -4,7 +4,7 @@ import pytest
 
 from research.forecasting.adaptive_engine import (
     DataContractError, demand_profile, load_daily_panel, croston_forecast,
-    make_supervised, rolling_origins, _metric_row
+    make_supervised, rolling_origins, _metric_row, _fit_predict
 )
 
 
@@ -81,3 +81,20 @@ def test_rolling_origins_are_time_ordered():
 def test_mase_uses_series_specific_scales():
     metrics = _metric_row(np.array([10.0, 10.0]), np.array([12.0, 14.0]), np.array([2.0, 4.0]))
     assert metrics["mase"] == pytest.approx(1.0)
+
+
+def test_hist_gradient_boosting_candidate_fits_without_leakage_features():
+    panel = panel_frame(days=90)
+    train = make_supervised(panel, horizon=7, min_history=56)
+    origin = pd.Timestamp("2024-03-20")
+    current = []
+    from research.forecasting.adaptive_engine import _features
+    for _, group in panel.groupby(["shop_id", "category_id"]):
+        hist = group[group["date"] < origin]
+        row = _features(hist, origin)
+        current.append(row)
+    prediction_rows = pd.DataFrame(current)
+    forecasts = _fit_predict("hist_gradient_boosting", train, prediction_rows)
+    assert forecasts.shape == (4,)
+    assert np.isfinite(forecasts).all()
+    assert (forecasts >= 0).all()
