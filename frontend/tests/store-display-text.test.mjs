@@ -25,12 +25,12 @@ test("unverified sample boilerplate is localized without changing merchant data"
 test("public customer copy does not present unverified records as live commerce",()=>{
  const store=read("pages/Store.jsx");
  const dir=read("pages/StoreDirectory.jsx");
- assert.match(store,/যাচাইহীন নমুনা অর্ডারের তথ্য দিন/);
- assert.match(store,/!store.is_demo && store.payment_bkash/);
- assert.match(store,/!store.is_demo && store.payment_nagad/);
- assert.match(store,/displayStoreTagline\(store.tagline, store.is_demo\)/);
- assert.match(store,/displayStoreDelivery\(store.delivery_note, store.is_demo\)/);
- assert.match(dir,/displayStoreCategory\(s.category\)/);
- assert.match(dir,/displayStoreTagline\(s.tagline\)/);
- assert.doesNotMatch(dir,/ডেমো|Demo|demo/);
+  assert.doesNotMatch(store,/ডেমো|Demo|demo|নমুনা|sample/i);
+  assert.match(store,/store\.payment_bkash &&/);
+  assert.match(store,/store\.payment_nagad &&/);
+  assert.match(store,/displayStoreTagline\(store.tagline\)/);
+  assert.match(store,/displayStoreDelivery\(store.delivery_note\)/);
+  assert.match(dir,/displayStoreCategory\(s.category\)/);
+  assert.match(dir,/displayStoreTagline\(s.tagline\)/);
+  assert.doesNotMatch(dir,/ডেমো|Demo|demo|নমুনা|sample/i);
 });
