@@ -1046,7 +1046,7 @@ function CheckoutView({ store, cart, products, onBack, onDone, scCustomer, varia
     if (!couponCode.trim()) return;
     setCouponBusy(true); setCouponErr("");
     try {
-      const res = await api.validateCoupon(orgId, couponCode.trim(), subtotal);
+      const res = await api.validateCoupon(orgId, couponCode.trim(), subtotal, getCustomerToken(store.slug));
       setCouponResult(res);
       setCouponErr("");
     } catch (e) {
