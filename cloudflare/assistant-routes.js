@@ -110,15 +110,16 @@ export async function customerAssistantRouter(request, env, path, output, error)
   const match = /^\/api\/public\/assistant\/([a-zA-Z0-9-]{2,90})$/.exec(path);
   if (!match || request.method !== "POST") return null;
   try {
-    const size=Number(request.headers.get("content-length")||0);
-    if(size>8000)return error(request,413,"Question payload too large");
     const slug = decodeURIComponent(match[1]);
     const store = await env.DB.prepare(
       "SELECT id,slug,name,tagline,category,delivery_note,is_demo,is_active,payment_cod FROM commerce_stores WHERE slug=? AND is_active=1 LIMIT 1"
     ).bind(slug).first();
     if (!isPublicStore(store)) return error(request, 404, "Store not found");
     if (!await allowRequest(env, "customer:" + store.id, request, 12)) return error(request, 429, "অনেক বেশি প্রশ্ন করা হয়েছে। এক মিনিট পরে আবার চেষ্টা করুন।");
-    const body = await request.json().catch(() => null);
+    const rawBody = await request.text();
+    if(rawBody.length>8000)return error(request,413,"Question payload too large");
+    let body=null;
+    try{body=JSON.parse(rawBody);}catch{return error(request,422,"Invalid JSON payload");}
     const question = clean(body?.question, 500);
     if (!question || question.length < 2) return error(request, 422, "কমপক্ষে ২ অক্ষরের প্রশ্ন লিখুন।");
     const productRows = await env.DB.prepare(
