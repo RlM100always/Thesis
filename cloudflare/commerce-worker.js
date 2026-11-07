@@ -6,7 +6,7 @@ import { isPublicStore, INTERNAL_TEST_STORE_SLUGS } from "./store-visibility.js"
 /*
  B-SMART Cloudflare D1 Commerce API.
  Public storefront catalogues, customer accounts, saved addresses, account-linked
- order history and support chat. Seeded/demo stores accept simulated orders only.
+ order history and support chat. Unverified sample records remain private and cannot accept customer orders.
  An explicitly admin-approved merchant store may accept cash-on-delivery orders
  with manual fulfilment; no online payment gateway, courier integration or refund
  automation is active. Legacy FastAPI business and historical customer records
@@ -109,10 +109,10 @@ async function checkout(env,request,id) {
  let data;
  try{data=await request.json();}catch{return error(request,400,"Invalid JSON");}
  if(store.is_demo && data.payment_method && !["cod","demo"].includes(data.payment_method))
-   return error(request,422,"Demo stores do not accept real payments.");
+   return error(request,422,"Unverified sample stores are not available for customer checkout.");
  if(!store.is_demo && data.payment_method!=="cod")
    return error(request,422,"This store accepts cash on delivery only; online payments are not configured.");
- const shippingName=safe(data.shipping_name||(store.is_demo?"Demo customer":""));
+ const shippingName=safe(data.shipping_name||(store.is_demo?"Unverified sample customer":""));
  const shippingPhone=String(data.shipping_phone||"").trim().slice(0,30);
  const shippingAddress=String(data.shipping_address||"").trim().slice(0,500);
  if(!store.is_demo && (shippingName.length<2 || !isValidShippingPhone(shippingPhone) || shippingAddress.length<8))
@@ -140,7 +140,7 @@ async function checkout(env,request,id) {
   subtotal+=qty*price;
   details.push({p,qty,price});
  }
- if(subtotal>(store.is_demo?500000:5000000))return error(request,422,store.is_demo?"Demo order total too high":"Order total exceeds the store limit.");
+ if(subtotal>(store.is_demo?500000:5000000))return error(request,422,store.is_demo?"Sample order total too high":"Order total exceeds the store limit.");
  // A single D1.batch call is a transaction. SQL triggers reject stale/oversold
  // products and roll back every line and header together if stock runs out.
  const oid=crypto.randomUUID();
@@ -225,7 +225,7 @@ export default {
      return orderDetails(env,request,id,token);
     }
     if(method==="POST"&&action.startsWith("payment-screenshot/"))
-      return error(request,501,"Demo store does not accept payment evidence.");
+      return error(request,501,"Unverified stores do not accept payment evidence.");
    }
    return error(request,404,"Route not found");
   }catch(e){
