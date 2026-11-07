@@ -98,7 +98,7 @@ export function ownerFallback(question, metrics, lowStock, topProducts) {
   }
   if (contains(q, ["বিক্রি", "sales", "আয়", "revenue", "টাকা", "cash", "payment"])) {
     return "আজকের অর্ডার মূল্য ৳" + Number(metrics.today_order_value_bdt).toLocaleString("en-BD") +
-      "। আজ COD আদায় নিশ্চিত ৳" + Number(metrics.today_collected_bdt).toLocaleString("en-BD") +
+      "। আজ আদায় নিশ্চিত ৳" + Number(metrics.today_collected_bdt).toLocaleString("en-BD") +
       " এবং COD আদায় বাকি ৳" + Number(metrics.cod_pending_total_bdt).toLocaleString("en-BD") +
       "। অর্ডার মূল্যকে আদায়কৃত টাকা হিসেবে ধরবেন না।";
   }
