@@ -111,8 +111,8 @@ export async function merchantRouter(req,env,path,output,error){
    const body=await json(req,error);
    if(body.confirm!=="DELETE DEMO ACCOUNT")return bad(req,error,422,"Explicit account deletion confirmation required");
    const store=await myStore(env,owner);
-   if(store&&(!store.is_demo||!store.id.startsWith("merchant-")))
-     return bad(req,error,409,"Only isolated demo stores can be deleted automatically");
+   if(store&&!store.id.startsWith("merchant-"))
+     return bad(req,error,409,"Only owner-created merchant stores can be deleted automatically");
    if(store){
      const x=await env.DB.prepare("SELECT COUNT(*) AS n FROM commerce_orders WHERE store_id=?").bind(store.id).first();
      if(x.n)return bad(req,error,409,"Cannot delete account with order history; contact admin for data export and supervised deletion");
