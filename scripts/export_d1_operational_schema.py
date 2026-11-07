@@ -45,7 +45,7 @@ def generate_schema_sql() -> tuple[str, list[str]]:
         sql = row.sql.strip().rstrip(";")
         if row.type == "table":
             sql = re.sub(
-                r"^CREATE TABLE\\s+",
+                r"^CREATE TABLE\s+",
                 "CREATE TABLE IF NOT EXISTS ",
                 sql,
                 count=1,
@@ -53,7 +53,7 @@ def generate_schema_sql() -> tuple[str, list[str]]:
             )
         elif row.type == "index":
             sql = re.sub(
-                r"^CREATE (UNIQUE )?INDEX\\s+",
+                r"^CREATE (UNIQUE )?INDEX\s+",
                 lambda match: "CREATE " + (match.group(1) or "") + "INDEX IF NOT EXISTS ",
                 sql,
                 count=1,
