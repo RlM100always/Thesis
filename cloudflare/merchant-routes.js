@@ -70,7 +70,7 @@ async function viewer(req,env){
  const match=/^Bearer ([a-f0-9]{64})$/.exec(bearer);
  if(!match)return null;
  const digest=await sha256(match[1]);
- return env.DB.prepare("SELECT a.id,a.email FROM merchant_sessions s JOIN merchant_accounts a ON a.id=s.account_id WHERE s.token_hash=? AND s.expires_at>?").bind(digest,new Date().toISOString()).first();
+ return env.DB.prepare("SELECT a.id,a.email,a.role FROM merchant_sessions s JOIN merchant_accounts a ON a.id=s.account_id WHERE s.token_hash=? AND s.expires_at>? AND a.is_active=1").bind(digest,new Date().toISOString()).first();
 }
 async function myStore(env,owner){
  return env.DB.prepare("SELECT * FROM commerce_stores WHERE owner_id=? ORDER BY created_at LIMIT 1").bind(owner.id).first();
@@ -175,7 +175,7 @@ export async function merchantRouter(req,env,path,output,error){
    const now=new Date().toISOString();
    const lock=await env.DB.prepare("SELECT failures,lock_until FROM merchant_login_attempts WHERE email=?").bind(email).first();
    if(lock?.lock_until&&lock.lock_until>now)return bad(req,error,429,"Too many attempts; try again later");
-   const acc=await env.DB.prepare("SELECT id,email,password_hash,password_salt,access_key_digest,email_verified_at FROM merchant_accounts WHERE email=?").bind(email).first();
+   const acc=await env.DB.prepare("SELECT id,email,password_hash,password_salt,access_key_digest,email_verified_at,is_active,role FROM merchant_accounts WHERE email=?").bind(email).first();
    let valid=false;
    if(acc&&password.length>=12&&acc.password_salt&&acc.password_salt!=="DISABLED"&&acc.password_hash!=="ACCESS_KEY_ONLY"){
     valid=constantTimeEqual(await passwordDigest(password,acc.password_salt),acc.password_hash);
@@ -183,6 +183,8 @@ export async function merchantRouter(req,env,path,output,error){
    if(!valid&&acc&&/^[0-9a-f]{64}$/.test(legacyKey)){
     valid=constantTimeEqual(await sha256(legacyKey),acc.access_key_digest||"");
    }
+   if(valid&&!Number(acc.is_active??1))return bad(req,error,403,"This owner account is suspended. Contact the platform administrator.");
+   if(valid&&acc.role!=="owner")return bad(req,error,403,"This account role cannot access the owner panel.");
    if(valid&&acc.password_hash!=="ACCESS_KEY_ONLY"&&!acc.email_verified_at)
     return bad(req,error,403,"Please verify your email before signing in. Use the verification link sent to your inbox.");
    if(!valid){
