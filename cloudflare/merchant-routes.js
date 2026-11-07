@@ -7,6 +7,18 @@ import { canTransitionOrderStatus, defaultOrderStatusNote } from "./order-workfl
 const encoder=new TextEncoder();
 const hex=arr=>Array.from(new Uint8Array(arr),b=>b.toString(16).padStart(2,"0")).join("");
 async function sha256(value){return hex(await crypto.subtle.digest("SHA-256",encoder.encode(value)));}
+async function passwordDigest(password,salt){
+ const key=await crypto.subtle.importKey("raw",encoder.encode(password),"PBKDF2",false,["deriveBits"]);
+ const bits=await crypto.subtle.deriveBits({name:"PBKDF2",salt:encoder.encode(salt),iterations:100000,hash:"SHA-256"},key,256);
+ return hex(bits);
+}
+function constantTimeEqual(left,right){
+ const a=String(left??""),b=String(right??"");
+ if(a.length!==b.length)return false;
+ let diff=0;for(let i=0;i<a.length;i++)diff|=a.charCodeAt(i)^b.charCodeAt(i);
+ return diff===0;
+}
+function randomHex(size=16){const bytes=new Uint8Array(size);crypto.getRandomValues(bytes);return hex(bytes);}
 function newSession(){const a=new Uint8Array(32);crypto.getRandomValues(a);return hex(a);}
 function bad(request,error,code,message){return error(request,code,message);}
 async function json(request,error,max=10000){
@@ -35,7 +47,7 @@ async function dashboard(env,owner){
  const [products,orders,stats,adjustments,cashbook]=await Promise.all([
   env.DB.prepare("SELECT id,sku,name,category,description,brand,tags,compare_at_price_bdt,unit_label,price_bdt,stock_qty,is_listed,created_at,updated_at FROM commerce_products WHERE store_id=? ORDER BY created_at DESC LIMIT 200").bind(store.id).all(),
   env.DB.prepare("SELECT id,order_number,status,status_note,cancellation_reason,total_bdt,placed_at,payment_method,payment_status,payment_received_at,payment_received_by,payment_note,shipping_name,shipping_phone,shipping_address FROM commerce_orders WHERE store_id=? ORDER BY placed_at DESC LIMIT 150").bind(store.id).all(),
-  env.DB.prepare("SELECT (SELECT COUNT(*) FROM commerce_orders WHERE store_id=?) AS orders,(SELECT COALESCE(SUM(stock_qty),0) FROM commerce_products WHERE store_id=?) AS inventory_units,(SELECT COALESCE(SUM(total_bdt),0) FROM commerce_orders WHERE store_id=? AND status!='cancelled') AS placed_total_bdt,(SELECT COALESCE(SUM(total_bdt),0) FROM commerce_orders WHERE store_id=? AND status!='cancelled' AND payment_status='paid') AS cod_paid_total_bdt,(SELECT COALESCE(SUM(total_bdt),0) FROM commerce_orders WHERE store_id=? AND status!='cancelled' AND payment_status='pending_cod') AS cod_pending_total_bdt").bind(store.id,store.id,store.id,store.id,store.id).first(),
+  env.DB.prepare("SELECT (SELECT COUNT(*) FROM commerce_orders WHERE store_id=?) AS orders,(SELECT COALESCE(SUM(stock_qty),0) FROM commerce_products WHERE store_id=?) AS inventory_units,(SELECT COALESCE(SUM(total_bdt),0) FROM commerce_orders WHERE store_id=? AND status!='cancelled') AS placed_total_bdt,(SELECT COALESCE(SUM(total_bdt),0) FROM commerce_orders WHERE store_id=? AND status!='cancelled' AND payment_method='cod' AND payment_status='paid') AS cod_paid_total_bdt,(SELECT COALESCE(SUM(total_bdt),0) FROM commerce_orders WHERE store_id=? AND status!='cancelled' AND payment_method='cod' AND payment_status='pending_cod') AS cod_pending_total_bdt").bind(store.id,store.id,store.id,store.id,store.id).first(),
   env.DB.prepare("SELECT product_id,old_quantity,new_quantity,delta,reason,created_at FROM commerce_stock_adjustments WHERE store_id=? ORDER BY created_at DESC LIMIT 25").bind(store.id).all(),
   env.DB.prepare("SELECT id,kind,amount_bdt,description,created_at,related_order_id FROM commerce_cashbook WHERE store_id=? ORDER BY created_at DESC LIMIT 75").bind(store.id).all()
  ]);
@@ -48,36 +60,40 @@ export async function merchantRouter(req,env,path,output,error){
  try{
   if(method==="GET"&&path==="/api/merchant/health"){
    const secret=newSession(),digest=await sha256(secret);
-   return output(req,{status:"ok",db:"D1",auth_key_digest_ok:digest.length===64,auth_mode:"256bit_random_access_key"});
+   return output(req,{status:"ok",db:"D1",auth_key_digest_ok:digest.length===64,auth_mode:"PBKDF2_password_with_legacy_access_key_support"});
   }
   if(method==="POST"&&path==="/api/merchant/register"){
-   const b=await json(req,error),email=short(b.email,200).toLowerCase();
+   const b=await json(req,error),email=short(b.email,200).toLowerCase(),password=String(b.password||"");
    if(!validEmail(email))return bad(req,error,422,"Valid email required");
+   if(password.length<12||password.length>128)return bad(req,error,422,"Password must contain 12-128 characters");
    const today=await env.DB.prepare("SELECT COUNT(*) AS n FROM merchant_accounts WHERE created_at >= datetime('now','start of day')").first();
-   if(Number(today?.n||0)>=20)return bad(req,error,429,"Daily demo registration limit reached");
+   if(Number(today?.n||0)>=20)return bad(req,error,429,"Daily account registration limit reached");
    if(await env.DB.prepare("SELECT id FROM merchant_accounts WHERE email=?").bind(email).first())
      return bad(req,error,409,"Account already exists");
-   const id=crypto.randomUUID(),key=newSession(),digest=await sha256(key);
-   try{await env.DB.prepare("INSERT INTO merchant_accounts(id,email,password_hash,password_salt,access_key_digest) VALUES(?,?,?,?,?)").bind(id,email,"ACCESS_KEY_ONLY","DISABLED",digest).run();}
+   const id=crypto.randomUUID(),salt=randomHex(16),hash=await passwordDigest(password,salt);
+   try{await env.DB.prepare("INSERT INTO merchant_accounts(id,email,password_hash,password_salt,access_key_digest) VALUES(?,?,?,?,NULL)").bind(id,email,hash,salt).run();}
    catch(e){return bad(req,error,errorCode(e),"Unable to create owner account");}
-   return output(req,{created:true,owner_access_key:key,requires_login:true,note:"SAVE THIS KEY NOW. It is never shown again. No email verification or recovery exists."},201);
+   return output(req,{created:true,requires_login:true},201);
   }
   if(method==="POST"&&path==="/api/merchant/login"){
-   const b=await json(req,error),email=short(b.email,200).toLowerCase();
-   const candidate=String(b.access_key||"").trim().toLowerCase();
-   if(!validEmail(email)||!/^[0-9a-f]{64}$/.test(candidate))return bad(req,error,401,"Invalid account email or owner access key");
+   const b=await json(req,error),email=short(b.email,200).toLowerCase(),password=String(b.password||"");
+   const legacyKey=String(b.access_key||(/^[0-9a-f]{64}$/i.test(password)?password:"")).trim().toLowerCase();
+   if(!validEmail(email)||(!password&&!legacyKey))return bad(req,error,401,"Invalid email or password");
    const now=new Date().toISOString();
    const lock=await env.DB.prepare("SELECT failures,lock_until FROM merchant_login_attempts WHERE email=?").bind(email).first();
    if(lock?.lock_until&&lock.lock_until>now)return bad(req,error,429,"Too many attempts; try again later");
-   const acc=await env.DB.prepare("SELECT id,email,access_key_digest FROM merchant_accounts WHERE email=?").bind(email).first();
-   const hash=await sha256(candidate),expected=String(acc?.access_key_digest||"");
-   let valid=hash.length===expected.length;let xor=0;
-   for(let i=0;i<hash.length&&valid;i++)xor|=hash.charCodeAt(i)^expected.charCodeAt(i);
-   valid=valid&&xor===0;
+   const acc=await env.DB.prepare("SELECT id,email,password_hash,password_salt,access_key_digest FROM merchant_accounts WHERE email=?").bind(email).first();
+   let valid=false;
+   if(acc&&password.length>=12&&acc.password_salt&&acc.password_salt!=="DISABLED"&&acc.password_hash!=="ACCESS_KEY_ONLY"){
+    valid=constantTimeEqual(await passwordDigest(password,acc.password_salt),acc.password_hash);
+   }
+   if(!valid&&acc&&/^[0-9a-f]{64}$/.test(legacyKey)){
+    valid=constantTimeEqual(await sha256(legacyKey),acc.access_key_digest||"");
+   }
    if(!valid){
     const failures=(lock?.failures||0)+1,until=failures>=6?new Date(Date.now()+15*60*1000).toISOString():null;
     await env.DB.prepare("INSERT INTO merchant_login_attempts(email,failures,lock_until) VALUES(?,?,?) ON CONFLICT(email) DO UPDATE SET failures=excluded.failures,lock_until=excluded.lock_until").bind(email,failures,until).run();
-    return bad(req,error,401,"Invalid account email or owner access key");
+    return bad(req,error,401,"Invalid email or password");
    }
    await env.DB.prepare("DELETE FROM merchant_login_attempts WHERE email=?").bind(email).run();
    const token=newSession(),tokenHash=await sha256(token),expires=new Date(Date.now()+12*60*60*1000).toISOString();
@@ -95,8 +111,8 @@ export async function merchantRouter(req,env,path,output,error){
    const body=await json(req,error);
    if(body.confirm!=="DELETE DEMO ACCOUNT")return bad(req,error,422,"Explicit account deletion confirmation required");
    const store=await myStore(env,owner);
-   if(store&&(!store.is_demo||!store.id.startsWith("merchant-")))
-     return bad(req,error,409,"Only isolated demo stores can be deleted automatically");
+   if(store&&!store.id.startsWith("merchant-"))
+     return bad(req,error,409,"Only owner-created merchant stores can be deleted automatically");
    if(store){
      const x=await env.DB.prepare("SELECT COUNT(*) AS n FROM commerce_orders WHERE store_id=?").bind(store.id).first();
      if(x.n)return bad(req,error,409,"Cannot delete account with order history; contact admin for data export and supervised deletion");
@@ -164,54 +180,58 @@ export async function merchantRouter(req,env,path,output,error){
   if(method==="POST"&&path==="/api/merchant/store"){
    if(await myStore(env,owner))return bad(req,error,409,"Account already has a store");
    const b=await json(req,error);
-   const name=short(b.name,110),category=short(b.category,50),area=short(b.area,100);
+   const name=short(b.name,110),tagline=short(b.tagline,160),category=short(b.category,50),area=short(b.area,100);
    if(name.length<3||!category||!area)return bad(req,error,422,"Store name, category and area are required");
    const id="merchant-"+crypto.randomUUID();
    const slug="shop-"+crypto.randomUUID().slice(0,12);
-   await env.DB.prepare("INSERT INTO commerce_stores(id,slug,name,tagline,category,area,theme,color,is_demo,is_active,owner_id,delivery_note) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)").bind(id,slug,name,"Owner-managed demo storefront (not verified real commerce)",category,area,"clean","#087e59",1,0,owner.id,"Demo orders only; no real shipping or payment").run();
+   await env.DB.prepare("INSERT INTO commerce_stores(id,slug,name,tagline,category,area,theme,color,is_demo,is_active,owner_id,delivery_note) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)").bind(id,slug,name,tagline,category,area,"clean","#087e59",0,0,owner.id,"Awaiting platform review").run();
    return output(req,{created:true,store:stripStore(await myStore(env,owner))},201);
   }
   if(method==="PATCH"&&path==="/api/merchant/store"){
    const store=await storeOnly(env,owner),b=await json(req,error);
    const name=short(b.name??store.name,110),tagline=short(b.tagline??store.tagline,160);
    const area=short(b.area??store.area,100),category=short(b.category??store.category,50);
-   const activate=b.is_active===undefined?store.is_active:(b.is_active===true?1:0);
    if(name.length<3||!area||!category)return bad(req,error,422,"Invalid store profile");
-   await env.DB.prepare("UPDATE commerce_stores SET name=?,tagline=?,category=?,area=?,is_active=? WHERE id=? AND owner_id=?").bind(name,tagline,category,area,activate,store.id,owner.id).run();
+   if(b.is_active===true&&!store.is_active)return bad(req,error,403,"A platform administrator must approve and publish this store");
+   const active=b.is_active===false?0:Number(store.is_active);
+   await env.DB.prepare("UPDATE commerce_stores SET name=?,tagline=?,category=?,area=?,is_active=? WHERE id=? AND owner_id=?").bind(name,tagline,category,area,active,store.id,owner.id).run();
    return output(req,{store:stripStore(await myStore(env,owner))});
   }
   if(method==="POST"&&path==="/api/merchant/cashbook"){
    const store=await storeOnly(env,owner),b=await json(req,error);
    const kind=short(b.kind,15),amount=Number(b.amount_bdt),description=short(b.description,140);
    if(!["receipt","expense"].includes(kind)||!integer(amount,1,500000)||description.length<3)
-    return bad(req,error,422,"Valid kind, demo amount and note required");
+    return bad(req,error,422,"Valid transaction type, amount and description required");
    await env.DB.prepare("INSERT INTO commerce_cashbook(id,store_id,kind,amount_bdt,description) VALUES(?,?,?,?,?)").bind(crypto.randomUUID(),store.id,kind,amount,description).run();
-   return output(req,{created:true,note:"Demo cashbook only; not a certified accounting ledger"});
+   return output(req,{created:true,note:"Cashbook entry saved"});
   }
   if(method==="POST"&&path==="/api/merchant/pos"){
-   const store=await storeOnly(env,owner);
-   if(!store.is_demo)return bad(req,error,409,"Only demonstration POS is supported");
+   const store=await storeOnly(env,owner),demo=!!store.is_demo;
    const b=await json(req,error);
-   if(!Array.isArray(b.items)||!b.items.length||b.items.length>12)return bad(req,error,422,"1-12 demo POS products required");
+   if(!Array.isArray(b.items)||!b.items.length||b.items.length>12)return bad(req,error,422,"1-12 distinct products are required");
    const details=[],seen=new Set();let total=0;
    for(const item of b.items){
     const productId=String(item.product_id||""),qty=Number(item.quantity);
     if(!productId||seen.has(productId)||!integer(qty,1,30))return bad(req,error,422,"Invalid POS line");
     seen.add(productId);
     const p=await env.DB.prepare("SELECT * FROM commerce_products WHERE id=? AND store_id=? AND is_listed=1").bind(productId,store.id).first();
-    if(!p||p.stock_qty<qty)return bad(req,error,409,"Demo product unavailable or stock insufficient");
-    total+=p.price_bdt*qty;details.push({p,qty});
+    if(!p||p.stock_qty<qty)return bad(req,error,409,"Product unavailable or stock insufficient");
+    if(!Number.isSafeInteger(Number(p.price_bdt))||Number(p.price_bdt)<0)return bad(req,error,409,"Invalid product price");
+    total+=Number(p.price_bdt)*qty;details.push({p,qty});
    }
-   if(!integer(total,1,500000))return bad(req,error,422,"Invalid POS amount");
+   if(!integer(total,1,5000000))return bad(req,error,422,"Invalid POS total");
    const oid=crypto.randomUUID(),cid=crypto.randomUUID(),token=newSession(),number="POS-"+oid.slice(0,8).toUpperCase();
-   const stmts=[
-    env.DB.prepare("INSERT INTO commerce_customers(id,store_id,display_name) VALUES(?,?,?)").bind(cid,store.id,"Anonymous demo counter customer"),
-    env.DB.prepare("INSERT INTO commerce_orders(id,store_id,order_number,access_token,status,subtotal_bdt,total_bdt,payment_method,shipping_name,shipping_phone,shipping_address,customer_id) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)").bind(oid,store.id,number,token,"fulfilled",total,total,"demo_pos","Demo counter customer","","",cid),
+   const methodName=demo?"demo_pos":"cash";
+   const customerName=demo?"Anonymous demo counter customer":"Walk-in customer";
+   const statements=[
+    env.DB.prepare("INSERT INTO commerce_customers(id,store_id,display_name) VALUES(?,?,?)").bind(cid,store.id,customerName),
+    env.DB.prepare("INSERT INTO commerce_orders(id,store_id,order_number,access_token,status,subtotal_bdt,total_bdt,payment_method,shipping_name,shipping_phone,shipping_address,customer_id) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)").bind(oid,store.id,number,token,"fulfilled",total,total,methodName,customerName,"","",cid),
     ...details.map(({p,qty})=>env.DB.prepare("INSERT INTO commerce_order_lines(order_id,product_id,product_name,quantity,price_bdt,line_total_bdt) VALUES(?,?,?,?,?,?)").bind(oid,p.id,p.name,qty,p.price_bdt,p.price_bdt*qty)),
-    env.DB.prepare("INSERT INTO commerce_cashbook(id,store_id,kind,amount_bdt,description,related_order_id) VALUES(?,?,?,?,?,?)").bind(crypto.randomUUID(),store.id,"receipt",total,"Simulated demo POS receipt",oid)
+    ...(!demo?[env.DB.prepare("UPDATE commerce_orders SET payment_status='paid',payment_received_at=CURRENT_TIMESTAMP,payment_received_by=?,payment_note='Cash collected at POS' WHERE id=?").bind(owner.email,oid)]:[]),
+    env.DB.prepare("INSERT INTO commerce_cashbook(id,store_id,kind,amount_bdt,description,related_order_id) VALUES(?,?,?,?,?,?)").bind(crypto.randomUUID(),store.id,"receipt",total,demo?"Simulated demo POS receipt":"POS cash sale",oid)
    ];
-   try{await env.DB.batch(stmts);}catch(e){return bad(req,error,409,"Stock or product price changed; refresh and retry");}
-   return output(req,{created:true,order_number:number,total_bdt:total,note:"Demo cash sale; no actual customer payment"},201);
+   try{await env.DB.batch(statements);}catch(e){return bad(req,error,409,"Stock or product data changed; refresh and retry");}
+   return output(req,{created:true,order_number:number,total_bdt:total,payment_status:demo?"demo_no_payment":"paid",note:demo?"Demo sale recorded":"Cash sale, payment and stock movement recorded"},201);
   }
   if(method==="POST"&&path==="/api/merchant/products"){
    const store=await storeOnly(env,owner),b=await json(req,error);

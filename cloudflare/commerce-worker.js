@@ -51,14 +51,14 @@ const baseView=(s)=>({
   show_stock_level:"available_only",payment_cod:true,payment_bkash:false,
   payment_nagad:false,bkash_number:null,nagad_number:null,
   sslcz_store_id:null,bkash_app_key:null,nagad_merchant_id:null,
-  min_order_bdt:null,delivery_note:s.delivery_note||"Demo only",
+  min_order_bdt:null,delivery_note:s.delivery_note||"",
   delivery_inside_dhaka:0,delivery_outside_dhaka:0,delivery_free_above:null,
   allow_zone_restriction:false,allowed_divisions:null,
   meta_title:s.name,meta_desc:s.tagline
 });
 const productView=(p)=>({
   id:p.id,name:p.name,sku:p.sku,unit:p.unit_label||"pcs",price:p.price_bdt,
-  selling_price:p.price_bdt,description:p.description||"পরীক্ষামূলক পণ্য; বাস্তব বিক্রেতা বা ডেলিভারি যাচাই করা হয়নি",
+  selling_price:p.price_bdt,description:p.description||"",
   brand:p.brand||null,compare_at_price:p.compare_at_price_bdt||null,sale_price:null,sale_end:null,image_data_url:p.image_url||null,
   tags:(()=>{try{return JSON.parse(p.tags||"[]")}catch{return []}})(),
   is_featured:!!p.is_featured,sort_order:0,max_order_qty:Math.min(p.stock_qty,10),
@@ -93,7 +93,7 @@ async function orderDetails(env,request,id,token) {
   shipping_name:order.shipping_name||"",shipping_phone:order.shipping_phone||"",shipping_address:order.shipping_address||"",
   subtotal:order.subtotal_bdt,tax_amount:0,delivery_fee:0,discount_amount:0,
   coupon_code:null,coupon_discount:0,total:order.total_bdt,organization_id:id,
-  store_slug:store?.slug||null,store_name:store?.name||"পরীক্ষামূলক দোকান",is_demo:!!store?.is_demo,
+  store_slug:store?.slug||null,store_name:store?.name||"দোকান",is_demo:!!store?.is_demo,
   payment_method:order.payment_method||"demo",
   items:results.map(p=>({product_id:p.product_id,description:p.product_name,product_name:p.product_name,quantity:p.quantity,unit_price:p.price_bdt,line_total:p.line_total_bdt,variant_label:null})),
   whatsapp_notify_url:null,coupon_applied:false,referral_discount:0
@@ -119,7 +119,7 @@ async function checkout(env,request,id) {
  let account=null;
  if(customerToken){
   account=await customerFromToken(env,customerToken);
-  if(!account)return error(request,401,"Customer session expired. Sign in again before placing this demo order.");
+  if(!account)return error(request,401,"Customer session expired. Sign in again before placing the order.");
  }
  const items=data.items;
  if(!Array.isArray(items)||items.length<1||items.length>12)

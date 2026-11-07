@@ -105,7 +105,7 @@ export async function platformAdminRouter(req,env,path,output,error) {
       const nextDemo=body.is_demo===undefined?!!store.is_demo:body.is_demo;
       if(body.is_demo===false && !store.owner_id)return error(req,409,"Seeded demo stores cannot be promoted to operational checkout");
       if(body.is_demo===false && body.confirm_production!=="ENABLE COD CHECKOUT")return error(req,422,"Explicit COD checkout confirmation required");
-      const deliveryNote=nextDemo?"Demo orders only; no real shipping or payment":"Cash on delivery; merchant-managed delivery. No online payment gateway or courier integration is active.";
+      const deliveryNote=nextDemo?"Demo orders only":"Cash on delivery; delivery managed by the store.";
       const result=await env.DB.prepare("UPDATE commerce_stores SET is_active=?,is_demo=?,delivery_note=? WHERE id=? AND is_active=? AND is_demo=?")
         .bind(nextActive?1:0,nextDemo?1:0,deliveryNote,id,store.is_active,store.is_demo).run();
       const action=body.is_demo===false?"store_promoted_to_cod":body.is_demo===true?"store_returned_to_demo":nextActive?"store_activated":"store_suspended";

@@ -1,8 +1,8 @@
-# Cloudflare D1 — B-SMART demo commerce and merchant console
+# Cloudflare D1 — B-SMART commerce database and merchant console
 
 **Project reference:** Database **`bsmart-commerce`**, Worker **`bsmart-commerce-api`**, URL https://bsmart-commerce-api.bcs-written-rakib.workers.dev. The current Worker version was verified deployed on 2026-10-27; the Render frontend is https://thesis-j0n8.onrender.com.
 
-Frontend site https://thesis-j0n8.onrender.com uses a dual adapter in `frontend/src/api.js`:
+Render hosts the web application at https://thesis-j0n8.onrender.com. **Cloudflare D1 is the database for the D1 storefront, customer, merchant, product, inventory and order workflows. No Render PostgreSQL database is required for those records.** The frontend uses a dual adapter in `frontend/src/api.js`:
 
 - Cloudflare D1 for `demo-bsmart-*` legacy demonstration stores and for newly created `merchant-*` owner-store IDs / `shop-*` slugs.
 - Existing FastAPI for all prior business records, legacy auth and original operational modules. **These have NOT been migrated.** No login/identity synchronization exists between systems.
@@ -12,12 +12,12 @@ Frontend site https://thesis-j0n8.onrender.com uses a dual adapter in `frontend/
 - 10 labelled synthetic business demo stores plus 259 example products, and persistent D1 product/stock listing via Worker.
 - Guest **demo-only** checkout plus explicitly admin-approved merchant-owned COD checkout. Order placement uses transactional D1 batch/stock checks; cancellation restores inventory once and records an inventory movement. Seeded demo stores cannot be promoted to operational checkout.
 - Shared D1 customer accounts across demo stores: registration/login, profile/avatar, password change with session revocation, saved Bangladesh addresses, account-wide order history, server-side per-store carts, cross-store wishlist, verified-purchase reviews, support chat and return requests. Customer contact/address details are stored in D1; use synthetic/test data only.
-- New owner onboarding and login via **one-time cryptographically random 256-bit owner access key**, stored as SHA-256 digest in D1; 12-hour hashed bearer sessions. PBKDF2 was unavailable in this particular Worker runtime, so password authentication is intentionally **not** used. Email is *unverified*. Owner access key must be saved; lost-key recovery not implemented. Avoid using this as a production identity system.
-- Owner store creation (draft until explicitly made public), product publishing/editing, product descriptions/brands/tags/compare-at prices, stock adjustment logs, owner-scoped order status workflow, customer message inbox and return management.
+- New merchant-owner registration uses PBKDF2-HMAC-SHA-256 password hashes (100,000 iterations), random per-account salts and 12-hour hashed bearer sessions. Existing one-time access-key accounts remain compatible. Email verification and self-service password recovery still require an email provider and are not yet active.
+- Owner store creation creates a real, private draft (`is_demo=0`, `is_active=0`). Owners can manage products and stock, but cannot publish their own store; Platform Admin approval is required. Product descriptions/brands/tags/compare-at prices, stock adjustment logs, owner-scoped order status workflow, customer message inbox and return management are stored in D1.
 - Staged customer-visible order tracking: placed → confirmed → processing → ready → dispatched → delivered. Legacy `fulfilled` and `shipped` statuses remain readable; each merchant transition stores a status note.
 - COD payment state is persisted separately from fulfilment state. Merchant can mark COD as received only after `delivered`/legacy `fulfilled`; timestamp, merchant email and note are saved. Customer and platform-admin views distinguish demo orders, pending COD, collected COD and cancelled-without-payment. No online gateway or automatic refund is active.
 - Platform admin may explicitly promote only merchant-owned stores to operational COD checkout after confirmation. Approved operational stores accept COD/manual fulfilment only; seeded demo stores remain demo-only, and online payment, courier and refund integrations are not enabled.
-- Demo counter POS, recorded atomically with inventory and order rows in D1, and a small example **cashbook**. Not double-entry accounting or actual cash collection.
+- Demo-store POS remains simulated. Approved merchant stores can record real cash POS sales, payment collection and inventory movement in one D1 batch. The cashbook records receipts/expenses but is not a double-entry accounting ledger.
 - React Owner Center at `/#/d1-owner` with mobile navigation, plus a secret-protected Platform Admin page at `/#/d1-platform-admin` for store moderation, order oversight and audit history.
 
 ## D1 schema
@@ -36,7 +36,7 @@ cd cloudflare
 npx wrangler secret put PLATFORM_ADMIN_KEY
 ```
 
-Use a long, unique random value of at least 32 characters. Enter it at `/#/d1-platform-admin`. The UI keeps the key in memory only. Never commit the value to `wrangler.toml`, GitHub, browser storage, or source code. **As checked on 2026-10-27, `PLATFORM_ADMIN_KEY` is not yet configured in the Worker; the admin route returns HTTP 503 until you add it.** Add it manually in Cloudflare Dashboard → Workers & Pages → `bsmart-commerce-api` → Settings → Variables and Secrets → Add secret, name `PLATFORM_ADMIN_KEY`, then deploy/save.
+Use a long, unique random value of at least 32 characters. Enter it at `/#/d1-platform-admin`. The UI keeps the key in memory only. Never commit the value to `wrangler.toml`, GitHub, browser storage, or source code. **As last checked on 2026-11-07, `PLATFORM_ADMIN_KEY` is not configured in the Worker; the admin route returns HTTP 503 until you add it.** Add it manually in Cloudflare Dashboard → Workers & Pages → `bsmart-commerce-api` → Settings → Variables and Secrets → Add secret, name `PLATFORM_ADMIN_KEY`, then deploy/save.
 
 ## Verification
 
@@ -44,7 +44,14 @@ Use a long, unique random value of at least 32 characters. Enter it at `/#/d1-pl
 - [Owner signup/login, product editing, inventory audit and logout/cleanup](https://github.com/RlM100always/Thesis/actions/runs/40325162409)
 - [Guest order placement, cancellation and stock reversal](https://github.com/RlM100always/Thesis/actions/runs/40318406288)
 
-Latest GitHub CI passed on commit `6cc6986c0de53496a749ea9c09a554670239542d` (frontend build, D1 schema smoke, backend compile and backend integration). The corresponding Render deploy is live. The Worker was uploaded directly through the Cloudflare API at 2026-10-27 08:39 UTC; GitHub commits alone do **not** automatically redeploy Worker script changes unless Cloudflare CI secrets / automatic deploy are configured.
+The Render service auto-deploys from `main`. A dedicated Cloudflare Worker deployment workflow now exists at `.github/workflows/cloudflare-worker-deploy.yml`; configure GitHub repository secrets `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` to enable automatic Worker deploys when `cloudflare/**` changes. Until those secrets are configured, merge to GitHub does not deploy Worker code automatically; the Worker must be deployed through Cloudflare separately.
+
+## Database boundary — important
+
+- Render is the application host; it is not the commerce database.
+- Cloudflare D1 (`bsmart-commerce`) is authoritative for the D1 storefront and merchant-commerce routes.
+- The older FastAPI operational modules (legacy tenant login, full POS/accounting/purchasing/receivables/reporting and historical business records) still use their separate SQLAlchemy database. They have **not** been migrated to D1 and must not be described as D1-backed or production-persistent.
+- Do not create or pay for a Render PostgreSQL database for the D1 commerce store. A future D1 cutover of the legacy modules needs a separate reviewed migration and regression plan.
 
 ## Critical NOT YET migrated
 
