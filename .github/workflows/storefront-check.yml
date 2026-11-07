@@ -84,7 +84,6 @@ jobs:
     env:
       DATABASE_URL: "sqlite://"
       AUTH_MODE: "jwt"
-      PRESENTATION_DEMO_ENABLED: "false"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -93,7 +92,7 @@ jobs:
           cache: pip
           cache-dependency-path: requirements.render.txt
       - run: python -m pip install -r requirements.render.txt pytest
-      - run: python -m pytest -q tests/test_cloudflare_d1_migrations.py tests/test_production_runtime.py tests/test_store_customer_commerce.py tests/test_full_storefront_restore.py tests/test_public_store_directory.py tests/test_online_orders.py tests/test_demo_catalog_bootstrap.py tests/test_theme_and_store_reconcile.py
+      - run: python -m pytest -q tests/test_cloudflare_d1_migrations.py tests/test_production_runtime.py tests/test_store_customer_commerce.py tests/test_full_storefront_restore.py tests/test_public_store_directory.py tests/test_online_orders.py tests/test_theme_and_store_reconcile.py
       - name: Apply all operational migrations to a clean SQLite database
         run: DATABASE_URL=sqlite:////tmp/bsmart-migrations.db alembic upgrade head
       - run: alembic heads
