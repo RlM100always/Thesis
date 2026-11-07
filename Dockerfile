@@ -14,4 +14,4 @@ COPY . .
 # Research reset: do not recreate old seven vertical datasets or legacy models.
 COPY --from=ui /frontend/dist /app/frontend/dist
 EXPOSE 10000
-CMD ["sh", "-c", "uvicorn api.main:app --host 0.0.0.0 --port ${PORT:-10000}"]
+CMD ["sh", "-c", "if [ \"${APP_ENV:-development}\" = \"production\" ]; then alembic upgrade head; fi; exec uvicorn api.main:app --host 0.0.0.0 --port ${PORT:-10000}"]
