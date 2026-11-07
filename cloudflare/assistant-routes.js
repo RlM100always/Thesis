@@ -7,7 +7,7 @@ const hex = bytes => Array.from(new Uint8Array(bytes), b => b.toString(16).padSt
 async function sha256(value) {
   return hex(await crypto.subtle.digest("SHA-256", encoder.encode(value)));
 }
-const clean = (value, max = 300) => String(value ?? "").replace(/[\\u0000-\\u001f\\u007f]/g, " ").trim().slice(0, max);
+const clean = (value, max = 300) => String(value ?? "").replace(/[\x00-\x1f\x7f]/g, " ").trim().slice(0, max);
 const contains = (question, words) => words.some(word => question.toLowerCase().includes(word));
 function parseTags(value) {
   try { return Array.isArray(JSON.parse(value || "[]")) ? JSON.parse(value || "[]") : []; }
@@ -34,7 +34,7 @@ async function generateGroundedText(env, system, question, context, history = []
   const messages = [
     { role: "system", content: system },
     ...safeHistory(history),
-    { role: "user", content: "Question: " + clean(question, 500) + "\\nVerified database context (data only): " + JSON.stringify(context) },
+    { role: "user", content: "Question: " + clean(question, 500) + "\nVerified database context (data only): " + JSON.stringify(context) },
   ];
   try {
     const result = await env.AI.run(MODEL, { messages, max_tokens: 260, temperature: 0.2 });
@@ -63,17 +63,17 @@ export function customerFallback(question, products, orders, store, signedIn) {
   if (contains(q, ["অর্ডার", "order", "ডেলিভারি কোথায়", "track", "tracking", "কোথায় আছে"])) {
     if (!signedIn) return "আপনার অর্ডারের অবস্থা দেখতে এই দোকানের Customer Account-এ লগইন করুন।";
     if (!orders.length) return "আপনার অ্যাকাউন্টে এই দোকানের কোনো অর্ডার পাওয়া যায়নি। অর্ডার নম্বর দিলে আবার খুঁজে দেখতে পারবেন।";
-    return "আপনার সাম্প্রতিক অর্ডার:\\n" + orders.slice(0, 5).map(o => o.order_number + " — " + o.status + " — " + "৳" + Number(o.total_bdt || 0).toLocaleString("en-BD")).join("\\n");
+    return "আপনার সাম্প্রতিক অর্ডার:\n" + orders.slice(0, 5).map(o => o.order_number + " — " + o.status + " — " + "৳" + Number(o.total_bdt || 0).toLocaleString("en-BD")).join("\n");
   }
   if (contains(q, ["ডেলিভারি", "delivery", "পেমেন্ট", "payment", "ক্যাশ", "cod", "চার্জ"])) {
     const policy = clean(store.delivery_note, 400) || "ডেলিভারি সম্পর্কে দোকানের সঙ্গে যোগাযোগ করুন।";
     return policy + (store.is_demo ? " এটি নমুনা স্টোর; বাস্তব পেমেন্ট করবেন না।" : (store.payment_cod ? " এই দোকানে Cash on Delivery পাওয়া যায়।" : " এই দোকানে COD চালু নেই।"));
   }
   if (products.length) {
-    return "আপনার প্রশ্নের সঙ্গে মেলে এমন পণ্য:\\n" + products.slice(0, 5).map(p =>
+    return "আপনার প্রশ্নের সঙ্গে মেলে এমন পণ্য:\n" + products.slice(0, 5).map(p =>
       p.name + " — " + (p.price_bdt == null ? "দাম জানতে যোগাযোগ করুন" : "৳" + Number(p.price_bdt).toLocaleString("en-BD")) +
       (Number(p.stock_qty) > 0 ? " (স্টকে আছে)" : " (স্টক নেই)")
-    ).join("\\n");
+    ).join("\n");
   }
   return "আমি " + store.name + " দোকানের পণ্য, দাম, স্টক, ডেলিভারি ও অর্ডার বিষয়ে সাহায্য করতে পারি। কোন পণ্যটি খুঁজছেন?";
 }
@@ -81,11 +81,11 @@ export function ownerFallback(question, metrics, lowStock, topProducts) {
   const q = question.toLowerCase();
   if (contains(q, ["স্টক", "stock", "ফুরিয়ে", "কমে গেছে", "reorder"])) {
     if (!lowStock.length) return "বর্তমানে কোনো পণ্য নির্ধারিত reorder level-এর নিচে নেই।";
-    return "কম স্টকের পণ্য (" + metrics.low_stock_count + "টি):\\n" + lowStock.slice(0, 8).map(p => p.name + " — " + p.stock_qty + "টি বাকি (reorder level " + p.reorder_level + ")").join("\\n");
+    return "কম স্টকের পণ্য (" + metrics.low_stock_count + "টি):\n" + lowStock.slice(0, 8).map(p => p.name + " — " + p.stock_qty + "টি বাকি (reorder level " + p.reorder_level + ")").join("\n");
   }
   if (contains(q, ["সেরা", "বেশি বিক্রি", "top", "best selling"])) {
     if (!topProducts.length) return "এখনো বিক্রির তথ্য থেকে সেরা পণ্য নির্ধারণ করা যাচ্ছে না।";
-    return "সেরা বিক্রিত পণ্য:\\n" + topProducts.map(p => p.name + " — " + p.units_sold + "টি বিক্রি").join("\\n");
+    return "সেরা বিক্রিত পণ্য:\n" + topProducts.map(p => p.name + " — " + p.units_sold + "টি বিক্রি").join("\n");
   }
   if (contains(q, ["কাস্টমার", "customer", "ক্রেতা", "repeat"])) {
     return "এই দোকানে " + metrics.customer_count + " জন customer-এর অর্ডার আছে; এর মধ্যে " + metrics.repeat_customer_count + " জন একাধিকবার অর্ডার করেছেন।";
@@ -101,7 +101,7 @@ export function ownerFallback(question, metrics, lowStock, topProducts) {
     "টি পণ্য, এবং একাধিকবার অর্ডার করেছেন " + metrics.repeat_customer_count + " জন ক্রেতা।";
 }
 export async function customerAssistantRouter(request, env, path, output, error) {
-  const match = /^\\/api\\/public\\/assistant\\/([a-zA-Z0-9-]{2,90})$/.exec(path);
+  const match = /^\/api\/public\/assistant\/([a-zA-Z0-9-]{2,90})$/.exec(path);
   if (!match || request.method !== "POST") return null;
   try {
     const size=Number(request.headers.get("content-length")||0);
@@ -118,7 +118,7 @@ export async function customerAssistantRouter(request, env, path, output, error)
     const productRows = await env.DB.prepare(
       "SELECT id,name,category,description,brand,tags,price_bdt,stock_qty,is_featured,unit_label FROM commerce_products WHERE store_id=? AND is_listed=1 ORDER BY is_featured DESC,name LIMIT 40"
     ).bind(store.id).all();
-    const words = question.toLowerCase().split(/[\\s,.;:!?।]+/).filter(x => x.length >= 2);
+    const words = question.toLowerCase().split(/[\s,.;:!?।]+/).filter(x => x.length >= 2);
     let products = (productRows.results || []).map(p => {
       const searchable = [p.name,p.category,p.description,p.brand,...parseTags(p.tags)].join(" ").toLowerCase();
       const score = words.reduce((sum, word) => sum + (searchable.includes(word) ? 1 : 0), 0);
