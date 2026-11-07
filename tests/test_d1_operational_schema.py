@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import sqlite3
+from pathlib import Path
 
 from scripts.export_d1_operational_schema import generate_schema_sql
 
@@ -16,10 +17,10 @@ def test_operational_schema_generates_and_coexists_with_existing_commerce_tables
 
     db = sqlite3.connect(":memory:")
     db.execute("PRAGMA foreign_keys=ON")
-    # Existing commerce schema is intentionally represented by independent
-    # names; the operational migration must not alter it.
-    db.execute("CREATE TABLE commerce_stores (id TEXT PRIMARY KEY, is_demo INTEGER NOT NULL)")
-    db.execute("CREATE TABLE commerce_products (id TEXT PRIMARY KEY, store_id TEXT NOT NULL)")
+    # Apply the actual current commerce migrations first, then verify the
+    # operational schema is additive and does not collide with live D1 tables.
+    for migration in sorted(Path("cloudflare/migrations").glob("*.sql")):
+        db.executescript(migration.read_text(encoding="utf-8"))
     db.executescript(sql)
 
     actual = {
