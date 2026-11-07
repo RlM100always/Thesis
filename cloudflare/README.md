@@ -4,34 +4,36 @@
 
 Render hosts the web application at https://thesis-j0n8.onrender.com. **Cloudflare D1 is the database for the D1 storefront, customer, merchant, product, inventory and order workflows. No Render PostgreSQL database is required for those records.** The frontend uses a dual adapter in `frontend/src/api.js`:
 
-- Cloudflare D1 for `demo-bsmart-*` legacy demonstration stores and for newly created `merchant-*` owner-store IDs / `shop-*` slugs.
+- Cloudflare D1 for approved merchant-owned stores. Public store links use a clean `bsmart-<business-name>` slug; internal merchant IDs remain separate.
 - Existing FastAPI for all prior business records, legacy auth and original operational modules. **These have NOT been migrated.** No login/identity synchronization exists between systems.
 
 ## D1 features implemented
 
-- 10 labelled synthetic business demo stores plus 259 example products, and persistent D1 product/stock listing via Worker.
-- Guest **demo-only** checkout plus explicitly admin-approved merchant-owned COD checkout. Order placement uses transactional D1 batch/stock checks; cancellation restores inventory once and records an inventory movement. Seeded demo stores cannot be promoted to operational checkout.
-- Shared D1 customer accounts across demo stores: registration/login, profile/avatar, password change with session revocation, saved Bangladesh addresses, account-wide order history, server-side per-store carts, cross-store wishlist, verified-purchase reviews, support chat and return requests. Customer contact/address details are stored in D1; use synthetic/test data only.
+New merchant URLs use a validated business slug, e.g. `/store/bsmart-restaurant`. The owner selects the URL suffix during setup. Published URLs are locked to protect existing customer links. Old generated records are not automatically renamed or promoted.
+
+- Legacy generated records are quarantined and excluded from all public store discovery, customer order history and checkout.
+- Approved merchant-owned stores support COD checkout. Order placement uses transactional D1 batch/stock checks; cancellation restores inventory once and records an inventory movement.
+- Shared D1 customer accounts across approved stores: registration/login, profile/avatar, password change with session revocation, saved Bangladesh addresses, account-wide order history, server-side per-store carts, cross-store wishlist, verified-purchase reviews, support chat and return requests.
 - New merchant-owner registration uses PBKDF2-HMAC-SHA-256 password hashes (100,000 iterations), random per-account salts and 12-hour hashed bearer sessions. Existing one-time access-key accounts remain compatible. Email verification and self-service password recovery still require an email provider and are not yet active.
 - Owner store creation creates a real, private draft (`is_demo=0`, `is_active=0`). Owners can manage products and stock, but cannot publish their own store; Platform Admin approval is required. Product descriptions/brands/tags/compare-at prices, stock adjustment logs, owner-scoped order status workflow, customer message inbox and return management are stored in D1.
 - Staged customer-visible order tracking: placed → confirmed → processing → ready → dispatched → delivered. Legacy `fulfilled` and `shipped` statuses remain readable; each merchant transition stores a status note.
 - COD payment state is persisted separately from fulfilment state. Merchant can mark COD as received only after `delivered`/legacy `fulfilled`; timestamp, merchant email and note are saved. Customer and platform-admin views distinguish demo orders, pending COD, collected COD and cancelled-without-payment. No online gateway or automatic refund is active.
 - Platform admin may explicitly promote only merchant-owned stores to operational COD checkout after confirmation. Approved operational stores accept COD/manual fulfilment only; seeded demo stores remain demo-only, and online payment, courier and refund integrations are not enabled.
-- Demo-store POS remains simulated. Approved merchant stores can record real cash POS sales, payment collection and inventory movement in one D1 batch. The cashbook records receipts/expenses but is not a double-entry accounting ledger.
+- Approved merchant stores can record cash POS sales, payment collection and inventory movement in one D1 batch. The cashbook records receipts/expenses but is not a double-entry accounting ledger.
 - React Owner Center at `/#/d1-owner` with mobile navigation, plus a secret-protected Platform Admin page at `/#/d1-platform-admin` for store moderation, order oversight and audit history.
 
 ## Live D1 data audit (7 November 2026)
 
 The existing database was queried read-only. Its 22 application tables report `commerce_meta.schema_version=8`.
 
-- 10 fictional seeded demo stores and 259 sample products.
+- 10 legacy generated storefront records and 259 generated products, all excluded from the public marketplace.
 - One retained POS CI fixture (`shop-752c1d2b-b92`) with one test product.
 - Three demo/test orders, three order lines, three inventory movements and one test cashbook receipt.
 - One legacy CI merchant account; zero customer accounts and zero real merchant-owned operational stores.
-- All 11 store rows are still marked `is_demo=1`.
+- All 11 legacy store rows are unverified and remain excluded from public links and checkout.
 - Orphan-reference, order-total, payment-state and negative-stock checks returned zero exceptions.
 
-The CI fixture is retained in D1 for audit/reconciliation. The current alignment change hides it from public store discovery and customer account routes; it does not delete or rewrite its records. Seeded demo stores remain visible and demo-only.
+Legacy generated records are retained for audit/reconciliation only. They are not published, cannot accept customer orders and are not presented as real businesses.
 
 The Cloudflare account also contains a separate D1 database named `bcs-written` for study-content records. It is not the B-SMART commerce database and must not be used as a replacement or merged into `bsmart-commerce`.
 
