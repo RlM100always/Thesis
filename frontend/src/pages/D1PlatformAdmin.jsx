@@ -82,6 +82,9 @@ export default function D1PlatformAdmin() {
         {tab==="overview"&&<section style={style.panel}><h2 style={{marginTop:0,fontSize:18}}>D1 commerce overview</h2><div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(160px,1fr))",gap:10}}>{[
           ["সক্রিয় দোকান",metrics.stores_active,"মোট "+(metrics.stores_total||0)+"টি"],
           ["প্রকাশিত পণ্য",metrics.products_listed,"মোট "+(metrics.products_total||0)+"টি"],
+          ["যাচাইহীন দোকান",metrics.unverified_stores,"প্রকাশযোগ্য নয়"],
+          ["যাচাইহীন পণ্য",metrics.unverified_products,"প্রকাশযোগ্য নয়"],
+          ["যাচাইহীন অর্ডার",metrics.unverified_orders,"আয়ের হিসাবে নয়"],
           ["Customer accounts",metrics.customers_total,"D1-তে সংরক্ষিত"],
           ["মোট অর্ডার",metrics.orders_total,"বাতিল "+(metrics.orders_cancelled||0)+"টি"],
           ["যাচাইহীন নমুনা অর্ডার",money(metrics.unverified_order_value_bdt),"প্রকৃত আয় নয়"],
