@@ -40,6 +40,7 @@ export default function D1MerchantCenter(){
   const {theme,toggleTheme}=useUi();
   const [token,setToken]=useState(()=>sessionStorage.getItem("bsmart_d1_merchant")||"");
   const [form,setForm]=useState(empty),[mode,setMode]=useState("login"),[view,setView]=useState("dashboard");
+  const [recoveryToken,setRecoveryToken]=useState("");
   const [data,setData]=useState(null),[busy,setBusy]=useState(false),[error,setError]=useState(""),[note,setNote]=useState("");
   const [storeForm,setStoreForm]=useState({name:"",category:"মুদি",area:"",tagline:""});
   const [newProduct,setNewProduct]=useState({sku:"",name:"",category:"",description:"",brand:"",tags:"",compare_at_price_bdt:"",unit_label:"pcs",price_bdt:"",stock_qty:"",is_listed:true});
@@ -53,6 +54,18 @@ export default function D1MerchantCenter(){
   const [activeCustomerId,setActiveCustomerId]=useState("");
   const [replyText,setReplyText]=useState("");
   
+  useEffect(()=>{
+    const hash=window.location.hash||"";
+    const query=hash.includes("?")?hash.slice(hash.indexOf("?")+1):"";
+    const params=new URLSearchParams(query);
+    const verify=params.get("verify"),reset=params.get("reset");
+    if(verify){
+      call("/api/merchant/verify-email",{method:"POST",body:{token:verify}})
+        .then(()=>{setNote("ইমেইল যাচাই সম্পন্ন হয়েছে। এখন লগইন করুন।");setError("");})
+        .catch(e=>setError(e.message||"ইমেইল যাচাই করা যায়নি।"));
+    }
+    if(reset){setRecoveryToken(reset);setMode("reset");}
+  },[]);
   const store=data?.store;
   const load=useCallback(async tk=>{
     const latest=await call("/api/merchant/dashboard",{token:tk});
@@ -95,10 +108,27 @@ export default function D1MerchantCenter(){
     await run(async()=>{
       if(mode==="register"){
         await call("/api/merchant/register",{method:"POST",body:{email:form.email,password:form.password}});
+        setMode("login");setForm({email:form.email,password:""});
+        return;
+      }
+      if(mode==="forgot"){
+        await call("/api/merchant/forgot-password",{method:"POST",body:{email:form.email}});
+        setMode("login");setForm({email:form.email,password:""});
+        return;
+      }
+      if(mode==="reset"){
+        await call("/api/merchant/reset-password",{method:"POST",body:{token:recoveryToken,password:form.password}});
+        setRecoveryToken("");setMode("login");setForm(empty);
+        window.history.replaceState(null,"",window.location.pathname+"#/d1-owner");
+        return;
       }
       const result=await call("/api/merchant/login",{method:"POST",body:{email:form.email,password:form.password}});
       sessionStorage.setItem("bsmart_d1_merchant",result.token);setToken(result.token);setForm(empty);
-    },mode==="login"?"দোকান ব্যবস্থাপনায় লগইন করা হয়েছে।":"অ্যাকাউন্ট তৈরি হয়েছে এবং লগইন করা হয়েছে।");
+    },mode==="login"?"দোকান ব্যবস্থাপনায় লগইন করা হয়েছে।":mode==="register"?"অ্যাকাউন্ট তৈরি হয়েছে। ইমেইলে পাঠানো লিংক দিয়ে যাচাই করে লগইন করুন।":mode==="forgot"?"অ্যাকাউন্ট থাকলে পাসওয়ার্ড রিসেটের লিংক ইমেইলে পাঠানো হয়েছে।":"পাসওয়ার্ড পরিবর্তন হয়েছে। নতুন পাসওয়ার্ড দিয়ে লগইন করুন।");
+  }
+  async function resendVerification(){
+    if(!form.email.trim()){setError("আগে আপনার ইমেইল লিখুন।");return;}
+    await run(()=>call("/api/merchant/resend-verification",{method:"POST",body:{email:form.email}}),"যাচাইয়ের প্রয়োজন থাকলে ইমেইলে নতুন লিংক পাঠানো হয়েছে।");
   }
   async function logout(){
     try{if(token)await call("/api/merchant/logout",{method:"POST",token});}catch{/* local logout even offline */}
@@ -116,14 +146,15 @@ export default function D1MerchantCenter(){
       {store&&<a className="dm-visit" href={"#/store/"+store.slug}>দোকানের প্রিভিউ দেখুন ↗</a>}</section>
       {store&&<div className="dm-warning" role="note">{store.is_demo ? "এটি একটি পরীক্ষামূলক দোকান। এখানে বাস্তব অর্ডার বা টাকা গ্রহণ করা হয় না।" : !store.is_active ? "আপনার দোকানটি যাচাইয়ের অপেক্ষায় আছে। পণ্য ও মজুত প্রস্তুত করুন; অনুমোদনের পর দোকানটি প্রকাশিত হবে।" : "আপনার দোকানে Cash on Delivery চালু। অর্ডার, মজুত ও পেমেন্টের অবস্থা Cloudflare D1-তে সংরক্ষিত হয়।"}</div>}
       {error&&<p className="dm-error" role="alert">{error}</p>}{note&&<p className="dm-success" role="status">{note}</p>}
-      {!token?<div className="dm-auth"><h2>{mode==="login"?"দোকান মালিকের লগইন":"নতুন দোকান মালিকের অ্যাকাউন্ট"}</h2>
-        <p>ইমেইল ও শক্তিশালী পাসওয়ার্ড দিয়ে দোকান পরিচালনার অ্যাকাউন্ট তৈরি করুন।</p>
+      {!token?<div className="dm-auth"><h2>{mode==="login"?"দোকান মালিকের লগইন":mode==="register"?"নতুন দোকান মালিকের অ্যাকাউন্ট":mode==="forgot"?"পাসওয়ার্ড পুনরুদ্ধার":"নতুন পাসওয়ার্ড সেট করুন"}</h2>
+        <p>{mode==="register"?"ইমেইল যাচাইয়ের পর দোকান পরিচালনার অ্যাকাউন্ট চালু হবে।":mode==="forgot"?"আপনার অ্যাকাউন্টের ইমেইল লিখুন। রিসেট লিংক পাঠানো হবে।":mode==="reset"?"নতুন শক্তিশালী পাসওয়ার্ড লিখুন। লিংকটি ৬০ মিনিটের মধ্যে ব্যবহার করতে হবে।":"আপনার যাচাইকৃত ইমেইল ও পাসওয়ার্ড দিয়ে দোকান পরিচালনা করুন।"}</p>
         <form onSubmit={authenticate} className="dm-fields">
-          <Field label="ইমেইল"><input style={input} type="email" autoComplete="email" required value={form.email} onChange={e=>setForm(v=>({...v,email:e.target.value}))}/></Field>
-          <Field label={mode==="login"?"পাসওয়ার্ড (অথবা পুরোনো অ্যাক্সেস কী)":"পাসওয়ার্ড (কমপক্ষে ১২ অক্ষর)"}><input style={input} type="password" autoComplete={mode==="login"?"current-password":"new-password"} minLength={12} maxLength={128} required value={form.password} onChange={e=>setForm(v=>({...v,password:e.target.value}))}/></Field>
-          <button className="dm-btn" disabled={busy} type="submit">{busy?"প্রক্রিয়াকরণ চলছে…":mode==="login"?"লগইন করুন":"অ্যাকাউন্ট তৈরি করুন"}</button>
+          {mode!=="reset"&&<Field label="ইমেইল"><input style={input} type="email" autoComplete="email" required value={form.email} onChange={e=>setForm(v=>({...v,email:e.target.value}))}/></Field>}
+          {(mode==="login"||mode==="register"||mode==="reset")&&<Field label={mode==="login"?"পাসওয়ার্ড":"নতুন পাসওয়ার্ড (কমপক্ষে ১২ অক্ষর)"}><input style={input} type="password" autoComplete={mode==="login"?"current-password":"new-password"} minLength={12} maxLength={128} required value={form.password} onChange={e=>setForm(v=>({...v,password:e.target.value}))}/></Field>}
+          <button className="dm-btn" disabled={busy} type="submit">{busy?"প্রক্রিয়াকরণ চলছে…":mode==="login"?"লগইন করুন":mode==="register"?"অ্যাকাউন্ট তৈরি করুন":mode==="forgot"?"রিসেট লিংক পাঠান":"পাসওয়ার্ড পরিবর্তন করুন"}</button>
         </form>
-        <button className="dm-text-btn" onClick={()=>{setMode(v=>v==="login"?"register":"login");setError("");setNote("");setForm(empty);}}>{mode==="login"?"নতুন দোকান মালিকের অ্যাকাউন্ট খুলুন":"লগইনে ফিরে যান"}</button>
+        {mode==="login"&&<><button className="dm-text-btn" onClick={()=>{setMode("register");setError("");setNote("");setForm(empty);}}>নতুন দোকান মালিকের অ্যাকাউন্ট খুলুন</button><button className="dm-text-btn" onClick={()=>{setMode("forgot");setError("");setNote("");}}>পাসওয়ার্ড ভুলে গেছেন?</button><button className="dm-text-btn" onClick={resendVerification}>যাচাই ইমেইল আবার পাঠান</button></>}
+        {mode!=="login"&&<button className="dm-text-btn" onClick={()=>{setMode("login");setRecoveryToken("");setError("");setNote("");setForm(empty);}}>লগইনে ফিরে যান</button>}
       </div>:data===null?<p>Cloudflare D1 থেকে দোকানের তথ্য আনা হচ্ছে…</p>:!store?
       <section className="dm-panel"><h2>আপনার প্রথম দোকান তৈরি করুন</h2><p className="dm-muted">দোকানটি প্রথমে ব্যক্তিগত থাকবে। পণ্য ও মজুত যোগ করে যাচাইয়ের জন্য জমা দিন। অনুমোদনের পর গ্রাহকরা অর্ডার করতে পারবেন।</p>
         <form className="dm-fields" onSubmit={e=>{e.preventDefault();run(async()=>{await call("/api/merchant/store",{method:"POST",token,body:storeForm});},"দোকানের তথ্য সংরক্ষিত হয়েছে।");}}>
