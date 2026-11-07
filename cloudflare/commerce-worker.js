@@ -3,6 +3,7 @@ import { customerRouter, customerFromToken } from "./customer-routes.js";
 import { platformAdminRouter } from "./platform-admin-routes.js";
 import { defaultOrderStatusNote } from "./order-workflow.js";
 import { isPublicStore, INTERNAL_TEST_STORE_SLUGS } from "./store-visibility.js";
+import { customerAssistantRouter } from "./assistant-routes.js";
 /*
  B-SMART Cloudflare D1 Commerce API.
  Public storefront catalogues, customer accounts, saved addresses, account-linked
@@ -169,6 +170,8 @@ export default {
   try{
     const platformAdmin=await platformAdminRouter(request,env,path,output,error);
     if(platformAdmin!==null)return platformAdmin;
+   const assistant=await customerAssistantRouter(request,env,path,output,error);
+   if(assistant!==null)return assistant;
    const customer=await customerRouter(request,env,path,output,error);
    if(customer!==null)return customer;
    const merchant=await merchantRouter(request,env,path,output,error);
