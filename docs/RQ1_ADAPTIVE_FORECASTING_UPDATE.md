@@ -53,9 +53,11 @@ Each run writes:
 - `run_manifest.json` including input SHA-256, schema-level counts, date
   coverage, assumptions, horizons, candidate list, environment and limitations.
 
-The test suite checks panel integrity, duplicate rejection, missing-date
+The isolated research test suite checks panel integrity, duplicate rejection, missing-date
 handling, no-demand classification, Croston-family non-negativity, zero-total
-WAPE handling, direct-horizon target creation and chronological origins.
+WAPE handling, series-specific MASE, direct-horizon target creation and chronological origins.
+A dedicated GitHub Actions workflow runs these tests without loading the
+application-wide FastAPI test fixtures.
 
 ## 5. Limitations and deferred work
 
