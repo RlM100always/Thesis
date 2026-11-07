@@ -60,7 +60,7 @@ export async function merchantRouter(req,env,path,output,error){
  try{
   if(method==="GET"&&path==="/api/merchant/health"){
    const secret=newSession(),digest=await sha256(secret);
-   return output(req,{status:"ok",db:"D1",auth_key_digest_ok:digest.length===64,auth_mode:"PBKDF2_password_with_legacy_access_key_support"});
+   return output(req,{status:"ok",db:"D1",password_auth_ready:true,password_hash:"PBKDF2-HMAC-SHA-256",password_iterations:100000,legacy_access_key_support:true,health_digest_ok:digest.length===64});
   }
   if(method==="POST"&&path==="/api/merchant/register"){
    const b=await json(req,error),email=short(b.email,200).toLowerCase(),password=String(b.password||"");
