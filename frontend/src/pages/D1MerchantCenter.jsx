@@ -61,7 +61,7 @@ export default function D1MerchantCenter(){
     const verify=params.get("verify"),reset=params.get("reset");
     if(verify){
       call("/api/merchant/verify-email",{method:"POST",body:{token:verify}})
-        .then(()=>{setNote("ইমেইল যাচাই সম্পন্ন হয়েছে। এখন লগইন করুন।");setError("");})
+        .then(()=>{setNote("ইমেইল যাচাই সম্পন্ন হয়েছে। এখন লগইন করুন।");setError("");window.history.replaceState(null,"",window.location.pathname+"#/d1-owner");})
         .catch(e=>setError(e.message||"ইমেইল যাচাই করা যায়নি।"));
     }
     if(reset){setRecoveryToken(reset);setMode("reset");}
