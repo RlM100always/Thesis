@@ -41,18 +41,20 @@ export default function D1PlatformAdmin() {
   const [notice,setNotice]=useState("");
   const [overview,setOverview]=useState(null);
   const [stores,setStores]=useState([]);
+  const [owners,setOwners]=useState([]);
   const [orders,setOrders]=useState([]);
   const [customers,setCustomers]=useState([]);
   const [returns,setReturns]=useState([]);
   const [audit,setAudit]=useState([]);
   const refresh=useCallback(async key=>{
-    const [a,b,c,d,e,f]=await Promise.all([
+    const [a,b,c,d,e,f,g]=await Promise.all([
       call("/api/platform-admin/overview",key),call("/api/platform-admin/stores",key),
       call("/api/platform-admin/orders",key),call("/api/platform-admin/customers",key),
       call("/api/platform-admin/returns",key),call("/api/platform-admin/audit",key),
+      call("/api/platform-admin/owners",key),
     ]);
     setOverview(a);setStores(b.stores||[]);setOrders(c.orders||[]);
-    setCustomers(d.customers||[]);setReturns(e.returns||[]);setAudit(f.audit||[]);
+    setCustomers(d.customers||[]);setReturns(e.returns||[]);setAudit(f.audit||[]);setOwners(g.owners||[]);
     setReady(true);
   },[]);
   async function connect(event) {
@@ -78,7 +80,7 @@ export default function D1PlatformAdmin() {
     </div>
     {!ready?<section style={style.panel}><h2 style={{fontSize:18,marginTop:0}}>Platform admin authentication</h2><form onSubmit={connect} style={{display:"grid",gap:12,maxWidth:560}}><label style={{fontSize:12,fontWeight:750}}>Worker secret key<input style={{...style.input,marginTop:6}} type="password" autoComplete="off" value={secret} onChange={e=>setSecret(e.target.value)} required minLength={32} placeholder="Cloudflare PLATFORM_ADMIN_KEY"/></label><button style={style.primary} disabled={busy||secret.length<32}>{busy?"যাচাই হচ্ছে…":"নিরাপদভাবে প্রবেশ করুন"}</button></form></section>:
       <>
-        <div style={{display:"flex",gap:6,overflowX:"auto",paddingBottom:12,marginBottom:4}}>{[["overview","সারসংক্ষেপ"],["stores","দোকান"],["orders","অর্ডার"],["customers","ক্রেতা"],["returns","ফেরত"],["audit","Audit log"]].map(([id,label])=><button key={id} style={{...style.button,whiteSpace:"nowrap",background:tab===id?"#087e59":"var(--surface,#fff)",color:tab===id?"#fff":"var(--text,#14251d)",borderColor:tab===id?"#087e59":undefined}} onClick={()=>setTab(id)}>{label}</button>)}</div>
+        <div style={{display:"flex",gap:6,overflowX:"auto",paddingBottom:12,marginBottom:4}}>{[["overview","সারসংক্ষেপ"],["stores","দোকান"],["owners","Owner accounts"],["orders","অর্ডার"],["customers","ক্রেতা"],["returns","ফেরত"],["audit","Audit log"]].map(([id,label])=><button key={id} style={{...style.button,whiteSpace:"nowrap",background:tab===id?"#087e59":"var(--surface,#fff)",color:tab===id?"#fff":"var(--text,#14251d)",borderColor:tab===id?"#087e59":undefined}} onClick={()=>setTab(id)}>{label}</button>)}</div>
         {tab==="overview"&&<section style={style.panel}><h2 style={{marginTop:0,fontSize:18}}>D1 commerce overview</h2><div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(160px,1fr))",gap:10}}>{[
           ["সক্রিয় দোকান",metrics.stores_active,"মোট "+(metrics.stores_total||0)+"টি"],
           ["প্রকাশিত পণ্য",metrics.products_listed,"মোট "+(metrics.products_total||0)+"টি"],
@@ -97,6 +99,14 @@ export default function D1PlatformAdmin() {
           {label:"ধরন",render:r=>r.is_demo?"Demo":"Operational"},
           {label:"অবস্থা",render:r=><strong style={{color:r.is_active?"#15803d":"#dc2626"}}>{r.is_active?"Active":"Suspended"}</strong>},
           {label:"করণীয়",render:r=><div style={{display:"flex",gap:5,flexWrap:"wrap"}}><button style={style.button} disabled={busy} onClick={()=>run(()=>call("/api/platform-admin/stores/"+encodeURIComponent(r.id),secret,{method:"PATCH",body:{is_active:!r.is_active,reason:"Changed through D1 platform admin"}}),r.is_active?"দোকান স্থগিত করা হয়েছে":"দোকান সক্রিয় করা হয়েছে")}>{r.is_active?"স্থগিত করুন":"সক্রিয় করুন"}</button>{r.owner_email&&<button style={{...style.button,color:r.is_demo?"#087e59":"#b91c1c"}} disabled={busy} onClick={()=>{const promote=!!r.is_demo;if(!window.confirm(promote?"এই merchant-owned দোকানে COD checkout চালু ও দোকান প্রকাশ করবেন? অনলাইন পেমেন্ট/কুরিয়ার সংযুক্ত নয়।":"এই দোকানকে আবার demo-only করবেন?"))return;run(()=>call("/api/platform-admin/stores/"+encodeURIComponent(r.id),secret,{method:"PATCH",body:promote?{is_demo:false,is_active:true,confirm_production:"ENABLE COD CHECKOUT",reason:"Admin approved manual COD fulfilment"}:{is_demo:true,reason:"Returned to demo mode"}}),promote?"COD checkout চালু ও দোকান প্রকাশ হয়েছে":"দোকান demo-only করা হয়েছে");}}>{r.is_demo?"COD চালু ও প্রকাশ":"Demo-তে ফেরত"}</button>}</div>},
+        ]}/></section>}
+        {tab==="owners"&&<section style={style.panel}><h2 style={{marginTop:0,fontSize:18}}>Business owner accounts</h2><p style={{fontSize:12,color:"var(--text-muted,#65736b)"}}>প্রতিটি ব্যবসার owner email, role, verification ও account status এখানে দেখা যাবে। কোনো password বা password hash এই panel-এ প্রকাশ করা হয় না। Suspend করলে owner-এর সব active session revoke হয়।</p><Table rows={owners} columns={[
+          {label:"Owner account",render:r=><><strong>{r.email}</strong><div style={{fontSize:11,opacity:.7}}>{r.store_name||"Store not created"} {r.store_slug?" · "+r.store_slug:""}</div></>},
+          {label:"Role",render:r=>r.role||"owner"},
+          {label:"Email",render:r=>r.auth_mode==="legacy_access_key"?<span style={{color:"#b45309"}}>Legacy key · transition needed</span>:r.email_verified_at?<span style={{color:"#15803d"}}>Verified</span>:<span style={{color:"#b45309"}}>Pending verification</span>},
+          {label:"Sessions",key:"active_sessions"},
+          {label:"Status",render:r=><strong style={{color:r.is_active?"#15803d":"#dc2626"}}>{r.is_active?"Active":"Suspended"}</strong>},
+          {label:"Access",render:r=><button style={style.button} disabled={busy} onClick={()=>{const next=!r.is_active;if(!window.confirm(next?"এই owner account আবার সক্রিয় করবেন?":"এই owner account suspend করে সব session বন্ধ করবেন?"))return;run(()=>call("/api/platform-admin/owners/"+encodeURIComponent(r.id),secret,{method:"PATCH",body:{is_active:next,reason:"Platform administrator account management"}}),next?"Owner account activated":"Owner account suspended");}}>{r.is_active?"Suspend":"Activate"}</button>},
         ]}/></section>}
         {tab==="orders"&&<section style={style.panel}><h2 style={{marginTop:0,fontSize:18}}>Order oversight</h2><p style={{fontSize:12,color:"var(--text-muted,#65736b)"}}>Demo order value বাস্তব আয় নয়। Operational store-এর COD টাকা merchant হাতে গ্রহণ নিশ্চিত করলে তবেই paid হিসেবে দেখানো হয়। Cancel করলে D1 trigger সংশ্লিষ্ট stock পুনরুদ্ধার করে।</p><Table rows={orders} columns={[
           {label:"অর্ডার",render:r=><><strong>{r.order_number}</strong><div style={{fontSize:11,opacity:.7}}>{r.store_name}</div><div style={{fontSize:10,opacity:.7}}>{r.customer_name||"Guest"}</div></>},

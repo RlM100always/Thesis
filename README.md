@@ -34,3 +34,12 @@ npm ci && npm run dev
 ```
 
 The experimental demo system and the legacy operational app must remain clearly labelled and isolated until the full application is migrated, secured and validated.
+
+
+## Production upgrade tracking
+
+- [Step-by-step production implementation plan](docs/PRODUCTION_IMPLEMENTATION_PLAN.md)
+- [Store owner access register (no passwords or secrets)](docs/STORE_ACCESS_REGISTER.md)
+- [Deployment, verification and rollback runbook](docs/DEPLOYMENT_RUNBOOK.md)
+
+The implementation plan distinguishes existing functionality from work still required. Do not treat sample catalogue stores as real merchants, and never publish owner passwords, platform-admin keys, API tokens or payment secrets in this public repository.

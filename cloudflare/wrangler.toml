@@ -10,3 +10,8 @@ binding = "DB"
 database_name = "bsmart-commerce"
 database_id = "887fa347-9c22-46b1-a7cf-91a7dbdfc311"
 migrations_dir = "migrations"
+
+# Workers AI binding is available, but inference stays disabled until
+# AI_ENABLED=true is deliberately configured in the Worker environment.
+[ai]
+binding = "AI"

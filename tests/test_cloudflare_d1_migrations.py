@@ -38,6 +38,33 @@ def test_all_d1_migrations_apply_in_order_and_create_commerce_tables():
         row["name"] for row in db.execute("PRAGMA table_info(commerce_orders)")
     }
     assert {"account_id", "cancellation_reason", "status_note", "payment_status", "payment_received_at", "payment_received_by", "payment_note"} <= order_columns
+    merchant_columns = {
+        row["name"] for row in db.execute("PRAGMA table_info(merchant_accounts)")
+    }
+    assert {
+        "email_verified_at", "email_verification_token_hash",
+        "email_verification_expires_at", "password_reset_token_hash",
+        "password_reset_expires_at",
+    } <= merchant_columns
+    assert {"is_active", "role"} <= merchant_columns
+    product_columns = {
+        row["name"] for row in db.execute("PRAGMA table_info(commerce_products)")
+    }
+    assert "reorder_level" in product_columns
+    assistant_tables = {
+        row["name"] for row in db.execute("SELECT name FROM sqlite_master WHERE type='table'")
+    }
+    assert "commerce_ai_rate_limits" in assistant_tables
+    order_columns = {row["name"] for row in db.execute("PRAGMA table_info(commerce_orders)")}
+    assert {"coupon_code", "coupon_discount_bdt"} <= order_columns
+    coupon_tables = {
+        row["name"] for row in db.execute("SELECT name FROM sqlite_master WHERE type='table'")
+    }
+    assert {"commerce_coupons", "commerce_coupon_redemptions"} <= coupon_tables
+    coupon_triggers = {
+        row["name"] for row in db.execute("SELECT name FROM sqlite_master WHERE type='trigger'")
+    }
+    assert {"commerce_coupon_total_limit", "commerce_coupon_customer_limit"} <= coupon_triggers
     db.close()
 
 
