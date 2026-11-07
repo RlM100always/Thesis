@@ -110,10 +110,10 @@ export async function platformAdminRouter(req,env,path,output,error) {
     const orderMatch=path.match(/^\/api\/platform-admin\/orders\/([^/]+)$/);
     if(method==="PATCH"&&orderMatch) {
       const id=decodeURIComponent(orderMatch[1]),body=await readBody(req),status=short(body.status,30),reason=short(body.reason,250);
-      const order=await env.DB.prepare("SELECT o.id,o.store_id,o.order_number,o.status,o.total_bdt,FROM commerce_orders o JOIN commerce_stores s ON s.id=o.store_id WHERE o.id=? AND s.is_demo=0").bind(id).first();
+      const order=await env.DB.prepare("SELECT o.id,o.store_id,o.order_number,o.status,o.total_bdt FROM commerce_orders o JOIN commerce_stores s ON s.id=o.store_id WHERE o.id=? AND s.is_demo=0").bind(id).first();
       if(!order)return error(req,404,"Order not found");
       if(!canTransitionOrderStatus(order.status,status))return error(req,409,"Invalid order status transition");
-      const statusNote=short(body.status_note,500)||defaultOrderStatusNote(status,false;
+      const statusNote=short(body.status_note,500)||defaultOrderStatusNote(status,false);
       const result=await env.DB.prepare("UPDATE commerce_orders SET status=?,cancellation_reason=COALESCE(?,cancellation_reason),status_note=? WHERE id=? AND status=?")
         .bind(status,status==="cancelled"?reason||"Platform admin cancellation":null,statusNote,id,order.status).run();
       if(!result.meta?.changes)return error(req,409,"Order status changed; reload before retrying");
