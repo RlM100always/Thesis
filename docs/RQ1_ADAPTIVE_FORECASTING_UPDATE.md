@@ -1,22 +1,41 @@
 # RQ1 research update — adaptive demand forecasting
 
-**Status:** implementation scaffold committed; empirical rerun pending dataset  
+**Status:** Drive dataset located; structural audit completed; empirical model rerun pending benchmark reproduction and provenance resolution  
 **Date:** 7 November 2026  
 **Scope:** RQ1 forecasting only; operational application and tenant data are out of scope
 
 ## 1. Verified repository and evidence state
 
-The current repository default branch is `main`. The current checkout contains
-no primary research dataset or prior run artifacts. The research onboarding
-record classifies the earlier 32-shop, 2023–2025 package as 100% synthetic.
-Consequently, the 32-shop counts and the 83.98%, 84.04% and 84.56% WAPE values
-provided in the latest conversation are treated as researcher-reported,
-unverified results until their source data, code, split and metric calculation
-are supplied and reproduced.
+The current repository default branch is `main`; the primary files are stored
+in the user's linked Google Drive folder rather than committed to GitHub. The
+Drive package contains raw transactional tables and RQ1 derived panels. The
+current Drive `manifest.json` claims "100% real SME sales or real people", but
+the associated `rq1_daily_sku_sales_observed` sheet has 699,220 data rows and
+every row has `synthetic_flag=YES`. The repository's 2 November onboarding
+document records an earlier manifest that explicitly said 100% synthetic.
+The current manifest, older manifest description and row-level flag are
+inconsistent. The dataset is therefore classified as
+`provenance_conflict` until the source owner provides the original source
+system/export, collection statement and field-level data dictionary.
 
-The previous 2025-10 to 2025-12 test period has already been inspected. It is
-not eligible for new model selection. Any new scores on that same period are
-exploratory only and must not be described as an untouched final test.
+The RQ1 `rq1_daily_shop_category` panel has been fully enumerated: 561,152
+data rows, 32 shops, 16 categories, 512 shop-category series and 1,096
+consecutive dates from 2023-01-01 through 2025-12-31. Each series has exactly
+1,096 dates and there are no duplicate date × shop × category keys. Total
+observed quantity in the panel is 1,580,361 units. There are 210,972 zero-sales
+rows (37.5962%) overall. The 2025-10-01 to 2025-12-31 window contains exactly
+47,104 rows, of which 18,757 are zero-sales rows (39.8204%); this matches the
+previously reported test-set size and zero-sales rate.
+
+The 83.98%, 84.04% and 84.56% WAPE values remain unverified until the original
+LightGBM, two-stage and XGBoost scripts, exact forecast horizon, test
+aggregation and WAPE denominator are reproduced.
+
+The 2025-10 to 2025-12 legacy test period has already been inspected. The
+updated engine now uses an exclusive development cutoff of 2025-10-01 and
+selects three monthly spaced rolling origins strictly before that date. The
+legacy Q4 period is excluded from model selection and is not described as an
+untouched final test.
 
 ## 2. Research design
 
@@ -33,7 +52,10 @@ automatically establish that a particular algorithm is superior.
 
 ## 3. Candidate methods
 
-The v0.1.0 implementation compares a weekly seasonal-naive reference,
+The v0.1.0 implementation accepts the Drive RQ1 aliases `category` and
+`units_sold_observed`, validates `is_zero_observed_sales`, and handles Excel
+serial dates. Feature/target construction is vectorised for the 512-series
+panel. The v0.1.0 implementation compares a weekly seasonal-naive reference,
 Croston, SBA, TSB, a two-stage hurdle model, scikit-learn HistGradientBoosting,
 and optional LightGBM and CatBoost. A validation-only selector chooses a
 candidate by demand regime when at least two origins and ten series forecasts
