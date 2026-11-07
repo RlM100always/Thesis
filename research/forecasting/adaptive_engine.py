@@ -197,27 +197,95 @@ def _features(history: pd.DataFrame, origin: pd.Timestamp) -> dict:
 
 
 def make_supervised(panel: pd.DataFrame, horizon: int, min_history: int = 56) -> pd.DataFrame:
-    """Create direct-horizon training examples; target is next-H-day total."""
+    """Build direct-horizon examples with vectorised, strictly historical features."""
     if min_history < max(LAGS):
         raise DataContractError(f"min_history must be at least {max(LAGS)} days for the configured lag features.")
     if horizon < 1:
         raise DataContractError("Forecast horizon must be a positive number of days.")
     rows = []
     for key, group in panel.groupby(KEYS, sort=False):
-        group = group.sort_values("date").reset_index(drop=True)
-        dates = group["date"]
-        values = group["demand"].to_numpy(dtype=float)
-        for i in range(min_history, len(group) - horizon + 1):
-            origin = pd.Timestamp(dates.iloc[i])
-            hist = group.iloc[:i]
-            features = _features(hist, origin)
-            features["target"] = float(values[i:i + horizon].sum())
-            features["origin"] = origin
-            rows.append(features)
+        group = group.sort_values("date")
+        values = group["demand"].to_numpy(dtype=np.float64)
+        dates = pd.DatetimeIndex(group["date"])
+        indices = np.arange(min_history, len(values) - horizon + 1, dtype=np.int32)
+        if not len(indices):
+            continue
+
+        cumulative = np.concatenate(([0.0], np.cumsum(values, dtype=np.float64)))
+        cumulative_sq = np.concatenate(([0.0], np.cumsum(values * values, dtype=np.float64)))
+        positive = (values > 0).astype(np.int32)
+        positive_count = np.concatenate(([0], np.cumsum(positive)))
+        positive_values = np.where(values > 0, values, 0.0)
+        positive_sum = np.concatenate(([0.0], np.cumsum(positive_values)))
+        positive_sq = np.concatenate(([0.0], np.cumsum(positive_values * positive_values)))
+        last_positive = np.maximum.accumulate(np.where(positive > 0, np.arange(len(values)), -1))
+
+        features: dict[str, object] = {
+            "shop_id": np.repeat(str(key[0]), len(indices)),
+            "category_id": np.repeat(str(key[1]), len(indices)),
+        }
+        for lag in LAGS:
+            features[f"lag_{lag}"] = values[indices - lag].astype(np.float32)
+
+        for window in (7, 14, 28, 56):
+            rolling_sum = cumulative[indices] - cumulative[indices - window]
+            rolling_sq = cumulative_sq[indices] - cumulative_sq[indices - window]
+            rolling_mean = rolling_sum / window
+            rolling_var = np.maximum(0.0, rolling_sq / window - rolling_mean * rolling_mean)
+            rolling_positive = positive_count[indices] - positive_count[indices - window]
+            features[f"mean_{window}"] = rolling_mean.astype(np.float32)
+            features[f"std_{window}"] = np.sqrt(rolling_var).astype(np.float32)
+            features[f"zero_ratio_{window}"] = (1.0 - rolling_positive / window).astype(np.float32)
+            features[f"sum_{window}"] = rolling_sum.astype(np.float32)
+
+        last_sale_index = last_positive[indices - 1]
+        features["days_since_sale"] = np.where(
+            last_sale_index >= 0, indices - 1 - last_sale_index, indices
+        ).astype(np.float32)
+
+        all_positive_count = positive_count[indices]
+        all_positive_sum = positive_sum[indices]
+        all_positive_sq = positive_sq[indices]
+        positive_mean = np.divide(
+            all_positive_sum, all_positive_count,
+            out=np.zeros_like(all_positive_sum), where=all_positive_count > 0
+        )
+        positive_var = np.maximum(
+            0.0,
+            np.divide(all_positive_sq, all_positive_count,
+                      out=np.zeros_like(all_positive_sq), where=all_positive_count > 0)
+            - positive_mean * positive_mean
+        )
+        cv2 = np.divide(
+            positive_var, positive_mean * positive_mean,
+            out=np.zeros_like(positive_var), where=positive_mean > 0
+        )
+        features["adi"] = np.divide(
+            indices, all_positive_count,
+            out=np.full(len(indices), len(values) + 1, dtype=np.float64),
+            where=all_positive_count > 0
+        ).astype(np.float32)
+        features["cv2"] = cv2.astype(np.float32)
+        features["zero_ratio_all"] = (1.0 - all_positive_count / indices).astype(np.float32)
+
+        origin_dates = dates.take(indices)
+        features["day_of_week"] = origin_dates.day_of_week.to_numpy(dtype=np.int8)
+        features["day_of_month"] = origin_dates.day.to_numpy(dtype=np.int8)
+        features["month"] = origin_dates.month.to_numpy(dtype=np.int8)
+        features["week_of_year"] = origin_dates.isocalendar().week.to_numpy(dtype=np.int16)
+        features["is_month_start"] = origin_dates.is_month_start.astype(np.int8)
+        features["is_month_end"] = origin_dates.is_month_end.astype(np.int8)
+        features["dow_sin"] = np.sin(2 * np.pi * origin_dates.day_of_week.to_numpy() / 7).astype(np.float32)
+        features["dow_cos"] = np.cos(2 * np.pi * origin_dates.day_of_week.to_numpy() / 7).astype(np.float32)
+        features["month_sin"] = np.sin(2 * np.pi * (origin_dates.month.to_numpy() - 1) / 12).astype(np.float32)
+        features["month_cos"] = np.cos(2 * np.pi * (origin_dates.month.to_numpy() - 1) / 12).astype(np.float32)
+
+        features["target"] = (cumulative[indices + horizon] - cumulative[indices]).astype(np.float32)
+        features["origin"] = origin_dates
+        rows.append(pd.DataFrame(features))
     if not rows:
         return pd.DataFrame()
-    return pd.DataFrame(rows)
-
+    return pd.concat(rows, ignore_index=True)
 
 def croston_forecast(values: np.ndarray, horizon: int, method: str = "croston") -> float:
     """Croston, SBA and TSB daily-rate forecasts multiplied by horizon."""
