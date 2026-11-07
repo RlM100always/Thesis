@@ -31,8 +31,8 @@ function modelText(result) {
 }
 function hasGroundedNumbers(answer, context) {
   const normalise = value => String(value).replace(/[০-৯]/g, digit => String("০১২৩৪৫৬৭৮৯".indexOf(digit)));
-  const allowed = new Set((normalise(JSON.stringify(context)).match(/\\d+(?:[.,]\\d+)?/g) || []).map(value => value.replace(/,/g, "")));
-  const used = normalise(answer).match(/\\d+(?:[.,]\\d+)?/g) || [];
+  const allowed = new Set((normalise(JSON.stringify(context)).match(/\d+(?:[.,]\d+)?/g) || []).map(value => value.replace(/,/g, "")));
+  const used = normalise(answer).match(/\d+(?:[.,]\d+)?/g) || [];
   return used.every(value => allowed.has(value.replace(/,/g, "")));
 }
 async function generateGroundedText(env, system, question, context, history = []) {
