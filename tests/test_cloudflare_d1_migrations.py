@@ -54,6 +54,16 @@ def test_all_d1_migrations_apply_in_order_and_create_commerce_tables():
         row["name"] for row in db.execute("SELECT name FROM sqlite_master WHERE type='table'")
     }
     assert "commerce_ai_rate_limits" in assistant_tables
+    order_columns = {row["name"] for row in db.execute("PRAGMA table_info(commerce_orders)")}
+    assert {"coupon_code", "coupon_discount_bdt"} <= order_columns
+    coupon_tables = {
+        row["name"] for row in db.execute("SELECT name FROM sqlite_master WHERE type='table'")
+    }
+    assert {"commerce_coupons", "commerce_coupon_redemptions"} <= coupon_tables
+    coupon_triggers = {
+        row["name"] for row in db.execute("SELECT name FROM sqlite_master WHERE type='trigger'")
+    }
+    assert {"commerce_coupon_total_limit", "commerce_coupon_customer_limit"} <= coupon_triggers
     db.close()
 
 
