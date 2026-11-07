@@ -106,6 +106,7 @@ export default function D1MerchantCenter(){
   }
   const products=data?.products||[],orders=data?.orders||[],stats=data?.metrics||{};
   const totalProducts=useMemo(()=>products.filter(p=>p.is_listed).length,[products]);
+  if(store?.is_demo)return <main className="dm-page"><div className="dm-main"><section className="dm-panel"><h1>এই ব্যবসার তথ্য যাচাই হয়নি</h1><p>এই রেকর্ডটি বাস্তব merchant account বা বিক্রির প্রমাণ নয়। বাস্তব ব্যবসার তথ্য দিয়ে নতুন দোকান তৈরি করুন। এই রেকর্ড থেকে কোনো অর্ডার, পেমেন্ট বা stock operation করা যাবে না।</p><button type="button" className="dm-btn" onClick={logout}>লগআউট</button></section></div></main>;
   return <main className="dm-page">
     <header className="dm-header"><a href="#/" className="dm-logo">B-SMART <span>দোকান পরিচালনা</span></a>
       <div className="dm-header-side"><span className="dm-d1">D1-তে তথ্য সংরক্ষিত</span><a href="#/stores">সব দোকান</a><a href="#/d1-platform-admin">Platform admin</a><button type="button" className="dm-theme-toggle" onClick={toggleTheme} aria-pressed={theme==="dark"} aria-label={theme==="dark"?"লাইট মোড চালু করুন":"ডার্ক মোড চালু করুন"} title={theme==="dark"?"লাইট মোড চালু করুন":"ডার্ক মোড চালু করুন"}>{theme==="dark"?"☀️":"🌙"}</button>{token&&<button className="dm-text-btn" onClick={logout}>লগআউট</button>}</div>
