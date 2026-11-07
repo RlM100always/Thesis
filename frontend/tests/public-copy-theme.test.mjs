@@ -27,17 +27,17 @@ test("important public pages use semantic scoped dark-mode colors",()=>{
  assert.match(portal,/--sc-on-green/);
  for(const text of [store,dir,landing,tracking,portal])assert.match(text,/data-theme="dark"/);
 });
-test("old misleading and mixed public copy stays removed",()=>{
+test("public copy states that only approved business stores can accept orders",()=>{
  const store=read("pages/Store.jsx");
  const directory=read("pages/StoreDirectory.jsx");
  const tracking=read("pages/OrderStatus.jsx");
- assert.match(store,/ডেমো স্টোর — এখানে বাস্তব পেমেন্ট বা ডেলিভারি চালু নেই/);
+ assert.match(store,/এই দোকানটি এখনো বাস্তব অর্ডারের জন্য অনুমোদিত নয়/);
  assert.match(tracking,/অর্ডারের সর্বশেষ অবস্থা/);
+ assert.doesNotMatch(directory,/ডেমো|Demo|demo/);
  for(const obsolete of ["operational database-এ","Activate করে পণ্য Publish","independent owner account"]){
   assert.ok(!directory.includes(obsolete),obsolete);
  }
 });
-
 test("customers can switch theme on all standalone public shopping routes",()=>{
  const store=read("pages/Store.jsx");
  const directory=read("pages/StoreDirectory.jsx");
@@ -49,28 +49,13 @@ test("customers can switch theme on all standalone public shopping routes",()=>{
   assert.match(page,/ডার্ক মোড চালু করুন/);
  }
 });
-test("public shopping descriptions distinguish demos from real services",()=>{
- const directory=read("pages/StoreDirectory.jsx");
- const store=read("pages/Store.jsx");
- const login=read("pages/Login.jsx");
- const site=read("pages/PublicSite.jsx");
- assert.match(directory,/ডেমো দোকানে বাস্তব পেমেন্ট বা ডেলিভারি হয় না/);
- assert.match(directory,/!s.is_demo && s.payment_cod/);
- assert.match(directory,/শুধু পরীক্ষামূলক দোকান/);
- assert.match(store,/পরীক্ষামূলক দোকানটি দেখুন/);
- assert.ok(!login.includes("Owner account খুলুন"));
- assert.ok(!login.includes("actor-aware operation"));
- assert.ok(!site.includes("শুধু শুধু ফিচারের সংখ্যা"));
-});
-
-test("D1 demo owner is localized without changing secure API action names",()=>{
+test("D1 merchant interface is written for owner-managed production stores",()=>{
  const page=read("pages/D1MerchantCenter.jsx");
  const css=read("pages/D1MerchantCenter.css");
  assert.match(page,/ORDER_STATUS_BN/);
  assert.match(page,/CASH_KIND_BN/);
  assert.match(page,/নতুন দোকান মালিকের অ্যাকাউন্ট/);
- assert.match(page,/পরীক্ষামূলক কাউন্টার বিক্রি/);
- assert.match(page,/পরীক্ষামূলক নগদ হিসাব/);
+ assert.match(page,/নগদ হিসাব/);
  assert.match(page,/toggleTheme/);
  assert.match(css,/--dm-error-bg/);
  assert.match(css,/--dm-success-bg/);
