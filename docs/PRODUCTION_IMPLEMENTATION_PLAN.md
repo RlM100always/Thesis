@@ -44,10 +44,14 @@ They are not one integrated database today. The repository's own live-audit note
 **Gate:** no production database writes or destructive migrations during the audit.
 
 ### Phase 1 — Identity, roles and owner access
+- [x] Add branch-level owner email verification and single-use password-reset endpoints, hashed tokens, expiry checks and session revocation.
+- [x] Add owner-panel verification, resend-verification, forgot-password and reset-password screens.
+- [x] Add migration 0009 and automated schema/auth-flow tests (pending CI result).
+- [ ] Configure Resend and apply migration 0009 safely to the existing D1 database.
 - [ ] Decide the authoritative identity system for each store.
-- [ ] Add email verification and secure password-reset tokens using a configured mail provider.
+- [ ] Verify the email-provider delivery path end to end in staging and production.
 - [ ] Add owner/staff roles and permissions with store-level tenant isolation.
-- [ ] Add session revocation, account recovery and security-event audit.
+- [ ] Add D1 owner/staff roles, session controls and security-event audit.
 - [ ] Test cross-store access denial, lockout, reset-token expiry and account lifecycle.
 
 **Gate:** a user from Store A must never read or change Store B data.
@@ -110,7 +114,7 @@ The Worker also uses the Cloudflare secret:
 
 The legacy FastAPI production configuration requires a persistent database and secure environment variables. Do not point SQLAlchemy at a D1 database ID or assume an existing Render PostgreSQL resource is the active database. Confirm the live Render service's actual environment and database before changing it.
 
-Email verification/password reset needs an outbound email provider and its secret. AI narration needs a configured supported AI provider/binding. Neither provider should be represented as live until its configuration and end-to-end tests pass.
+Owner email verification/password reset code is in the upgrade branch and requires the Worker secret `RESEND_API_KEY` plus the `AUTH_EMAIL_FROM` sender variable and migration 0009. AI narration needs a configured supported AI provider/binding. Neither provider should be represented as live until its configuration and end-to-end tests pass.
 
 ## 5. Credential and store-register policy
 
