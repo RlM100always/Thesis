@@ -101,7 +101,7 @@ export default function D1PlatformAdmin() {
           {label:"অবস্থা",render:r=><strong style={{color:r.is_active?"#15803d":"#dc2626"}}>{r.is_active?"Active":"Suspended"}</strong>},
           {label:"করণীয়",render:r=>r.is_demo?<span style={{color:"#9a6700"}}>যাচাই ছাড়া প্রকাশ করা যাবে না</span>:r.owner_email?<button style={style.button} disabled={busy} onClick={()=>run(()=>call("/api/platform-admin/stores/"+encodeURIComponent(r.id),secret,{method:"PATCH",body:{is_active:!r.is_active,reason:"Changed through D1 platform admin"}}),r.is_active?"দোকান স্থগিত করা হয়েছে":"দোকান সক্রিয় করা হয়েছে")}>{r.is_active?"স্থগিত করুন":"সক্রিয় করুন"}</button>:"—"},
         ]}/></section>}
-        {tab==="orders"&&<section style={style.panel}><h2 style={{marginTop:0,fontSize:18}}>Order oversight</h2><p style={{fontSize:12,color:"var(--text-muted,#65736b)"}}>যাচাইহীন নমুনা অর্ডারের মূল্য প্রকৃত আয় নয়। অনুমোদিত দোকানের COD টাকা merchant হাতে গ্রহণ নিশ্চিত করলে তবেই paid হিসেবে দেখানো হয়। Cancel করলে D1 trigger সংশ্লিষ্ট stock পুনরুদ্ধার করে।</p><Table rows={orders} columns={[
+        {tab==="orders"&&<section style={style.panel}><h2 style={{marginTop:0,fontSize:18}}>Order oversight</h2><p style={{fontSize:12,color:"var(--text-muted,#65736b)"}}>যাচাইহীন রেকর্ডের অর্ডার মূল্য প্রকৃত আয় নয়। অনুমোদিত দোকানের COD টাকা merchant হাতে গ্রহণ নিশ্চিত করলে তবেই paid হিসেবে দেখানো হয়। Cancel করলে D1 trigger সংশ্লিষ্ট stock পুনরুদ্ধার করে।</p><Table rows={orders} columns={[
           {label:"অর্ডার",render:r=><><strong>{r.order_number}</strong><div style={{fontSize:11,opacity:.7}}>{r.store_name}</div><div style={{fontSize:10,opacity:.7}}>{r.customer_name||"Guest"}</div></>},
           {label:"তারিখ",key:"placed_at"},
           {label:"মূল্য",render:r=>money(r.total_bdt)},
