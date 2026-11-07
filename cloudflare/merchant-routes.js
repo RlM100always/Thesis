@@ -1,7 +1,7 @@
 import { canTransitionOrderStatus, defaultOrderStatusNote } from "./order-workflow.js";
 
 /* Authenticated Cloudflare D1 merchant console (separate from legacy FastAPI).
-   Unverified sample storefronts are not available for customer checkout.
+   Only approved owner-managed stores can use merchant operations.
    IMPORTANT: This owner identity is not imported from ephemeral SQLite.
 */
 const encoder=new TextEncoder();
@@ -39,8 +39,8 @@ async function viewer(req,env){
 async function myStore(env,owner){
  return env.DB.prepare("SELECT * FROM commerce_stores WHERE owner_id=? ORDER BY created_at LIMIT 1").bind(owner.id).first();
 }
-async function storeOnly(env,owner){const row=await myStore(env,owner);if(!row)throw new Error("Create a store first");return row;}
-function stripStore(s){return {id:s.id,slug:s.slug,name:s.name,tagline:s.tagline||"",category:s.category||"",area:s.area||"",is_active:!!s.is_active,is_demo:!!s.is_demo,created_at:s.created_at};}
+async function storeOnly(env,owner){const row=await myStore(env,owner);if(!row)throw new Error("Create a store first");if(Number(row.is_demo)!==0)throw new Error("Store not found");return row;}
+function stripStore(s){return {id:s.id,slug:s.slug,name:s.name,tagline:s.tagline||"",category:s.category||"",area:s.area||"",is_active:!!s.is_active,is_verified:Number(s.is_demo)===0,created_at:s.created_at};}
 async function dashboard(env,owner){
  const store=await myStore(env,owner);
  if(!store)return {account:{email:owner.email},store:null,products:[],orders:[],metrics:{orders:0,inventory_units:0,placed_total_bdt:0},stock_adjustments:[],cashbook:[]};
@@ -109,7 +109,7 @@ export async function merchantRouter(req,env,path,output,error){
   }
   if(method==="POST"&&path==="/api/merchant/delete-account"){
    const body=await json(req,error);
-   if(body.confirm!=="DELETE DEMO ACCOUNT")return bad(req,error,422,"Explicit account deletion confirmation required");
+   if(body.confirm!=="DELETE ACCOUNT")return bad(req,error,422,"Explicit account deletion confirmation required");
    const store=await myStore(env,owner);
    if(store&&!store.id.startsWith("merchant-"))
      return bad(req,error,409,"Only owner-created merchant stores can be deleted automatically");
@@ -155,7 +155,7 @@ export async function merchantRouter(req,env,path,output,error){
     const result=await env.DB.prepare("UPDATE commerce_order_returns SET status=?,merchant_note=?,updated_at=CURRENT_TIMESTAMP WHERE id=? AND store_id=? AND status=?")
      .bind(status,note||null,id,store.id,row.status).run();
     if(!result.meta?.changes)return bad(req,error,409,"Return request changed; refresh and retry");
-    return output(req,{updated:true,status,inventory_restocked:status==="received",note:store.is_demo?"Unverified sample return workflow; no money was refunded":"Return received and inventory restocked; no automated refund was issued."});
+    return output(req,{updated:true,status,inventory_restocked:status==="received",note:"Return received and inventory restocked; no automated refund was issued."});
    }
    if(method==="GET"&&path==="/api/merchant/chat"){
     const store=await storeOnly(env,owner),url=new URL(req.url),accountId=short(url.searchParams.get("account_id"),80);
@@ -206,7 +206,7 @@ export async function merchantRouter(req,env,path,output,error){
    return output(req,{created:true,note:"Cashbook entry saved"});
   }
   if(method==="POST"&&path==="/api/merchant/pos"){
-   const store=await storeOnly(env,owner),isSample=!!store.is_demo;
+   const store=await storeOnly(env,owner);
    const b=await json(req,error);
    if(!Array.isArray(b.items)||!b.items.length||b.items.length>12)return bad(req,error,422,"1-12 distinct products are required");
    const details=[],seen=new Set();let total=0;
@@ -221,17 +221,17 @@ export async function merchantRouter(req,env,path,output,error){
    }
    if(!integer(total,1,5000000))return bad(req,error,422,"Invalid POS total");
    const oid=crypto.randomUUID(),cid=crypto.randomUUID(),token=newSession(),number="POS-"+oid.slice(0,8).toUpperCase();
-   const methodName=isSample?"sample_pos":"cash";
-   const customerName=isSample?"Unverified sample counter customer":"Walk-in customer";
+   const methodName="cash";
+   const customerName="Walk-in customer";
    const statements=[
     env.DB.prepare("INSERT INTO commerce_customers(id,store_id,display_name) VALUES(?,?,?)").bind(cid,store.id,customerName),
     env.DB.prepare("INSERT INTO commerce_orders(id,store_id,order_number,access_token,status,subtotal_bdt,total_bdt,payment_method,shipping_name,shipping_phone,shipping_address,customer_id) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)").bind(oid,store.id,number,token,"fulfilled",total,total,methodName,customerName,"","",cid),
     ...details.map(({p,qty})=>env.DB.prepare("INSERT INTO commerce_order_lines(order_id,product_id,product_name,quantity,price_bdt,line_total_bdt) VALUES(?,?,?,?,?,?)").bind(oid,p.id,p.name,qty,p.price_bdt,p.price_bdt*qty)),
-    ...(!isSample?[env.DB.prepare("UPDATE commerce_orders SET payment_status='paid',payment_received_at=CURRENT_TIMESTAMP,payment_received_by=?,payment_note='Cash collected at POS' WHERE id=?").bind(owner.email,oid)]:[]),
-    env.DB.prepare("INSERT INTO commerce_cashbook(id,store_id,kind,amount_bdt,description,related_order_id) VALUES(?,?,?,?,?,?)").bind(crypto.randomUUID(),store.id,"receipt",total,isSample?"Unverified sample POS receipt":"POS cash sale",oid)
+    env.DB.prepare("UPDATE commerce_orders SET payment_status='paid',payment_received_at=CURRENT_TIMESTAMP,payment_received_by=?,payment_note='Cash collected at POS' WHERE id=?").bind(owner.email,oid),
+    env.DB.prepare("INSERT INTO commerce_cashbook(id,store_id,kind,amount_bdt,description,related_order_id) VALUES(?,?,?,?,?,?)").bind(crypto.randomUUID(),store.id,"receipt",total,"POS cash sale",oid)
    ];
    try{await env.DB.batch(statements);}catch(e){return bad(req,error,409,"Stock or product data changed; refresh and retry");}
-   return output(req,{created:true,order_number:number,total_bdt:total,payment_status:isSample?"demo_no_payment":"paid",note:isSample?"Unverified sample sale recorded":"Cash sale, payment and stock movement recorded"},201);
+   return output(req,{created:true,order_number:number,total_bdt:total,payment_status:"paid",note:"Cash sale, payment and stock movement recorded"},201);
   }
   if(method==="POST"&&path==="/api/merchant/products"){
    const store=await storeOnly(env,owner),b=await json(req,error);
@@ -298,7 +298,7 @@ export async function merchantRouter(req,env,path,output,error){
    if(!order)return bad(req,error,404,"Order not found");
    const status=short(b.status,30);
    if(!canTransitionOrderStatus(order.status,status))return bad(req,error,409,"Invalid order status transition");
-   const note=short(b.status_note,300)||defaultOrderStatusNote(status,!!store.is_demo);
+   const note=short(b.status_note,300)||defaultOrderStatusNote(status,false);
    const cancellationReason=status==="cancelled"?(short(b.cancellation_reason,250)||"দোকানের পক্ষ থেকে অর্ডার বাতিল করা হয়েছে"):null;
    const updated=await env.DB.prepare("UPDATE commerce_orders SET status=?,status_note=?,cancellation_reason=COALESCE(?,cancellation_reason) WHERE id=? AND store_id=? AND status=?")
     .bind(status,note,cancellationReason,order.id,store.id,order.status).run();
