@@ -27,6 +27,8 @@ async function json(request,error,max=10000){
  try{return JSON.parse(text);}catch{throw new Error("Invalid JSON");}
 }
 const short=(value,n=120)=>String(value??"").trim().slice(0,n);
+const validPublicSlug=value=>/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(value)&&value.length>=3&&value.length<=64&&!/(^|-)(demo|sample|test)(-|$)/.test(value);
+const publicSlug=value=>{const raw=short(value,64).toLowerCase().replace(/^bsmart-/,"");return validPublicSlug(raw)?"bsmart-"+raw:null;};
 const validEmail=email=>/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)&&email.length<=180;
 const integer=(value,min,max)=>Number.isInteger(Number(value))&&Number(value)>=min&&Number(value)<=max;
 async function viewer(req,env){
@@ -181,9 +183,9 @@ export async function merchantRouter(req,env,path,output,error){
    if(await myStore(env,owner))return bad(req,error,409,"Account already has a store");
    const b=await json(req,error);
    const name=short(b.name,110),tagline=short(b.tagline,160),category=short(b.category,50),area=short(b.area,100);
-   if(name.length<3||!category||!area)return bad(req,error,422,"Store name, category and area are required");
+   const slug=publicSlug(b.slug);
+   if(name.length<3||!category||!area||!slug)return bad(req,error,422,"Store name, category, area and a valid public URL are required");
    const id="merchant-"+crypto.randomUUID();
-   const slug="shop-"+crypto.randomUUID().slice(0,12);
    await env.DB.prepare("INSERT INTO commerce_stores(id,slug,name,tagline,category,area,theme,color,is_demo,is_active,owner_id,delivery_note) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)").bind(id,slug,name,tagline,category,area,"clean","#087e59",0,0,owner.id,"Awaiting platform review").run();
    return output(req,{created:true,store:stripStore(await myStore(env,owner))},201);
   }
@@ -191,10 +193,12 @@ export async function merchantRouter(req,env,path,output,error){
    const store=await storeOnly(env,owner),b=await json(req,error);
    const name=short(b.name??store.name,110),tagline=short(b.tagline??store.tagline,160);
    const area=short(b.area??store.area,100),category=short(b.category??store.category,50);
-   if(name.length<3||!area||!category)return bad(req,error,422,"Invalid store profile");
+   const requestedSlug=b.slug===undefined?store.slug:publicSlug(b.slug);
+   if(name.length<3||!area||!category||!requestedSlug)return bad(req,error,422,"Invalid store profile or public URL");
+   if(requestedSlug!==store.slug&&Number(store.is_active)===1)return bad(req,error,409,"A published store URL cannot be changed. Contact support for a managed URL migration.");
    if(b.is_active===true&&!store.is_active)return bad(req,error,403,"A platform administrator must approve and publish this store");
    const active=b.is_active===false?0:Number(store.is_active);
-   await env.DB.prepare("UPDATE commerce_stores SET name=?,tagline=?,category=?,area=?,is_active=? WHERE id=? AND owner_id=?").bind(name,tagline,category,area,active,store.id,owner.id).run();
+   await env.DB.prepare("UPDATE commerce_stores SET slug=?,name=?,tagline=?,category=?,area=?,is_active=? WHERE id=? AND owner_id=?").bind(requestedSlug,name,tagline,category,area,active,store.id,owner.id).run();
    return output(req,{store:stripStore(await myStore(env,owner))});
   }
   if(method==="POST"&&path==="/api/merchant/cashbook"){
