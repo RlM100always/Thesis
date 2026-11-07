@@ -338,7 +338,8 @@ def run_experiment(panel: pd.DataFrame, horizons=HORIZONS, folds=3,
                 feat = _features(hist, origin)
                 feat["shop_id"], feat["category_id"] = str(key[0]), str(key[1])
                 current_rows.append(feat)
-                histories.append(hist["demand"].to_numpy(dtype=float))
+                hist_values = hist["demand"].to_numpy(dtype=float)
+                histories.append(hist_values)
                 actuals.append(float(future["demand"].sum()))
             if not current_rows:
                 continue
@@ -351,6 +352,7 @@ def run_experiment(panel: pd.DataFrame, horizons=HORIZONS, folds=3,
                 one_day_scale = float(np.mean(np.abs(np.diff(hist_values)))) if len(hist_values) > 1 else 0.0
                 scales.append(one_day_scale * horizon if np.isfinite(one_day_scale) and one_day_scale > 0 else 1.0)
             scales = np.asarray(scales, dtype=float)
+            regimes = [demand_profile(h).regime for h in histories]
             for name in candidates:
                 try:
                     if name == "seasonal_naive_7":
@@ -373,11 +375,26 @@ def run_experiment(panel: pd.DataFrame, horizons=HORIZONS, folds=3,
                             "horizon": horizon, "origin": origin.date().isoformat(),
                             "shop_id": pred_frame.iloc[idx]["shop_id"],
                             "category_id": pred_frame.iloc[idx]["category_id"],
-                            "model": name, "actual": float(actual), "forecast": float(forecast)
+                            "model": name, "regime": regimes[idx], "actual": float(actual), "forecast": float(forecast)
                         })
                     metrics = _metric_row(actual_arr, forecasts, scales)
                     summaries.append({"horizon": horizon, "origin": origin.date().isoformat(),
-                                      "model": name, "status": "ok", **metrics})
+                                      "model": name, "level": "all", "group_value": "all",
+                                      "status": "ok", **metrics})
+                    # Retain disaggregated results; pooled scores alone can hide
+                    # a model that fails on a particular shop or demand regime.
+                    dimensions = {
+                        "shop": pred_frame["shop_id"].astype(str).to_numpy(),
+                        "category": pred_frame["category_id"].astype(str).to_numpy(),
+                        "demand_regime": np.asarray(regimes, dtype=str),
+                    }
+                    for level, labels in dimensions.items():
+                        for label in sorted(set(labels)):
+                            mask = labels == label
+                            subgroup_metrics = _metric_row(actual_arr[mask], forecasts[mask], scales[mask])
+                            summaries.append({"horizon": horizon, "origin": origin.date().isoformat(),
+                                              "model": name, "level": level, "group_value": label,
+                                              "status": "ok", **subgroup_metrics})
                 except ImportError as exc:
                     summaries.append({"horizon": horizon, "origin": origin.date().isoformat(),
                                       "model": name, "status": "skipped_dependency",
@@ -387,6 +404,76 @@ def run_experiment(panel: pd.DataFrame, horizons=HORIZONS, folds=3,
                                       "model": name, "status": "failed",
                                       "reason": f"{type(exc).__name__}: {exc}"})
     return pd.DataFrame(summaries), pd.DataFrame(predictions)
+
+
+def write_figures(summary: pd.DataFrame, predictions: pd.DataFrame, output: Path) -> list[str]:
+    """Write reproducible validation plots; figures are diagnostics, not extra evidence."""
+    try:
+        import matplotlib
+        matplotlib.use("Agg")
+        import matplotlib.pyplot as plt
+    except ImportError:
+        return ["matplotlib unavailable; figures skipped"]
+    written = []
+    valid = summary[(summary["status"] == "ok") & (summary["level"] == "all")].copy()
+    if not valid.empty:
+        means = valid.groupby(["horizon", "model"], as_index=False)["wape"].mean()
+        for horizon, group in means.groupby("horizon"):
+            group = group.dropna(subset=["wape"]).sort_values("wape")
+            if group.empty:
+                continue
+            fig, ax = plt.subplots(figsize=(10, 5))
+            ax.bar(group["model"], group["wape"] * 100)
+            ax.set(title=f"Rolling-origin WAPE — {horizon}-day horizon", ylabel="WAPE (%)")
+            ax.tick_params(axis="x", rotation=30)
+            fig.tight_layout()
+            path = output / f"wape_comparison_h{horizon}.png"
+            fig.savefig(path, dpi=180)
+            plt.close(fig)
+            written.append(path.name)
+    if not predictions.empty:
+        p7 = predictions[predictions["horizon"] == 7].copy()
+        if not p7.empty:
+            scores = p7.groupby("model").apply(
+                lambda g: (g["actual"] - g["forecast"]).abs().sum() / g["actual"].abs().sum()
+                if g["actual"].abs().sum() > 0 else np.nan, include_groups=False
+            ).dropna()
+            if not scores.empty:
+                best = str(scores.idxmin())
+                selected = p7[p7["model"] == best]
+                series = selected.groupby(["shop_id", "category_id"])["actual"].sum().sort_values(ascending=False)
+                if not series.empty:
+                    shop, category = series.index[0]
+                    line = selected[(selected["shop_id"] == shop) & (selected["category_id"] == category)].sort_values("origin")
+                    fig, ax = plt.subplots(figsize=(10, 5))
+                    ax.plot(line["origin"], line["actual"], marker="o", label="Actual")
+                    ax.plot(line["origin"], line["forecast"], marker="o", label=f"Forecast ({best})")
+                    ax.set(title=f"7-day rolling forecasts — shop {shop}, category {category}", ylabel="Next 7-day demand")
+                    ax.tick_params(axis="x", rotation=30)
+                    ax.legend()
+                    fig.tight_layout()
+                    path = output / "actual_vs_forecast_7d.png"
+                    fig.savefig(path, dpi=180)
+                    plt.close(fig)
+                    written.append(path.name)
+                per_series = selected.groupby(["shop_id", "category_id"]).apply(
+                    lambda g: (g["actual"] - g["forecast"]).abs().sum() / g["actual"].abs().sum()
+                    if g["actual"].abs().sum() > 0 else np.nan, include_groups=False
+                ).rename("wape").reset_index()
+                heat = per_series.pivot(index="shop_id", columns="category_id", values="wape")
+                if not heat.empty:
+                    fig, ax = plt.subplots(figsize=(max(9, len(heat.columns) * 0.55), max(5, len(heat.index) * 0.25)))
+                    image = ax.imshow(heat.to_numpy(dtype=float), aspect="auto", interpolation="nearest")
+                    ax.set(title=f"Shop × category WAPE — 7-day, {best}", xlabel="Category", ylabel="Shop")
+                    ax.set_xticks(range(len(heat.columns)), heat.columns, rotation=90)
+                    ax.set_yticks(range(len(heat.index)), heat.index)
+                    fig.colorbar(image, ax=ax, label="WAPE")
+                    fig.tight_layout()
+                    path = output / "shop_category_wape_heatmap_7d.png"
+                    fig.savefig(path, dpi=180)
+                    plt.close(fig)
+                    written.append(path.name)
+    return written
 
 
 def build_diagnostics(panel: pd.DataFrame) -> pd.DataFrame:
@@ -452,6 +539,7 @@ def main(argv=None) -> int:
             "WAPE is undefined when the actual total is zero; such rows are retained with null WAPE."
         ]
     }
+    manifest["figures"] = write_figures(summary, predictions, output)
     (output / "run_manifest.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
     print(f"Rows={len(panel)} series={manifest['series_count']} shops={manifest['shop_count']} categories={manifest['category_count']}")
     print(f"Artifacts written to: {output.resolve()}")
