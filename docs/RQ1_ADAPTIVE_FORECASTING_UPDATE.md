@@ -34,8 +34,11 @@ automatically establish that a particular algorithm is superior.
 ## 3. Candidate methods
 
 The v0.1.0 implementation compares a weekly seasonal-naive reference,
-Croston, SBA, TSB, scikit-learn HistGradientBoosting, and optional LightGBM
-and CatBoost. Direct cumulative targets are built for 1, 7, 14 and 28 days.
+Croston, SBA, TSB, a two-stage hurdle model, scikit-learn HistGradientBoosting,
+and optional LightGBM and CatBoost. A validation-only selector chooses a
+candidate by demand regime when at least two origins and ten series forecasts
+are available; unsupported groups remain unselected. Direct cumulative targets
+are built for 1, 7, 14 and 28 days.
 Features include lagged demand, rolling level/dispersion/zero ratios, time
 since last positive sale, ADI/CV² and calendar encodings. Every feature row is
 constructed from dates strictly before its forecast origin.
@@ -51,6 +54,7 @@ Each run writes:
 - `demand_diagnostics.csv`
 - `rolling_origin_metrics.csv`
 - `rolling_origin_predictions.csv`
+- `selected_model_by_regime.csv`
 - `run_manifest.json` including input SHA-256, schema-level counts, date
   coverage, assumptions, horizons, candidate list, environment and limitations.
 
