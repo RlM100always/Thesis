@@ -101,7 +101,7 @@ The new registration endpoint returns a configuration error until the provider i
 
 The upgrade branch adds:
 - A public D1 storefront assistant at `POST /api/public/assistant/{store-slug}`. It uses the current store's published catalogue and, only when a customer bearer session is supplied, that customer's orders in the same store.
-- An authenticated owner assistant at `POST /api/merchant/assistant`. It queries only the signed-in owner's store and reports order value separately from COD money actually collected.
+- An authenticated owner assistant at `POST /api/merchant/assistant`. It queries only the signed-in owner's store and reports order value separately from payments actually collected and pending COD.
 - Per-product `reorder_level` (default 5) and low-stock analysis.
 - Hashed per-minute rate-limit keys; raw customer IPs and chat transcripts are not stored by this feature.
 
