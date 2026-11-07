@@ -585,11 +585,6 @@ button.s-contact-price { background: transparent; border: 0; padding: 4px 0; tex
   .s-site .s-store-name{max-width:min(32vw,165px);overflow:hidden;text-overflow:ellipsis}
 }
 
-.s-site .s-sample-checkout-note {
-  margin:0 0 20px;padding:13px 16px;border-radius:12px;
-  border:1px solid var(--s-border);background:var(--s-soft);
-  color:var(--s-ink);font-size:14px;line-height:1.65;
-}
 .s-site .s-payment-option.selected .s-payment-option-label{color:var(--s-ink)}
 .s-site .s-delivery-note{color:var(--s-ink)}
 `;
