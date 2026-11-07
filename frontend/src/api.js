@@ -11,7 +11,7 @@ const BASE = import.meta.env.VITE_API_URL ?? (import.meta.env.PROD ? "" : "http:
    include only approved, owner-managed stores with non-sample provenance. */
 export const D1_COMMERCE = (import.meta.env.VITE_D1_COMMERCE_URL ||
   "https://bsmart-commerce-api.bcs-written-rakib.workers.dev").replace(/\/$/, "");
-export const isD1Store = (id) => /^(demo-bsmart-|merchant-|shop-)/.test(String(id || ""));
+export const isD1Store = (id) => /^(bsmart-|merchant-|shop-)/.test(String(id || ""));
 export async function d1Commerce(path, { method = "GET", body, headers = {} } = {}) {
   const response = await fetch(D1_COMMERCE + path, {
     method,
