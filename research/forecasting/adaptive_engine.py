@@ -546,6 +546,85 @@ def run_experiment(panel: pd.DataFrame, horizons=HORIZONS, folds=3,
                                       "status": "failed", "reason": f"{type(exc).__name__}: {exc}"})
     return pd.DataFrame(summaries), pd.DataFrame(predictions)
 
+def write_figures(summary: pd.DataFrame, predictions: pd.DataFrame, output: Path) -> list[str]:
+    """Write reproducible validation plots from the supplied development predictions."""
+    try:
+        import matplotlib
+        matplotlib.use("Agg")
+        import matplotlib.pyplot as plt
+    except ImportError:
+        return ["matplotlib unavailable; figures skipped"]
+    output.mkdir(parents=True, exist_ok=True)
+    written = []
+    level = summary["level"] if "level" in summary.columns else pd.Series("", index=summary.index)
+    valid = summary[(summary["status"] == "ok") & (level == "all")].copy()
+    if not valid.empty:
+        means = valid.groupby(["horizon", "model"], as_index=False)["wape"].mean()
+        for horizon, group in means.groupby("horizon"):
+            group = group.dropna(subset=["wape"]).sort_values("wape")
+            if group.empty:
+                continue
+            fig, ax = plt.subplots(figsize=(10, 5))
+            ax.bar(group["model"], group["wape"] * 100)
+            ax.set(title=f"Rolling-origin WAPE — {horizon}-day horizon", ylabel="WAPE (%)")
+            ax.tick_params(axis="x", rotation=30)
+            fig.tight_layout()
+            path = output / f"wape_comparison_h{horizon}.png"
+            fig.savefig(path, dpi=180)
+            plt.close(fig)
+            written.append(path.name)
+    if not predictions.empty:
+        p7 = predictions[predictions["horizon"] == 7].copy()
+        if not p7.empty:
+            scores = pd.Series({
+                name: ((g["actual"] - g["forecast"]).abs().sum() / g["actual"].abs().sum())
+                if g["actual"].abs().sum() > 0 else np.nan
+                for name, g in p7.groupby("model")
+            }).dropna()
+            if not scores.empty:
+                best = str(scores.idxmin())
+                selected = p7[p7["model"] == best]
+                series = selected.groupby(["shop_id", "category_id"])["actual"].sum().sort_values(ascending=False)
+                if not series.empty:
+                    shop, category = series.index[0]
+                    line = selected[(selected["shop_id"] == shop) &
+                                    (selected["category_id"] == category)].sort_values("origin")
+                    fig, ax = plt.subplots(figsize=(10, 5))
+                    ax.plot(line["origin"], line["actual"], marker="o", label="Actual")
+                    ax.plot(line["origin"], line["forecast"], marker="o", label=f"Forecast ({best})")
+                    ax.set(title=f"7-day rolling forecasts — shop {shop}, category {category}",
+                           ylabel="Next 7-day demand")
+                    ax.tick_params(axis="x", rotation=30)
+                    ax.legend()
+                    fig.tight_layout()
+                    path = output / "actual_vs_forecast_7d.png"
+                    fig.savefig(path, dpi=180)
+                    plt.close(fig)
+                    written.append(path.name)
+                per_series = pd.DataFrame([
+                    {"shop_id": shop_id, "category_id": category_id,
+                     "wape": ((g["actual"] - g["forecast"]).abs().sum() / g["actual"].abs().sum())
+                     if g["actual"].abs().sum() > 0 else np.nan}
+                    for (shop_id, category_id), g in selected.groupby(["shop_id", "category_id"])
+                ])
+                heat = per_series.pivot(index="shop_id", columns="category_id", values="wape")
+                if not heat.empty:
+                    fig, ax = plt.subplots(figsize=(max(9, len(heat.columns) * 0.55),
+                                                    max(5, len(heat.index) * 0.25)))
+                    image = ax.imshow(heat.to_numpy(dtype=float), aspect="auto", interpolation="nearest")
+                    ax.set(title=f"Shop × category WAPE — 7-day, {best}",
+                           xlabel="Category", ylabel="Shop")
+                    ax.set_xticks(range(len(heat.columns)), heat.columns, rotation=90)
+                    ax.set_yticks(range(len(heat.index)), heat.index)
+                    fig.colorbar(image, ax=ax, label="WAPE")
+                    fig.tight_layout()
+                    path = output / "shop_category_wape_heatmap_7d.png"
+                    fig.savefig(path, dpi=180)
+                    plt.close(fig)
+                    written.append(path.name)
+    return written
+
+
 def build_diagnostics(panel: pd.DataFrame) -> pd.DataFrame:
     rows = []
     for key, group in panel.groupby(KEYS, sort=False):
