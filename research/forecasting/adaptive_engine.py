@@ -167,6 +167,10 @@ def _features(history: pd.DataFrame, origin: pd.Timestamp) -> dict:
 
 def make_supervised(panel: pd.DataFrame, horizon: int, min_history: int = 56) -> pd.DataFrame:
     """Create direct-horizon training examples; target is next-H-day total."""
+    if min_history < max(LAGS):
+        raise DataContractError(f"min_history must be at least {max(LAGS)} days for the configured lag features.")
+    if horizon < 1:
+        raise DataContractError("Forecast horizon must be a positive number of days.")
     rows = []
     for key, group in panel.groupby(KEYS, sort=False):
         group = group.sort_values("date").reset_index(drop=True)
@@ -298,6 +302,10 @@ def _metric_row(actual: np.ndarray, predicted: np.ndarray, scale: float | np.nda
 def rolling_origins(panel: pd.DataFrame, horizon: int, folds: int = 3,
                     min_history: int = 56) -> list[pd.Timestamp]:
     """Choose non-overlapping validation windows near the end of development data."""
+    if min_history < max(LAGS):
+        raise DataContractError(f"min_history must be at least {max(LAGS)} days for the configured lag features.")
+    if horizon < 1 or folds < 1:
+        raise DataContractError("horizon and folds must be positive integers.")
     last_date = panel["date"].max()
     first_date = panel["date"].min()
     earliest = first_date + pd.Timedelta(days=min_history)
