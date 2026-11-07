@@ -281,7 +281,7 @@ export async function merchantRouter(req,env,path,output,error){
   const paymentMatch=/^\/api\/merchant\/orders\/([a-zA-Z0-9-]{2,90})\/payment$/.exec(path);
   if(method==="PATCH"&&paymentMatch){
    const store=await storeOnly(env,owner),body=await json(req,error),id=paymentMatch[1];
-   if(store.is_demo)return bad(req,error,409,"Unverified sample orders have no real payment to collect");
+   if(store.is_demo)return bad(req,error,409,"This order is not eligible for payment collection");
    const order=await env.DB.prepare("SELECT id,status,payment_method,payment_status FROM commerce_orders WHERE store_id=? AND id=?").bind(store.id,id).first();
    if(!order)return bad(req,error,404,"Order not found");
    if(order.payment_method!=="cod")return bad(req,error,409,"Only cash-on-delivery orders can be recorded here");
