@@ -257,7 +257,27 @@ export default {
       return store?output(request,await storeResponse(env,store)):error(request,404,"Store not found");
     }
    }
-   const m=path.match(/^\/api\/public\/orders\/([^/]+)(?:\/(.*))?$/);
+       const couponRoute=/^\/api\/public\/coupons\/([^/]+)\/validate$/.exec(path);
+    if(method==="POST"&&couponRoute){
+     const id=decodeURIComponent(couponRoute[1]),store=await getStore(env,id,false);
+     if(!store)return error(request,404,"Store not found");
+     if(store.is_demo)return error(request,422,"Coupons are not available on sample stores.");
+     const raw=await request.text();if(raw.length>2000)return error(request,413,"Coupon request too large");
+     let body;try{body=JSON.parse(raw);}catch{return error(request,400,"Invalid JSON");}
+     const subtotal=Number(body.order_subtotal);
+     if(!Number.isSafeInteger(subtotal)||subtotal<0||subtotal>5000000)return error(request,422,"Invalid order subtotal");
+     let customerKeyHash=null;
+     const bearer=/^Bearer ([a-f0-9]{64})$/i.exec(request.headers.get("Authorization")||"");
+     if(bearer){
+      const account=await customerFromToken(env,bearer[1]);
+      if(account)customerKeyHash=await hashValue(store.id+":account:"+account.id);
+     }
+     try{
+      const result=await couponForOrder(env,store,body.code,subtotal,customerKeyHash);
+      return output(request,{valid:true,code:result.code,discount_amount:result.discount_amount,discount_type:result.discount_type});
+     }catch(e){return error(request,422,e.message||"Coupon could not be applied");}
+    }
+const m=path.match(/^\/api\/public\/orders\/([^/]+)(?:\/(.*))?$/);
    if(m){
     const id=decodeURIComponent(m[1]), action=m[2]||"";
     if(method==="GET"&&action==="products") {
