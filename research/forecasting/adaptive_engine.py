@@ -76,7 +76,9 @@ def load_daily_panel(path: str | Path, fill_missing_as_zero: bool = False) -> pd
         raise DataContractError(f"Missing required columns: {missing}")
 
     raw_dates = frame["date"]
-    if pd.api.types.is_numeric_dtype(raw_dates):
+    if pd.api.types.is_datetime64_any_dtype(raw_dates):
+        parsed_dates = pd.to_datetime(raw_dates, errors="coerce")
+    elif pd.api.types.is_numeric_dtype(raw_dates):
         parsed_dates = pd.to_datetime(raw_dates, unit="D", origin="1899-12-30", errors="coerce")
     else:
         numeric_dates = pd.to_numeric(raw_dates, errors="coerce")
