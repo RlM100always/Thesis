@@ -103,7 +103,7 @@ export async function platformAdminRouter(req,env,path,output,error) {
       const {results}=await env.DB.prepare("SELECT id,action,target_type,target_id,details,created_at FROM commerce_platform_admin_audit ORDER BY created_at DESC LIMIT 200").all();
       return output(req,{audit:results});
     }
-        const ownerMatch=path.match(/^\\/api\\/platform-admin\\/owners\\/([^/]+)$/);
+        const ownerMatch=path.match(/^\/api\/platform-admin\/owners\/([^/]+)$/);
     if(method==="PATCH"&&ownerMatch) {
       const id=decodeURIComponent(ownerMatch[1]),body=await readBody(req);
       if(typeof body.is_active!=="boolean")return error(req,422,"is_active must be true or false");
