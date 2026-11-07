@@ -44,7 +44,7 @@ Use a long, unique random value of at least 32 characters. Enter it at `/#/d1-pl
 - [Owner signup/login, product editing, inventory audit and logout/cleanup](https://github.com/RlM100always/Thesis/actions/runs/40325162409)
 - [Guest order placement, cancellation and stock reversal](https://github.com/RlM100always/Thesis/actions/runs/40318406288)
 
-Latest GitHub CI passed on commit `6cc6986c0de53496a749ea9c09a554670239542d` (frontend build, D1 schema smoke, backend compile and backend integration). The corresponding Render deploy is live. The Worker was uploaded directly through the Cloudflare API at 2026-10-27 08:39 UTC; GitHub commits alone do **not** automatically redeploy Worker script changes unless Cloudflare CI secrets / automatic deploy are configured.
+The Render service auto-deploys from `main`. A dedicated Cloudflare Worker deployment workflow now exists at `.github/workflows/cloudflare-worker-deploy.yml`; configure GitHub repository secrets `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` to enable automatic Worker deploys when `cloudflare/**` changes. Until those secrets are configured, merge to GitHub does not deploy Worker code automatically; the Worker must be deployed through Cloudflare separately.
 
 ## Database boundary — important
 
