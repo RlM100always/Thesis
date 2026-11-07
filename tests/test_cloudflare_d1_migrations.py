@@ -46,6 +46,7 @@ def test_all_d1_migrations_apply_in_order_and_create_commerce_tables():
         "email_verification_expires_at", "password_reset_token_hash",
         "password_reset_expires_at",
     } <= merchant_columns
+    assert {"is_active", "role"} <= merchant_columns
     product_columns = {
         row["name"] for row in db.execute("PRAGMA table_info(commerce_products)")
     }
