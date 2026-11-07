@@ -171,6 +171,15 @@ test("merchant owner registration stores a PBKDF2 hash and sends a hashed, expir
   assert.equal(reused.status,400);
 });
 
+test("suspended owner accounts cannot sign in",async()=>{
+  const env=createD1Mock(),email="owner@example.invalid",password="correct-horse-battery";
+  await registerAndVerify(env,email,password);
+  env.inspect.accounts.get(email).is_active=0;
+  const result=await call(env,"/api/merchant/login",{email,password});
+  assert.equal(result.status,403);
+  assert.match(result.body.detail,/suspended/);
+});
+
 test("merchant login verifies password, requires verified email and rejects incorrect credentials", async () => {
   const env=createD1Mock(),email="owner@example.invalid",password="correct-horse-battery";
   await registerAndVerify(env,email,password);
