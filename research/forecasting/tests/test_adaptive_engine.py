@@ -4,7 +4,7 @@ import pytest
 
 from research.forecasting.adaptive_engine import (
     DataContractError, demand_profile, load_daily_panel, croston_forecast,
-    make_supervised, rolling_origins, _metric_row, _fit_predict
+    make_supervised, rolling_origins, _metric_row, _fit_predict, write_figures
 )
 
 
@@ -98,3 +98,24 @@ def test_hist_gradient_boosting_candidate_fits_without_leakage_features():
     assert forecasts.shape == (4,)
     assert np.isfinite(forecasts).all()
     assert (forecasts >= 0).all()
+
+
+def test_validation_figures_are_written_from_supplied_results(tmp_path):
+    summary = pd.DataFrame([
+        {"horizon": 7, "model": "seasonal_naive_7", "level": "all", "status": "ok", "wape": 0.40},
+        {"horizon": 7, "model": "croston", "level": "all", "status": "ok", "wape": 0.55},
+    ])
+    predictions = pd.DataFrame([
+        {"horizon": 7, "origin": "2024-03-01", "shop_id": "A", "category_id": "C1",
+         "model": "seasonal_naive_7", "actual": 12.0, "forecast": 10.0, "regime": "smooth"},
+        {"horizon": 7, "origin": "2024-03-08", "shop_id": "A", "category_id": "C1",
+         "model": "seasonal_naive_7", "actual": 15.0, "forecast": 13.0, "regime": "smooth"},
+        {"horizon": 7, "origin": "2024-03-01", "shop_id": "B", "category_id": "C2",
+         "model": "seasonal_naive_7", "actual": 5.0, "forecast": 4.0, "regime": "intermittent"},
+        {"horizon": 7, "origin": "2024-03-08", "shop_id": "B", "category_id": "C2",
+         "model": "seasonal_naive_7", "actual": 0.0, "forecast": 1.0, "regime": "intermittent"},
+    ])
+    files = write_figures(summary, predictions, tmp_path)
+    assert "wape_comparison_h7.png" in files
+    assert "actual_vs_forecast_7d.png" in files
+    assert "shop_category_wape_heatmap_7d.png" in files
