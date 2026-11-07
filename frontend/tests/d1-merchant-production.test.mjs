@@ -115,14 +115,14 @@ test("new merchant stores are real but private until platform approval", async (
   const env=createD1Mock(),email="owner@example.com",password="correct-horse-battery";
   await call(env,"/api/merchant/register",{email,password});
   const login=await call(env,"/api/merchant/login",{email,password});
+  const invalid=await call(env,"/api/merchant/store",{name:"Other Shop",slug:"demo-restaurant",category:"মুদি",area:"Dhaka"},login.body.token);
+  assert.equal(invalid.status,422);
   const created=await call(env,"/api/merchant/store",{name:"Example Shop",slug:"restaurant",tagline:"Local goods",category:"মুদি",area:"Dhaka"},login.body.token);
   assert.equal(created.status,201,JSON.stringify(created.body));
   assert.equal(created.body.store.is_verified,true);
   assert.equal(created.body.store.slug,"bsmart-restaurant");
   assert.equal(created.body.store.is_active,false);
   assert.equal(created.body.store.tagline,"Local goods");
-  const invalid=await call(env,"/api/merchant/store",{name:"Other Shop",slug:"demo-restaurant",category:"মুদি",area:"Dhaka"},login.body.token);
-  assert.equal(invalid.status,422);
   const attemptedPublish=await call(env,"/api/merchant/store",{name:"Example Shop",category:"মুদি",area:"Dhaka",is_active:true},login.body.token,"PATCH");
   assert.equal(attemptedPublish.status,403);
 });
