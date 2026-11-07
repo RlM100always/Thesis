@@ -66,7 +66,7 @@ export async function platformAdminRouter(req,env,path,output,error) {
       const {results}=await env.DB.prepare(
         "SELECT a.id,a.email,a.role,a.is_active,a.email_verified_at,a.created_at,"+
         "s.id AS store_id,s.slug AS store_slug,s.name AS store_name,"+
-        "(SELECT COUNT(*) FROM merchant_sessions ms WHERE ms.account_id=a.id AND ms.expires_at>CURRENT_TIMESTAMP) AS active_sessions "+
+        "(SELECT COUNT(*) FROM merchant_sessions ms WHERE ms.account_id=a.id AND datetime(ms.expires_at)>CURRENT_TIMESTAMP) AS active_sessions "+
         "FROM merchant_accounts a LEFT JOIN commerce_stores s ON s.owner_id=a.id "+
         "ORDER BY a.created_at DESC LIMIT 500"
       ).all();
