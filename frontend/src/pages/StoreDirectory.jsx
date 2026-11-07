@@ -246,7 +246,7 @@ const DIR_CSS = `
 }
 .sd-page .sd-theme-toggle:hover{border-color:var(--sd-accent);background:var(--sd-chip)}
 .sd-page .sd-theme-toggle:focus-visible{outline:3px solid var(--sd-accent);outline-offset:3px}
-.sd-page .sd-demo-label {
+.sd-page .sd-unverified-label {
  display:inline-flex;max-width:100%;font-size:11px;font-weight:750;
  padding:5px 9px;margin:2px 0 9px;border-radius:7px;
  background:color-mix(in srgb,#c28a27 17%,var(--sd-card));
