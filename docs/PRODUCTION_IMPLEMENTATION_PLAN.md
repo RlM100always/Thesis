@@ -44,11 +44,13 @@ They are not one integrated database today. The repository's own live-audit note
 **Gate:** no production database writes or destructive migrations during the audit.
 
 ### Phase 1 — Identity, roles and owner access
+- [x] Add platform-admin owner account directory with role, verification, activation status and session count.
+- [x] Add account suspension/reactivation and revoke sessions on suspension.
 - [x] Add branch-level owner email verification and single-use password-reset endpoints, hashed tokens, expiry checks and session revocation.
 - [x] Add owner-panel verification, resend-verification, forgot-password and reset-password screens.
 - [x] Add migration 0009 and automated schema/auth-flow tests (pending CI result).
 - [ ] Configure Resend and apply migration 0009 safely to the existing D1 database.
-- [ ] Decide the authoritative identity system for each store.
+- [ ] Decide the authoritative identity system for each store and expand the role matrix beyond the initial owner role.
 - [ ] Verify the email-provider delivery path end to end in staging and production.
 - [ ] Add owner/staff roles and permissions with store-level tenant isolation.
 - [ ] Add D1 owner/staff roles, session controls and security-event audit.
