@@ -159,12 +159,12 @@ export async function merchantRouter(req,env,path,output,error){
    const row=await env.DB.prepare("SELECT id FROM merchant_accounts WHERE password_reset_token_hash=? AND password_reset_expires_at>?").bind(await sha256(token.toLowerCase()),new Date().toISOString()).first();
    if(!row)return bad(req,error,400,"Invalid or expired password reset link");
    const salt=randomHex(16),hash=await passwordDigest(password,salt);
-   const results=await env.DB.batch([
-    env.DB.prepare("UPDATE merchant_accounts SET password_hash=?,password_salt=?,email_verified_at=COALESCE(email_verified_at,CURRENT_TIMESTAMP),password_reset_token_hash=NULL,password_reset_expires_at=NULL,email_verification_token_hash=NULL,email_verification_expires_at=NULL WHERE id=? AND password_reset_token_hash=?").bind(hash,salt,row.id,await sha256(token.toLowerCase())),
+   const consumed=await env.DB.prepare("UPDATE merchant_accounts SET password_hash=?,password_salt=?,email_verified_at=COALESCE(email_verified_at,CURRENT_TIMESTAMP),password_reset_token_hash=NULL,password_reset_expires_at=NULL,email_verification_token_hash=NULL,email_verification_expires_at=NULL WHERE id=? AND password_reset_token_hash=?").bind(hash,salt,row.id,await sha256(token.toLowerCase())).run();
+   if(!consumed.meta?.changes)return bad(req,error,400,"Invalid or expired password reset link");
+   await env.DB.batch([
     env.DB.prepare("DELETE FROM merchant_sessions WHERE account_id=?").bind(row.id),
     env.DB.prepare("DELETE FROM merchant_login_attempts WHERE email=(SELECT email FROM merchant_accounts WHERE id=?)").bind(row.id)
    ]);
-   if(!results[0]?.meta?.changes)return bad(req,error,400,"Invalid or expired password reset link");
    return output(req,{reset:true,sessions_revoked:true});
   }
   if(method==="POST"&&path==="/api/merchant/login"){
