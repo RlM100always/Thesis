@@ -32,7 +32,7 @@ function createD1Mock() {
           if (sql.startsWith("SELECT a.id,a.email FROM merchant_sessions")) {
             const session = sessions.get(args[0]);
             if (!session || session.expires_at <= args[1]) return null;
-            const account = accounts.get(session.account_id);
+            const account = [...accounts.values()].find(row => row.id === session.account_id);
             return account ? { id: account.id, email: account.email } : null;
           }
           if (sql.startsWith("SELECT * FROM commerce_stores WHERE owner_id=?")) {
