@@ -65,7 +65,7 @@ function createD1Mock() {
             if (sql.startsWith("INSERT INTO merchant_accounts")) {
               const [id,email,password_hash,password_salt,verificationHash,verificationExpiry] = args;
               if (accounts.has(email)) throw new Error("UNIQUE constraint failed");
-              accounts.set(email,{id,email,password_hash,password_salt,access_key_digest:null,email_verified_at:null,email_verification_token_hash:verificationHash,email_verification_expires_at:verificationExpiry,password_reset_token_hash:null,password_reset_expires_at:null});
+              accounts.set(email,{id,email,password_hash,password_salt,access_key_digest:null,email_verified_at:null,email_verification_token_hash:verificationHash,email_verification_expires_at:verificationExpiry,password_reset_token_hash:null,password_reset_expires_at:null,is_active:1,role:"owner"});
             } else if (sql.startsWith("UPDATE merchant_accounts SET email_verification_token_hash")) {
               const [hash,expiry,id]=args, row=[...accounts.values()].find(a=>a.id===id);
               if(row)Object.assign(row,{email_verification_token_hash:hash,email_verification_expires_at:expiry});
