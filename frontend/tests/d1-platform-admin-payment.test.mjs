@@ -15,7 +15,7 @@ test("platform admin order endpoint supplies all payment audit fields used by it
 });
 
 test("platform admin excludes unverified sample order values from revenue", () => {
-  assert.match(route, /Unverified sample order values are excluded from revenue/);
+  assert.match(route, /WHERE s\.is_demo=0 ORDER BY o\.placed_at DESC/);
   assert.match(route, /COD collection is merchant-confirmed/);
   assert.doesNotMatch(route, /Amounts are demo order values, not money received/);
 });
