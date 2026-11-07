@@ -79,8 +79,16 @@ async function call(env, path, body, token, method = "POST") {
   return {status:response.status, body:await response.json()};
 }
 
+test("reserved invalid-domain CI accounts cannot register or log in", async () => {
+  const env=createD1Mock();
+  const registered=await call(env,"/api/merchant/register",{email:"ci-owner@example.invalid",password:"correct-horse-battery"});
+  assert.equal(registered.status,422);
+  const loggedIn=await call(env,"/api/merchant/login",{email:"ci-owner@example.invalid",password:"correct-horse-battery"});
+  assert.equal(loggedIn.status,401);
+});
+
 test("merchant owner registration stores a PBKDF2 password hash, never plaintext", async () => {
-  const env=createD1Mock(),email="owner@example.invalid",password="correct-horse-battery";
+  const env=createD1Mock(),email="owner@example.com",password="correct-horse-battery";
   const registered=await call(env,"/api/merchant/register",{email,password});
   assert.equal(registered.status,201,JSON.stringify(registered.body));
   assert.equal(registered.body.created,true);
@@ -94,7 +102,7 @@ test("merchant owner registration stores a PBKDF2 password hash, never plaintext
 });
 
 test("merchant login verifies password and rejects an incorrect password", async () => {
-  const env=createD1Mock(),email="owner@example.invalid",password="correct-horse-battery";
+  const env=createD1Mock(),email="owner@example.com",password="correct-horse-battery";
   await call(env,"/api/merchant/register",{email,password});
   const wrong=await call(env,"/api/merchant/login",{email,password:"incorrect-password"});
   assert.equal(wrong.status,401);
@@ -104,7 +112,7 @@ test("merchant login verifies password and rejects an incorrect password", async
 });
 
 test("new merchant stores are real but private until platform approval", async () => {
-  const env=createD1Mock(),email="owner@example.invalid",password="correct-horse-battery";
+  const env=createD1Mock(),email="owner@example.com",password="correct-horse-battery";
   await call(env,"/api/merchant/register",{email,password});
   const login=await call(env,"/api/merchant/login",{email,password});
   const created=await call(env,"/api/merchant/store",{name:"Example Shop",tagline:"Local goods",category:"মুদি",area:"Dhaka"},login.body.token);
