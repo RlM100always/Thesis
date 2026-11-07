@@ -1,7 +1,7 @@
 import { canTransitionOrderStatus, defaultOrderStatusNote } from "./order-workflow.js";
 
 /* Authenticated Cloudflare D1 merchant console (separate from legacy FastAPI).
-   Public demo checkout does not accept any real payment or delivery.
+   Unverified sample storefronts are not available for customer checkout.
    IMPORTANT: This owner identity is not imported from ephemeral SQLite.
 */
 const encoder=new TextEncoder();
@@ -155,7 +155,7 @@ export async function merchantRouter(req,env,path,output,error){
     const result=await env.DB.prepare("UPDATE commerce_order_returns SET status=?,merchant_note=?,updated_at=CURRENT_TIMESTAMP WHERE id=? AND store_id=? AND status=?")
      .bind(status,note||null,id,store.id,row.status).run();
     if(!result.meta?.changes)return bad(req,error,409,"Return request changed; refresh and retry");
-    return output(req,{updated:true,status,inventory_restocked:status==="received",note:store.is_demo?"Demo return workflow only; no money was refunded":"Return received and inventory restocked; no automated refund was issued."});
+    return output(req,{updated:true,status,inventory_restocked:status==="received",note:store.is_demo?"Unverified sample return workflow; no money was refunded":"Return received and inventory restocked; no automated refund was issued."});
    }
    if(method==="GET"&&path==="/api/merchant/chat"){
     const store=await storeOnly(env,owner),url=new URL(req.url),accountId=short(url.searchParams.get("account_id"),80);
@@ -206,7 +206,7 @@ export async function merchantRouter(req,env,path,output,error){
    return output(req,{created:true,note:"Cashbook entry saved"});
   }
   if(method==="POST"&&path==="/api/merchant/pos"){
-   const store=await storeOnly(env,owner),demo=!!store.is_demo;
+   const store=await storeOnly(env,owner),isSample=!!store.is_demo;
    const b=await json(req,error);
    if(!Array.isArray(b.items)||!b.items.length||b.items.length>12)return bad(req,error,422,"1-12 distinct products are required");
    const details=[],seen=new Set();let total=0;
@@ -221,17 +221,17 @@ export async function merchantRouter(req,env,path,output,error){
    }
    if(!integer(total,1,5000000))return bad(req,error,422,"Invalid POS total");
    const oid=crypto.randomUUID(),cid=crypto.randomUUID(),token=newSession(),number="POS-"+oid.slice(0,8).toUpperCase();
-   const methodName=demo?"demo_pos":"cash";
-   const customerName=demo?"Anonymous demo counter customer":"Walk-in customer";
+   const methodName=isSample?"sample_pos":"cash";
+   const customerName=isSample?"Unverified sample counter customer":"Walk-in customer";
    const statements=[
     env.DB.prepare("INSERT INTO commerce_customers(id,store_id,display_name) VALUES(?,?,?)").bind(cid,store.id,customerName),
     env.DB.prepare("INSERT INTO commerce_orders(id,store_id,order_number,access_token,status,subtotal_bdt,total_bdt,payment_method,shipping_name,shipping_phone,shipping_address,customer_id) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)").bind(oid,store.id,number,token,"fulfilled",total,total,methodName,customerName,"","",cid),
     ...details.map(({p,qty})=>env.DB.prepare("INSERT INTO commerce_order_lines(order_id,product_id,product_name,quantity,price_bdt,line_total_bdt) VALUES(?,?,?,?,?,?)").bind(oid,p.id,p.name,qty,p.price_bdt,p.price_bdt*qty)),
-    ...(!demo?[env.DB.prepare("UPDATE commerce_orders SET payment_status='paid',payment_received_at=CURRENT_TIMESTAMP,payment_received_by=?,payment_note='Cash collected at POS' WHERE id=?").bind(owner.email,oid)]:[]),
-    env.DB.prepare("INSERT INTO commerce_cashbook(id,store_id,kind,amount_bdt,description,related_order_id) VALUES(?,?,?,?,?,?)").bind(crypto.randomUUID(),store.id,"receipt",total,demo?"Simulated demo POS receipt":"POS cash sale",oid)
+    ...(!isSample?[env.DB.prepare("UPDATE commerce_orders SET payment_status='paid',payment_received_at=CURRENT_TIMESTAMP,payment_received_by=?,payment_note='Cash collected at POS' WHERE id=?").bind(owner.email,oid)]:[]),
+    env.DB.prepare("INSERT INTO commerce_cashbook(id,store_id,kind,amount_bdt,description,related_order_id) VALUES(?,?,?,?,?,?)").bind(crypto.randomUUID(),store.id,"receipt",total,isSample?"Unverified sample POS receipt":"POS cash sale",oid)
    ];
    try{await env.DB.batch(statements);}catch(e){return bad(req,error,409,"Stock or product data changed; refresh and retry");}
-   return output(req,{created:true,order_number:number,total_bdt:total,payment_status:demo?"demo_no_payment":"paid",note:demo?"Demo sale recorded":"Cash sale, payment and stock movement recorded"},201);
+   return output(req,{created:true,order_number:number,total_bdt:total,payment_status:isSample?"demo_no_payment":"paid",note:isSample?"Unverified sample sale recorded":"Cash sale, payment and stock movement recorded"},201);
   }
   if(method==="POST"&&path==="/api/merchant/products"){
    const store=await storeOnly(env,owner),b=await json(req,error);
@@ -277,7 +277,7 @@ export async function merchantRouter(req,env,path,output,error){
   const paymentMatch=/^\/api\/merchant\/orders\/([a-zA-Z0-9-]{2,90})\/payment$/.exec(path);
   if(method==="PATCH"&&paymentMatch){
    const store=await storeOnly(env,owner),body=await json(req,error),id=paymentMatch[1];
-   if(store.is_demo)return bad(req,error,409,"Demo orders have no real payment to collect");
+   if(store.is_demo)return bad(req,error,409,"Unverified sample orders have no real payment to collect");
    const order=await env.DB.prepare("SELECT id,status,payment_method,payment_status FROM commerce_orders WHERE store_id=? AND id=?").bind(store.id,id).first();
    if(!order)return bad(req,error,404,"Order not found");
    if(order.payment_method!=="cod")return bad(req,error,409,"Only cash-on-delivery orders can be recorded here");
