@@ -1,5 +1,5 @@
 .store-assistant-root{position:fixed;right:22px;bottom:22px;z-index:1200;font-family:inherit;color:var(--s-ink,#10251a)}
-.store-assistant-launch{display:flex;align-items:center;gap:9px;border:0;border-radius:999px;padding:12px 17px;background:var(--store-accent,#087f52);color:var(--store-accent-on,#fff);box-shadow:0 10px 32px rgba(0,0,0,.2);font:700 13px inherit;cursor:pointer}
+.store-assistant-launch{display:flex;align-items:center;gap:9px;border:0;border-radius:999px;padding:12px 17px;background:var(--store-accent,#087f52);color:var(--store-accent-on,#fff);box-shadow:0 10px 32px rgba(0,0,0,.2);font:inherit;font-size:13px;font-weight:700;cursor:pointer}
 .store-assistant-launch span{font-size:18px;line-height:1}
 .store-assistant-launch.active{background:#26382f;color:#fff}
 .store-assistant-panel{position:absolute;right:0;bottom:62px;width:min(380px,calc(100vw - 24px));height:min(560px,72vh);min-height:390px;display:flex;flex-direction:column;overflow:hidden;border:1px solid var(--s-border,#dce7df);border-radius:18px;background:var(--s-card,#fff);box-shadow:0 20px 65px rgba(0,0,0,.24)}
