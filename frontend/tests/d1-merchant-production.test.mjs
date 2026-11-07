@@ -8,6 +8,7 @@ if (!globalThis.crypto) globalThis.crypto = webcrypto;
 const source = readFileSync(new URL("../../cloudflare/merchant-routes.js", import.meta.url), "utf8");
 const ui = readFileSync(new URL("../src/pages/D1MerchantCenter.jsx", import.meta.url), "utf8");
 const platformAdminSource = readFileSync(new URL("../../cloudflare/platform-admin-routes.js", import.meta.url), "utf8");
+const platformAdminUi = readFileSync(new URL("../src/pages/D1PlatformAdmin.jsx", import.meta.url), "utf8");
 let sentEmails = [];
 globalThis.fetch = async (url, options) => {
   assert.equal(url, "https://api.resend.com/emails");
@@ -243,5 +244,5 @@ test("platform admin can audit owner access and suspend accounts without exposin
   assert.match(platformAdminSource,/a\.email,a\.role,a\.is_active,a\.email_verified_at/);
   assert.match(platformAdminSource,/DELETE FROM merchant_sessions WHERE account_id=/);
   assert.doesNotMatch(platformAdminSource,/password_salt/);
-  assert.match(ui,/Owner accounts/);
+  assert.match(platformAdminUi,/Owner accounts/);
 });
