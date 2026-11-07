@@ -6,9 +6,9 @@ import { authedFetch, clearTokens, getTokens, saveTokens } from "./auth";
 
 const BASE = import.meta.env.VITE_API_URL ?? (import.meta.env.PROD ? "" : "http://127.0.0.1:8000");
 
-/* Dedicated, durable Cloudflare D1 commerce demo API.
-   Operational tenant POS/auth/order data remain in the existing FastAPI
-   database until their audited migration; never represent demo stores as real. */
+/* Cloudflare D1 storefront API.
+   Operational tenant modules are being migrated separately; public D1 listings
+   include only approved, owner-managed stores with non-sample provenance. */
 export const D1_COMMERCE = (import.meta.env.VITE_D1_COMMERCE_URL ||
   "https://bsmart-commerce-api.bcs-written-rakib.workers.dev").replace(/\/$/, "");
 export const isD1Store = (id) => /^(demo-bsmart-|merchant-|shop-)/.test(String(id || ""));
@@ -24,35 +24,35 @@ export async function d1Commerce(path, { method = "GET", body, headers = {} } = 
   return response.json();
 }
 async function storesFromBothSources() {
-  const [operational, demo] = await Promise.allSettled([
+  const [operational, d1] = await Promise.allSettled([
     request("/api/public/store/"),
     d1Commerce("/api/public/store/"),
   ]);
-  if (operational.status === "rejected" && demo.status === "rejected") {
+  if (operational.status === "rejected" && d1.status === "rejected") {
     throw new Error("Business database and Cloudflare D1 storefronts are both unavailable");
   }
   const actual = operational.status === "fulfilled" && Array.isArray(operational.value)
     ? operational.value : [];
-  const demos = demo.status === "fulfilled" && Array.isArray(demo.value)
-    ? demo.value : [];
+  const d1Stores = d1.status === "fulfilled" && Array.isArray(d1.value)
+    ? d1.value : [];
   const seen = new Set(actual.map(x => x.slug));
-  return [...actual, ...demos.filter(x => !seen.has(x.slug))];
+  return [...actual, ...d1Stores.filter(x => !seen.has(x.slug))];
 }
 async function storesStatus() {
-  const [real,demo] = await Promise.allSettled([
+  const [operational, d1] = await Promise.allSettled([
     request("/api/public/store/diagnostics"),
     d1Commerce("/api/public/store/diagnostics"),
   ]);
-  if (real.status === "rejected" && demo.status === "rejected")
+  if (operational.status === "rejected" && d1.status === "rejected")
     throw new Error("Store availability status is unavailable");
-  const r = real.status === "fulfilled" ? real.value : {};
-  const d = demo.status === "fulfilled" ? demo.value : {};
-  const active = Number(r.active_stores || 0) + Number(d.active_stores || 0);
-  const listed = Number(r.listed_products || 0) + Number(d.listed_products || 0);
+  const a = operational.status === "fulfilled" ? operational.value : {};
+  const d = d1.status === "fulfilled" ? d1.value : {};
+  const active = Number(a.active_stores || 0) + Number(d.active_stores || 0);
+  const listed = Number(a.listed_products || 0) + Number(d.listed_products || 0);
   return {active_stores:active,listed_products:listed,catalog_ready:active>0&&listed>0,
-    operational_active_stores:Number(r.active_stores||0),
-    d1_demo_stores:Number(d.active_stores||0),
-    source:"operational + Cloudflare D1 demo"};
+    operational_active_stores:Number(a.active_stores||0),
+    d1_active_stores:Number(d.active_stores||0),
+    source:"operational + Cloudflare D1"};
 }
 
 
@@ -773,7 +773,7 @@ export const api = {
         body: JSON.stringify(body),
       }).then(r => r.ok ? r.json() : r.json().then(e => Promise.reject(new Error(e.detail || "Review failed")))),
 
-  validateCoupon: (orgId, code, orderSubtotal) => isD1Store(orgId) ? Promise.reject(new Error("ডেমো দোকানে কুপন প্রযোজ্য নয়")) : post(`/api/public/store/${encodeURIComponent(orgId)}/coupon/validate`, {code, order_subtotal:orderSubtotal}),
+  validateCoupon: (orgId, code, orderSubtotal) => isD1Store(orgId) ? Promise.reject(new Error("এই দোকানে কুপন প্রযোজ্য নয়")) : post(`/api/public/store/${encodeURIComponent(orgId)}/coupon/validate`, {code, order_subtotal:orderSubtotal}),
 
   getRevenueChart: (days = 30) => appRequest(`/api/app/store/revenue-chart?days=${days}`),
 
