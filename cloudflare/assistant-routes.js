@@ -13,7 +13,7 @@ function parseTags(value) {
   try { return Array.isArray(JSON.parse(value || "[]")) ? JSON.parse(value || "[]") : []; }
   catch { return []; }
 }
-function safeHistory(history) {
+export function safeHistory(history) {
   if (!Array.isArray(history)) return [];
   return history.slice(-6).flatMap(item => {
     const role = item?.role === "assistant" ? "assistant" : item?.role === "user" ? "user" : null;
@@ -58,7 +58,7 @@ async function allowRequest(env, scope, request, limit) {
   const row = await env.DB.prepare("SELECT request_count FROM commerce_ai_rate_limits WHERE key_hash=?").bind(key).first();
   return Number(row?.request_count || 0) <= limit;
 }
-function customerFallback(question, products, orders, store, signedIn) {
+export function customerFallback(question, products, orders, store, signedIn) {
   const q = question.toLowerCase();
   if (contains(q, ["অর্ডার", "order", "ডেলিভারি কোথায়", "track", "tracking", "কোথায় আছে"])) {
     if (!signedIn) return "আপনার অর্ডারের অবস্থা দেখতে এই দোকানের Customer Account-এ লগইন করুন।";
@@ -77,7 +77,7 @@ function customerFallback(question, products, orders, store, signedIn) {
   }
   return "আমি " + store.name + " দোকানের পণ্য, দাম, স্টক, ডেলিভারি ও অর্ডার বিষয়ে সাহায্য করতে পারি। কোন পণ্যটি খুঁজছেন?";
 }
-function ownerFallback(question, metrics, lowStock, topProducts) {
+export function ownerFallback(question, metrics, lowStock, topProducts) {
   const q = question.toLowerCase();
   if (contains(q, ["স্টক", "stock", "ফুরিয়ে", "কমে গেছে", "reorder"])) {
     if (!lowStock.length) return "বর্তমানে কোনো পণ্য নির্ধারিত reorder level-এর নিচে নেই।";
