@@ -455,7 +455,7 @@
     Strategy Optimization\par}
     \vspace{0.30cm}
     {\large\bfseries Revised Thesis Research Report\par}
-    {\normalsize Application Scope: Bangladeshi SME Businesses\par}
+    {\normalsize Intended scope: Bangladeshi SMEs; empirical sample: Grocery/FMCG retail\par}
     \vspace{0.15cm}
     {\normalsize Project Period: \projectperiod\par}
     {\normalsize Status Date: \reportdate\par}
@@ -525,25 +525,26 @@ Small and medium enterprises (SMEs) record sales, customer, stock and payment
 events, yet often lack a traceable process connecting analysis to feasible
 managerial decisions. This thesis develops B-SMART, an evidence-aware analytics
 and decision-support framework with an operational multi-tenant software
-prototype and offline modelling experiments. Using a supplied dataset labelled
-as 32 grocery/FMCG retail shops, four research questions were evaluated.
-For rolling one-day-ahead shop--category forecasting, LightGBM achieved
-83.98\% WAPE, improving on a trailing seven-day mean at 89.70\% but retaining
-substantial error. A new four-level audit found network/day WAPE 6.02\%,
-shop/day 31.43\%, category/day 16.55\% and shop--category/day 83.98\%;
-92.83\% of granular absolute error magnitude cancels on aggregation.
-Neither a two-stage hurdle model (84.04\% WAPE) nor XGBoost (84.56\%)
-improved on the refitted LightGBM. In 90-day customer inactivity prediction,
-LightGBM PR-AUC was 0.7405, compared with 0.7346 for logistic regression;
-a sampled global TreeSHAP audit identified influential historical-behaviour
-features without claiming causality. An inventory policy scenario study found
-lower simulated cost but increased lost units, while a structured explanation
-audit did not establish human usability. The operational workflow and offline
-models are not presented as a deployed end-to-end predictive service.
-Source authenticity, consent, external validation and real-world impact remain
-to be established. The contribution is an auditable chain from data and
-prediction to constraints, explanation and owner decision, alongside a
-transparent account of its empirical limits.
+prototype and offline modelling experiments. The supplied empirical retail
+panel contains 32 grocery/FMCG shops and 561,152 shop--category--day observations
+over three years; it is not a verified cross-sector SME sample. A history-rich
+daily LightGBM model reduced mean WAPE from 81.12\% to 74.46\% across three
+rolling-origin folds, but underpredicted aggregate volume by 32.5\%, showing
+that lower absolute error alone is insufficient for inventory decisions.
+Separate direct LightGBM Tweedie models forecast cumulative 7-, 14- and 28-day
+demand with WAPE of 33.62\%, 25.19\% and 19.08\%, respectively, compared with
+four-block moving-average baselines of 38.62\%, 28.90\% and 21.91\%.
+A four-fold held-out-shop test achieved 33.43\% WAPE for the 7-day forecast
+when historical sales from the held-out shops were available. In 90-day
+customer inactivity prediction, LightGBM PR-AUC was 0.7405 versus 0.7346 for
+logistic regression. Inventory policy scenarios showed lower simulated cost
+but increased lost units, and structured explanation records did not establish
+human usability. The operational software and offline models are not presented
+as a deployed, field-validated predictive service. Merchant provenance,
+consent, stockout history, external-sector validation and real-world impact
+remain to be established. The contribution is a decision-horizon-aware,
+auditable path from business data to prediction, constraints, explanation and
+owner decision, with explicit empirical limits.
 
 \clearpage
 
@@ -855,15 +856,15 @@ The methodology has a prevention or evaluation step associated with each risk.
 
 \section{Organization of the Report}
 
-Chapter~\ref{chapter_backStudy} builds up the technical and contextual background, reviews the relevant literature, and identifies the research gap. Chapter~\ref{chapter_methodology} introduces the research design, data protocol, formal tasks, proposed framework, and evaluation plan. The Implementation and Experimental Results chapters are kept as placeholders in this preliminary report. The Conclusions chapter brings together only what can be concluded from the current background study and proposed methodology. Final conclusions based on empirical outcomes will be drawn from the evidence obtained during the implementation and experimental evaluation.
+Chapter~\ref{chapter_backStudy} develops the technical and contextual background, reviews the relevant literature, and identifies the research gap. Chapter~\ref{chapter_methodology} presents the research design, data protocol, formal tasks, forecasting strategy and evaluation plan. Chapter~\ref{chapter_implementation} documents the operational software and offline model pipeline. Chapter~\ref{chapter_experimentalResults} reports the daily and multi-horizon forecasting results, customer-inactivity results, policy scenarios and explanation audit. Chapter~\ref{chapter_conclusion} answers the research questions in proportion to the available evidence and identifies the remaining work required before journal submission.
 
 
 \cleardoublepage
 
 \section{How the Four Research Questions Form One Evidence Chain}
-The four research questions are maintained without changing their target definitions. RQ1 evaluates whether next-day observed shop--category sales can be forecast from historical data. RQ2 estimates customer inactivity risk at a temporally valid 90-day horizon. RQ3 tests a proposed reorder policy under declared scenario constraints, with a clear distinction between simulated savings and observed business outcomes. RQ4 audits whether action records include explicit reasons and constraints, while owner comprehension remains a separate human-evaluation requirement. Taken together they motivate an evidence-aware decision cycle: operational events, historical snapshot, prediction, constraints, accountable recommendation, owner response and later outcome.
+The four research questions are maintained without changing their target definitions. RQ1 evaluates demand forecasting at the available retail decision unit; the supplied daily panel supports shop--category observations, while the intended branch--SKU decision still requires a validated SKU-level extension. The new RQ1 experiments compare daily predictions with direct 7-, 14- and 28-day cumulative-demand forecasts. RQ2 estimates customer inactivity risk at a temporally valid 90-day horizon. RQ3 tests a proposed reorder policy under declared scenario constraints, with a clear distinction between simulated savings and observed business outcomes. RQ4 audits whether action records include explicit reasons and constraints, while owner comprehension remains a separate human-evaluation requirement. Together they motivate an evidence-aware decision cycle: operational events, historical snapshot, prediction, constraints, accountable recommendation, owner response and later outcome.
 
-A new audit of RQ1 clarifies the intended decision unit: WAPE was 6.02\% for the daily network total but 83.98\% for individual shop--category--day observations on the \emph{same} predictions. Therefore a low aggregate error does not imply that a product reorder decision can be trusted. A defensible integrated system must validate predictions at the level of the actual decision and abstain when essential stock, source or consent evidence is absent. This study establishes a methodological and software foundation, not verified end-to-end field business impact.
+The RQ1 evidence shows why the decision horizon matters. Daily shop--category sales are sparse and difficult to forecast; the history-rich daily model improves WAPE but underpredicts aggregate volume. Direct Tweedie models achieve 33.62\%, 25.19\% and 19.08\% WAPE for 7-, 14- and 28-day cumulative demand, respectively, and a held-out-shop test supports transfer within the same grocery/FMCG setting when historical sales are available. These are different cumulative targets, not daily SKU accuracy. A defensible integrated system must match the forecast horizon to supplier lead time, validate at the actual decision unit, and abstain when stock, source or consent evidence is absent. The work does not yet establish end-to-end field business impact.
 
 \chapter{Background Study and Related Work}
 \label{chapter_backStudy}
@@ -1335,6 +1336,14 @@ rules. Demand and reorder experiments apply to inventory-based firms; service
 firms require service-demand and capacity tasks. Customer-risk tasks require
 stable pseudonymous identifiers and adequate follow-up in either setting.
 
+The current empirical export, however, contains 32 shops all labelled grocery/FMCG.
+Consequently, cross-sector applicability is an intended system-design scope,
+not an empirical result. No claim of transfer to service, manufacturing,
+healthcare, or other SME sectors is made. The held-out-shop test reported in
+Chapter~\ref{chapter_experimentalResults} assesses transfer to a shop excluded
+from model fitting while its own historical sales remain available; it is not
+a zero-shot or cross-sector test.
+
 Sampling and reporting will retain sector and business identifiers. Results
 will be reported per business and per sector before aggregation. Pooled models
 will be compared with sector-specific and business-adapted alternatives using
@@ -1429,11 +1438,16 @@ alter the already frozen final evaluation result.
 \label{fig:research_lifecycle}
 \end{figure}
 
-The unit of analysis differs according to the analytical task. For demand
-forecasting, the primary unit is a business--branch--SKU--day or
-business--branch--SKU--week observation, selected according to the density and
-reliability of the available data. Batch and expiry information is retained for
-inventory-related decisions even when demand itself is forecast at the SKU level.
+The unit of analysis differs according to the analytical task. The intended
+inventory decision unit is business--branch--SKU, but the current reliable daily
+panel is shop--category--day. The empirical RQ1 model therefore evaluates
+shop--category daily sales and direct cumulative demand over 7, 14 and 28 days.
+The supplied transaction-level SKU panel is much sparser: observed shop--SKU
+pairs have a mean daily zero rate of 95.2\%. A category forecast cannot be
+silently treated as an SKU forecast; SKU allocation by historical mix is a
+separate proposed extension requiring assortment and stock-availability
+validation. Batch and expiry information remains relevant to later inventory
+decisions.
 
 For customer-risk modelling, the analytical unit is a customer feature snapshot
 constructed at a declared historical cutoff. For strategy evaluation, the unit is
@@ -2355,6 +2369,42 @@ the available evidence volume and task structure.
 
 \end{itemize}
 
+
+\subsection{Empirical RQ1 Model Design and Multi-Horizon Protocol}
+
+The source audit establishes a complete 32-shop by 16-category daily panel over
+1,096 days, but 37.60\% of shop--category--day observations have zero recorded
+sales. A series-level average-demand-interval and positive-demand-CV-squared
+diagnostic classifies most series as lumpy or erratic. The model therefore uses
+a pooled global panel specification with shop and category identity, lagged
+demand, trailing dispersion and zero-rate features, calendar terms, and
+lagged shop/category/network totals. All target-derived predictors are shifted
+so that a prediction for date \(t\) uses only information available before \(t\).
+
+Daily absolute-error optimisation and expected-demand estimation are treated as
+different objectives. The L1 model is compared on WAPE, but its volume bias is
+reported explicitly. For replenishment, separate direct Tweedie and L1 models
+predict cumulative demand over \(h=7,14,28\) days. Forecast origins are spaced
+by \(h\) days and data splits are defined by target-end date, preventing a
+training label from crossing into a validation or test window. Each horizon is
+compared with a repeat-last-horizon baseline and the mean of the preceding four
+horizon blocks.
+
+The three rolling-origin tests cover 2025 Q1, Q2 and Q3. The previously inspected
+October--December 2025 period is not used to choose the new model. A separate
+four-fold held-out-shop test removes shop ID from the predictors but allows the
+held-out shop's historical sales to form lagged context. This tests transfer
+when history exists, not cold-start prediction. Historical price, cost,
+discount, margin, channel and SKU-mix features are included only in an ablation;
+they do not improve the first two daily folds. Quantile interval coverage is
+reported as a separate reliability check and is not treated as a service-level
+guarantee when empirical coverage is below its nominal level.
+
+For RQ3, the forecast horizon must match the supplier lead time or inventory
+review period. A direct 7-, 14- or 28-day demand estimate is only a candidate
+input to the policy; it does not establish a feasible reorder quantity without
+verified current stock, incoming orders, pack size, budget, lead time, and
+holding/shortage costs.
 
 \subsection{Model Eligibility and Sector-Aware SME Adaptation}
 
