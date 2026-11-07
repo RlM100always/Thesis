@@ -54,6 +54,7 @@ packages are recorded as skipped, not replaced with fabricated results.
   and optional CatBoost candidates
 - Rolling-origin development comparisons with WAPE, MAE, RMSE, series-scaled MASE and bias
 - Per-origin forecasts plus pooled, per-shop, per-category and demand-regime metrics
+- Development-only model selection per demand regime, requiring at least two origins and ten series forecasts
 - Validation figures: WAPE comparison, actual-versus-forecast example and shop-category error heatmap
 - Diagnostics, SHA-256 run manifest and automated contract tests
 - Tests for data contracts, zero demand, missingness, duplicates and metrics
@@ -67,7 +68,7 @@ packages are recorded as skipped, not replaced with fabricated results.
 - The regime labels are descriptive (ADI/CV²), not proof that one model family
   will win. Candidate choice must be made on development validation and reported
   with per-series/per-shop dispersion.
-- v0.1.0 does not yet implement calibrated prediction intervals, stockout
+- The two-stage classifier probability is not calibrated in v0.1.0; the model uses raw probability to form expected demand. Do not interpret it as a calibrated sale probability. v0.1.0 does not yet implement calibrated prediction intervals, stockout
   censoring correction, promotion/price features, hierarchical reconciliation,
   or inventory-policy simulation. Those require verified source fields and
   separately tested implementations.
