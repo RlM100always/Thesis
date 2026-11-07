@@ -271,6 +271,7 @@ export default {
      const id=decodeURIComponent(couponRoute[1]),store=await getStore(env,id,false);
      if(!store)return error(request,404,"Store not found");
      if(store.is_demo)return error(request,422,"Coupons are not available on sample stores.");
+      if(!await allowCouponPreview(env,store,request))return error(request,429,"Too many coupon checks. Please wait a minute and try again.");
      const raw=await request.text();if(raw.length>2000)return error(request,413,"Coupon request too large");
      let body;try{body=JSON.parse(raw);}catch{return error(request,400,"Invalid JSON");}
      const subtotal=Number(body.order_subtotal);
