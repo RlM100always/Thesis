@@ -51,7 +51,7 @@ cd cloudflare
 npx wrangler secret put PLATFORM_ADMIN_KEY
 ```
 
-Use a long, unique random value of at least 32 characters. Enter it at `/#/d1-platform-admin`. The UI keeps the key in memory only. Never commit the value to `wrangler.toml`, GitHub, browser storage, or source code. **As last checked on 2026-11-07, `PLATFORM_ADMIN_KEY` is not configured in the Worker; the admin route returns HTTP 503 until you add it.** Add it manually in Cloudflare Dashboard → Workers & Pages → `bsmart-commerce-api` → Settings → Variables and Secrets → Add secret, name `PLATFORM_ADMIN_KEY`, then deploy/save.
+Use a long, unique random value of at least 32 characters. Enter it at `/#/d1-platform-admin`. The UI keeps the key in memory only. Never commit the value to `wrangler.toml`, GitHub, browser storage, or source code. **`PLATFORM_ADMIN_KEY` was configured as a Cloudflare Worker secret on 2026-11-07.** Its value is intentionally not stored in GitHub, Wrangler config or this document. The owner received the generated key in the connected ChatGPT conversation and should save it in a password manager. The D1 Platform Admin page keeps the key in memory only. To rotate it, replace the Worker secret and use the new value at `/#/d1-platform-admin`.
 
 ## Verification
 
