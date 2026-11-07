@@ -32,8 +32,8 @@ test("public copy states that only approved business stores can accept orders",(
  const directory=read("pages/StoreDirectory.jsx");
  const tracking=read("pages/OrderStatus.jsx");
  const worker=readFileSync(new URL("../../cloudflare/commerce-worker.js",import.meta.url),"utf8");
- assert.match(worker,/WHERE slug=\\? AND is_active=1 AND is_demo=0 LIMIT 1/);
- assert.match(worker,/WHERE id=\\? AND is_active=1 AND is_demo=0 LIMIT 1/);
+ assert.match(worker,/WHERE slug=\? AND is_active=1 AND is_demo=0 LIMIT 1/);
+ assert.match(worker,/WHERE id=\? AND is_active=1 AND is_demo=0 LIMIT 1/);
  assert.match(store,/দোকানটি পাওয়া যায়নি অথবা বর্তমানে বন্ধ আছে/);
  assert.match(tracking,/অর্ডারের সর্বশেষ অবস্থা/);
  assert.doesNotMatch(directory,/ডেমো|Demo|demo/);
