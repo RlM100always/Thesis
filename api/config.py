@@ -57,6 +57,8 @@ class Settings(BaseSettings):
             raise RuntimeError("JWT_SECRET must be changed in production")
         if self.is_production and self.database_url.startswith("sqlite"):
             raise RuntimeError("Production requires PostgreSQL DATABASE_URL")
+        if self.is_production and not self.public_app_url.lower().startswith("https://"):
+            raise RuntimeError("Production requires PUBLIC_APP_URL to use HTTPS")
         if self.integration_mode not in {"sandbox", "production"}:
             raise RuntimeError("INTEGRATION_MODE must be sandbox or production")
 
