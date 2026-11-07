@@ -37,7 +37,7 @@ a SHA-256 checksum but cannot independently verify provenance.
 
 ```powershell
 python -m pip install -r requirements-research.txt
-python -m pytest tests/test_adaptive_forecasting.py -q
+python -m pytest --confcutdir=research/forecasting research/forecasting/tests -q
 python -m research.forecasting.adaptive_engine --input path\to\daily_panel.csv --output artifacts\adaptive_forecasting
 ```
 
