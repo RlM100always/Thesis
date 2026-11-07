@@ -34,7 +34,7 @@ jobs:
       - name: Validate Cloudflare Worker module syntax
         run: |
           set -euo pipefail
-          for file in cloudflare/commerce-worker.js cloudflare/customer-routes.js cloudflare/merchant-routes.js cloudflare/platform-admin-routes.js cloudflare/order-workflow.js; do
+          for file in cloudflare/commerce-worker.js cloudflare/customer-routes.js cloudflare/merchant-routes.js cloudflare/platform-admin-routes.js cloudflare/order-workflow.js cloudflare/store-visibility.js; do
             node --check --input-type=module < "$file"
           done
 

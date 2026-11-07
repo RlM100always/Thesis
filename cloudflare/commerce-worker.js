@@ -2,6 +2,7 @@ import { merchantRouter } from "./merchant-routes.js";
 import { customerRouter, customerFromToken } from "./customer-routes.js";
 import { platformAdminRouter } from "./platform-admin-routes.js";
 import { defaultOrderStatusNote } from "./order-workflow.js";
+import { isPublicStore, INTERNAL_TEST_STORE_SLUGS } from "./store-visibility.js";
 /*
  B-SMART Cloudflare D1 Commerce API.
  Public storefront catalogues, customer accounts, saved addresses, account-linked
@@ -69,7 +70,8 @@ async function getStore(env,term,slugMode) {
  const sql=slugMode?
   "SELECT * FROM commerce_stores WHERE slug=? AND is_active=1 LIMIT 1":
   "SELECT * FROM commerce_stores WHERE id=? AND is_active=1 LIMIT 1";
- return env.DB.prepare(sql).bind(term).first();
+ const row=await env.DB.prepare(sql).bind(term).first();
+ return isPublicStore(row)?row:null;
 }
 async function storeResponse(env,store) {
  const {results}=await env.DB.prepare(
@@ -172,17 +174,20 @@ export default {
    const merchant=await merchantRouter(request,env,path,output,error);
    if(merchant!==null)return merchant;
    if(path==="/health"&&method==="GET") {
-    const row=await env.DB.prepare("SELECT COUNT(*) n FROM commerce_stores WHERE is_active=1").first();
-    const pro=await env.DB.prepare("SELECT COUNT(*) n FROM commerce_products WHERE is_listed=1").first();
-    return output(request,{status:"ok",database:"Cloudflare D1",scope:"demo_storefronts",stores:row.n,products:pro.n,live_payments:false});
+    const excluded=[...INTERNAL_TEST_STORE_SLUGS],marks=excluded.map(()=>"?").join(",");
+    const row=await env.DB.prepare("SELECT COUNT(*) n FROM commerce_stores WHERE is_active=1 AND slug NOT IN ("+marks+")").bind(...excluded).first();
+    const pro=await env.DB.prepare("SELECT COUNT(*) n FROM commerce_products p JOIN commerce_stores s ON s.id=p.store_id WHERE p.is_listed=1 AND s.is_active=1 AND s.slug NOT IN ("+marks+")").bind(...excluded).first();
+    return output(request,{status:"ok",database:"Cloudflare D1",scope:"public_storefronts",stores:row.n,products:pro.n,live_payments:false});
    }
    if((path==="/api/public/store"||path==="/api/public/store/")&&method==="GET") {
-    const {results}=await env.DB.prepare("SELECT * FROM commerce_stores WHERE is_active=1 ORDER BY name").all();
-    return output(request,results.map(baseView));
+    const excluded=[...INTERNAL_TEST_STORE_SLUGS],marks=excluded.map(()=>"?").join(",");
+    const {results}=await env.DB.prepare("SELECT * FROM commerce_stores WHERE is_active=1 AND slug NOT IN ("+marks+") ORDER BY name").bind(...excluded).all();
+    return output(request,results.filter(isPublicStore).map(baseView));
    }
    if(path==="/api/public/store/diagnostics"&&method==="GET") {
-    const stores=await env.DB.prepare("SELECT COUNT(*) n FROM commerce_stores WHERE is_active=1").first();
-    const products=await env.DB.prepare("SELECT COUNT(*) n FROM commerce_products WHERE is_listed=1").first();
+    const excluded=[...INTERNAL_TEST_STORE_SLUGS],marks=excluded.map(()=>"?").join(",");
+    const stores=await env.DB.prepare("SELECT COUNT(*) n FROM commerce_stores WHERE is_active=1 AND slug NOT IN ("+marks+")").bind(...excluded).first();
+    const products=await env.DB.prepare("SELECT COUNT(*) n FROM commerce_products p JOIN commerce_stores s ON s.id=p.store_id WHERE p.is_listed=1 AND s.is_active=1 AND s.slug NOT IN ("+marks+")").bind(...excluded).first();
     return output(request,{active_stores:stores.n,listed_products:products.n,catalog_ready:!!(stores.n&&products.n),source:"cloudflare_d1",mode:"demo"});
    }
    if(path.startsWith("/api/public/store/slug/")&&method==="GET"){

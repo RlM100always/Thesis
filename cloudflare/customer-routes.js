@@ -1,4 +1,5 @@
 import { defaultOrderStatusNote } from "./order-workflow.js";
+import { isPublicStore } from "./store-visibility.js";
 
 /* Global customer identity and account-owned shopping state for the D1 storefronts.
  * D1 demo accounts are shared across D1 stores, but remain separate from the
@@ -63,7 +64,8 @@ async function customerViewer(request, env) {
   return customerFromToken(env, match[1]);
 }
 async function storeBySlug(env, slug) {
-  return env.DB.prepare("SELECT * FROM commerce_stores WHERE slug=? AND is_active=1 LIMIT 1").bind(short(slug, 100)).first();
+  const row=await env.DB.prepare("SELECT * FROM commerce_stores WHERE slug=? AND is_active=1 LIMIT 1").bind(short(slug, 100)).first();
+  return isPublicStore(row)?row:null;
 }
 async function listedProduct(env, storeId, productId) {
   return env.DB.prepare("SELECT * FROM commerce_products WHERE id=? AND store_id=? AND is_listed=1 LIMIT 1")
