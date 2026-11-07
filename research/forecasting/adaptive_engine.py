@@ -52,30 +52,60 @@ def sha256_file(path: Path) -> str:
     return digest.hexdigest()
 
 
-def load_daily_panel(path: str | Path, fill_missing_as_zero: bool = False) -> pd.DataFrame:
-    """Load and validate a complete daily shop-category demand panel.
+def _read_input_frame(path: Path) -> pd.DataFrame:
+    if path.suffix.lower() in {".xlsx", ".xls"}:
+        return pd.read_excel(path)
+    return pd.read_csv(path)
 
-    If fill_missing_as_zero is enabled, missing dates between a series' first
-    and last supplied date are explicitly treated as zero-demand days. This is
-    an assumption and is written into the run manifest.
+
+def load_daily_panel(path: str | Path, fill_missing_as_zero: bool = False) -> pd.DataFrame:
+    """Load a daily shop-category panel, including the supplied RQ1 column names.
+
+    Accepted source aliases: category -> category_id and
+    units_sold_observed -> demand. Excel serial dates are converted explicitly.
+    Missing dates are never silently treated as zero.
     """
     path = Path(path)
-    frame = pd.read_csv(path)
+    frame = _read_input_frame(path)
+    if "category_id" not in frame.columns and "category" in frame.columns:
+        frame = frame.rename(columns={"category": "category_id"})
+    if "demand" not in frame.columns and "units_sold_observed" in frame.columns:
+        frame = frame.rename(columns={"units_sold_observed": "demand"})
     missing = sorted(set(REQUIRED) - set(frame.columns))
     if missing:
         raise DataContractError(f"Missing required columns: {missing}")
-    frame = frame[REQUIRED].copy()
-    frame["date"] = pd.to_datetime(frame["date"], errors="coerce").dt.normalize()
-    if frame["date"].isna().any():
+
+    raw_dates = frame["date"]
+    if pd.api.types.is_numeric_dtype(raw_dates):
+        parsed_dates = pd.to_datetime(raw_dates, unit="D", origin="1899-12-30", errors="coerce")
+    else:
+        numeric_dates = pd.to_numeric(raw_dates, errors="coerce")
+        if numeric_dates.notna().all():
+            parsed_dates = pd.to_datetime(numeric_dates, unit="D", origin="1899-12-30", errors="coerce")
+        else:
+            parsed_dates = pd.to_datetime(raw_dates, errors="coerce")
+    if parsed_dates.isna().any():
         raise DataContractError("Invalid or missing dates are present.")
+
+    frame = frame.copy()
+    frame["date"] = parsed_dates.dt.normalize()
+    frame = frame[["date", *KEYS, "demand"] + (["is_zero_observed_sales"] if "is_zero_observed_sales" in frame.columns else [])]
     if frame[KEYS].isna().any().any():
-        raise DataContractError("shop_id and category_id must be non-null.")
+        raise DataContractError("shop_id and category/category_id must be non-null.")
     frame[KEYS] = frame[KEYS].astype(str)
     frame["demand"] = pd.to_numeric(frame["demand"], errors="coerce")
     if frame["demand"].isna().any() or not np.isfinite(frame["demand"]).all():
         raise DataContractError("Demand must be finite numeric values.")
     if (frame["demand"] < 0).any():
-        raise DataContractError("Negative demand found; returns/cancellations must be resolved upstream.")
+        raise DataContractError("Negative demand found; returns/cancellations must be reconciled upstream.")
+    if "is_zero_observed_sales" in frame.columns:
+        supplied_flag = pd.to_numeric(frame["is_zero_observed_sales"], errors="coerce")
+        expected_flag = (frame["demand"] == 0).astype(int)
+        if supplied_flag.isna().any() or not supplied_flag.astype(int).equals(expected_flag):
+            mismatch = int((supplied_flag.fillna(-1).astype(int) != expected_flag).sum())
+            raise DataContractError(f"is_zero_observed_sales disagrees with demand on {mismatch} rows.")
+        frame = frame.drop(columns=["is_zero_observed_sales"])
+
     duplicate = frame.duplicated(["date", *KEYS], keep=False)
     if duplicate.any():
         sample = frame.loc[duplicate, ["date", *KEYS]].head(5).to_dict("records")
@@ -105,7 +135,6 @@ def load_daily_panel(path: str | Path, fill_missing_as_zero: bool = False) -> pd
     if result.empty:
         raise DataContractError("No usable observations.")
     return result.reset_index(drop=True)
-
 
 def demand_profile(values: np.ndarray) -> DemandProfile:
     x = np.asarray(values, dtype=float)
@@ -328,43 +357,55 @@ def _metric_row(actual: np.ndarray, predicted: np.ndarray, scale: float | np.nda
 
 
 def rolling_origins(panel: pd.DataFrame, horizon: int, folds: int = 3,
-                    min_history: int = 56) -> list[pd.Timestamp]:
-    """Choose non-overlapping validation windows near the end of development data."""
+                    min_history: int = 56,
+                    development_end: str | pd.Timestamp | None = None) -> list[pd.Timestamp]:
+    """Select monthly spaced rolling origins strictly before the exclusive dev cutoff.
+
+    The default CLI cutoff is 2025-10-01, protecting the previously inspected
+    2025-Q4 legacy test period from all model selection.
+    """
     if min_history < max(LAGS):
         raise DataContractError(f"min_history must be at least {max(LAGS)} days for the configured lag features.")
     if horizon < 1 or folds < 1:
         raise DataContractError("horizon and folds must be positive integers.")
-    last_date = panel["date"].max()
-    first_date = panel["date"].min()
-    earliest = first_date + pd.Timedelta(days=min_history)
-    latest_origin = last_date - pd.Timedelta(days=horizon - 1)
-    if latest_origin < earliest:
+    if panel.empty:
         return []
-    candidates = pd.date_range(earliest, latest_origin, freq=f"{horizon}D")
-    if len(candidates) < folds:
-        return list(candidates)
-    return list(candidates[-folds:])
-
+    cutoff = (pd.Timestamp(development_end).normalize()
+              if development_end is not None
+              else panel["date"].max().normalize() + pd.Timedelta(days=1))
+    first_date = panel["date"].min().normalize()
+    earliest = first_date + pd.Timedelta(days=min_history)
+    latest_origin = cutoff - pd.Timedelta(days=horizon)
+    spacing = max(30, horizon)
+    origins = [latest_origin - pd.Timedelta(days=spacing * k)
+               for k in reversed(range(folds))]
+    return [origin for origin in origins if origin >= earliest and origin + pd.Timedelta(days=horizon) <= cutoff]
 
 def run_experiment(panel: pd.DataFrame, horizons=HORIZONS, folds=3,
-                   min_history=56, candidates=None) -> tuple[pd.DataFrame, pd.DataFrame]:
-    """Rolling-origin comparison. Final test selection is intentionally separate."""
+                   min_history=56, candidates=None,
+                   development_end: str | pd.Timestamp | None = None) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Rolling-origin comparison on development data only; Q4-2025 stays excluded."""
     candidates = candidates or ["seasonal_naive_7", "croston", "sba", "tsb", "two_stage_hist",
                                 "hist_gradient_boosting", "lightgbm", "catboost"]
     summaries, predictions = [], []
-    panel = panel.sort_values([*KEYS, "date"]).reset_index(drop=True)
+    cutoff = (pd.Timestamp(development_end).normalize()
+              if development_end is not None
+              else panel["date"].max().normalize() + pd.Timedelta(days=1))
+    development_panel = panel.loc[panel["date"] < cutoff].copy()
+    development_panel = development_panel.sort_values([*KEYS, "date"]).reset_index(drop=True)
     for horizon in horizons:
-        origins = rolling_origins(panel, horizon, folds, min_history)
+        origins = rolling_origins(development_panel, horizon, folds, min_history, cutoff)
         if not origins:
             summaries.append({"horizon": horizon, "model": "ALL", "status": "not_evaluable",
-                              "reason": "insufficient_history_for_requested_folds"})
+                              "reason": "insufficient_development_history_for_requested_folds"})
             continue
-        supervised = make_supervised(panel, horizon, min_history)
+        supervised = make_supervised(development_panel, horizon, min_history)
         for origin in origins:
-            # Only training targets fully observed before the validation origin.
-            train = supervised.loc[supervised["origin"] + pd.Timedelta(days=horizon) <= origin].copy()
+            train = supervised.loc[
+                supervised["origin"] + pd.Timedelta(days=horizon) <= origin
+            ].copy()
             current_rows, histories, actuals = [], [], []
-            for key, group in panel.groupby(KEYS, sort=False):
+            for key, group in development_panel.groupby(KEYS, sort=False):
                 group = group.sort_values("date")
                 hist = group[group["date"] < origin]
                 future = group[(group["date"] >= origin) &
@@ -381,8 +422,6 @@ def run_experiment(panel: pd.DataFrame, horizons=HORIZONS, folds=3,
                 continue
             pred_frame = pd.DataFrame(current_rows)
             actual_arr = np.asarray(actuals)
-            # Scale each shop-category series independently. For an H-day
-            # cumulative target, scale the one-day naive error by H.
             scales = []
             for hist_values in histories:
                 one_day_scale = float(np.mean(np.abs(np.diff(hist_values)))) if len(hist_values) > 1 else 0.0
@@ -392,13 +431,10 @@ def run_experiment(panel: pd.DataFrame, horizons=HORIZONS, folds=3,
             for name in candidates:
                 try:
                     if name == "seasonal_naive_7":
-                        forecasts = []
-                        for hist in histories:
-                            # Last complete H-day block shifted by seven days where possible.
-                            if len(hist) >= horizon + 7:
-                                forecasts.append(float(hist[-horizon-7:-7].sum()))
-                            else:
-                                forecasts.append(float(hist[-horizon:].sum()))
+                        forecasts = [
+                            float(h[-horizon-7:-7].sum()) if len(h) >= horizon + 7
+                            else float(h[-horizon:].sum()) for h in histories
+                        ]
                     elif name in {"croston", "sba", "tsb"}:
                         forecasts = [croston_forecast(h, horizon, name) for h in histories]
                     else:
@@ -411,14 +447,13 @@ def run_experiment(panel: pd.DataFrame, horizons=HORIZONS, folds=3,
                             "horizon": horizon, "origin": origin.date().isoformat(),
                             "shop_id": pred_frame.iloc[idx]["shop_id"],
                             "category_id": pred_frame.iloc[idx]["category_id"],
-                            "model": name, "regime": regimes[idx], "actual": float(actual), "forecast": float(forecast)
+                            "model": name, "regime": regimes[idx],
+                            "actual": float(actual), "forecast": float(forecast)
                         })
                     metrics = _metric_row(actual_arr, forecasts, scales)
                     summaries.append({"horizon": horizon, "origin": origin.date().isoformat(),
                                       "model": name, "level": "all", "group_value": "all",
                                       "status": "ok", **metrics})
-                    # Retain disaggregated results; pooled scores alone can hide
-                    # a model that fails on a particular shop or demand regime.
                     dimensions = {
                         "shop": pred_frame["shop_id"].astype(str).to_numpy(),
                         "category": pred_frame["category_id"].astype(str).to_numpy(),
@@ -433,88 +468,13 @@ def run_experiment(panel: pd.DataFrame, horizons=HORIZONS, folds=3,
                                               "status": "ok", **subgroup_metrics})
                 except ImportError as exc:
                     summaries.append({"horizon": horizon, "origin": origin.date().isoformat(),
-                                      "model": name, "status": "skipped_dependency",
-                                      "reason": str(exc)})
+                                      "model": name, "level": "all", "group_value": "all",
+                                      "status": "skipped_dependency", "reason": str(exc)})
                 except Exception as exc:
                     summaries.append({"horizon": horizon, "origin": origin.date().isoformat(),
-                                      "model": name, "status": "failed",
-                                      "reason": f"{type(exc).__name__}: {exc}"})
+                                      "model": name, "level": "all", "group_value": "all",
+                                      "status": "failed", "reason": f"{type(exc).__name__}: {exc}"})
     return pd.DataFrame(summaries), pd.DataFrame(predictions)
-
-
-def write_figures(summary: pd.DataFrame, predictions: pd.DataFrame, output: Path) -> list[str]:
-    """Write reproducible validation plots; figures are diagnostics, not extra evidence."""
-    try:
-        import matplotlib
-        matplotlib.use("Agg")
-        import matplotlib.pyplot as plt
-    except ImportError:
-        return ["matplotlib unavailable; figures skipped"]
-    written = []
-    level = summary["level"] if "level" in summary.columns else pd.Series("", index=summary.index)
-    valid = summary[(summary["status"] == "ok") & (level == "all")].copy()
-    if not valid.empty:
-        means = valid.groupby(["horizon", "model"], as_index=False)["wape"].mean()
-        for horizon, group in means.groupby("horizon"):
-            group = group.dropna(subset=["wape"]).sort_values("wape")
-            if group.empty:
-                continue
-            fig, ax = plt.subplots(figsize=(10, 5))
-            ax.bar(group["model"], group["wape"] * 100)
-            ax.set(title=f"Rolling-origin WAPE — {horizon}-day horizon", ylabel="WAPE (%)")
-            ax.tick_params(axis="x", rotation=30)
-            fig.tight_layout()
-            path = output / f"wape_comparison_h{horizon}.png"
-            fig.savefig(path, dpi=180)
-            plt.close(fig)
-            written.append(path.name)
-    if not predictions.empty:
-        p7 = predictions[predictions["horizon"] == 7].copy()
-        if not p7.empty:
-            scores = pd.Series({
-                name: ((g["actual"] - g["forecast"]).abs().sum() / g["actual"].abs().sum())
-                if g["actual"].abs().sum() > 0 else np.nan
-                for name, g in p7.groupby("model")
-            }).dropna()
-            if not scores.empty:
-                best = str(scores.idxmin())
-                selected = p7[p7["model"] == best]
-                series = selected.groupby(["shop_id", "category_id"])["actual"].sum().sort_values(ascending=False)
-                if not series.empty:
-                    shop, category = series.index[0]
-                    line = selected[(selected["shop_id"] == shop) & (selected["category_id"] == category)].sort_values("origin")
-                    fig, ax = plt.subplots(figsize=(10, 5))
-                    ax.plot(line["origin"], line["actual"], marker="o", label="Actual")
-                    ax.plot(line["origin"], line["forecast"], marker="o", label=f"Forecast ({best})")
-                    ax.set(title=f"7-day rolling forecasts — shop {shop}, category {category}", ylabel="Next 7-day demand")
-                    ax.tick_params(axis="x", rotation=30)
-                    ax.legend()
-                    fig.tight_layout()
-                    path = output / "actual_vs_forecast_7d.png"
-                    fig.savefig(path, dpi=180)
-                    plt.close(fig)
-                    written.append(path.name)
-                per_series = pd.DataFrame([
-                    {"shop_id": shop, "category_id": category,
-                     "wape": ((g["actual"] - g["forecast"]).abs().sum() / g["actual"].abs().sum())
-                     if g["actual"].abs().sum() > 0 else np.nan}
-                    for (shop, category), g in selected.groupby(["shop_id", "category_id"])
-                ])
-                heat = per_series.pivot(index="shop_id", columns="category_id", values="wape")
-                if not heat.empty:
-                    fig, ax = plt.subplots(figsize=(max(9, len(heat.columns) * 0.55), max(5, len(heat.index) * 0.25)))
-                    image = ax.imshow(heat.to_numpy(dtype=float), aspect="auto", interpolation="nearest")
-                    ax.set(title=f"Shop × category WAPE — 7-day, {best}", xlabel="Category", ylabel="Shop")
-                    ax.set_xticks(range(len(heat.columns)), heat.columns, rotation=90)
-                    ax.set_yticks(range(len(heat.index)), heat.index)
-                    fig.colorbar(image, ax=ax, label="WAPE")
-                    fig.tight_layout()
-                    path = output / "shop_category_wape_heatmap_7d.png"
-                    fig.savefig(path, dpi=180)
-                    plt.close(fig)
-                    written.append(path.name)
-    return written
-
 
 def build_diagnostics(panel: pd.DataFrame) -> pd.DataFrame:
     rows = []
@@ -578,6 +538,9 @@ def main(argv=None) -> int:
     parser.add_argument("--output", default="artifacts/adaptive_forecasting")
     parser.add_argument("--folds", type=int, default=3)
     parser.add_argument("--min-history", type=int, default=56)
+    parser.add_argument("--development-end", default="2025-10-01", help="Exclusive development cutoff; defaults to protect the inspected 2025-Q4 test period")
+    parser.add_argument("--evidence-status", choices=["verified_observed", "observed_unverified", "synthetic", "provenance_conflict"], default="provenance_conflict")
+    parser.add_argument("--source-provenance-note", default="Drive manifest claims 100% real, but the related RQ1 SKU file labels all rows synthetic_flag=YES; resolve before empirical claims.")
     parser.add_argument("--fill-missing-dates-as-zero", action="store_true",
                         help="Explicitly assume unrecorded dates inside each series are zero-demand days")
     parser.add_argument("--candidates", default="seasonal_naive_7,croston,sba,tsb,two_stage_hist,hist_gradient_boosting,lightgbm,catboost")
@@ -590,7 +553,8 @@ def main(argv=None) -> int:
     horizons = list(HORIZONS)
     summary, predictions = run_experiment(
         panel, horizons=horizons, folds=args.folds, min_history=args.min_history,
-        candidates=[x.strip() for x in args.candidates.split(",") if x.strip()]
+        candidates=[x.strip() for x in args.candidates.split(",") if x.strip()],
+        development_end=args.development_end
     )
     diagnostics.to_csv(output / "demand_diagnostics.csv", index=False)
     summary.to_csv(output / "rolling_origin_metrics.csv", index=False)
@@ -602,7 +566,10 @@ def main(argv=None) -> int:
         "pipeline_version": "0.1.0",
         "input_file_name": source.name,
         "input_sha256": sha256_file(source),
-        "evidence_class": "user_supplied_unverified",
+        "evidence_class": args.evidence_status,
+        "source_provenance_note": args.source_provenance_note,
+        "development_end_exclusive": args.development_end,
+        "legacy_test_period": "2025-10-01 through 2025-12-31; excluded from development model selection",
         "input_rows": int(len(panel)),
         "shop_count": int(panel["shop_id"].nunique()),
         "category_count": int(panel["category_id"].nunique()),
@@ -625,7 +592,9 @@ def main(argv=None) -> int:
         "warnings": [
             "Input provenance is not independently verified by this script.",
             "A daily panel does not identify stockout-censored demand unless stock availability is supplied.",
-            "The reported 2025-10 to 2025-12 test period must not be reused for model selection if already inspected.",
+            "Development origins and training data are restricted to dates before development_end_exclusive.",
+            "The 2025-10 to 2025-12 legacy test period is not evaluated by this development run.",
+            "Dataset provenance conflicts between the Drive manifest and the RQ1 SKU synthetic_flag; do not claim verified real-world evidence until resolved.",
             "WAPE is undefined when the actual total is zero; such rows are retained with null WAPE."
         ]
     }
