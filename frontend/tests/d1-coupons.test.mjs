@@ -38,7 +38,7 @@ test("coupon discount is always a whole non-negative amount and never exceeds su
   assert.ok(result.discount_amount>=0&&result.discount_amount<=1100);
 });
 
-test("checkout enforces atomic total and per-customer redemption triggers",()=>{
+test("checkout enforces atomic total and per-customer redemption triggers",async()=>{
   const migration=await import("node:fs/promises").then(fs=>fs.readFile(new URL("../../cloudflare/migrations/0011_store_coupons.sql",import.meta.url),"utf8"));
   assert.match(migration,/commerce_coupon_total_limit/);
   assert.match(migration,/commerce_coupon_customer_limit/);
