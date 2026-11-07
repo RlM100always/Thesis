@@ -8,7 +8,7 @@ from scripts.export_d1_operational_schema import generate_schema_sql
 
 def test_operational_schema_generates_and_coexists_with_existing_commerce_tables():
     sql, tables = generate_schema_sql()
-    assert len(tables) == 114
+    assert len(tables) == 122
     assert len(set(tables)) == 114
     assert {"organizations", "users", "branches", "products", "sales_documents",
             "inventory_balances", "purchase_orders", "journal_entries",
@@ -42,5 +42,5 @@ def test_generated_operational_schema_is_idempotent():
     db.executescript(sql)
     assert db.execute(
         "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'"
-    ).fetchone()[0] == 117
+    ).fetchone()[0] == 123
     db.close()
