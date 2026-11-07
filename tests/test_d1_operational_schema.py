@@ -9,7 +9,7 @@ from scripts.export_d1_operational_schema import generate_schema_sql
 def test_operational_schema_generates_and_coexists_with_existing_commerce_tables():
     sql, tables = generate_schema_sql()
     assert len(tables) == 122
-    assert len(set(tables)) == 114
+    assert len(set(tables)) == 122
     assert {"organizations", "users", "branches", "products", "sales_documents",
             "inventory_balances", "purchase_orders", "journal_entries",
             "payroll_runs", "admin_mission_items", "provider_credentials",
