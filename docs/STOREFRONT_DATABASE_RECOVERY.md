@@ -1,92 +1,102 @@
-# Operational online stores — data recovery boundary
+# B-SMART operational data recovery and Cloudflare D1 alignment
 
-> **Verified 26 Oct 2026 — Cloudflare architecture correction:** The user
-> established Cloudflare as the intended primary storage provider. The Primary
-> Cloudflare account has R2 bucket `bsmart-thesis-research` with one setup
-> metadata object, and no B-SMART D1 database. Operational SQL rows currently
-> reside in an ephemeral Render SQLite instance, **not R2**. A Render Postgres
-> instance exists but is not used by this website. Do not migrate or seed
-> until source-of-truth / backups are confirmed. Demo-bootstrap environment flag
-> has been reset to `NO` while this is unresolved.
->
-> Cloudflare-first relational primary would mean provisioning D1 and adapting
-> the FastAPI SQLAlchemy code with a secure Worker/data-access layer. R2 alone
-> cannot satisfy transactional product, order, and customer SQL queries.
+> **Live audit: 7 November 2026.** This document supersedes the earlier 26 October note that said no B-SMART D1 database existed. The existing Cloudflare D1 database `bsmart-commerce` is live and must be preserved. Do not create a replacement database, seed over it, or replay old migrations blindly.
 
+## 1. Actual source-of-truth map
 
-The production web service is `thesis-j0n8.onrender.com`. It auto-deploys changes to GitHub `main`. The Render workspace contains a Postgres instance named `thesis-db` (Postgres 17, Singapore); existence alone does NOT mean `DATABASE_URL` is configured for the service. Render external IP allowlist is empty, so external diagnostic queries cannot be used.
+| Resource | Current verified role | Data boundary |
+|---|---|---|
+| Cloudflare D1 `bsmart-commerce` | **Authoritative for the D1 storefront and merchant/customer commerce slice** | 22 application tables; schema version 8 |
+| Cloudflare Worker `bsmart-commerce-api` | API for the D1 storefront slice | Worker binding `DB` points to `bsmart-commerce` |
+| Render service `thesis` | Hosts the React build and legacy FastAPI API | Latest startup log reports SQLite, not D1 |
+| Render Postgres `thesis-db` | Existing but unused by the running website | Do not assume it contains the current application data; external query access is blocked |
+| Cloudflare D1 `bcs-written` | Separate study-content application database | Not B-SMART commerce data; do not bind, merge, or migrate it into `bsmart-commerce` |
 
-## Store visibility
+The frontend deliberately uses two data paths today:
+- D1 Worker for D1 store IDs/slugs (`demo-bsmart-*`, `merchant-*`, `shop-*`).
+- FastAPI for legacy tenant login and the original operational business modules.
 
-`GET /api/public/store/` returns only the active `stores` records. `GET /api/public/store/diagnostics` returns only active store count, listed product count and no sensitive rows. A store may have products in `products` but zero `store_products` listings, causing a blank product catalogue. The owner can activate and list them from their store panel.
+These paths are not synchronized. Changing `DATABASE_URL` to a D1 database ID is not a valid migration.
 
-On deployment startup, check Render Logs for `STORE_DIAGNOSTIC db_backend=...`. For a persistent Render PostgreSQL setup it must say `postgresql` (not `sqlite`), then show counts. Never paste connection strings, secrets or customer records into GitHub.
+## 2. Live `bsmart-commerce` data inventory
 
-## Why stores can be empty
+The live D1 database was queried read-only on 7 November 2026.
 
-1. `DATABASE_URL` is unset; FastAPI silently defaults to ephemeral `sqlite:///./bsmart.db` in development settings.
-2. Existing tenant owners have not created/activated storefronts.
-3. Store exists, but public product listing is empty.
-4. Existing real store records may have existed only in an older SQLite container. Those cannot be restored from the source ZIP alone.
+| Data | Count / state |
+|---|---:|
+| D1 application tables | 22 |
+| Schema version (`commerce_meta`) | 8 |
+| Seeded fictional demo stores | 10 |
+| Seeded demo products | 259 |
+| Retained POS CI test store | 1 |
+| Product in the POS CI fixture | 1 |
+| Total stores / products | 11 / 260 |
+| Orders / order lines | 3 / 3 |
+| Inventory movement rows | 3 |
+| Cashbook entries | 1 |
+| Merchant accounts | 1 legacy CI account |
+| Customer accounts | 0 |
+| Real merchant-owned operational stores | 0 |
 
-## What was removed
+All 11 store rows currently have `is_demo=1`. The three orders are demo/test records: two in the seeded grocery shop and one POS test order in the CI fixture. The single cashbook receipt belongs to that test POS order. None is verified real-world customer revenue or a real fulfilment obligation.
 
-`/sample-stores` and the two 32-shop simulated preview tables were removed. No operational Store/Organization/Customer/SalesDocument rows have been deleted; no seed has been executed.
+The known CI fixture has slug `shop-752c1d2b-b92`, area `Automated Test Only`, and name `POS CI Test Unverified Shop`. Keep its rows for audit/reconciliation, but exclude it from public customer discovery and checkout. The data-alignment branch adds that public visibility guard; it does not delete or rewrite the fixture rows.
 
-## Safe data restoration
+### Integrity checks
 
-- Restore real business data from a known-good database backup if available.
-- Use a **clearly labelled synthetic demo seed** only under a dedicated explicit flag, with an idempotent mode and isolated demo organization IDs, never by deleting/renaming real tenants.
-- The old `seed_10_businesses.py` is a development-only high-volume generator, guarded to refuse Render/PostgreSQL. Do not remove those safeguards.
-- After configuring persistence and any demo catalog, check `/api/public/store/`, `/api/public/store/diagnostics`, an individual `/api/public/store/slug/<slug>`, and a test COD checkout in a non-production sandbox.
+The following read-only checks returned zero exceptions:
+- orphan products, orders, order lines, inventory movements and cashbook entries;
+- order subtotal/total mismatches against order lines;
+- payment-state mismatches for the existing store/order types;
+- negative product stock.
 
+The checks do not prove that the sample catalogue is real business data. All seeded stores remain explicitly demo-only.
 
-## New safe demo catalogue bootstrap
+## 3. What is not yet in D1
 
-The app now has `api/demo_catalog_bootstrap.py`: on startup, and **only** when
-`BSMART_BOOTSTRAP_DEMO_CATALOG=YES` *and* `DATABASE_URL` points to PostgreSQL,
-and the database has **zero stores, including inactive stores**, it may create
-10 isolated and clearly labelled demo organizations (pharmacy, grocery, clothing,
-restaurant, electronics, hardware, beauty, stationery, mobile, furniture) with
-literal sample products from `seed_10_businesses.py`, positive **simulated** inventory,
-active storefront rows and store-product listings.
+The original FastAPI operational application still uses SQLAlchemy sessions and its own database configuration. Its source currently defines:
+- 78 operational model tables in `api/domain_models.py`;
+- 36 platform-control model tables in `api/admin_models.py`;
+- 54 registered FastAPI routers.
 
-It DOES NOT restore original merchant/shop/customer/order records, create real
-orders, initiate payment, send communications or overwrite live businesses.
-If any Store row exists, the seed is skipped. A single transaction rolls back
-on error. Demo shops are marked in both the Store Directory and individual
-storefront; never provide real contact/address/payment details.
+Those modules include organization/user identity, branches, full POS, stock/batches/expiry, purchasing, supplier claims, cash, payments, accounting journals, payroll, staff, CRM, receivables, approvals, audit, recommendations, platform administration and related workflows. They have **not** been migrated to the current `bsmart-commerce` D1 schema.
 
+The latest Render startup diagnostic (7 November 2026) reports:
+```
+db_backend=sqlite
+organizations=1
+stores=0
+active_stores=0
+catalog_products=4
+listed_store_products=0
+```
 
-## New read-only-first store reconciliation helper (26 October 2026)
+That is the current legacy FastAPI runtime database, not the Cloudflare D1 catalogue. The Render Postgres resource exists separately but is not the database used by the running service. Do not point the app at it or create another paid database as a shortcut.
 
-Run `python scripts/reconcile_existing_stores.py` on a **trusted database copy**
-to inventory all existing organizations, storefronts, active products and
-published listings. It does not write anything by default.
+The other D1 database, `bcs-written`, contains study-content tables (subjects, chapters, questions, rich blocks and related content). It is a different application dataset and must remain untouched.
 
-After separately verifying the durable database and business owner approval,
-select a single organization via `--organization-id UUID --apply`, adding
-`--activate` or `--publish-new-products` only when that owner authorizes
-publication. Existing deliberately unpublished products remain unpublished.
-Pharmacy product bulk-publication is refused pending manual licensing review.
-The script refuses writes to production or Render-hosted SQLite.
+## 4. Historical recovery boundary
 
-**Do not use this helper as a replacement for restoring old business data.**
-It can only link rows that already exist in the selected operational database.
+The earlier uploaded `thesis.zip` did not contain the primary `bsmart.db` SQLite file; it contained only `bsmart.db-wal` and `bsmart.db-shm`. The earlier R2 check found setup metadata rather than a complete operational database snapshot. That history does not provide a verified restore of old real merchants, customers, sales or orders.
 
-### Cloudflare-first architecture safety
+Do not manufacture historical records from demo catalogue data. If a separate trusted backup is later found, inventory it read-only first, verify its tenant ownership and dates, then plan a controlled import with provenance.
 
-Cloudflare R2 bucket `bsmart-thesis-research` exists but is research object
-storage, not a relational store/order database. Cloudflare D1 would require a
-new schema and migration plus a Worker-native transactional adapter for order
-placement: the D1 REST SQLAlchemy dialect cannot preserve the existing
-FastAPI Session transaction/rollback semantics across multiple HTTP SQL calls.
-Do not cut over checkout, payments, inventory or customer sessions without an
-end-to-end migration and concurrent-order tests.
+## 5. Safe D1 migration rules
 
-The user's `thesis.zip` included `bsmart.db-wal` and `bsmart.db-shm`,
-but not the necessary `bsmart.db` SQLite database file. The Cloudflare
-R2 research bucket contained only `thesis/research/setup.json` at the time
-of verification, not a complete operating database snapshot. Recreate only
-a clearly labelled demo after separate consent, not a fake recovery of real
-customer/order history.
+1. **Keep the existing database ID and binding.** The current Worker `DB` binding must continue to point to `bsmart-commerce`.
+2. **Back up before every schema/data write.** Use a D1 SQL export or a verified time-travel restore point. Record the bookmark and verify the export before migration.
+3. **Inspect live schema before applying SQL.** The eight historical migrations were applied manually through the Cloudflare API; they were not registered in Wrangler's `d1_migrations` table.
+4. **Never blindly run** `wrangler d1 migrations apply --remote` on this database. Replaying existing `ALTER TABLE` statements can fail or cause drift.
+5. **Use additive, reviewed migrations.** Preserve existing IDs, slugs, product IDs, order IDs, stock quantities, order lines, audit rows and payment states.
+6. **Port transactional workflows to Worker/D1-native batches.** Do not pretend a D1 database ID is a PostgreSQL URL or a drop-in SQLAlchemy connection. Checkout, stock movement, payment collection and accounting need tested atomic operations.
+7. **Migrate one bounded module at a time.** Build the D1 schema and Worker endpoints, test against an isolated copy, compare row counts and totals, then switch that module's frontend API. Keep old FastAPI routes available until the new D1 path passes regression tests.
+8. **Do not dual-write the same business event** to SQLite and D1. Choose one authoritative writer for each migrated module and record migration provenance.
+
+## 6. Current safe rollout boundary
+
+- D1 storefront, customer, merchant, catalogue, stock and order routes remain on the existing Worker.
+- The known POS CI fixture is retained but hidden from public store discovery by the alignment change.
+- Seeded `demo-bsmart-*` stores remain demo-only; do not promote them to real shops.
+- New merchant-owned stores remain private drafts until Platform Admin approval.
+- Approved stores support COD/manual fulfilment only. Online payment, courier API and automated refunds are not active.
+- The full FastAPI operational modules remain a separate migration project; they must not be described as D1-backed until their data paths are actually ported and tested.
