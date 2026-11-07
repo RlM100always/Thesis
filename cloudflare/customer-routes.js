@@ -2,7 +2,7 @@ import { defaultOrderStatusNote } from "./order-workflow.js";
 import { isPublicStore } from "./store-visibility.js";
 
 /* Global customer identity and account-owned shopping state for the D1 storefronts.
- * D1 demo accounts are shared across D1 stores, but remain separate from the
+ * D1 customer accounts are shared across D1 stores, but remain separate from the
  * operational FastAPI customer database until a deliberate identity migration.
  */
 const encoder = new TextEncoder();
@@ -146,7 +146,7 @@ async function orderHistory(env, account, url) {
         issued_at: o.placed_at, placed_at: o.placed_at,
         subtotal: o.subtotal_bdt, total: o.total_bdt, tax_amount: 0, delivery_fee: 0,
         discount_amount: 0, organization_id: o.store_id, store_slug: o.store_slug,
-        store_name: o.store_name, is_demo: !!o.store_is_demo, payment_method: o.payment_method || "demo",
+        store_name: o.store_name, is_demo: !!o.store_is_demo, payment_method: o.payment_method || "cod",
         payment_status: o.payment_status || (o.store_is_demo ? "demo_no_payment" : (o.payment_method === "cod" ? (o.status === "cancelled" ? "cancelled_no_payment" : "pending_cod") : "unpaid")),
         payment_received_at: o.payment_received_at || null, payment_received_by: o.payment_received_by || null, payment_note: o.payment_note || null,
         shipping_name: o.shipping_name || "",
@@ -432,7 +432,7 @@ export async function customerRouter(request, env, path, output, error) {
       const id = crypto.randomUUID();
       await env.DB.prepare("INSERT INTO commerce_order_returns(id,store_id,order_id,account_id,reason,customer_note) VALUES(?,?,?,?,?,?)")
         .bind(id,order.store_id,order.id,account.id,reason,note||null).run();
-      return output(request,{created:true,id,status:"requested",note:order.is_demo?"পরীক্ষামূলক ফেরত অনুরোধ জমা হয়েছে।":"ফেরতের অনুরোধ জমা হয়েছে; দোকান থেকে পরবর্তী নির্দেশনা জানানো হবে।"},201);
+      return output(request,{created:true,id,status:"requested",note:order.is_demo?"যাচাইহীন নমুনা ফেরত অনুরোধ জমা হয়েছে।":"ফেরতের অনুরোধ জমা হয়েছে; দোকান থেকে পরবর্তী নির্দেশনা জানানো হবে।"},201);
     }
     if (path === "/api/customer/returns" && method === "GET") {
       const {results} = await env.DB.prepare(
