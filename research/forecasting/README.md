@@ -52,8 +52,10 @@ packages are recorded as skipped, not replaced with fabricated results.
 - Direct 1/7/14/28-day cumulative-demand targets
 - Seasonal-naive, Croston, SBA, TSB, HistGradientBoosting, optional LightGBM
   and optional CatBoost candidates
-- Rolling-origin development comparisons with WAPE, MAE, RMSE, MASE and bias
-- Per-origin forecasts, metrics, diagnostics and SHA-256 run manifest
+- Rolling-origin development comparisons with WAPE, MAE, RMSE, series-scaled MASE and bias
+- Per-origin forecasts plus pooled, per-shop, per-category and demand-regime metrics
+- Validation figures: WAPE comparison, actual-versus-forecast example and shop-category error heatmap
+- Diagnostics, SHA-256 run manifest and automated contract tests
 - Tests for data contracts, zero demand, missingness, duplicates and metrics
 
 ## Important limitations
