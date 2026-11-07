@@ -1,4 +1,5 @@
 import { canTransitionOrderStatus, defaultOrderStatusNote } from "./order-workflow.js";
+import { ownerAssistantAnswer } from "./assistant-routes.js";
 
 /* Authenticated Cloudflare D1 merchant console (separate from legacy FastAPI).
    Public demo checkout does not accept any real payment or delivery.
@@ -80,7 +81,7 @@ async function dashboard(env,owner){
  const store=await myStore(env,owner);
  if(!store)return {account:{email:owner.email},store:null,products:[],orders:[],metrics:{orders:0,inventory_units:0,placed_total_bdt:0},stock_adjustments:[],cashbook:[]};
  const [products,orders,stats,adjustments,cashbook]=await Promise.all([
-  env.DB.prepare("SELECT id,sku,name,category,description,brand,tags,compare_at_price_bdt,unit_label,price_bdt,stock_qty,is_listed,created_at,updated_at FROM commerce_products WHERE store_id=? ORDER BY created_at DESC LIMIT 200").bind(store.id).all(),
+  env.DB.prepare("SELECT id,sku,name,category,description,brand,tags,compare_at_price_bdt,unit_label,price_bdt,stock_qty,reorder_level,is_listed,created_at,updated_at FROM commerce_products WHERE store_id=? ORDER BY created_at DESC LIMIT 200").bind(store.id).all(),
   env.DB.prepare("SELECT id,order_number,status,status_note,cancellation_reason,total_bdt,placed_at,payment_method,payment_status,payment_received_at,payment_received_by,payment_note,shipping_name,shipping_phone,shipping_address FROM commerce_orders WHERE store_id=? ORDER BY placed_at DESC LIMIT 150").bind(store.id).all(),
   env.DB.prepare("SELECT (SELECT COUNT(*) FROM commerce_orders WHERE store_id=?) AS orders,(SELECT COALESCE(SUM(stock_qty),0) FROM commerce_products WHERE store_id=?) AS inventory_units,(SELECT COALESCE(SUM(total_bdt),0) FROM commerce_orders WHERE store_id=? AND status!='cancelled') AS placed_total_bdt,(SELECT COALESCE(SUM(total_bdt),0) FROM commerce_orders WHERE store_id=? AND status!='cancelled' AND payment_method='cod' AND payment_status='paid') AS cod_paid_total_bdt,(SELECT COALESCE(SUM(total_bdt),0) FROM commerce_orders WHERE store_id=? AND status!='cancelled' AND payment_method='cod' AND payment_status='pending_cod') AS cod_pending_total_bdt").bind(store.id,store.id,store.id,store.id,store.id).first(),
   env.DB.prepare("SELECT product_id,old_quantity,new_quantity,delta,reason,created_at FROM commerce_stock_adjustments WHERE store_id=? ORDER BY created_at DESC LIMIT 25").bind(store.id).all(),
@@ -229,6 +230,12 @@ export async function merchantRouter(req,env,path,output,error){
    return output(req,{deleted:true});
   }
   if(method==="GET"&&path==="/api/merchant/dashboard")return output(req,await dashboard(env,owner));
+   if(method==="POST"&&path==="/api/merchant/assistant"){
+    const store=await storeOnly(env,owner),b=await json(req,error,6000),question=short(b.question,500);
+    if(question.length<2)return bad(req,error,422,"কমপক্ষে ২ অক্ষরের প্রশ্ন লিখুন।");
+    try{return output(req,await ownerAssistantAnswer(env,req,owner,store,question,b.history));}
+    catch(e){if(e.status===429)return bad(req,error,429,e.message);throw e;}
+   }
    if(method==="GET"&&path==="/api/merchant/returns"){
     const store=await storeOnly(env,owner);
     const {results}=await env.DB.prepare(
@@ -336,10 +343,10 @@ export async function merchantRouter(req,env,path,output,error){
    if(!sku||name.length<2||!integer(b.price_bdt,0,10000000)||!integer(b.stock_qty,0,1000000)||
       (compare!==null&&(!integer(compare,0,10000000)||compare<Number(b.price_bdt))))
     return bad(req,error,422,"Invalid SKU, name, price, compare-at price or quantity");
-   const id=crypto.randomUUID(),price=Number(b.price_bdt),qty=Number(b.stock_qty);
+   const id=crypto.randomUUID(),price=Number(b.price_bdt),qty=Number(b.stock_qty),reorder=integer(b.reorder_level??5,0,1000000)?Number(b.reorder_level??5):5;
    try{
-    await env.DB.prepare("INSERT INTO commerce_products(id,store_id,sku,name,category,description,brand,tags,compare_at_price_bdt,unit_label,price_bdt,stock_qty,is_listed,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,CURRENT_TIMESTAMP)")
-     .bind(id,store.id,sku,name,cat,description||null,brand||null,tags,compare,unit,price,qty,b.is_listed===true?1:0).run();
+    await env.DB.prepare("INSERT INTO commerce_products(id,store_id,sku,name,category,description,brand,tags,compare_at_price_bdt,unit_label,price_bdt,stock_qty,reorder_level,is_listed,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,CURRENT_TIMESTAMP)")
+     .bind(id,store.id,sku,name,cat,description||null,brand||null,tags,compare,unit,price,qty,reorder,b.is_listed===true?1:0).run();
    }catch(e){return bad(req,error,errorCode(e),"Product SKU must be unique");}
    return output(req,{created:true,product_id:id},201);
   }
@@ -352,17 +359,18 @@ export async function merchantRouter(req,env,path,output,error){
    const name=short(b.name??p.name,140),cat=short(b.category??p.category,65);
    const price=b.price_bdt===undefined?p.price_bdt:Number(b.price_bdt);
    const qty=b.stock_qty===undefined?p.stock_qty:Number(b.stock_qty);
+   const reorder=b.reorder_level===undefined?Number(p.reorder_level??5):Number(b.reorder_level);
    const description=short(b.description===undefined?p.description:b.description,3000),brand=short(b.brand===undefined?p.brand:b.brand,100);
    const unit=short(b.unit_label===undefined?(p.unit_label||"pcs"):b.unit_label,24);
    let tags=p.tags||"[]";
    if(b.tags!==undefined)tags=JSON.stringify(Array.isArray(b.tags)?b.tags.map(x=>short(x,32)).filter(Boolean).slice(0,12):[]);
    const compare=b.compare_at_price_bdt===undefined?p.compare_at_price_bdt:(b.compare_at_price_bdt===""||b.compare_at_price_bdt===null?null:Number(b.compare_at_price_bdt));
-   if(!name||!integer(price,0,10000000)||!integer(qty,0,1000000)||
+   if(!name||!integer(price,0,10000000)||!integer(qty,0,1000000)||!integer(reorder,0,1000000)||
       (compare!==null&&compare!==undefined&&(!integer(compare,0,10000000)||compare<price)))
     return bad(req,error,422,"Invalid product fields");
    const listed=b.is_listed===undefined?p.is_listed:(b.is_listed===true?1:0);
    const diff=qty-p.stock_qty;
-   const update=env.DB.prepare("UPDATE commerce_products SET name=?,category=?,description=?,brand=?,tags=?,compare_at_price_bdt=?,unit_label=?,price_bdt=?,stock_qty=?,is_listed=?,updated_at=CURRENT_TIMESTAMP WHERE store_id=? AND id=?").bind(name,cat,description||null,brand||null,tags,compare??null,unit,price,qty,listed,store.id,p.id);
+   const update=env.DB.prepare("UPDATE commerce_products SET name=?,category=?,description=?,brand=?,tags=?,compare_at_price_bdt=?,unit_label=?,price_bdt=?,stock_qty=?,reorder_level=?,is_listed=?,updated_at=CURRENT_TIMESTAMP WHERE store_id=? AND id=?").bind(name,cat,description||null,brand||null,tags,compare??null,unit,price,qty,reorder,listed,store.id,p.id);
    if(diff) {
     await env.DB.batch([update,env.DB.prepare("INSERT INTO commerce_stock_adjustments(id,store_id,product_id,old_quantity,new_quantity,delta,reason) VALUES(?,?,?,?,?,?,?)").bind(crypto.randomUUID(),store.id,p.id,p.stock_qty,qty,diff,"Owner manual inventory correction")]);
    } else await update.run();
