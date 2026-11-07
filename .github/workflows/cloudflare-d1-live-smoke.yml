@@ -1,4 +1,4 @@
-name: B-SMART Cloudflare D1 Live Smoke
+name: B-SMART Cloudflare D1 Read-only Smoke
 
 on:
   workflow_dispatch:
@@ -17,14 +17,14 @@ jobs:
     env:
       D1_API: https://bsmart-commerce-api.bcs-written-rakib.workers.dev
     steps:
-      - name: Check Worker /health
+      - name: Check Worker and public D1 catalogue counts
         run: |
           curl -fLsS --retry 4 --retry-delay 2 --max-time 18 "$D1_API/health" > health.json
-          node -e 'const h=require("./health.json");if(h.database!=="Cloudflare D1"||h.stores<10||h.products<250)process.exit(1); console.log("D1 stores="+h.stores+" products="+h.products)'
-      - name: Check merchant password hashing capability
+          node -e 'const h=require("./health.json");if(h.database!=="Cloudflare D1"||h.scope!=="public_storefronts"||h.stores!==10||h.products!==259)process.exit(1);console.log("Public D1 catalogue: "+h.stores+" stores / "+h.products+" products")'
+      - name: Check password authentication capability
         run: |
-          curl -fLsS --max-time 25 "$D1_API/api/merchant/health" > ownerhealth.json
-          node -e 'const x=require("./ownerhealth.json");console.log("D1 random owner key verifier:",x.auth_key_digest_ok);if(!x.auth_key_digest_ok)process.exit(1)'
+          curl -fLsS --max-time 25 "$D1_API/api/merchant/health" > merchant-health.json
+          node -e 'const x=require("./merchant-health.json");if(!x.password_auth_ready||x.password_hash!=="PBKDF2-HMAC-SHA-256"||x.password_iterations!==100000||!x.legacy_access_key_support)process.exit(1);console.log("PBKDF2 merchant password authentication is ready")'
       - name: Verify Cloudflare CORS for B-SMART website
         run: |
           curl -fsSI --max-time 18 -X OPTIONS \
@@ -33,114 +33,19 @@ jobs:
             "$D1_API/api/public/orders/demo-bsmart-grocery" > headers.txt
           grep -iq '^access-control-allow-origin: https://thesis-j0n8.onrender.com' headers.txt
           grep -iq '^access-control-allow-methods:.*POST' headers.txt
-      - name: Check published store directory
+      - name: Check public store directory excludes retained CI fixture
         run: |
           curl -fLsS --retry 3 --max-time 18 "$D1_API/api/public/store/" > stores.json
-          node -e 'const s=require("./stores.json");if(!Array.isArray(s)||s.filter(x=>x.slug.startsWith("demo-bsmart-")).length!==10||s.some(x=>!x.is_demo||!x.slug))process.exit(1);console.log("Verified "+s.length+" safely labelled demo stores")'
-      - name: Check individual catalog and stock
+          node -e 'const s=require("./stores.json");if(!Array.isArray(s)||s.length!==10||s.some(x=>!x.is_demo||!x.is_active||!x.slug)||s.some(x=>x.slug==="shop-752c1d2b-b92"))process.exit(1);console.log("Verified "+s.length+" public demo stores; retained CI data is hidden, not deleted")'
+      - name: Check public D1 diagnostics
+        run: |
+          curl -fLsS --retry 3 --max-time 18 "$D1_API/api/public/store/diagnostics" > diagnostics.json
+          node -e 'const x=require("./diagnostics.json");if(x.active_stores!==10||x.listed_products!==259||!x.catalog_ready)process.exit(1);console.log("D1 diagnostics match the public catalogue")'
+      - name: Check individual catalogue and stock
         run: |
           curl -fLsS --retry 3 --max-time 18 "$D1_API/api/public/store/slug/demo-bsmart-grocery" > shop.json
-          node -e 'const s=require("./shop.json");if(s.slug!=="demo-bsmart-grocery"||s.products.length<20||s.products.some(p=>typeof p.price!=="number"||typeof p.in_stock!=="boolean"))process.exit(1);console.log("Verified "+s.products.length+" product catalog entries")'
+          node -e 'const s=require("./shop.json");if(s.slug!=="demo-bsmart-grocery"||s.products.length<20||s.products.some(p=>typeof p.price!=="number"||typeof p.in_stock!=="boolean"))process.exit(1);console.log("Verified "+s.products.length+" grocery catalogue entries")'
 
-      - name: One-time Cloudflare D1 demo checkout + token-status verification
-        if: contains(github.event.head_commit.message, '[checkout-e2e]')
-        run: |
-          cat > /tmp/d1-demo-order.json <<'JSON'
-          {"shipping_name":"TEST ONLY","shipping_phone":"01700000000","shipping_address":"Fictional address","payment_method":"cod","items":[{"product_id":"demo-grocery-RICE5","quantity":1}]}
-          JSON
-          curl -fLsS --max-time 20 -X POST -H 'Content-Type: application/json' \
-            --data-binary @/tmp/d1-demo-order.json "$D1_API/api/public/orders/demo-bsmart-grocery" > order.json
-          node -e 'const o=require("./order.json");if(!o.access_token||o.status!=="placed"||o.organization_id!=="demo-bsmart-grocery"||o.total<=0)process.exit(1);console.log("D1 accepted demo order "+o.order_number)'
-          TOKEN="$(node -p 'require("./order.json").access_token')"
-          curl -fLsS --max-time 20 "$D1_API/api/public/orders/demo-bsmart-grocery/status/$TOKEN" > tracked.json
-          node -e 'const x=require("./tracked.json"),o=require("./order.json");if(x.order_number!==o.order_number||x.total!==o.total||x.items.length!==1)process.exit(1);console.log("D1 durable order tracking verified")'
-
-      - name: One-time D1 v2 customer, inventory and cancellation E2E test
-        if: contains(github.event.head_commit.message, '[d1-v2-e2e]')
-        run: |
-          curl -fLsS --max-time 20 "$D1_API/api/public/store/slug/demo-bsmart-grocery" > before.json
-          cat > /tmp/d1-v2-order.json <<'JSON'
-          {"shipping_name":"FAKE TEST","shipping_phone":"01700000000","shipping_address":"Not an actual address","payment_method":"cod","items":[{"product_id":"demo-grocery-DAL1","quantity":1}]}
-          JSON
-          curl -fLsS --max-time 20 -X POST -H 'Content-Type: application/json' \
-            --data-binary @/tmp/d1-v2-order.json "$D1_API/api/public/orders/demo-bsmart-grocery" > created.json
-          node -e 'const o=require("./created.json");if(o.status!=="placed"||!o.access_token||o.items.length!==1)process.exit(1);console.log("D1 v2 transactional order created")'
-          TOKEN="$(node -p 'require("./created.json").access_token')"
-          curl -fLsS --max-time 20 -X POST \
-            "$D1_API/api/public/orders/demo-bsmart-grocery/cancel/$TOKEN" > cancelled.json
-          node -e 'const o=require("./cancelled.json");if(o.status!=="cancelled")process.exit(1);console.log("D1 cancellation persisted")'
-          curl -fLsS --max-time 20 "$D1_API/api/public/store/slug/demo-bsmart-grocery" > after.json
-          node -e 'const a=require("./before.json").products.find(x=>x.id==="demo-grocery-DAL1"),b=require("./after.json").products.find(x=>x.id==="demo-grocery-DAL1");if(!a||!b||a.quantity!==b.quantity)process.exit(1);console.log("D1 restock trigger confirmed: "+a.quantity+"->"+b.quantity)'
-
-      - name: Merchant D1 end-to-end isolated test
-        if: contains(github.event.head_commit.message, '[merchant-e2e]')
-        env:
-          RUN_SHA: ${{ github.sha }}
-        run: |
-          set -euo pipefail
-          EMAIL="ci-${RUN_SHA:0:16}@example.invalid"
-          export EMAIL
-          node -e 'require("fs").writeFileSync("reg.json",JSON.stringify({email:process.env.EMAIL}))'
-          curl -fLsS --max-time 30 "$D1_API/api/merchant/health" > merchanthealth.json
-          node -e 'const x=require("./merchanthealth.json");console.log("Owner key verification:",x.auth_key_digest_ok);if(!x.auth_key_digest_ok)process.exit(1)'
-          REGISTER_STATUS="$(curl -sS --max-time 30 -o registered.json -w '%{http_code}' -H 'Content-Type: application/json' -d @reg.json "$D1_API/api/merchant/register")"
-          if [ "$REGISTER_STATUS" != "201" ]; then node -e 'console.log("Registration failure:",require("./registered.json").detail)'; exit 1; fi
-          node -e 'const x=require("./registered.json");if(!x.created)process.exit(1)'
-          node -e 'const fs=require("fs"),r=require("./registered.json");if(!/^[a-f0-9]{64}$/.test(r.owner_access_key))process.exit(1);fs.writeFileSync("signin.json",JSON.stringify({email:process.env.EMAIL,access_key:r.owner_access_key}))'
-          curl -fLsS --max-time 30 -H 'Content-Type: application/json' -d @signin.json \
-            "$D1_API/api/merchant/login" > login.json
-          TOKEN="$(node -p 'require("./login.json").token')"
-          test "${#TOKEN}" = 64
-          curl -fLsS --max-time 20 -H "Authorization: Bearer $TOKEN" \
-            "$D1_API/api/merchant/dashboard" > init.json
-          node -e 'const x=require("./init.json");if(x.store||x.metrics.orders)process.exit(1)'
-          echo '{"name":"Automated Unpublished Demo Business","area":"Test-only location","category":"Grocery"}' > shop-in.json
-          curl -fLsS -X POST --max-time 20 -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
-            --data-binary @shop-in.json "$D1_API/api/merchant/store" > store.json
-          node -e 'const s=require("./store.json").store;if(!s||s.is_active||!s.slug.startsWith("shop-"))process.exit(1);console.log("Owner created private D1 demo store")'
-          echo '{"sku":"CI-ITEM","name":"QA only notebook","category":"Stationery","price_bdt":120,"stock_qty":10,"is_listed":true}' > prod-in.json
-          curl -fLsS -X POST --max-time 20 -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
-            --data-binary @prod-in.json "$D1_API/api/merchant/products" > product.json
-          PRODUCT_ID="$(node -p 'require("./product.json").product_id')"
-          echo '{"stock_qty":15}' > stock-change.json
-          curl -fLsS -X PATCH --max-time 20 -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
-            --data-binary @stock-change.json "$D1_API/api/merchant/products/$PRODUCT_ID" > revised.json
-          node -e 'const x=require("./revised.json");if(!x.updated||x.stock_change!==5)process.exit(1)'
-          curl -fLsS --max-time 20 -H "Authorization: Bearer $TOKEN" "$D1_API/api/merchant/dashboard" > data.json
-          node -e 'const x=require("./data.json");if(x.products.length!==1||x.products[0].stock_qty!==15||x.stock_adjustments[0].delta!==5)process.exit(1);console.log("Product stock and inventory audit durable")'
-          echo '{"confirm":"DELETE DEMO ACCOUNT"}' > cleanup.json
-          curl -fLsS -X POST --max-time 20 -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
-            --data-binary @cleanup.json "$D1_API/api/merchant/delete-account" > deleted.json
-          node -e 'if(!require("./deleted.json").deleted)process.exit(1);console.log("Temporary demo owner/store deleted safely")'
-          STATUS="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 20 -H "Authorization: Bearer $TOKEN" "$D1_API/api/merchant/dashboard")"
-          test "$STATUS" = 401
-          rm -f login.json reg.json registered.json signin.json
-
-      - name: One-time D1 merchant POS integration test
-        if: contains(github.event.head_commit.message, '[pos-e2e]')
-        env:
-          RUN_SHA: ${{ github.sha }}
-        run: |
-          set -euo pipefail
-          export TEST_EMAIL="ci-pos-${RUN_SHA:0:16}@example.invalid"
-          node -e 'require("fs").writeFileSync("posreg.json",JSON.stringify({email:process.env.TEST_EMAIL}))'
-          curl -fLsS --max-time 30 -H 'Content-Type: application/json' --data-binary @posreg.json "$D1_API/api/merchant/register" > posowner.json
-          node -e 'const x=require("./posowner.json");if(!/^[0-9a-f]{64}$/.test(x.owner_access_key))process.exit(1);require("fs").writeFileSync("poslogin.json",JSON.stringify({email:process.env.TEST_EMAIL,access_key:x.owner_access_key}))'
-          curl -fLsS --max-time 30 -H 'Content-Type: application/json' --data-binary @poslogin.json "$D1_API/api/merchant/login" > posauth.json
-          TOKEN="$(node -p 'require("./posauth.json").token')"
-          echo '{"name":"POS CI Test Unverified Shop","area":"Automated Test Only","category":"Grocery"}' > posstore.json
-          curl -fLsS --max-time 20 -X POST -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' --data-binary @posstore.json "$D1_API/api/merchant/store" > newshop.json
-          echo '{"sku":"CIPOS","name":"QA Counter Item","category":"Tests","price_bdt":50,"stock_qty":10,"is_listed":true}' > postestprod.json
-          curl -fLsS --max-time 20 -X POST -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' --data-binary @postestprod.json "$D1_API/api/merchant/products" > newprod.json
-          ITEM="$(node -p 'require("./newprod.json").product_id')"
-          echo '{"is_active":true}' > activate.json
-          curl -fLsS --max-time 20 -X PATCH -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' --data-binary @activate.json "$D1_API/api/merchant/store" > liveowner.json
-          SLUG="$(node -p 'require("./liveowner.json").store.slug')"
-          curl -fLsS --max-time 20 "$D1_API/api/public/store/slug/$SLUG" > publicowner.json
-          node -e 'const s=require("./publicowner.json");if(!s.is_demo||s.products.length!==1)process.exit(1);console.log("Owner-created public demo storefront resolves via D1")'
-          export ITEM
-          node -e 'require("fs").writeFileSync("possale.json",JSON.stringify({items:[{product_id:process.env.ITEM,quantity:2}]}))'
-          curl -fLsS --max-time 20 -X POST -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' --data-binary @possale.json "$D1_API/api/merchant/pos" > postsale.json
-          node -e 'const v=require("./postsale.json");if(!v.created||v.total_bdt!==100||!v.order_number.startsWith("POS-"))process.exit(1);console.log("Demo POS recorded:",v.order_number)'
-          curl -fLsS --max-time 20 -H "Authorization: Bearer $TOKEN" "$D1_API/api/merchant/dashboard" > posdashboard.json
-          node -e 'const v=require("./posdashboard.json");if(v.metrics.orders!==1||v.products[0].stock_qty!==8||v.cashbook[0].amount_bdt!==100||v.cashbook[0].related_order_id!==v.orders[0].id)process.exit(1);console.log("D1 order, stock, cashbook reconcile to same POS sale")'
+# This workflow intentionally performs read-only checks against production D1.
+# Write/checkout/POS scenarios belong in local D1 mocks or an isolated staging DB;
+# never leave CI owners, orders, stock movements or cashbook rows in production.
