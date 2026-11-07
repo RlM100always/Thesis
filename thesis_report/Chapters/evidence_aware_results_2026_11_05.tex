@@ -1,0 +1,164 @@
+% Updated empirical results, 7 November 2026. Only aggregate, public-safe results are included.
+\section{Experimental Evidence and Data Boundaries}
+
+The research questions are evaluated separately before their proposed integration is considered. The supplied retail exports contain 32 shops, 480 products in 16 categories, 365,447 unique order records, 736,683 sales-line records, and a 561,152-row shop--category--day panel covering 1 January 2023 to 31 December 2025. All 32 shops are labelled grocery/FMCG. These data are therefore not a representative cross-sector SME sample. Merchant origin, collection permissions, and the original extraction process have not been independently certified. Raw customer records and row-level predictions are not included in this public repository.
+
+\subsection{Internal Source Reconstruction and Panel Integrity}
+
+The restricted reconstruction joined the selected non-overlapping sales-line export to orders and the product catalogue. It found no missing order references, no missing SKU references, and no shop-ID mismatches. The daily panel contains exactly \(32\times16\times1{,}096=561{,}152\) shop--category--date rows, with no duplicate keys or missing calendar observations. Three similarly named sales-line exports overlap and must not be concatenated as independent partitions. These checks establish internal consistency of the supplied exports, not the independent authenticity of the underlying merchants or the legality of data collection.
+
+\section{RQ1: Demand Forecasting}
+
+\subsection{Observed Daily Demand Structure}
+
+The full daily panel has a 37.60\% zero-observed-sales rate. The 512 shop--category series are highly heterogeneous: 352 are classified as lumpy, 142 as erratic, 15 as smooth, and 3 as intermittent using the conventional average-demand-interval and positive-demand-CV-squared diagnostic thresholds. The most sparse categories include Baby Care (78.2\% zero days), Eggs (68.9\%), Stationery (56.8\%) and Tea (52.7\%). Rice (9.0\%) and Edible Oil (15.0\%) are much denser. Friday average observed sales are approximately 49\% higher than the mean of the other weekdays, supporting explicit day-of-week features.
+
+Zero recorded sales are not proof of zero latent demand. They may reflect genuine absence of demand, an unavailable item, assortment changes, or a stockout that censored sales. The supplied daily panel does not contain a verified daily stock-availability history; therefore the model forecasts \emph{observed sales}, not uncensored customer demand.
+
+\begin{table}[htbp]\centering\small
+\caption{Selected category-level zero-observed-sales rates in the full daily panel.}
+\begin{tabular}{lr}\toprule
+Category & Zero-sales days (\%)\\\midrule
+Baby Care & 78.2\\
+Eggs & 68.9\\
+Stationery & 56.8\\
+Tea & 52.7\\
+Rice & 9.0\\
+Edible Oil & 15.0\\\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Daily Model Redesign and Rolling-Origin Results}
+
+A history-rich global LightGBM model was trained with 75 lag, rolling, intermittency, calendar, and lagged cross-series features. Its L1 objective directly targets absolute error, whereas the earlier smaller-feature L2 model minimizes squared error. The same chronological design was used in three rolling folds. The model is not allowed to use same-day or future sales as predictors.
+
+\begin{table}[htbp]\centering\small
+\caption{Daily shop--category WAPE on three rolling-origin test periods. Lower is better.}
+\begin{tabular}{lrrr}\toprule
+Test period & Original-feature LightGBM L2 & History-rich LightGBM L1\\\midrule
+2025 Q1 & 79.33 & 74.50\\
+2025 Q2 & 80.12 & 72.39\\
+2025 Q3 & 83.90 & 76.50\\
+Mean across folds & 81.12 & \textbf{74.46}\\\bottomrule
+\end{tabular}
+\end{table}
+
+The history-rich L1 specification improves mean daily WAPE by 6.65 percentage points (approximately 8.2\% relative to the earlier model). However, it underpredicts total volume by 32.5\% across the combined three-fold test predictions. This is a critical trade-off: the L1 model reduces absolute error but behaves like a conditional-median estimator in a zero-heavy, skewed target. It should not be used alone as an inventory order-quantity estimate. A mean-oriented Tweedie candidate is therefore also evaluated for decision planning.
+
+The new model's aggregation-level audit gives network/day WAPE 32.80\%, shop/day 39.63\%, category/day 33.96\%, and shop--category/day 74.35\%. These are the \emph{same daily L1 predictions} summed before calculating errors. The strong negative volume bias means aggregation does not remove the error in this model. In an earlier, separately refitted October--December 2025 diagnostic, the previous LightGBM produced 6.02\% network/day WAPE, 31.43\% shop/day, 16.55\% category/day, and 83.98\% shop--category/day WAPE. That earlier test period had already been inspected and is exploratory; it must not be combined with the new rolling-fold results or treated as a pristine final holdout.
+
+\begin{figure}[htbp]\centering
+\IfFileExists{Figures/rq1_daily_model_rolling_folds.png}{\includegraphics[width=0.88\textwidth]{Figures/rq1_daily_model_rolling_folds.png}}{\fbox{\parbox{0.82\textwidth}{\centering Add the measured PNG \texttt{Figures/rq1\_daily\_model\_rolling\_folds.png}.}}}
+\caption{Daily shop--category WAPE across the three rolling-origin test folds.}
+\end{figure}
+
+\begin{figure}[htbp]\centering
+\IfFileExists{Figures/rq1_daily_aggregation_levels.png}{\includegraphics[width=0.88\textwidth]{Figures/rq1_daily_aggregation_levels.png}}{\fbox{\parbox{0.82\textwidth}{\centering Add the measured PNG \texttt{Figures/rq1\_daily\_aggregation\_levels.png}.}}}
+\caption{Daily history-rich L1 model evaluated at four decision granularities using the same predictions.}
+\end{figure}
+
+\subsection{Feature Ablation: Historical Commercial Variables}
+
+Transaction lines were joined to orders and products to derive lagged realized price, unit cost, discount rate, gross-margin rate, phone-order share, discounted-quantity share and SKU-mix summaries. Only past-observed summaries were supplied to the model; same-day transaction values were excluded. Adding these 19 historical commercial features did not improve the first two daily folds:
+
+\begin{table}[htbp]\centering\small
+\caption{Daily WAPE feature ablation. Commercial variables are lagged and do not include future-known promotion plans.}
+\begin{tabular}{lrr}\toprule
+Fold & History-only L1 & History plus commercial L1\\\midrule
+2025 Q1 & 74.50 & 74.52\\
+2025 Q2 & 72.39 & 72.47\\\bottomrule
+\end{tabular}
+\end{table}
+
+The added commercial features are therefore excluded from the selected primary daily model. This is a negative but useful finding for the supplied sample; it does not establish that known future promotions, planned prices, or external market context are irrelevant.
+
+\subsection{Direct 7-, 14-, and 28-Day Demand Forecasts}
+
+Daily shop--category demand is sparse, but inventory decisions usually depend on demand over a supplier lead time or review period. Separate direct models were therefore trained to predict the cumulative observed demand in the next 7, 14, or 28 days. Origins are spaced by the corresponding horizon, so target windows do not overlap within a horizon. Each prediction uses up to 84 days of preceding demand, zero-rate and positive-size summaries, calendar variables, and lagged shop/category/network context. The target is the sum of the next \(h\) days; it is not obtained by recursively adding one-day predictions.
+
+\begin{table}[htbp]\centering\small
+\caption{Direct multi-horizon model comparison pooled across three rolling-origin test folds.}
+\begin{tabular}{lrrrrrr}\toprule
+Horizon & Test origins & Zero target (\%) & Four-block baseline WAPE & L1 WAPE & Tweedie WAPE & Tweedie bias (\%)\\\midrule
+7 days & 19,968 & 2.53 & 38.62 & 33.41 & 33.62 & -0.78\\
+14 days & 9,728 & 0.47 & 28.90 & 25.19 & 25.19 & -2.55\\
+28 days & 4,608 & 0.04 & 21.91 & 19.39 & \textbf{19.08} & +0.06\\\bottomrule
+\end{tabular}
+\end{table}
+
+The direct horizon models outperform the four-block moving-average baseline at every horizon. A shop-cluster paired bootstrap gives the following WAPE differences (model minus baseline): 7-day, \(-5.00\) percentage points (95\% CI \([-5.32,-4.71]\)); 14-day, \(-3.71\) points (95\% CI \([-4.16,-3.26]\)); and 28-day, \(-2.83\) points (95\% CI \([-3.29,-2.35]\)). Bootstrap confidence intervals for the Tweedie WAPE are 33.62\% [32.22, 35.30] at 7 days, 25.19\% [24.21, 26.37] at 14 days, and 19.08\% [18.35, 19.94] at 28 days. The bootstrap resamples the 32 observed shops and does not convert them into a representative probability sample of all SMEs.
+
+Tweedie is the preferred inventory-planning candidate because its WAPE is close to the L1 candidate while its total-volume bias is lower, especially at 7 and 28 days. The L1 candidate remains the absolute-error benchmark. Horizon WAPEs must not be compared as if they were the same target: longer cumulative windows are less sparse and have a different operational meaning.
+
+\begin{figure}[htbp]\centering
+\IfFileExists{Figures/rq1_multi_horizon_model_comparison.png}{\includegraphics[width=0.88\textwidth]{Figures/rq1_multi_horizon_model_comparison.png}}{\fbox{\parbox{0.82\textwidth}{\centering Add the measured PNG \texttt{Figures/rq1\_multi\_horizon\_model\_comparison.png}.}}}
+\caption{Direct 7-, 14- and 28-day forecast comparison against a four-block historical baseline.}
+\end{figure}
+
+\begin{figure}[htbp]\centering
+\IfFileExists{Figures/rq1_zero_target_rate_by_horizon.png}{\includegraphics[width=0.82\textwidth]{Figures/rq1_zero_target_rate_by_horizon.png}}{\fbox{\parbox{0.82\textwidth}{\centering Add the measured PNG \texttt{Figures/rq1\_zero\_target\_rate\_by\_horizon.png}.}}}
+\caption{The proportion of zero targets falls as observed daily sales are aggregated into longer decision horizons.}
+\end{figure}
+
+\subsection{Category Error and SKU-Level Sparsity}
+
+The Tweedie 7-day WAPE remains highest for Baby Care (73.4\%) and Eggs (61.0\%), compared with Rice (25.0\%) and Edible Oil (28.4\%). At 28 days, Baby Care WAPE falls to 42.6\%, Eggs to 32.5\%, and Rice to 15.0\%. This supports horizon-specific planning but also shows that sparse categories remain harder than high-volume staples.
+
+The transaction-level data contain 13,271 observed shop--SKU pairs. Each pair has, on average, 52.7 selling days over the 1,096-day period; the mean implied daily zero rate is 95.2\% and the median is 96.4\%. This makes direct daily SKU modelling substantially more sparse than the shop--category panel. The current evidence supports category-level demand forecasting as the primary experiment. Allocating category forecasts to SKU quantities using historical SKU mix is a proposed extension and must be validated against a known assortment and stock ledger before it drives purchase orders.
+
+\begin{figure}[htbp]\centering
+\IfFileExists{Figures/rq1_category_wape_by_horizon.png}{\includegraphics[width=0.92\textwidth]{Figures/rq1_category_wape_by_horizon.png}}{\fbox{\parbox{0.82\textwidth}{\centering Add the measured PNG \texttt{Figures/rq1\_category\_wape\_by\_horizon.png}.}}}
+\caption{Category-level Tweedie WAPE across the three direct forecast horizons.}
+\end{figure}
+
+\subsection{Held-Out-Shop Transfer and Forecast Uncertainty}
+
+A four-fold held-out-shop test excluded eight shops from training in each fold and removed shop ID from the predictors. Historical demand from each held-out shop remained available as lagged context. The pooled 7-day WAPE was 33.35\% for L1 and 33.43\% for Tweedie. This is evidence of transfer to an unseen shop with historical sales available within the same grocery/FMCG setting; it is not cold-start prediction and not cross-sector generalisation.
+
+Quantile models were also evaluated to form 10th--90th percentile intervals. Their empirical coverage was approximately 76.3--78.7\% against a nominal 80\% target. A separate temporal calibration check on two folds still produced approximately 77.9--78.9\% coverage. The current intervals are therefore under-calibrated and must not be presented as guaranteed service-level bounds. A future inventory policy requires further calibration and cost-based selection of the target quantile.
+
+\begin{figure}[htbp]\centering
+\IfFileExists{Figures/rq1_unseen_shop_transfer.png}{\includegraphics[width=0.88\textwidth]{Figures/rq1_unseen_shop_transfer.png}}{\fbox{\parbox{0.82\textwidth}{\centering Add the measured PNG \texttt{Figures/rq1\_unseen\_shop\_transfer.png}.}}}
+\caption{7-day forecast transfer to held-out shops where historical sales are available.}
+\end{figure}
+
+\section{RQ2: Ninety-Day Customer Inactivity Prediction}
+
+The outcome is no qualifying purchase in the following 90 days, not marketing uplift. Training uses 40,499 eligible historical snapshots after exclusion of 10,483 overlapping-label training records; testing uses 21,164 later snapshots. Temporal embargo protects against overlap of label windows. Because the same customers can appear at multiple historical times, this tests later behaviour of represented customers, not an independent unseen-customer population.
+
+\begin{table}[htbp]\centering\small
+\caption{RQ2 previously executed inactivity risk-ranking comparison.}
+\begin{tabular}{lr}\toprule
+Model / score & PR-AUC\\\midrule
+Recency rule & 0.6528\\
+Logistic regression & 0.7346\\
+LightGBM classifier & \textbf{0.7405}\\\bottomrule
+\end{tabular}
+\end{table}
+
+The LightGBM--logistic difference is 0.0059, so its incremental superiority is modest. PR-AUC is not classification accuracy. A sampled global TreeSHAP diagnostic over 1,200 test snapshots found the largest mean absolute log-odds contributions for lifetime order count (1.088), orders in the preceding 180 days (0.447), tenure (0.357), and recency (0.277). These are associations within the trained model, not causal effects or evidence of human understanding. Prospective contact consent and measured incremental retention impact remain necessary.
+
+\begin{figure}[htbp]\centering
+\IfFileExists{Figures/rq2_shap_global.png}{\includegraphics[width=0.88\textwidth]{Figures/rq2_shap_global.png}}{\fbox{\parbox{0.81\textwidth}{\centering Add \texttt{Figures/rq2\_shap\_global.png} from the offline experiment package.}}}
+\caption{Aggregate LightGBM TreeSHAP attribution for RQ2; log-odds units, not causal importance.}
+\end{figure}
+
+\section{RQ3: Feasible Strategy and Cost--Service Analysis}
+
+The provided policy-comparison export contains 2,500 synthetic-oracle scenarios; it is not connected by verified order records to the new 7-, 14- or 28-day forecasts, actual lead-time demand, or observed stockout outcomes. Baseline simulated cost is BDT 2,227,690.07; trend simulated cost is BDT 2,208,289.47, a difference of BDT -19,400.60. Yet scenario lost units rise from 45 to 100. The trend policy is cheaper in 5.16\% of cases, equal in 94.80\%, and more expensive in 0.04\%.
+
+For 97.68\% of scenarios, initial stock is already at least as high as the specified synthetic future 30-day demand (mean initial stock 156.54 units, mean future demand 3.33). This test is dominated by low-action/high-stock cases and has weak policy discrimination. A credible next-stage RQ3 study requires a verified stock ledger, receipts, supplier lead time, cost definition, and comparable historical demand. The selected horizon-specific forecast should be replayed against the same historical information set and opening stock under both policies, reporting holding cost, shortage cost, lost units, waste and service level. No realised savings claim follows from the current synthetic oracle.
+
+\section{RQ4: Recommendation Evidence and Explainability}
+
+The 1,800 structured explanation records contain 199 REORDER and 1,601 NO\_ACTION outcomes, with reasons: 1,600 sufficient-stock, 199 below-reorder-point with budget available, and one budget-insufficient. All records carry a supplied evidence-complete flag. This is a schema-completeness observation, not independent evidence verification. Model feature attribution, a structured business constraint reason, and an SME owner's understanding are distinct validation targets. Human-participant response, decision correctness, completion time, and trust have not been measured.
+
+\section{Integrated Interpretation and Outstanding Validation}
+\begin{enumerate}
+\item \textbf{RQ1 + RQ3:} Daily shop--category prediction remains difficult and the L1 daily model is volume-biased. Direct 7-, 14- and 28-day forecasts are more suitable candidates for lead-time or review-period planning, but they must be connected to real stock, purchase and supplier data before policy impact can be claimed.
+\item \textbf{RQ2 + RQ4:} Risk scores can prioritise review; explanation, consent, human comprehension and later outcomes must be independently checked before intervention claims.
+\item \textbf{Software boundary:} Offline trained models are not deployed as verified versioned production inference APIs.
+\item \textbf{Generalisability:} The 32 provided shops are all grocery/FMCG; the held-out-shop test does not establish cross-sector transfer.
+\item \textbf{Integrity and ethics:} Internal transaction reconciliation is useful consistency evidence, but true merchant origin, lawful use and participant permission require independent evidence.
+\item \textbf{Publication validity:} Earlier held-out periods were inspected. Reserve a genuinely future or independently collected test before final journal claims. Retain negative findings and report the limitations of interval calibration.
+\end{enumerate}

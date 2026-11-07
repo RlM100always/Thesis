@@ -1,0 +1,136 @@
+{
+  "research": "B-SMART",
+  "recorded_date": "2026-11-05",
+  "confidentiality": "aggregate metrics only; raw shop/customer-level records are not published",
+  "provenance": "Researcher-provided exports; independent source merchant identity, consent and ethics approval not documented",
+  "internal_reconciliation": {
+    "sales_orders": 365447,
+    "sales_lines": 736683,
+    "rq1_panel": 561152,
+    "rq1_key_mismatches": 0,
+    "rq1_value_mismatches": 0,
+    "rq2_snapshots": 72146,
+    "rq2_label_mismatches": 0,
+    "rq2_feature_mismatches": 0,
+    "scope": "internal transaction-to-derived-data consistency only"
+  },
+  "rq1": {
+    "test": "2025-10-01 to 2025-12-31 (historical period reused, not pristine model selection)",
+    "n": 47104,
+    "zero_sales_fraction": 0.3982,
+    "original_and_refit_lightgbm": {
+      "wape": 0.8398432665,
+      "mae": 2.160175
+    },
+    "trailing_mean_7": {
+      "wape": 0.896975471,
+      "mae": 2.307126
+    },
+    "seasonal_naive": {
+      "wape": 1.104467757
+    },
+    "two_stage_hurdle": {
+      "wape": 0.8404157761,
+      "mae": 2.161648
+    },
+    "xgboost": {
+      "wape": 0.8456363996,
+      "mae": 2.175076
+    },
+    "hierarchy": {
+      "network_daily": {
+        "n": 92,
+        "wape": 0.0601899063
+      },
+      "shop_daily": {
+        "n": 2944,
+        "wape": 0.3142557239
+      },
+      "category_daily": {
+        "n": 1472,
+        "wape": 0.165472791
+      },
+      "shop_category_daily": {
+        "n": 47104,
+        "wape": 0.8398432665
+      }
+    },
+    "cancellation": {
+      "sum_leaf_absolute_error_units": 101752.89064,
+      "sum_daily_aggregated_absolute_error_units": 7292.42847,
+      "cancelled_fraction": 0.9283319773
+    },
+    "observed_zero_subset": {
+      "n": 18757,
+      "mean_prediction": 1.70820637,
+      "wape": null,
+      "why_null": "Observed demand denominator is zero; WAPE undefined"
+    },
+    "positive_subset": {
+      "wape": 0.5753861826
+    },
+    "temporal_folds": [
+      {
+        "test": "2025-03",
+        "lightgbm_wape": 0.7289052621,
+        "mean7_wape": 0.7829672936
+      },
+      {
+        "test": "2025-05",
+        "lightgbm_wape": 0.8183040996,
+        "mean7_wape": 0.8659871259
+      },
+      {
+        "test": "2025-07",
+        "lightgbm_wape": 0.858425668,
+        "mean7_wape": 0.8874806159
+      }
+    ],
+    "warning": "Same predictor aggregated at four levels; low network WAPE does not validate leaf-level inventory decisions. Zero sales may be stock-censored."
+  },
+  "rq2": {
+    "test_snapshots": 21164,
+    "train_after_embargo": 40499,
+    "removed_overlapping_training": 10483,
+    "lightgbm_pr_auc": 0.7405,
+    "logistic_pr_auc": 0.7346,
+    "recency_pr_auc": 0.6528,
+    "shap_test_sample": 1200,
+    "shap_scale": "raw-score/log-odds",
+    "mean_absolute_shap": {
+      "lifetime_orders": 1.088145,
+      "orders_last_180d": 0.447137,
+      "tenure_days": 0.357405,
+      "recency_days": 0.277105
+    },
+    "warning": "Attribution is associational and is not a human usability or causal retention effect."
+  },
+  "rq3": {
+    "scenario_count": 2500,
+    "synthetic_oracle": true,
+    "stock_meets_or_exceeds_scenario_demand_fraction": 0.9768,
+    "mean_stock_units": 156.5392,
+    "mean_oracle_demand_units": 3.332,
+    "baseline_order_cases": 130,
+    "trend_order_cases": 41,
+    "baseline_cost_bdt": 2227690.07,
+    "trend_cost_bdt": 2208289.47,
+    "baseline_lost_units": 45,
+    "trend_lost_units": 100,
+    "warning": "Scenario-only. No realised savings."
+  },
+  "rq4": {
+    "case_count": 1800,
+    "flagged_complete": 1800,
+    "reorder": 199,
+    "no_action": 1601,
+    "warning": "Supplied evidence-complete flag is not independent verification or a participant study."
+  },
+  "next_required": [
+    "Independent owner consent/provenance",
+    "Untouched forward external validation",
+    "Lead-time forecasting and real stockout-aware inventory replay",
+    "Consented SME owner comprehension/user study",
+    "Safe versioned model-serving integration"
+  ]
+}

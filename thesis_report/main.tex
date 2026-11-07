@@ -414,12 +414,12 @@
   urlcolor=blue,
   pdftitle={AI-Powered Business Analytics System for Performance Evaluation, Insight Extraction, and Strategy Optimization},
   pdfauthor={Md. Rakib Hossain and Shah Jamal Islam},
-  pdfsubject={Initial Thesis Progress Report, February 2026 - February 2027},
+  pdfsubject={Thesis Research Report: Evidence-Aware RQ Integration, February 2026 - February 2027},
   pdfkeywords={Bangladesh SMEs, business performance, constraint-aware strategy recommendations, demand forecasting, customer segmentation, explainable AI, B-SMART}
 }
 
 \newcommand{\system}{B-SMART}
-\newcommand{\reportdate}{2 November 2026}
+\newcommand{\reportdate}{5 November 2026}
 \newcommand{\projectperiod}{February 2026 - February 2027}
 \newcommand{\cmark}{\cellcolor{softgreen}\textbf{C}}
 \newcommand{\amark}{\cellcolor{softorange}\textbf{A}}
@@ -454,8 +454,8 @@
     Performance Evaluation, Insight Extraction, and\\[0.15cm]
     Strategy Optimization\par}
     \vspace{0.30cm}
-    {\large\bfseries Initial Thesis Progress Report\par}
-    {\normalsize Application Scope: Bangladeshi SME Businesses\par}
+    {\large\bfseries Revised Thesis Research Report\par}
+    {\normalsize Intended scope: Bangladeshi SMEs; empirical sample: Grocery/FMCG retail\par}
     \vspace{0.15cm}
     {\normalsize Project Period: \projectperiod\par}
     {\normalsize Status Date: \reportdate\par}
@@ -491,16 +491,17 @@
 \rhead{\thepage}
 
 \Declaration{
-  This initial report presents the foundation of the thesis project entitled
-\emph{AI-Powered Business Analytics System for Performance Evaluation,
-Insight Extraction, and Strategy Optimization}. We declare that the background
-study, problem formulation and proposed methodology presented here are the work
-of the authors under the supervision of Dr. Saifuddin Md. Tareeq. Ideas,
-methods, datasets and findings originating from prior work are cited. The
-implementation and experimental results are intentionally reserved for later
-stages of the thesis. The present conclusion is limited to the background study
-and proposed methodology. This report is current to \reportdate; the project
-remains in progress until February 2027.
+This revised research report develops the B-SMART evidence-aware business analytics
+framework for SMEs and presents the existing six-chapter thesis structure, the
+operational software implementation, and explicitly bounded offline empirical
+results for four research questions. We declare that this is our work under the
+supervision of Dr. Saifuddin Md. Tareeq. Ideas, methods and findings from other
+sources are cited. The reader should distinguish the executed forecasting and
+customer-risk tests from synthetic policy scenarios and explanation-case audits.
+The supplied merchant data have not been independently authenticated, and
+human-participant validation and production model-serving integration are not
+claimed as complete. This is a research revision current to \reportdate, with
+remaining research and publication verification documented in the Conclusions.
 
 \vspace{1.2cm}
 \begin{tabularx}{\textwidth}{X X}
@@ -520,14 +521,38 @@ remains in progress until February 2027.
 \begin{center}
   {\huge\textit{Abstract}\par}
 \end{center}
-% Intentionally left blank for the initial progress submission.
-% The abstract will be completed in the final thesis.
+Small and medium enterprises (SMEs) record sales, customer, stock and payment
+events, yet often lack a traceable process connecting analysis to feasible
+managerial decisions. This thesis develops B-SMART, an evidence-aware analytics
+and decision-support framework with an operational multi-tenant software
+prototype and offline modelling experiments. The supplied empirical retail
+panel contains 32 grocery/FMCG shops and 561,152 shop--category--day observations
+over three years; it is not a verified cross-sector SME sample. A history-rich
+daily LightGBM model reduced mean WAPE from 81.12\% to 74.46\% across three
+rolling-origin folds, but underpredicted aggregate volume by 32.5\%, showing
+that lower absolute error alone is insufficient for inventory decisions.
+Separate direct LightGBM Tweedie models forecast cumulative 7-, 14- and 28-day
+demand with WAPE of 33.62\%, 25.19\% and 19.08\%, respectively, compared with
+four-block moving-average baselines of 38.62\%, 28.90\% and 21.91\%.
+A four-fold held-out-shop test achieved 33.43\% WAPE for the 7-day forecast
+when historical sales from the held-out shops were available. In 90-day
+customer inactivity prediction, LightGBM PR-AUC was 0.7405 versus 0.7346 for
+logistic regression. Inventory policy scenarios showed lower simulated cost
+but increased lost units, and structured explanation records did not establish
+human usability. The operational software and offline models are not presented
+as a deployed, field-validated predictive service. Merchant provenance,
+consent, stockout history, external-sector validation and real-world impact
+remain to be established. The contribution is a decision-horizon-aware,
+auditable path from business data to prediction, constraints, explanation and
+owner decision, with explicit empirical limits.
 
 \clearpage
 
 \acknowledgements{
-  % Intentionally left blank for the initial progress submission.
-% The acknowledgement will be completed in the final thesis.
+The authors acknowledge the academic supervision of Dr. Saifuddin Md.
+Tareeq and the Department of Computer Science and Engineering at the
+University of Dhaka. This passage should be reviewed and approved by the
+authors before final submission.
 
 }
 \clearpage
@@ -831,10 +856,16 @@ The methodology has a prevention or evaluation step associated with each risk.
 
 \section{Organization of the Report}
 
-Chapter~\ref{chapter_backStudy} builds up the technical and contextual background, reviews the relevant literature, and identifies the research gap. Chapter~\ref{chapter_methodology} introduces the research design, data protocol, formal tasks, proposed framework, and evaluation plan. The Implementation and Experimental Results chapters are kept as placeholders in this preliminary report. The Conclusions chapter brings together only what can be concluded from the current background study and proposed methodology. Final conclusions based on empirical outcomes will be drawn from the evidence obtained during the implementation and experimental evaluation.
+Chapter~\ref{chapter_backStudy} develops the technical and contextual background, reviews the relevant literature, and identifies the research gap. Chapter~\ref{chapter_methodology} presents the research design, data protocol, formal tasks, forecasting strategy and evaluation plan. Chapter~\ref{chapter_implementation} documents the operational software and offline model pipeline. Chapter~\ref{chapter_experimentalResults} reports the daily and multi-horizon forecasting results, customer-inactivity results, policy scenarios and explanation audit. Chapter~\ref{chapter_conclusion} answers the research questions in proportion to the available evidence and identifies the remaining work required before journal submission.
 
 
 \cleardoublepage
+
+\section{How the Four Research Questions Form One Evidence Chain}
+The four research questions are maintained without changing their target definitions. RQ1 evaluates demand forecasting at the available retail decision unit; the supplied daily panel supports shop--category observations, while the intended branch--SKU decision still requires a validated SKU-level extension. The new RQ1 experiments compare daily predictions with direct 7-, 14- and 28-day cumulative-demand forecasts. RQ2 estimates customer inactivity risk at a temporally valid 90-day horizon. RQ3 tests a proposed reorder policy under declared scenario constraints, with a clear distinction between simulated savings and observed business outcomes. RQ4 audits whether action records include explicit reasons and constraints, while owner comprehension remains a separate human-evaluation requirement. Together they motivate an evidence-aware decision cycle: operational events, historical snapshot, prediction, constraints, accountable recommendation, owner response and later outcome.
+
+The RQ1 evidence shows why the decision horizon matters. Daily shop--category sales are sparse and difficult to forecast; the history-rich daily model improves WAPE but underpredicts aggregate volume. Direct Tweedie models achieve 33.62\%, 25.19\% and 19.08\% WAPE for 7-, 14- and 28-day cumulative demand, respectively, and a held-out-shop test supports transfer within the same grocery/FMCG setting when historical sales are available. These are different cumulative targets, not daily SKU accuracy. A defensible integrated system must match the forecast horizon to supplier lead time, validate at the actual decision unit, and abstain when stock, source or consent evidence is absent. The work does not yet establish end-to-end field business impact.
+
 \chapter{Background Study and Related Work}
 \label{chapter_backStudy}
 
@@ -1282,6 +1313,12 @@ O6 \\
 
 Accordingly, the final thesis should report the extent to which such local evidence is available and should distinguish clearly between gaps that are empirically closed, gaps that are only partially addressed, and gaps that remain open. The existence of a prototype, successful benchmark result, or external dataset should not be treated as evidence that a corresponding local research gap has been closed. Benchmark evidence may establish methodological or technical performance, whereas claims of local effectiveness require evidence from the intended operational context.
 
+
+\section{Synthesis: From Forecasting Skill to Accountable SME Actions}
+The literature on intermittent demand, hierarchical forecasting, data leakage, calibration and human-centred explainability suggests that model accuracy must be defined at the decision unit and evaluated alongside action feasibility and outcome quality. In multi-shop data, positive and negative forecast errors can cancel when sales are aggregated. A network-level total may therefore appear highly accurate even if the same predictions are unreliable for individual products and shops. Inactivity risk scores have a similar limitation: predictive association does not estimate whether contacting a customer will change future purchasing.
+
+The present thesis adds a reproducible four-level aggregation audit, a comparison with fixed-parameter two-stage and boosted-tree alternatives, and a clearly separated strategy and explanation evaluation. Crucially, the added models did not improve granular WAPE; this negative result is reported rather than suppressed. A new lead-time inventory replay and a consented human decision study remain necessary before attributing operational savings or better owner decisions to the combined framework. This is an evidence-aware integration design, not a claim to have discovered a new forecasting algorithm.
+
 \clearpage
 
 
@@ -1298,6 +1335,14 @@ differences in products, services, inventory, resource capacity and operating
 rules. Demand and reorder experiments apply to inventory-based firms; service
 firms require service-demand and capacity tasks. Customer-risk tasks require
 stable pseudonymous identifiers and adequate follow-up in either setting.
+
+The current empirical export, however, contains 32 shops all labelled grocery/FMCG.
+Consequently, cross-sector applicability is an intended system-design scope,
+not an empirical result. No claim of transfer to service, manufacturing,
+healthcare, or other SME sectors is made. The held-out-shop test reported in
+Chapter~\ref{chapter_experimentalResults} assesses transfer to a shop excluded
+from model fitting while its own historical sales remain available; it is not
+a zero-shot or cross-sector test.
 
 Sampling and reporting will retain sector and business identifiers. Results
 will be reported per business and per sector before aggregation. Pooled models
@@ -1393,11 +1438,16 @@ alter the already frozen final evaluation result.
 \label{fig:research_lifecycle}
 \end{figure}
 
-The unit of analysis differs according to the analytical task. For demand
-forecasting, the primary unit is a business--branch--SKU--day or
-business--branch--SKU--week observation, selected according to the density and
-reliability of the available data. Batch and expiry information is retained for
-inventory-related decisions even when demand itself is forecast at the SKU level.
+The unit of analysis differs according to the analytical task. The intended
+inventory decision unit is business--branch--SKU, but the current reliable daily
+panel is shop--category--day. The empirical RQ1 model therefore evaluates
+shop--category daily sales and direct cumulative demand over 7, 14 and 28 days.
+The supplied transaction-level SKU panel is much sparser: observed shop--SKU
+pairs have a mean daily zero rate of 95.2\%. A category forecast cannot be
+silently treated as an SKU forecast; SKU allocation by historical mix is a
+separate proposed extension requiring assortment and stock-availability
+validation. Batch and expiry information remains relevant to later inventory
+decisions.
 
 For customer-risk modelling, the analytical unit is a customer feature snapshot
 constructed at a declared historical cutoff. For strategy evaluation, the unit is
@@ -2319,6 +2369,42 @@ the available evidence volume and task structure.
 
 \end{itemize}
 
+
+\subsection{Empirical RQ1 Model Design and Multi-Horizon Protocol}
+
+The source audit establishes a complete 32-shop by 16-category daily panel over
+1,096 days, but 37.60\% of shop--category--day observations have zero recorded
+sales. A series-level average-demand-interval and positive-demand-CV-squared
+diagnostic classifies most series as lumpy or erratic. The model therefore uses
+a pooled global panel specification with shop and category identity, lagged
+demand, trailing dispersion and zero-rate features, calendar terms, and
+lagged shop/category/network totals. All target-derived predictors are shifted
+so that a prediction for date \(t\) uses only information available before \(t\).
+
+Daily absolute-error optimisation and expected-demand estimation are treated as
+different objectives. The L1 model is compared on WAPE, but its volume bias is
+reported explicitly. For replenishment, separate direct Tweedie and L1 models
+predict cumulative demand over \(h=7,14,28\) days. Forecast origins are spaced
+by \(h\) days and data splits are defined by target-end date, preventing a
+training label from crossing into a validation or test window. Each horizon is
+compared with a repeat-last-horizon baseline and the mean of the preceding four
+horizon blocks.
+
+The three rolling-origin tests cover 2025 Q1, Q2 and Q3. The previously inspected
+October--December 2025 period is not used to choose the new model. A separate
+four-fold held-out-shop test removes shop ID from the predictors but allows the
+held-out shop's historical sales to form lagged context. This tests transfer
+when history exists, not cold-start prediction. Historical price, cost,
+discount, margin, channel and SKU-mix features are included only in an ablation;
+they do not improve the first two daily folds. Quantile interval coverage is
+reported as a separate reliability check and is not treated as a service-level
+guarantee when empirical coverage is below its nominal level.
+
+For RQ3, the forecast horizon must match the supplier lead time or inventory
+review period. A direct 7-, 14- or 28-day demand estimate is only a candidate
+input to the policy; it does not establish a feasible reorder quantity without
+verified current stock, incoming orders, pack size, budget, lead time, and
+holding/shortage costs.
 
 \subsection{Model Eligibility and Sector-Aware SME Adaptation}
 
@@ -3284,45 +3370,25 @@ reported only when the corresponding empirical evidence is available.
 
 \clearpage
 
+\input{Chapters/evidence_aware_methodology_2026_11_05.tex}
+\clearpage
+
 \chapter{Implementation}
 \label{chapter_implementation}
 
-% This chapter is intentionally reserved for the second-semester report.
+\input{Chapters/evidence_aware_implementation_2026_11_05.tex}
 
 \cleardoublepage
 \chapter{Experimental Results}
 \label{chapter_experimentalResults}
 
-% This chapter is intentionally reserved until the proposed experiments are run.
+\input{Chapters/evidence_aware_results_2026_11_05.tex}
 
 \cleardoublepage
 \chapter{Conclusions}
 \label{chapter_conclusion}
-This progress report establishes a research foundation for an AI-powered business analytics framework for Bangladeshi SMEs across sectors. A shared operational core supports performance evaluation, insight extraction and strategy recommendations, with sector-specific extensions and business-specific constraints. Implementation and empirical evaluation remain future work; broad intended coverage is not evidence of effectiveness in every sector.
+\input{Chapters/evidence_aware_conclusion_2026_11_05.tex}
 
-The central issue is not simply the absence of a prediction model. Rather, the critical gap is the lack of a trustworthy link between operational records, temporally valid analytics, and feasible owner decisions. The value of a forecast is seriously reduced when its data source is unclear, future information is included in the test data, or the resulting recommendation fails to account for practical factors such as cash availability, stock levels, supplier lead time, or purchasing constraints. Similarly, a probability of customer risk is incomplete as a decision-support output if it is uncalibrated or if the proposed customer contact does not consider consent.
-
-Four main conclusions can be drawn from the existing evidence. First, Bangladesh-specific studies highlight design considerations that are essential for workflow fit, perceived value, cost, and local technology adoption \cite{hoque2016ict,shahadat2023digital,hazra2021mfs}. Second, retail inventory research identifies several characteristics that need to be explicitly addressed, including intermittency, hierarchy, causality, and interactions between different inventory items \cite{fildes2022retail,syntetos2005intermittent,hyndman2011hierarchical,syntetos2010stock}. Third, leakage control, imbalance-aware evaluation, probability calibration, and understandable evidence represent important scientific and disciplinary safeguards \cite{kaufman2012leakage,saito2015pr,niculescu2005calibration,lundberg2017shap}. Fourth, these principles have not yet been integrated and evaluated together within a bounded, Bangladesh-oriented SME workflow. This constitutes the central research gap addressed by this study.
-
-The proposed framework, \system{}, responds to this gap through a traceable sequence that connects multi-business operational evidence, historical data snapshots, model comparison, uncertainty estimation, explanation, shop-specific constraint-aware action ranking, owner response, and subsequent outcome monitoring. The baseline, eligible sector-aware pooled model and business-adapted model are compared on common chronological evaluation periods; the deployed choice may remain the baseline when additional complexity provides no stable improvement.
-
-The framework incorporates practical constraints that can affect whether an inventory action is feasible, including purchasing budget, available stock, pack-size or minimum-order requirements, supplier lead time, product expiry, storage conditions, and customer consent. The intended contribution is therefore a governed decision-support sequence and its empirical assessment, rather than the introduction of a new classification algorithm or the assumption that a more complex model will always produce better business outcomes.
-
-The framework is also designed to support continuous operation. Current data and recommendations can be refreshed as the software is used in the business, while model drift and decision outcomes are monitored over time. Continuous operation does not mean uncontrolled retraining after every transaction. Any replacement model should be versioned and evaluated chronologically against both the currently deployed model and the established baseline before it is promoted to production.
-
-The artifact supports business performance evaluation, insight extraction
-and feasible strategy recommendations. Owners retain authority over actions.
-Sector-specific requirements and owner constraints are assessed before an
-analytical task is enabled; unsupported tasks return an explicit evidence gap.
-
-The study provides a testable step toward the next stage of research, particularly in relation to ethics and multi-business partner-data readiness. The next stage should address sector-specific schema and constraint inputs, model transparency and monitoring, model freezing, held-out-business evaluation, untouched-period evaluation, usability tasks, and decision-impact analysis. These areas are necessary for determining whether the system provides measurable practical value in real business workflows.
-
-At this stage, however, the study does not yet establish overall system effectiveness. Final claims should therefore remain proportional to the observed evidence. For example, when the evaluation shows no meaningful difference between models or decision-support conditions, it would be inappropriate to claim that the additional complexity or explanations improved decision-making. Such findings should instead be reported as evidence about the limits of the proposed approach and used to refine the corresponding research questions.
-
-
-\cleardoublepage
-
-\addtocontents{toc}{\vspace{1em}}
 \backmatter
 \label{Bibliography}
 \lhead{\emph{Bibliography}}
