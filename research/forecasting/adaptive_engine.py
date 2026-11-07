@@ -15,13 +15,11 @@ import platform
 import sys
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Callable
 
 import numpy as np
 import pandas as pd
 from sklearn.compose import ColumnTransformer
 from sklearn.ensemble import HistGradientBoostingRegressor
-from sklearn.impute import SimpleImputer
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OrdinalEncoder
 from sklearn.metrics import mean_absolute_error, mean_squared_error
@@ -274,17 +272,23 @@ def _fit_predict(model_name: str, train: pd.DataFrame, predict_rows: pd.DataFram
     return np.maximum(0.0, np.asarray(pred, dtype=float))
 
 
-def _metric_row(actual: np.ndarray, predicted: np.ndarray, scale: float) -> dict:
+def _metric_row(actual: np.ndarray, predicted: np.ndarray, scale: float | np.ndarray) -> dict:
     actual = np.asarray(actual, dtype=float)
     predicted = np.asarray(predicted, dtype=float)
     abs_error = np.abs(actual - predicted)
+    scales = np.asarray(scale, dtype=float)
+    if scales.ndim == 0:
+        scales = np.full(len(abs_error), float(scales))
+    if len(scales) != len(abs_error):
+        raise ValueError("MASE scale must be scalar or one value per forecast series.")
+    mase = float(np.mean(abs_error / np.where(scales > 0, scales, np.nan))) if len(abs_error) else None
     denom = float(np.abs(actual).sum())
     return {
         "n": int(len(actual)),
         "wape": float(abs_error.sum() / denom) if denom > 0 else None,
         "mae": float(mean_absolute_error(actual, predicted)) if len(actual) else None,
         "rmse": float(np.sqrt(mean_squared_error(actual, predicted))) if len(actual) else None,
-        "mase": float(abs_error.mean() / scale) if scale > 0 and len(actual) else None,
+        "mase": mase,
         "bias": float((predicted - actual).sum() / denom) if denom > 0 else None,
         "actual_total": float(actual.sum()),
         "forecast_total": float(predicted.sum())
@@ -340,8 +344,13 @@ def run_experiment(panel: pd.DataFrame, horizons=HORIZONS, folds=3,
                 continue
             pred_frame = pd.DataFrame(current_rows)
             actual_arr = np.asarray(actuals)
-            scale = float(np.mean(np.abs(np.diff(panel.loc[panel["date"] < origin, "demand"].to_numpy(dtype=float)))))
-            scale = scale if np.isfinite(scale) and scale > 0 else 1.0
+            # Scale each shop-category series independently. For an H-day
+            # cumulative target, scale the one-day naive error by H.
+            scales = []
+            for hist_values in histories:
+                one_day_scale = float(np.mean(np.abs(np.diff(hist_values)))) if len(hist_values) > 1 else 0.0
+                scales.append(one_day_scale * horizon if np.isfinite(one_day_scale) and one_day_scale > 0 else 1.0)
+            scales = np.asarray(scales, dtype=float)
             for name in candidates:
                 try:
                     if name == "seasonal_naive_7":
@@ -366,7 +375,7 @@ def run_experiment(panel: pd.DataFrame, horizons=HORIZONS, folds=3,
                             "category_id": pred_frame.iloc[idx]["category_id"],
                             "model": name, "actual": float(actual), "forecast": float(forecast)
                         })
-                    metrics = _metric_row(actual_arr, forecasts, scale)
+                    metrics = _metric_row(actual_arr, forecasts, scales)
                     summaries.append({"horizon": horizon, "origin": origin.date().isoformat(),
                                       "model": name, "status": "ok", **metrics})
                 except ImportError as exc:
