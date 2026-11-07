@@ -58,6 +58,10 @@ export default function D1MerchantCenter(){
   const [assistantBusy,setAssistantBusy]=useState(false);
   const [assistantError,setAssistantError]=useState("");
   const [assistantAiEnabled,setAssistantAiEnabled]=useState(false);
+  const emptyCoupon={code:"",discount_type:"percent",discount_value:"10",min_order_bdt:"0",max_discount_bdt:"",usage_limit:"",per_customer_limit:"1",starts_at:"",ends_at:""};
+  const [coupons,setCoupons]=useState([]);
+  const [couponForm,setCouponForm]=useState(emptyCoupon);
+  const [couponEditId,setCouponEditId]=useState("");
   
   useEffect(()=>{
     const hash=window.location.hash||"";
@@ -83,6 +87,7 @@ export default function D1MerchantCenter(){
     if(!token||!store)return;
     if(view==="returns")call("/api/merchant/returns",{token}).then(x=>setReturnRequests(x.returns||[])).catch(e=>setError(e.message));
     if(view==="chat")call("/api/merchant/chat",{token}).then(x=>setChatMessages(x.messages||[])).catch(e=>setError(e.message));
+    if(view==="coupons")call("/api/merchant/coupons",{token}).then(x=>setCoupons(x.coupons||[])).catch(e=>setError(e.message));
   },[view,token,store?.id]);
   useEffect(()=>{
     if(view!=="chat"||!token||!activeCustomerId){setThreadMessages([]);return;}
@@ -149,6 +154,38 @@ export default function D1MerchantCenter(){
     finally{setAssistantBusy(false);}
   }
   function askOwnerAssistant(e){e.preventDefault();sendOwnerQuestion(assistantQuestion);}
+  function couponDateValue(value){
+    if(!value)return "";
+    const d=new Date(value);if(Number.isNaN(d.getTime()))return "";
+    return new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,16);
+  }
+  async function saveCoupon(e){
+    e.preventDefault();
+    await run(async()=>{
+      const payload={...couponForm,code:couponForm.code.toUpperCase(),discount_value:Number(couponForm.discount_value),min_order_bdt:Number(couponForm.min_order_bdt||0),
+        max_discount_bdt:couponForm.max_discount_bdt===""?null:Number(couponForm.max_discount_bdt),
+        usage_limit:couponForm.usage_limit===""?null:Number(couponForm.usage_limit),
+        per_customer_limit:couponForm.per_customer_limit===""?null:Number(couponForm.per_customer_limit),
+        starts_at:couponForm.starts_at?new Date(couponForm.starts_at).toISOString():null,
+        ends_at:couponForm.ends_at?new Date(couponForm.ends_at).toISOString():null};
+      await call(couponEditId?"/api/merchant/coupons/"+encodeURIComponent(couponEditId):"/api/merchant/coupons",{method:couponEditId?"PATCH":"POST",token,body:payload});
+      const result=await call("/api/merchant/coupons",{token});setCoupons(result.coupons||[]);
+      setCouponEditId("");setCouponForm(emptyCoupon);
+    },couponEditId?"কুপন আপডেট হয়েছে।":"নতুন কুপন তৈরি হয়েছে।");
+  }
+  async function deactivateCoupon(id){
+    await run(async()=>{
+      await call("/api/merchant/coupons/"+encodeURIComponent(id),{method:"DELETE",token});
+      const result=await call("/api/merchant/coupons",{token});setCoupons(result.coupons||[]);
+    },"কুপন নিষ্ক্রিয় করা হয়েছে।");
+  }
+  function editCoupon(coupon){
+    setCouponEditId(coupon.id);
+    setCouponForm({code:coupon.code,discount_type:coupon.discount_type,discount_value:String(coupon.discount_value),min_order_bdt:String(coupon.min_order_bdt||0),
+      max_discount_bdt:coupon.max_discount_bdt==null?"":String(coupon.max_discount_bdt),usage_limit:coupon.usage_limit==null?"":String(coupon.usage_limit),
+      per_customer_limit:coupon.per_customer_limit==null?"":String(coupon.per_customer_limit),starts_at:couponDateValue(coupon.starts_at),ends_at:couponDateValue(coupon.ends_at)});
+    setView("coupons");
+  }
 
   async function logout(){
     try{if(token)await call("/api/merchant/logout",{method:"POST",token});}catch{/* local logout even offline */}
@@ -186,13 +223,36 @@ export default function D1MerchantCenter(){
         <button disabled={busy} type="submit" className="dm-btn">দোকান তৈরি করুন</button></form>
       </section>:
       <>
-        <div className="dm-tabs">{[["dashboard","সারসংক্ষেপ"],["assistant","AI সহকারী"],["products","পণ্য ও মজুত"],["pos",store.is_demo?"ডেমো বিক্রি":"ক্যাশ বিক্রি"],["orders","অর্ডার"],["returns","ফেরত"],["chat","ক্রেতার বার্তা"],["store","দোকানের সেটিংস"]].map(([k,l])=><button key={k} onClick={()=>setView(k)} className={view===k?"dm-active":""}>{l}</button>)}</div>
+        <div className="dm-tabs">{[["dashboard","সারসংক্ষেপ"],["assistant","AI সহকারী"],["products","পণ্য ও মজুত"],["coupons","কুপন"],["pos",store.is_demo?"ডেমো বিক্রি":"ক্যাশ বিক্রি"],["orders","অর্ডার"],["returns","ফেরত"],["chat","ক্রেতার বার্তা"],["store","দোকানের সেটিংস"]].map(([k,l])=><button key={k} onClick={()=>setView(k)} className={view===k?"dm-active":""}>{l}</button>)}</div>
         {view==="dashboard"&&<div className="dm-stack">
           <div className="dm-stats">{store.is_demo?<><Metric title="ডেমো অর্ডার" value={Number(stats.orders||0).toLocaleString("en-BD")}/><Metric title="বাতিল হয়নি এমন নমুনা বিক্রি" value={fmt(stats.placed_total_bdt)} tip="বাস্তবে কোনো টাকা আদায় হয়নি"/><Metric title="প্রকাশিত পণ্য" value={totalProducts}/><Metric title="মজুতের পরিমাণ" value={Number(stats.inventory_units||0)}/><Metric title="কম স্টক" value={Number(stats.low_stock_count||0)+"টি"}/></>:<><Metric title="অর্ডার" value={Number(stats.orders||0).toLocaleString("en-BD")}/><Metric title="COD অর্ডারের মোট মূল্য" value={fmt(stats.placed_total_bdt)} tip="এটি অর্ডারের মূল্য; আদায়কৃত টাকা নয়"/><Metric title="COD আদায় নিশ্চিত" value={fmt(stats.cod_paid_total_bdt)}/><Metric title="COD টাকা বাকি" value={fmt(stats.cod_pending_total_bdt)}/><Metric title="প্রকাশিত পণ্য" value={totalProducts}/><Metric title="মজুতের পরিমাণ" value={Number(stats.inventory_units||0)}/><Metric title="কম স্টক" value={Number(stats.low_stock_count||0)+"টি"}/></>}</div>
           {lowStockProducts.length>0&&<div className="dm-panel" style={{borderColor:"#e5a23b"}}><h2>কম স্টকের সতর্কতা ({lowStockProducts.length})</h2><p className="dm-muted">নির্ধারিত reorder level-এ বা তার নিচে থাকা পণ্যগুলো দ্রুত পুনরায় সংগ্রহ করুন।</p><div className="dm-scroll"><table><thead><tr><th>পণ্য</th><th>বর্তমান মজুত</th><th>সতর্কতার সীমা</th></tr></thead><tbody>{lowStockProducts.map(p=><tr key={p.id}><td>{p.name}</td><td>{p.stock_qty}</td><td>{p.reorder_level??5}</td></tr>)}</tbody></table></div><button className="dm-secondary" onClick={()=>setView("products")}>মজুত পরিচালনা করুন</button></div>}<div className="dm-panel"><h2>{store.name}</h2><p className="dm-muted">{store.area} · {store.category}</p><p>{store.is_demo?"ডেমো দোকান প্রকাশিত":"দোকান প্রকাশিত"}: <strong>{store.is_active?"হ্যাঁ":"না"}</strong></p><p className="dm-muted">দোকানের লিংক: <code>/#/store/{store.slug}</code></p>
           <button className="dm-secondary" onClick={()=>setView("store")}>দোকানের তথ্য সম্পাদনা করুন</button></div>
           <div className="dm-panel"><h2>মজুত সংশোধনের ইতিহাস</h2>{data.stock_adjustments.length===0?<Empty>এখনো মজুত সংশোধন করা হয়নি।</Empty>:
           <div className="dm-scroll"><table><thead><tr><th>সময়</th><th>পণ্য</th><th>আগের পরিমাণ</th><th>নতুন পরিমাণ</th><th>Δ</th></tr></thead><tbody>{data.stock_adjustments.map((a,i)=><tr key={i}><td>{a.created_at}</td><td>{products.find(p=>p.id===a.product_id)?.name||a.product_id}</td><td>{a.old_quantity}</td><td>{a.new_quantity}</td><td>{a.delta}</td></tr>)}</tbody></table></div>}</div>
+        </div>}
+        {view==="coupons"&&<div className="dm-stack">
+          <section className="dm-panel">
+            <h2>{couponEditId?"কুপন সম্পাদনা":"নতুন কুপন তৈরি"}</h2>
+            <form className="dm-fields" onSubmit={saveCoupon}>
+              <Field label="কুপন কোড"><input style={input} required minLength={3} maxLength={32} pattern="[A-Za-z0-9_-]+" value={couponForm.code} onChange={e=>setCouponForm(v=>({...v,code:e.target.value.toUpperCase()}))}/></Field>
+              <Field label="ছাড়ের ধরন"><select style={input} value={couponForm.discount_type} onChange={e=>setCouponForm(v=>({...v,discount_type:e.target.value}))}><option value="percent">শতকরা ছাড় (%)</option><option value="fixed">নির্দিষ্ট টাকা (৳)</option></select></Field>
+              <Field label="ছাড়ের পরিমাণ"><input style={input} type="number" min="1" max={couponForm.discount_type==="percent"?100:10000000} required value={couponForm.discount_value} onChange={e=>setCouponForm(v=>({...v,discount_value:e.target.value}))}/></Field>
+              <Field label="ন্যূনতম অর্ডার (৳)"><input style={input} type="number" min="0" value={couponForm.min_order_bdt} onChange={e=>setCouponForm(v=>({...v,min_order_bdt:e.target.value}))}/></Field>
+              <Field label="সর্বোচ্চ ছাড় (৳, ঐচ্ছিক)"><input style={input} type="number" min="1" value={couponForm.max_discount_bdt} onChange={e=>setCouponForm(v=>({...v,max_discount_bdt:e.target.value}))}/></Field>
+              <Field label="মোট ব্যবহারের সীমা (ঐচ্ছিক)"><input style={input} type="number" min="1" value={couponForm.usage_limit} onChange={e=>setCouponForm(v=>({...v,usage_limit:e.target.value}))}/></Field>
+              <Field label="প্রতি ক্রেতার ব্যবহারের সীমা"><input style={input} type="number" min="1" value={couponForm.per_customer_limit} onChange={e=>setCouponForm(v=>({...v,per_customer_limit:e.target.value}))}/></Field>
+              <Field label="শুরুর সময় (ঐচ্ছিক)"><input style={input} type="datetime-local" value={couponForm.starts_at} onChange={e=>setCouponForm(v=>({...v,starts_at:e.target.value}))}/></Field>
+              <Field label="শেষ সময় (ঐচ্ছিক)"><input style={input} type="datetime-local" value={couponForm.ends_at} onChange={e=>setCouponForm(v=>({...v,ends_at:e.target.value}))}/></Field>
+              <button className="dm-btn" disabled={busy} type="submit">{couponEditId?"পরিবর্তন সংরক্ষণ":"কুপন তৈরি করুন"}</button>
+              {couponEditId&&<button type="button" className="dm-secondary" onClick={()=>{setCouponEditId("");setCouponForm(emptyCoupon);}}>সম্পাদনা বাতিল</button>}
+            </form>
+          </section>
+          <section className="dm-panel"><h2>দোকানের কুপন ({coupons.length})</h2>
+            {coupons.length===0?<p className="dm-muted">এখনো কোনো কুপন তৈরি করা হয়নি।</p>:<div className="dm-scroll"><table><thead><tr><th>কোড</th><th>ছাড়</th><th>ব্যবহার</th><th>অবস্থা</th><th>কাজ</th></tr></thead><tbody>
+              {coupons.map(c=><tr key={c.id}><td><b>{c.code}</b><small>{c.min_order_bdt?(" · ন্যূনতম ৳"+c.min_order_bdt):""}</small></td><td>{c.discount_type==="percent"?c.discount_value+"%":"৳"+c.discount_value}</td><td>{c.usage_count||0}{c.usage_limit?"/"+c.usage_limit:""}</td><td>{c.is_active?"সক্রিয়":"নিষ্ক্রিয়"}</td><td><button type="button" className="dm-secondary" onClick={()=>editCoupon(c)}>সম্পাদনা</button> <button type="button" className="dm-secondary" disabled={!c.is_active} onClick={()=>deactivateCoupon(c.id)}>বন্ধ করুন</button></td></tr>)}
+            </tbody></table></div>}
+          </section>
         </div>}
         {view==="assistant"&&<div className="dm-stack">
           <section className="dm-panel">
