@@ -62,7 +62,7 @@ node --check --input-type=module < cloudflare/platform-admin-routes.js
 
 - Keep the existing D1 database ID and `DB` binding.
 - Never run historical migrations blindly against the live database. The earlier migrations were manually applied and may not be registered in Wrangler's migration ledger.
-- For owner email security, inspect the live `merchant_accounts` columns and `commerce_meta.schema_version`; only apply migration 0009 if those columns are absent. For assistants/reorder alerts, verify `commerce_products.reorder_level` and `commerce_ai_rate_limits` before applying migration 0010; verify `commerce_orders.coupon_code`, `commerce_coupons`, `commerce_coupon_redemptions` and coupon triggers before applying migration 0011. The currently recorded live version is 8, and migrations 0009–0011 are branch-only until approved.
+- For owner email security, inspect the live `merchant_accounts` columns and `commerce_meta.schema_version`; only apply migration 0009 if those columns are absent. For assistants/reorder alerts, verify `commerce_products.reorder_level` and `commerce_ai_rate_limits` before applying migration 0010; verify `commerce_orders.coupon_code`, `commerce_coupons`, `commerce_coupon_redemptions` and coupon triggers before applying migration 0011; verify `merchant_accounts.is_active` and `merchant_accounts.role` before applying migration 0012. The currently recorded live version is 8, and migrations 0009–0012 are branch-only until approved.
 - Apply only reviewed additive SQL that is confirmed missing from the live schema.
 - Never switch SQLAlchemy to a D1 database ID. D1 is accessed through the Worker binding.
 - Do not delete or reset existing stores, customers, orders, inventory, cashbook or audit records to make a test pass.
