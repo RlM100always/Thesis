@@ -76,3 +76,8 @@ def test_rolling_origins_are_time_ordered():
     origins = rolling_origins(panel, horizon=7, folds=3, min_history=56)
     assert len(origins) == 3
     assert origins == sorted(origins)
+
+
+def test_mase_uses_series_specific_scales():
+    metrics = _metric_row(np.array([10.0, 10.0]), np.array([12.0, 14.0]), np.array([2.0, 4.0]))
+    assert metrics["mase"] == pytest.approx(1.0)
