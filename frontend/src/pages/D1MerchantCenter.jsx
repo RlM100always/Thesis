@@ -114,7 +114,7 @@ export default function D1MerchantCenter(){
       <section className="dm-heading"><div><p className="dm-overline">Cloudflare D1 · {store?.is_demo===false?"COD দোকান পরিচালনা":"পরীক্ষামূলক দোকান পরিচালনা"}</p><h1>স্টোর ম্যানেজমেন্ট</h1>
       <p>{store?.is_demo===false?"পণ্য, মজুত, COD অর্ডার এবং হাতে পাওয়া পেমেন্টের তথ্য পরিচালনা করুন।":"নিজের পরীক্ষামূলক দোকান, পণ্য, মজুত ও অর্ডারের তথ্য এক জায়গা থেকে পরিচালনা করুন।"}</p></div>
       {store&&<a className="dm-visit" href={"#/store/"+store.slug}>দোকানের প্রিভিউ দেখুন ↗</a>}</section>
-      <div className="dm-warning" role="note">{store?.is_demo ? "এটি একটি পরীক্ষামূলক দোকান। এখানে বাস্তব অর্ডার বা টাকা গ্রহণ করা হয় না।" : !store?.is_active ? "আপনার দোকানটি যাচাইয়ের অপেক্ষায় আছে। পণ্য ও মজুত প্রস্তুত করুন; অনুমোদনের পর দোকানটি প্রকাশিত হবে।" : "আপনার দোকানে Cash on Delivery চালু। অর্ডার, মজুত ও পেমেন্টের অবস্থা Cloudflare D1-তে সংরক্ষিত হয়।"}</div>
+      {store&&<div className="dm-warning" role="note">{store.is_demo ? "এটি একটি পরীক্ষামূলক দোকান। এখানে বাস্তব অর্ডার বা টাকা গ্রহণ করা হয় না।" : !store.is_active ? "আপনার দোকানটি যাচাইয়ের অপেক্ষায় আছে। পণ্য ও মজুত প্রস্তুত করুন; অনুমোদনের পর দোকানটি প্রকাশিত হবে।" : "আপনার দোকানে Cash on Delivery চালু। অর্ডার, মজুত ও পেমেন্টের অবস্থা Cloudflare D1-তে সংরক্ষিত হয়।"}</div>}
       {error&&<p className="dm-error" role="alert">{error}</p>}{note&&<p className="dm-success" role="status">{note}</p>}
       {!token?<div className="dm-auth"><h2>{mode==="login"?"দোকান মালিকের লগইন":"নতুন দোকান মালিকের অ্যাকাউন্ট"}</h2>
         <p>ইমেইল ও শক্তিশালী পাসওয়ার্ড দিয়ে দোকান পরিচালনার অ্যাকাউন্ট তৈরি করুন।</p>
@@ -130,6 +130,7 @@ export default function D1MerchantCenter(){
         <Field label="দোকানের নাম"><input style={input} value={storeForm.name} minLength={3} required onChange={e=>setStoreForm(x=>({...x,name:e.target.value}))}/></Field>
         <Field label="বিভাগ"><select style={input} value={storeForm.category} onChange={e=>setStoreForm(x=>({...x,category:e.target.value}))}>{categories.map(c=><option key={c}>{c}</option>)}</select></Field>
         <Field label="এলাকা"><input style={input} required value={storeForm.area} onChange={e=>setStoreForm(x=>({...x,area:e.target.value}))} placeholder="যেমন: রাজশাহী"/></Field>
+        <Field label="সংক্ষিপ্ত বিবরণ (ঐচ্ছিক)"><input style={input} maxLength={160} value={storeForm.tagline} onChange={e=>setStoreForm(x=>({...x,tagline:e.target.value}))}/></Field>
         <button disabled={busy} type="submit" className="dm-btn">দোকান তৈরি করুন</button></form>
       </section>:
       <>
@@ -153,13 +154,13 @@ export default function D1MerchantCenter(){
         </div>}
         {view==="pos"&&<div className="dm-stack">
           <section className="dm-panel"><h2>{store.is_demo?"পরীক্ষামূলক কাউন্টার বিক্রি":"কাউন্টার বিক্রি"}</h2><p className="dm-muted">{store.is_demo?"নমুনা বিক্রি ও মজুতের পরিবর্তন D1-তে সংরক্ষিত হবে।":"নগদ বিক্রি, পেমেন্ট এবং মজুতের পরিবর্তন একসঙ্গে D1-তে সংরক্ষিত হবে।"}</p>
-            <form className="dm-product-form" onSubmit={e=>{e.preventDefault();const selected=posProduct||products.find(p=>p.is_listed&&p.stock_qty>0)?.id;if(!selected){setError("বিক্রির জন্য প্রকাশিত ও মজুত থাকা কোনো পণ্য নেই।");return;}run(()=>call("/api/merchant/pos",{method:"POST",token,body:{items:[{product_id:selected,quantity:Number(posQty)}]}}),"নমুনা বিক্রি ও মজুতের পরিবর্তন সংরক্ষিত হয়েছে।");}}>
+            <form className="dm-product-form" onSubmit={e=>{e.preventDefault();const selected=posProduct||products.find(p=>p.is_listed&&p.stock_qty>0)?.id;if(!selected){setError("বিক্রির জন্য প্রকাশিত ও মজুত থাকা কোনো পণ্য নেই।");return;}run(()=>call("/api/merchant/pos",{method:"POST",token,body:{items:[{product_id:selected,quantity:Number(posQty)}]}}),store.is_demo?"নমুনা বিক্রি ও মজুতের পরিবর্তন সংরক্ষিত হয়েছে।":"নগদ বিক্রি, পেমেন্ট ও মজুত সংরক্ষিত হয়েছে।");}}>
               <Field label="পণ্য"><select style={input} required value={posProduct||products.find(p=>p.is_listed&&p.stock_qty>0)?.id||""} onChange={e=>setPosProduct(e.target.value)}>{products.filter(p=>p.is_listed&&p.stock_qty>0).map(p=><option value={p.id} key={p.id}>{p.name} · {fmt(p.price_bdt)} · মজুত {p.stock_qty}</option>)}</select></Field>
               <Field label="পরিমাণ"><input style={input} type="number" min={1} max={30} value={posQty} onChange={e=>setPosQty(e.target.value)}/></Field>
               <button type="submit" className="dm-btn" disabled={busy||!products.some(p=>p.is_listed&&p.stock_qty>0)}>{store.is_demo?"নমুনা বিক্রি সংরক্ষণ করুন":"নগদ বিক্রি সংরক্ষণ করুন"}</button>
             </form></section>
           <section className="dm-panel"><h2>নগদ হিসাব</h2><p className="dm-muted">{store.is_demo?"এটি পরীক্ষামূলক নগদ হিসাব।":"দৈনন্দিন নগদ গ্রহণ ও খরচের এন্ট্রি এখানে রাখুন।"}</p>
-            <form className="dm-product-form" onSubmit={e=>{e.preventDefault();run(async()=>{await call("/api/merchant/cashbook",{method:"POST",token,body:{...cashForm,amount_bdt:Number(cashForm.amount_bdt)}});setCashForm({kind:"expense",amount_bdt:"",description:""});},"নমুনা নগদ হিসাব সংরক্ষিত হয়েছে।");}}>
+            <form className="dm-product-form" onSubmit={e=>{e.preventDefault();run(async()=>{await call("/api/merchant/cashbook",{method:"POST",token,body:{...cashForm,amount_bdt:Number(cashForm.amount_bdt)}});setCashForm({kind:"expense",amount_bdt:"",description:""});},store.is_demo?"নমুনা নগদ হিসাব সংরক্ষিত হয়েছে।":"নগদ হিসাব সংরক্ষিত হয়েছে।");}}>
               <Field label="ধরন"><select style={input} value={cashForm.kind} onChange={e=>setCashForm(v=>({...v,kind:e.target.value}))}><option value="expense">খরচ</option><option value="receipt">টাকা গ্রহণ</option></select></Field>
               <Field label="পরিমাণ (টাকা)"><input style={input} type="number" min={1} max={500000} required value={cashForm.amount_bdt} onChange={e=>setCashForm(v=>({...v,amount_bdt:e.target.value}))}/></Field>
               <Field label="বিবরণ"><input style={input} minLength={3} required value={cashForm.description} onChange={e=>setCashForm(v=>({...v,description:e.target.value}))}/></Field>
