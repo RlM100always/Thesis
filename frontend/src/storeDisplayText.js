@@ -15,12 +15,12 @@ const UNIT_LABELS={
   packet:"প্যাকেট",packets:"প্যাকেট",bottle:"বোতল",bottles:"বোতল",
   pair:"জোড়া",pairs:"জোড়া",dozen:"ডজন",carton:"কার্টন"
 };
-const DEMO_TAGLINES={
+const SAMPLE_TAGLINES={
   "owner-managed sample storefront (not verified real commerce)":"যাচাইহীন নমুনা দোকান—বাস্তব কেনাকাটার জন্য নয়।",
   "sample storefront (not verified real commerce)":"যাচাইহীন নমুনা দোকান—বাস্তব কেনাকাটার জন্য নয়।",
-  "synthetic samplenstration store":"শুধু পরীক্ষামূলক ব্যবহারের দোকান।"
+  "synthetic sample store":"শুধু পরীক্ষামূলক ব্যবহারের দোকান।"
 };
-const DEMO_DELIVERY_NOTES={
+const SAMPLE_DELIVERY_NOTES={
   "sample orders only; no real shipping or payment":"এখানে দেওয়া অর্ডার শুধু পরীক্ষামূলক। বাস্তব পেমেন্ট বা ডেলিভারি হবে না।",
   "no real shipping or payment":"এটি নমুনা দোকান। বাস্তব পেমেন্ট বা ডেলিভারি হবে না।"
 };
@@ -29,11 +29,11 @@ export function displayStoreCategory(value){return CATEGORY_LABELS[key(value)]||
 export function displayProductUnit(value){return UNIT_LABELS[key(value)]||value||"";}
 export function displayStoreTagline(value,isSample=false){
  const original=String(value??"").trim();
- return isSample?DEMO_TAGLINES[key(original)]||original:original;
+ return isSample?SAMPLE_TAGLINES[key(original)]||original:original;
 }
 export function displayStoreDelivery(value,isSample=false){
  const original=String(value??"").trim();
- return isSample?DEMO_DELIVERY_NOTES[key(original)]||original:original;
+ return isSample?SAMPLE_DELIVERY_NOTES[key(original)]||original:original;
 }
 export function displayStoreArea(value,isSample=false){
  const original=String(value??"").trim();
