@@ -43,7 +43,7 @@ export default function D1MerchantCenter(){
   const [recoveryToken,setRecoveryToken]=useState("");
   const [data,setData]=useState(null),[busy,setBusy]=useState(false),[error,setError]=useState(""),[note,setNote]=useState("");
   const [storeForm,setStoreForm]=useState({name:"",category:"মুদি",area:"",tagline:""});
-  const [newProduct,setNewProduct]=useState({sku:"",name:"",category:"",description:"",brand:"",tags:"",compare_at_price_bdt:"",unit_label:"pcs",price_bdt:"",stock_qty:"",is_listed:true});
+  const [newProduct,setNewProduct]=useState({sku:"",name:"",category:"",description:"",brand:"",tags:"",compare_at_price_bdt:"",unit_label:"pcs",price_bdt:"",stock_qty:"",reorder_level:"5",is_listed:true});
   const [edit,setEdit]=useState(null);
   const [posProduct,setPosProduct]=useState("");
   const [posQty,setPosQty]=useState("1");
@@ -53,6 +53,11 @@ export default function D1MerchantCenter(){
   const [threadMessages,setThreadMessages]=useState([]);
   const [activeCustomerId,setActiveCustomerId]=useState("");
   const [replyText,setReplyText]=useState("");
+  const [assistantQuestion,setAssistantQuestion]=useState("");
+  const [assistantMessages,setAssistantMessages]=useState([]);
+  const [assistantBusy,setAssistantBusy]=useState(false);
+  const [assistantError,setAssistantError]=useState("");
+  const [assistantAiEnabled,setAssistantAiEnabled]=useState(false);
   
   useEffect(()=>{
     const hash=window.location.hash||"";
@@ -130,6 +135,21 @@ export default function D1MerchantCenter(){
     if(!form.email.trim()){setError("আগে আপনার ইমেইল লিখুন।");return;}
     await run(()=>call("/api/merchant/resend-verification",{method:"POST",body:{email:form.email}}),"যাচাইয়ের প্রয়োজন থাকলে ইমেইলে নতুন লিংক পাঠানো হয়েছে।");
   }
+  async function sendOwnerQuestion(value){
+    const question=String(value||"").trim();
+    if(!question||assistantBusy)return;
+    const history=assistantMessages.slice(-6).map(m=>({role:m.role,content:m.content}));
+    setAssistantMessages(current=>[...current,{role:"user",content:question}]);
+    setAssistantQuestion("");setAssistantError("");setAssistantBusy(true);
+    try{
+      const result=await call("/api/merchant/assistant",{method:"POST",token,body:{question,history}});
+      setAssistantAiEnabled(!!result.ai_enabled);
+      setAssistantMessages(current=>[...current,{role:"assistant",content:result.text||"এখন উত্তর পাওয়া যায়নি।",metrics:result.metrics,low_stock_products:result.low_stock_products||[],top_products:result.top_products||[]}]);
+    }catch(e){setAssistantError(e.message||"সহকারী এখন উত্তর দিতে পারছে না।");}
+    finally{setAssistantBusy(false);}
+  }
+  function askOwnerAssistant(e){e.preventDefault();sendOwnerQuestion(assistantQuestion);}
+
   async function logout(){
     try{if(token)await call("/api/merchant/logout",{method:"POST",token});}catch{/* local logout even offline */}
     sessionStorage.removeItem("bsmart_d1_merchant");setToken("");setData(null);setNote("");setError("");
@@ -165,7 +185,7 @@ export default function D1MerchantCenter(){
         <button disabled={busy} type="submit" className="dm-btn">দোকান তৈরি করুন</button></form>
       </section>:
       <>
-        <div className="dm-tabs">{[["dashboard","সারসংক্ষেপ"],["products","পণ্য ও মজুত"],["pos",store.is_demo?"ডেমো বিক্রি":"ক্যাশ বিক্রি"],["orders","অর্ডার"],["returns","ফেরত"],["chat","ক্রেতার বার্তা"],["store","দোকানের সেটিংস"]].map(([k,l])=><button key={k} onClick={()=>setView(k)} className={view===k?"dm-active":""}>{l}</button>)}</div>
+        <div className="dm-tabs">{[["dashboard","সারসংক্ষেপ"],["assistant","AI সহকারী"],["products","পণ্য ও মজুত"],["pos",store.is_demo?"ডেমো বিক্রি":"ক্যাশ বিক্রি"],["orders","অর্ডার"],["returns","ফেরত"],["chat","ক্রেতার বার্তা"],["store","দোকানের সেটিংস"]].map(([k,l])=><button key={k} onClick={()=>setView(k)} className={view===k?"dm-active":""}>{l}</button>)}</div>
         {view==="dashboard"&&<div className="dm-stack">
           <div className="dm-stats">{store.is_demo?<><Metric title="ডেমো অর্ডার" value={Number(stats.orders||0).toLocaleString("en-BD")}/><Metric title="বাতিল হয়নি এমন নমুনা বিক্রি" value={fmt(stats.placed_total_bdt)} tip="বাস্তবে কোনো টাকা আদায় হয়নি"/><Metric title="প্রকাশিত পণ্য" value={totalProducts}/><Metric title="মজুতের পরিমাণ" value={Number(stats.inventory_units||0)}/></>:<><Metric title="অর্ডার" value={Number(stats.orders||0).toLocaleString("en-BD")}/><Metric title="COD অর্ডারের মোট মূল্য" value={fmt(stats.placed_total_bdt)} tip="এটি অর্ডারের মূল্য; আদায়কৃত টাকা নয়"/><Metric title="COD আদায় নিশ্চিত" value={fmt(stats.cod_paid_total_bdt)}/><Metric title="COD টাকা বাকি" value={fmt(stats.cod_pending_total_bdt)}/><Metric title="প্রকাশিত পণ্য" value={totalProducts}/><Metric title="মজুতের পরিমাণ" value={Number(stats.inventory_units||0)}/></>}</div>
           <div className="dm-panel"><h2>{store.name}</h2><p className="dm-muted">{store.area} · {store.category}</p><p>{store.is_demo?"ডেমো দোকান প্রকাশিত":"দোকান প্রকাশিত"}: <strong>{store.is_active?"হ্যাঁ":"না"}</strong></p><p className="dm-muted">দোকানের লিংক: <code>/#/store/{store.slug}</code></p>
@@ -173,14 +193,44 @@ export default function D1MerchantCenter(){
           <div className="dm-panel"><h2>মজুত সংশোধনের ইতিহাস</h2>{data.stock_adjustments.length===0?<Empty>এখনো মজুত সংশোধন করা হয়নি।</Empty>:
           <div className="dm-scroll"><table><thead><tr><th>সময়</th><th>পণ্য</th><th>আগের পরিমাণ</th><th>নতুন পরিমাণ</th><th>Δ</th></tr></thead><tbody>{data.stock_adjustments.map((a,i)=><tr key={i}><td>{a.created_at}</td><td>{products.find(p=>p.id===a.product_id)?.name||a.product_id}</td><td>{a.old_quantity}</td><td>{a.new_quantity}</td><td>{a.delta}</td></tr>)}</tbody></table></div>}</div>
         </div>}
+        {view==="assistant"&&<div className="dm-stack">
+          <section className="dm-panel">
+            <h2>ব্যবসার AI সহকারী</h2>
+            <p className="dm-muted">আপনার নিজের দোকানের অর্ডার, বিক্রি, মজুত ও ক্রেতার সারাংশ থেকে উত্তর তৈরি করে। অন্য দোকানের তথ্য এতে ব্যবহার করা হয় না।</p>
+            <p className="dm-muted">{assistantAiEnabled?"Workers AI চালু আছে। উত্তরগুলো দোকানের ডেটা দিয়ে যাচাই করা হয়।":"নিরাপদ ডেটা-ভিত্তিক সহকারী সক্রিয়। AI model এখনো চালু করা হয়নি।"}</p>
+            <div className="dm-ai-chat" aria-live="polite">
+              {assistantMessages.length===0&&<p className="dm-muted">প্রশ্ন করুন: আজকের বিক্রি কত? কোন পণ্যের স্টক কম? সেরা বিক্রিত পণ্য কোনটি?</p>}
+              {assistantMessages.map((m,i)=><div key={i} style={{marginBottom:10,padding:11,borderRadius:10,background:m.role==="user"?"var(--dm-soft)":"var(--dm-surface)",border:"1px solid var(--dm-line)",whiteSpace:"pre-line",maxWidth:"100%"}}>
+                <strong>{m.role==="user"?"আপনি":"সহকারী"}</strong><p style={{margin:"5px 0 0"}}>{m.content}</p>
+                {m.metrics&&<div className="dm-stats" style={{marginTop:10}}>
+                  <Metric title="আজকের অর্ডার মূল্য" value={fmt(m.metrics.today_order_value_bdt)}/>
+                  <Metric title="আজ আদায় নিশ্চিত" value={fmt(m.metrics.today_collected_bdt)}/>
+                  <Metric title="কম স্টক" value={m.metrics.low_stock_count+"টি"}/>
+                  <Metric title="পুনরায় অর্ডারকারী" value={m.metrics.repeat_customer_count+" জন"}/>
+                </div>}
+                {m.low_stock_products?.length>0&&<ul>{m.low_stock_products.map(p=><li key={p.id}>{p.name}: {p.stock_qty}টি বাকি (সতর্কতা {p.reorder_level})</li>)}</ul>}
+                {m.top_products?.length>0&&<ul>{m.top_products.map(p=><li key={p.product_id}>{p.name}: {p.units_sold}টি বিক্রি</li>)}</ul>}
+              </div>)}
+              {assistantBusy&&<p className="dm-muted">তথ্য যাচাই করে উত্তর তৈরি হচ্ছে…</p>}
+              {assistantError&&<p className="dm-error" role="alert">{assistantError}</p>}
+            </div>
+            <div style={{display:"flex",flexWrap:"wrap",gap:7,margin:"10px 0"}}>
+              {["আজকের বিক্রি কত?","কোন পণ্যের স্টক কম?","সেরা বিক্রিত পণ্য কোনটি?","ক্রেতাদের অবস্থা কেমন?"].map(q=><button key={q} type="button" className="dm-secondary" disabled={assistantBusy} onClick={()=>sendOwnerQuestion(q)}>{q}</button>)}
+            </div>
+            <form onSubmit={askOwnerAssistant} style={{display:"flex",gap:8}}>
+              <input style={input} value={assistantQuestion} maxLength={500} onChange={e=>setAssistantQuestion(e.target.value)} placeholder="আপনার ব্যবসা সম্পর্কে প্রশ্ন লিখুন…" aria-label="AI assistant question"/>
+              <button className="dm-btn" type="submit" disabled={assistantBusy||!assistantQuestion.trim()}>জিজ্ঞেস করুন</button>
+            </form>
+          </section>
+        </div>}
         {view==="products"&&<div className="dm-stack">
-          <section className="dm-panel"><h2>নতুন পণ্য যোগ করুন</h2><form className="dm-product-form" onSubmit={e=>{e.preventDefault();run(async()=>{await call("/api/merchant/products",{method:"POST",token,body:{...newProduct,tags:newProduct.tags.split(",").map(x=>x.trim()).filter(Boolean),price_bdt:Number(newProduct.price_bdt),stock_qty:Number(newProduct.stock_qty),compare_at_price_bdt:newProduct.compare_at_price_bdt===""?null:Number(newProduct.compare_at_price_bdt)}});setNewProduct({sku:"",name:"",category:"",description:"",brand:"",tags:"",compare_at_price_bdt:"",unit_label:"pcs",price_bdt:"",stock_qty:"",is_listed:true});},"নতুন পণ্য সংরক্ষিত হয়েছে।");}}>
-          {["sku","name","category","brand","unit_label","price_bdt","compare_at_price_bdt","stock_qty","tags"].map(k=><Field key={k} label={{sku:"পণ্য কোড (SKU)",name:"পণ্যের নাম",category:"বিভাগ",brand:"ব্র্যান্ড (ঐচ্ছিক)",unit_label:"একক",price_bdt:"বিক্রয়মূল্য (টাকা)",compare_at_price_bdt:"আগের/তুলনামূলক দাম (ঐচ্ছিক)",stock_qty:"মজুতের পরিমাণ",tags:"ট্যাগ (কমা দিয়ে লিখুন)"}[k]}><input style={input} value={newProduct[k]} required={["sku","name","category","price_bdt","stock_qty"].includes(k)} type={["price_bdt","stock_qty","compare_at_price_bdt"].includes(k)?"number":"text"} min={["price_bdt","stock_qty","compare_at_price_bdt"].includes(k)?0:undefined} onChange={e=>setNewProduct(v=>({...v,[k]:e.target.value}))}/></Field>)}
+          <section className="dm-panel"><h2>নতুন পণ্য যোগ করুন</h2><form className="dm-product-form" onSubmit={e=>{e.preventDefault();run(async()=>{await call("/api/merchant/products",{method:"POST",token,body:{...newProduct,tags:newProduct.tags.split(",").map(x=>x.trim()).filter(Boolean),price_bdt:Number(newProduct.price_bdt),stock_qty:Number(newProduct.stock_qty),reorder_level:Number(newProduct.reorder_level),compare_at_price_bdt:newProduct.compare_at_price_bdt===""?null:Number(newProduct.compare_at_price_bdt)}});setNewProduct({sku:"",name:"",category:"",description:"",brand:"",tags:"",compare_at_price_bdt:"",unit_label:"pcs",price_bdt:"",stock_qty:"",reorder_level:"5",is_listed:true});},"নতুন পণ্য সংরক্ষিত হয়েছে।");}}>
+          {["sku","name","category","brand","unit_label","price_bdt","compare_at_price_bdt","stock_qty","reorder_level","tags"].map(k=><Field key={k} label={{sku:"পণ্য কোড (SKU)",name:"পণ্যের নাম",category:"বিভাগ",brand:"ব্র্যান্ড (ঐচ্ছিক)",unit_label:"একক",price_bdt:"বিক্রয়মূল্য (টাকা)",compare_at_price_bdt:"আগের/তুলনামূলক দাম (ঐচ্ছিক)",stock_qty:"মজুতের পরিমাণ",reorder_level:"কম স্টকের সতর্কতা (পরিমাণ)",tags:"ট্যাগ (কমা দিয়ে লিখুন)"}[k]}><input style={input} value={newProduct[k]} required={["sku","name","category","price_bdt","stock_qty"].includes(k)} type={["price_bdt","stock_qty","compare_at_price_bdt","reorder_level"].includes(k)?"number":"text"} min={["price_bdt","stock_qty","compare_at_price_bdt","reorder_level"].includes(k)?0:undefined} onChange={e=>setNewProduct(v=>({...v,[k]:e.target.value}))}/></Field>)}
           <Field label="পণ্যের বিস্তারিত বিবরণ"><textarea style={{...input,minHeight:90}} maxLength={3000} value={newProduct.description} onChange={e=>setNewProduct(v=>({...v,description:e.target.value}))}/></Field>
           <label className="dm-check"><input type="checkbox" checked={newProduct.is_listed} onChange={e=>setNewProduct(v=>({...v,is_listed:e.target.checked}))}/>{store.is_demo?"পণ্যটি পরীক্ষামূলক দোকানে দেখান":"পণ্যটি দোকানে প্রকাশ করুন"}</label><button disabled={busy} type="submit" className="dm-btn">পণ্য যোগ করুন</button></form></section>
           <section className="dm-panel"><h2>আপনার পণ্য ({products.length})</h2>
           {products.length===0?<Empty>এখনো কোনো পণ্য যোগ করা হয়নি।</Empty>:<div className="dm-product-list">{products.map(p=><article key={p.id} className="dm-product">
-            <div><strong>{p.name}</strong><p className="dm-muted">{p.sku} · {p.category||"বিভাগ দেওয়া নেই"}</p><p><b>{fmt(p.price_bdt)}</b> · মজুত <b>{p.stock_qty}</b> · {p.is_listed?"প্রকাশিত":"লুকানো"}</p></div>
+            <div><strong>{p.name}</strong><p className="dm-muted">{p.sku} · {p.category||"বিভাগ দেওয়া নেই"}</p><p><b>{fmt(p.price_bdt)}</b> · মজুত <b>{p.stock_qty}</b> · সতর্কতা {p.reorder_level??5} · {p.is_listed?"প্রকাশিত":"লুকানো"}</p></div>
             <button className="dm-secondary" onClick={()=>setEdit({...p})}>সম্পাদনা</button></article>)}</div>}</section>
         </div>}
         {view==="pos"&&<div className="dm-stack">
@@ -235,8 +285,8 @@ export default function D1MerchantCenter(){
           <button className="dm-btn" disabled={busy} type="submit">সেটিংস সংরক্ষণ করুন</button>
         </form></section>}
         {edit&&<div className="dm-modal-bg" onClick={()=>setEdit(null)}><section role="dialog" aria-modal="true" aria-label="পণ্য সম্পাদনা" className="dm-panel dm-dialog" onClick={e=>e.stopPropagation()}><h2>পণ্য সম্পাদনা: {edit.name}</h2>
-          <form className="dm-fields" onSubmit={e=>{e.preventDefault();run(async()=>{await call("/api/merchant/products/"+edit.id,{method:"PATCH",token,body:{name:edit.name,category:edit.category,description:edit.description||"",brand:edit.brand||"",tags:Array.isArray(edit.tags)?edit.tags:(()=>{try{return JSON.parse(edit.tags||"[]")}catch{return []}})(),unit_label:edit.unit_label||"pcs",compare_at_price_bdt:edit.compare_at_price_bdt===""||edit.compare_at_price_bdt==null?null:Number(edit.compare_at_price_bdt),price_bdt:Number(edit.price_bdt),stock_qty:Number(edit.stock_qty),is_listed:edit.is_listed}});setEdit(null);},"পণ্যের তথ্য সংশোধন করা হয়েছে।");}}>
-          {["name","category","brand","unit_label","price_bdt","compare_at_price_bdt","stock_qty"].map(k=><Field key={k} label={{name:"পণ্যের নাম",category:"বিভাগ",brand:"ব্র্যান্ড",unit_label:"একক",price_bdt:"বিক্রয়মূল্য",compare_at_price_bdt:"তুলনামূলক দাম",stock_qty:"মজুত"}[k]||k}><input style={input} type={["price_bdt","stock_qty","compare_at_price_bdt"].includes(k)?"number":"text"} min={["price_bdt","stock_qty","compare_at_price_bdt"].includes(k)?0:undefined} required={["name","price_bdt","stock_qty"].includes(k)} value={edit[k]??""} onChange={e=>setEdit(v=>({...v,[k]:e.target.value}))}/></Field>)}<Field label="পণ্যের বিবরণ"><textarea style={{...input,minHeight:90}} maxLength={3000} value={edit.description||""} onChange={e=>setEdit(v=>({...v,description:e.target.value}))}/></Field><Field label="ট্যাগ (কমা দিয়ে লিখুন)"><input style={input} value={Array.isArray(edit.tags)?edit.tags.join(", "):(()=>{try{return JSON.parse(edit.tags||"[]").join(", ")}catch{return ""}})()} onChange={e=>setEdit(v=>({...v,tags:e.target.value.split(",").map(x=>x.trim()).filter(Boolean)}))}/></Field>
+          <form className="dm-fields" onSubmit={e=>{e.preventDefault();run(async()=>{await call("/api/merchant/products/"+edit.id,{method:"PATCH",token,body:{name:edit.name,category:edit.category,description:edit.description||"",brand:edit.brand||"",tags:Array.isArray(edit.tags)?edit.tags:(()=>{try{return JSON.parse(edit.tags||"[]")}catch{return []}})(),unit_label:edit.unit_label||"pcs",compare_at_price_bdt:edit.compare_at_price_bdt===""||edit.compare_at_price_bdt==null?null:Number(edit.compare_at_price_bdt),price_bdt:Number(edit.price_bdt),stock_qty:Number(edit.stock_qty),reorder_level:Number(edit.reorder_level??5),is_listed:edit.is_listed}});setEdit(null);},"পণ্যের তথ্য সংশোধন করা হয়েছে।");}}>
+          {["name","category","brand","unit_label","price_bdt","compare_at_price_bdt","stock_qty","reorder_level"].map(k=><Field key={k} label={{name:"পণ্যের নাম",category:"বিভাগ",brand:"ব্র্যান্ড",unit_label:"একক",price_bdt:"বিক্রয়মূল্য",compare_at_price_bdt:"তুলনামূলক দাম",stock_qty:"মজুত",reorder_level:"কম স্টকের সতর্কতা"}[k]||k}><input style={input} type={["price_bdt","stock_qty","compare_at_price_bdt"].includes(k)?"number":"text"} min={["price_bdt","stock_qty","compare_at_price_bdt","reorder_level"].includes(k)?0:undefined} required={["name","price_bdt","stock_qty"].includes(k)} value={edit[k]??""} onChange={e=>setEdit(v=>({...v,[k]:e.target.value}))}/></Field>)}<Field label="পণ্যের বিবরণ"><textarea style={{...input,minHeight:90}} maxLength={3000} value={edit.description||""} onChange={e=>setEdit(v=>({...v,description:e.target.value}))}/></Field><Field label="ট্যাগ (কমা দিয়ে লিখুন)"><input style={input} value={Array.isArray(edit.tags)?edit.tags.join(", "):(()=>{try{return JSON.parse(edit.tags||"[]").join(", ")}catch{return ""}})()} onChange={e=>setEdit(v=>({...v,tags:e.target.value.split(",").map(x=>x.trim()).filter(Boolean)}))}/></Field>
           <label className="dm-check"><input type="checkbox" checked={!!edit.is_listed} onChange={e=>setEdit(v=>({...v,is_listed:e.target.checked}))}/>প্রকাশিত</label><div className="dm-actions"><button className="dm-btn" disabled={busy} type="submit">পরিবর্তন সংরক্ষণ করুন</button><button type="button" onClick={()=>setEdit(null)} className="dm-secondary">বন্ধ করুন</button></div></form></section></div>}
       </>}
     </div>
