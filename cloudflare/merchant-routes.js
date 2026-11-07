@@ -28,6 +28,41 @@ async function json(request,error,max=10000){
 }
 const short=(value,n=120)=>String(value??"").trim().slice(0,n);
 const validEmail=email=>/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)&&email.length<=180;
+const authMailConfigured=env=>Boolean(env.RESEND_API_KEY&&env.AUTH_EMAIL_FROM);
+function ownerPortalLink(env,parameter,token){
+ const base=String(env.PUBLIC_APP_URL||"https://thesis-j0n8.onrender.com").replace(/\/$/,"");
+ return base+"/#/d1-owner?"+parameter+"="+encodeURIComponent(token);
+}
+async function sendOwnerAuthEmail(env,to,subject,text){
+ if(!authMailConfigured(env))return false;
+ try{
+  const response=await fetch("https://api.resend.com/emails",{
+   method:"POST",
+   headers:{"Authorization":"Bearer "+env.RESEND_API_KEY,"Content-Type":"application/json"},
+   body:JSON.stringify({from:env.AUTH_EMAIL_FROM,to:[to],subject,text})
+  });
+  if(!response.ok){console.error("owner authentication email delivery failed",response.status);return false;}
+  return true;
+ }catch(e){console.error("owner authentication email delivery failed",e?.message||e);return false;}
+}
+async function issueOwnerEmailToken(env,accountId,kind){
+ const token=newSession(),digest=await sha256(token);
+ const expires=new Date(Date.now()+(kind==="reset"?60:24*60)*60*1000).toISOString();
+ if(kind==="verify"){
+  await env.DB.prepare("UPDATE merchant_accounts SET email_verification_token_hash=?,email_verification_expires_at=? WHERE id=?").bind(digest,expires,accountId).run();
+ }else{
+  await env.DB.prepare("UPDATE merchant_accounts SET password_reset_token_hash=?,password_reset_expires_at=? WHERE id=?").bind(digest,expires,accountId).run();
+ }
+ return token;
+}
+async function sendOwnerVerification(env,email,token){
+ const link=ownerPortalLink(env,"verify",token);
+ return sendOwnerAuthEmail(env,email,"Verify your B-SMART owner email","Verify your B-SMART owner account by opening this link:\n"+link+"\nThis link expires in 24 hours. If you did not request this, ignore this email.");
+}
+async function sendOwnerPasswordReset(env,email,token){
+ const link=ownerPortalLink(env,"reset",token);
+ return sendOwnerAuthEmail(env,email,"Reset your B-SMART owner password","A password reset was requested for your B-SMART owner account. Open this link to set a new password:\n"+link+"\nThis link expires in 60 minutes. If you did not request this, ignore this email.");
+}
 const integer=(value,min,max)=>Number.isInteger(Number(value))&&Number(value)>=min&&Number(value)<=max;
 async function viewer(req,env){
  const bearer=req.headers.get("Authorization")||"";
