@@ -6,21 +6,33 @@ existing thesis evidence.
 
 ## Evidence warning
 
-The previous 32-shop simulation is documented in
-`docs/REAL_DATA_ONBOARDING.md` as 100% synthetic. It is suitable for software
-and controlled simulation tests, not for a real-SME accuracy claim. The current
-repository checkout contains no primary research dataset. The reported
-LightGBM WAPE values (83.98%, 84.04%, 84.56%) are therefore not reproducible
-from this checkout and are not independently verified by this module.
+The user-provided Google Drive package has now been located and structurally
+audited. The current Drive manifest claims "100% real SME sales or real people",
+but the linked `rq1_daily_sku_sales_observed` sheet marks all 699,220 rows
+`synthetic_flag=YES`. The earlier repository onboarding record quotes a
+previous manifest that explicitly classified the package as synthetic. These
+sources conflict. Until the source owner resolves the flag/manifest discrepancy
+and supplies auditable provenance, the package is classified as
+`provenance_conflict`; experiment outputs are exploratory and must not be
+presented as verified real-world SME evidence.
+
+The RQ1 shop-category panel has 561,152 rows: 32 shops × 16 categories × 1,096
+days (2023-01-01 to 2025-12-31). It contains 1,580,361 units and a 37.5962%
+zero-sales share overall. The previously inspected 2025-Q4 window contains
+47,104 observations and a 39.8204% zero-sales share, matching the previously
+reported test-set size and zero rate. The reported WAPE values (83.98%, 84.04%,
+84.56%) still require exact reproduction from their original scripts and
+definition.
 
 ## Input contract
 
-CSV columns (exact names):
+Accepted CSV/XLSX columns include the native RQ1 Drive schema:
 
-- `date`: daily date, YYYY-MM-DD
-- `shop_id`: stable pseudonymous business/shop identifier
-- `category_id`: stable product/category identifier
-- `demand`: non-negative quantity sold, not sales revenue
+- `date`: daily date (ISO date or Excel serial)
+- `shop_id`: shop identifier
+- `category_id` or `category`: product category identifier
+- `demand` or `units_sold_observed`: non-negative quantity sold, not revenue
+- optional `is_zero_observed_sales`: must exactly match whether demand is zero
 
 One row per date × shop × category is required. Missing dates are rejected by
 default. Only use `--fill-missing-dates-as-zero` after source-system evidence
@@ -38,7 +50,7 @@ a SHA-256 checksum but cannot independently verify provenance.
 ```powershell
 python -m pip install -r requirements-research.txt
 python -m pytest --confcutdir=research/forecasting research/forecasting/tests -q
-python -m research.forecasting.adaptive_engine --input path\to\daily_panel.csv --output artifacts\adaptive_forecasting
+python -m research.forecasting.adaptive_engine --input path\to\rq1_daily_shop_category.csv --output artifacts\adaptive_forecasting --development-end 2025-10-01 --evidence-status provenance_conflict
 ```
 
 Optional candidate packages are LightGBM and CatBoost. Missing optional
@@ -62,10 +74,10 @@ packages are recorded as skipped, not replaced with fabricated results.
 
 ## Important limitations
 
-- The old October–December 2025 test period has already been inspected by the
-  researcher and must not be used for new model selection. This module performs
-  development rolling-origin evaluation only; it does not label any period as
-  an untouched final holdout.
+- The October–December 2025 legacy test period has already been inspected and
+  is excluded from development model selection by the default exclusive cutoff
+  of 2025-10-01. The development run uses three monthly spaced origins before
+  that cutoff. Q4-2025 is not an untouched final holdout.
 - The regime labels are descriptive (ADI/CV²), not proof that one model family
   will win. Candidate choice must be made on development validation and reported
   with per-series/per-shop dispersion.
