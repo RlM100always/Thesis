@@ -12,7 +12,7 @@ const photos = {
   generic: "photo-1441986300917-64674bd600d8",
 };
 
-const demoStoreCovers = {
+const legacySampleStoreCovers = {
   "al-helal-pharma": "photo-1587854692152-cbe660dbde88",
   "ma-moni-grocery": "photo-1542838132-92c53300491e",
   "new-look-fashion": "photo-1496747611176-843222e1e57c",
@@ -58,11 +58,11 @@ const categoryKey = (value = "") => {
 };
 
 export function storeCoverImage(store = {}) {
-  const demoCover = demoStoreCovers[store.slug];
-  if (store.cover_data_url && !(demoCover && isSeedSvgCover(store.cover_data_url))) {
+  const sampleCover = legacySampleStoreCovers[store.slug];
+  if (store.cover_data_url && !(sampleCover && isSeedSvgCover(store.cover_data_url))) {
     return store.cover_data_url;
   }
-  if (demoCover) return url(demoCover, 1400);
+  if (sampleCover) return url(sampleCover, 1400);
   const key = categoryKey(`${store.category || ""} ${store.display_name || ""} ${store.tagline || ""}`);
   return url(photos[key] || photos.generic, 1200);
 }
