@@ -44,6 +44,7 @@ Worker:
 node --check --input-type=module < cloudflare/commerce-worker.js
 node --check --input-type=module < cloudflare/customer-routes.js
 node --check --input-type=module < cloudflare/merchant-routes.js
+node --check --input-type=module < cloudflare/assistant-routes.js
 node --check --input-type=module < cloudflare/platform-admin-routes.js
 ```
 
