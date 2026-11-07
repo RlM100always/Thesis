@@ -69,9 +69,9 @@ function createD1Mock() {
   }, inspect: { accounts, sessions, stores, attempts } };
 }
 
-async function call(env, path, body, token) {
+async function call(env, path, body, token, method = "POST") {
   const request = new Request("https://example.invalid"+path, {
-    method: body === undefined ? "GET" : (path.includes("/store") ? "POST" : "POST"),
+    method,
     headers: { "content-type":"application/json", ...(token ? {Authorization:"Bearer "+token} : {}) },
     ...(body === undefined ? {} : {body:JSON.stringify(body)}),
   });
@@ -112,7 +112,7 @@ test("new merchant stores are real but private until platform approval", async (
   assert.equal(created.body.store.is_demo,false);
   assert.equal(created.body.store.is_active,false);
   assert.equal(created.body.store.tagline,"Local goods");
-  const attemptedPublish=await call(env,"/api/merchant/store",{name:"Example Shop",category:"মুদি",area:"Dhaka",is_active:true},login.body.token);
+  const attemptedPublish=await call(env,"/api/merchant/store",{name:"Example Shop",category:"মুদি",area:"Dhaka",is_active:true},login.body.token,"PATCH");
   assert.equal(attemptedPublish.status,403);
 });
 
