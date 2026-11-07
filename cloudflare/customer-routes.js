@@ -421,7 +421,7 @@ export async function customerRouter(request, env, path, output, error) {
       const reason = short(body.reason,100), note = short(body.note,1000);
       if (!["damaged","wrong_item","missing_item","not_as_described","other"].includes(reason))
         return error(request,422,"ফেরতের একটি কারণ নির্বাচন করুন");
-      const order = await env.DB.prepare("SELECT id,store_id,status,placed_at FROM commerce_orders WHERE id=? AND account_id=?")
+      const order = await env.DB.prepare("SELECT o.id,o.store_id,o.status,o.placed_at,s.is_demo FROM commerce_orders o JOIN commerce_stores s ON s.id=o.store_id WHERE o.id=? AND o.account_id=?")
         .bind(orderId,account.id).first();
       if (!order) return error(request,404,"অর্ডারটি পাওয়া যায়নি");
       if (!["fulfilled","delivered"].includes(order.status)) return error(request,409,"অর্ডার সম্পন্ন হলে ফেরতের অনুরোধ করা যাবে");
@@ -430,7 +430,7 @@ export async function customerRouter(request, env, path, output, error) {
       const id = crypto.randomUUID();
       await env.DB.prepare("INSERT INTO commerce_order_returns(id,store_id,order_id,account_id,reason,customer_note) VALUES(?,?,?,?,?,?)")
         .bind(id,order.store_id,order.id,account.id,reason,note||null).run();
-      return output(request,{created:true,id,status:"requested",note:"এটি পরীক্ষামূলক ফেরত অনুরোধ; কোনো অর্থ ফেরত দেওয়া হয়নি"},201);
+      return output(request,{created:true,id,status:"requested",note:order.is_demo?"পরীক্ষামূলক ফেরত অনুরোধ জমা হয়েছে।":"ফেরতের অনুরোধ জমা হয়েছে; দোকান থেকে পরবর্তী নির্দেশনা জানানো হবে।"},201);
     }
     if (path === "/api/customer/returns" && method === "GET") {
       const {results} = await env.DB.prepare(
