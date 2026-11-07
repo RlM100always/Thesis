@@ -68,6 +68,53 @@ def test_all_d1_migrations_apply_in_order_and_create_commerce_tables():
     db.close()
 
 
+def test_coupon_redemption_triggers_enforce_total_and_per_customer_limits():
+    db = _migrated_db()
+    db.execute(
+        "INSERT INTO commerce_stores(id,slug,name,is_demo,is_active) VALUES(?,?,?,?,?)",
+        ("merchant-coupon", "coupon-shop", "Coupon Shop", 0, 1),
+    )
+    db.execute(
+        "INSERT INTO commerce_coupons(id,store_id,code,discount_type,discount_value,usage_limit,per_customer_limit) VALUES(?,?,?,?,?,?,?)",
+        ("coupon-total", "merchant-coupon", "ONCE", "percent", 10, 1, 1),
+    )
+    for index in (1, 2, 3, 4):
+        db.execute(
+            "INSERT INTO commerce_orders(id,store_id,order_number,access_token,status,subtotal_bdt,total_bdt,payment_method) VALUES(?,?,?,?,?,?,?,?)",
+            (f"coupon-order-{index}", "merchant-coupon", f"ORD-COUPON-{index}", f"token-{index}", "placed", 1000, 900, "cod"),
+        )
+    db.execute(
+        "INSERT INTO commerce_coupon_redemptions(id,coupon_id,store_id,order_id,customer_key_hash,discount_bdt) VALUES(?,?,?,?,?,?)",
+        ("redemption-1", "coupon-total", "merchant-coupon", "coupon-order-1", "customer-a", 100),
+    )
+    try:
+        db.execute(
+            "INSERT INTO commerce_coupon_redemptions(id,coupon_id,store_id,order_id,customer_key_hash,discount_bdt) VALUES(?,?,?,?,?,?)",
+            ("redemption-2", "coupon-total", "merchant-coupon", "coupon-order-2", "customer-b", 100),
+        )
+        assert False, "total usage trigger should reject the second redemption"
+    except sqlite3.IntegrityError as exc:
+        assert "COUPON_USAGE_LIMIT" in str(exc)
+
+    db.execute(
+        "INSERT INTO commerce_coupons(id,store_id,code,discount_type,discount_value,usage_limit,per_customer_limit) VALUES(?,?,?,?,?,?,?)",
+        ("coupon-customer", "merchant-coupon", "ONEPER", "fixed", 100, 10, 1),
+    )
+    db.execute(
+        "INSERT INTO commerce_coupon_redemptions(id,coupon_id,store_id,order_id,customer_key_hash,discount_bdt) VALUES(?,?,?,?,?,?)",
+        ("redemption-3", "coupon-customer", "merchant-coupon", "coupon-order-3", "customer-a", 100),
+    )
+    try:
+        db.execute(
+            "INSERT INTO commerce_coupon_redemptions(id,coupon_id,store_id,order_id,customer_key_hash,discount_bdt) VALUES(?,?,?,?,?,?)",
+            ("redemption-4", "coupon-customer", "merchant-coupon", "coupon-order-4", "customer-a", 100),
+        )
+        assert False, "per-customer usage trigger should reject the second redemption"
+    except sqlite3.IntegrityError as exc:
+        assert "COUPON_CUSTOMER_LIMIT" in str(exc)
+    db.close()
+
+
 def test_cancel_and_received_return_restore_stock_once():
     db = _migrated_db()
     db.execute(
