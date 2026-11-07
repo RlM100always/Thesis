@@ -65,7 +65,7 @@ The Render service auto-deploys from `main`. A dedicated Cloudflare Worker deplo
 
 - Render is the application host; it is not the commerce database.
 - Cloudflare D1 (`bsmart-commerce`) is authoritative for the D1 storefront and merchant-commerce routes.
-- The older FastAPI operational modules (78 operational model tables, 36 platform-control model tables and 54 registered routers) still use their separate SQLAlchemy database. The latest Render startup log reports ephemeral SQLite with 1 organization, 0 stores, 4 catalogue products and 0 listed store products. They have **not** been migrated to D1 and must not be described as D1-backed. The Render Postgres resource exists but is not connected to the running service; do not use it as an assumed source of truth.
+- The older FastAPI operational modules (86 operational model tables, 36 platform-control model tables and 54 registered routers) still use their separate SQLAlchemy database. The latest Render startup log reports ephemeral SQLite with 1 organization, 0 stores, 4 catalogue products and 0 listed store products. They have **not** been migrated to D1 and must not be described as D1-backed. The Render Postgres resource exists but is not connected to the running service; do not use it as an assumed source of truth.
 - Do not create or pay for a Render PostgreSQL database for the D1 commerce store. A future D1 cutover of the legacy modules needs a separate reviewed migration and regression plan.
 
 ## Critical NOT YET migrated
