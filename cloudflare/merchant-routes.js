@@ -64,7 +64,7 @@ export async function merchantRouter(req,env,path,output,error){
   }
   if(method==="POST"&&path==="/api/merchant/register"){
    const b=await json(req,error),email=short(b.email,200).toLowerCase(),password=String(b.password||"");
-   if(!validEmail(email))return bad(req,error,422,"Valid email required");
+   if(!validEmail(email)||email.endsWith(".invalid"))return bad(req,error,422,"Use a valid business email address");
    if(password.length<12||password.length>128)return bad(req,error,422,"Password must contain 12-128 characters");
    const today=await env.DB.prepare("SELECT COUNT(*) AS n FROM merchant_accounts WHERE created_at >= datetime('now','start of day')").first();
    if(Number(today?.n||0)>=20)return bad(req,error,429,"Daily account registration limit reached");
@@ -78,7 +78,7 @@ export async function merchantRouter(req,env,path,output,error){
   if(method==="POST"&&path==="/api/merchant/login"){
    const b=await json(req,error),email=short(b.email,200).toLowerCase(),password=String(b.password||"");
    const legacyKey=String(b.access_key||(/^[0-9a-f]{64}$/i.test(password)?password:"")).trim().toLowerCase();
-   if(!validEmail(email)||(!password&&!legacyKey))return bad(req,error,401,"Invalid email or password");
+   if(!validEmail(email)||email.endsWith(".invalid")||(!password&&!legacyKey))return bad(req,error,401,"Invalid email or password");
    const now=new Date().toISOString();
    const lock=await env.DB.prepare("SELECT failures,lock_until FROM merchant_login_attempts WHERE email=?").bind(email).first();
    if(lock?.lock_until&&lock.lock_until>now)return bad(req,error,429,"Too many attempts; try again later");
