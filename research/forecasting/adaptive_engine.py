@@ -415,7 +415,8 @@ def write_figures(summary: pd.DataFrame, predictions: pd.DataFrame, output: Path
     except ImportError:
         return ["matplotlib unavailable; figures skipped"]
     written = []
-    valid = summary[(summary["status"] == "ok") & (summary["level"] == "all")].copy()
+    level = summary["level"] if "level" in summary.columns else pd.Series("", index=summary.index)
+    valid = summary[(summary["status"] == "ok") & (level == "all")].copy()
     if not valid.empty:
         means = valid.groupby(["horizon", "model"], as_index=False)["wape"].mean()
         for horizon, group in means.groupby("horizon"):
