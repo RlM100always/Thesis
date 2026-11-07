@@ -434,10 +434,11 @@ def write_figures(summary: pd.DataFrame, predictions: pd.DataFrame, output: Path
     if not predictions.empty:
         p7 = predictions[predictions["horizon"] == 7].copy()
         if not p7.empty:
-            scores = p7.groupby("model").apply(
-                lambda g: (g["actual"] - g["forecast"]).abs().sum() / g["actual"].abs().sum()
-                if g["actual"].abs().sum() > 0 else np.nan, include_groups=False
-            ).dropna()
+            scores = pd.Series({
+                name: ((g["actual"] - g["forecast"]).abs().sum() / g["actual"].abs().sum())
+                if g["actual"].abs().sum() > 0 else np.nan
+                for name, g in p7.groupby("model")
+            }).dropna()
             if not scores.empty:
                 best = str(scores.idxmin())
                 selected = p7[p7["model"] == best]
@@ -456,10 +457,12 @@ def write_figures(summary: pd.DataFrame, predictions: pd.DataFrame, output: Path
                     fig.savefig(path, dpi=180)
                     plt.close(fig)
                     written.append(path.name)
-                per_series = selected.groupby(["shop_id", "category_id"]).apply(
-                    lambda g: (g["actual"] - g["forecast"]).abs().sum() / g["actual"].abs().sum()
-                    if g["actual"].abs().sum() > 0 else np.nan, include_groups=False
-                ).rename("wape").reset_index()
+                per_series = pd.DataFrame([
+                    {"shop_id": shop, "category_id": category,
+                     "wape": ((g["actual"] - g["forecast"]).abs().sum() / g["actual"].abs().sum())
+                     if g["actual"].abs().sum() > 0 else np.nan}
+                    for (shop, category), g in selected.groupby(["shop_id", "category_id"])
+                ])
                 heat = per_series.pivot(index="shop_id", columns="category_id", values="wape")
                 if not heat.empty:
                     fig, ax = plt.subplots(figsize=(max(9, len(heat.columns) * 0.55), max(5, len(heat.index) * 0.25)))
