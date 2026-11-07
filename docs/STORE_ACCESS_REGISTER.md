@@ -55,3 +55,8 @@ Keep the following outside GitHub source, README, issue comments and public depl
 - Database export files and customer data.
 
 Use Render Environment, Cloudflare Worker secrets, GitHub Actions repository secrets or an approved password manager as appropriate. Never paste secret values into a public README.
+
+
+## Account security rule
+
+This register is an access directory, not a credential vault. It records owner email, role, store, panel URL, verification and active/suspended status. It must never contain passwords, password hashes, API keys, reset links, session tokens or one-time access keys. Use the platform-admin owner directory to suspend/reactivate access; password resets are sent to the verified owner email.
