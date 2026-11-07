@@ -35,7 +35,7 @@ The sample catalogue entries are not real merchant accounts. Do not assign real 
 5. The owner receives their public store URL and owner-panel URL.
 6. Record the store name, public slug, owner email, role and approval status below. Do not record the password.
 
-**Important current limitation:** owner email verification and self-service password recovery are not yet implemented. Do not treat a typed email address as proof of business ownership. Add these controls before open public merchant onboarding is considered production-ready.
+**Release gate:** owner email verification and self-service password recovery are implemented in the upgrade branch, but are not live until migration 0009 is safely applied and the Resend sender is configured. Do not treat a typed email address as proof of business ownership. Open public merchant onboarding remains disabled until the email delivery flow is tested end to end.
 
 ## Per-store register
 
