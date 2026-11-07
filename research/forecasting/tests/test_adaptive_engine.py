@@ -4,7 +4,8 @@ import pytest
 
 from research.forecasting.adaptive_engine import (
     DataContractError, demand_profile, load_daily_panel, croston_forecast,
-    make_supervised, rolling_origins, _metric_row, _fit_predict, write_figures
+    make_supervised, rolling_origins, _metric_row, _fit_predict, write_figures,
+    select_models_by_regime
 )
 
 
@@ -119,3 +120,29 @@ def test_validation_figures_are_written_from_supplied_results(tmp_path):
     assert "wape_comparison_h7.png" in files
     assert "actual_vs_forecast_7d.png" in files
     assert "shop_category_wape_heatmap_7d.png" in files
+
+
+def test_two_stage_hurdle_candidate_returns_expected_nonnegative_demand():
+    panel = panel_frame(days=90)
+    train = make_supervised(panel, horizon=1, min_history=56)
+    origin = pd.Timestamp("2024-03-20")
+    current = []
+    from research.forecasting.adaptive_engine import _features
+    for _, group in panel.groupby(["shop_id", "category_id"]):
+        current.append(_features(group[group["date"] < origin], origin))
+    forecasts = _fit_predict("two_stage_hist", train, pd.DataFrame(current))
+    assert forecasts.shape == (4,)
+    assert np.isfinite(forecasts).all()
+    assert (forecasts >= 0).all()
+
+
+def test_regime_selection_uses_only_supported_development_groups():
+    rows = []
+    for origin in ("2024-03-01", "2024-03-08"):
+        for model, wape in (("croston", 0.7), ("lightgbm", 0.5)):
+            rows.append({"horizon": 7, "origin": origin, "model": model,
+                         "level": "demand_regime", "group_value": "intermittent",
+                         "status": "ok", "wape": wape, "actual_total": 100.0, "n": 8})
+    selected = select_models_by_regime(pd.DataFrame(rows))
+    assert selected.iloc[0]["selected_model"] == "lightgbm"
+    assert selected.iloc[0]["status"] == "selected_on_development_cv"
