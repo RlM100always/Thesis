@@ -239,8 +239,8 @@ test("merchant UI exposes verification, recovery and owner POS workflows", () =>
 });
 
 test("platform admin can audit owner access and suspend accounts without exposing credentials",()=>{
-  assert.match(platformAdminSource,/api\\/platform-admin\\/owners/);
-  assert.match(platformAdminSource,/a\\.email,a\\.role,a\\.is_active,a\\.email_verified_at/);
+  assert.match(platformAdminSource,/api\/platform-admin\/owners/);
+  assert.match(platformAdminSource,/a\.email,a\.role,a\.is_active,a\.email_verified_at/);
   assert.match(platformAdminSource,/DELETE FROM merchant_sessions WHERE account_id=/);
   assert.doesNotMatch(platformAdminSource,/password_salt/);
   assert.match(ui,/Owner accounts/);
