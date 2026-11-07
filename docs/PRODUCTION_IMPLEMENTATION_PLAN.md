@@ -57,9 +57,10 @@ They are not one integrated database today. The repository's own live-audit note
 **Gate:** a user from Store A must never read or change Store B data.
 
 ### Phase 2 — Storefront and commerce
+- [x] Add store-scoped coupon CRUD, public coupon validation and checkout-time revalidation with atomic total/per-customer redemption limits.
 - [ ] Review the full customer journey on mobile and desktop.
-- [ ] Complete cart, checkout, coupon, delivery-fee and order confirmation flows.
-- [ ] Make all stock changes atomic and idempotent.
+- [ ] Complete delivery-fee persistence, order notifications and order confirmation edge cases.
+- [ ] Make all stock changes atomic and idempotent, including cancellation and returns.
 - [ ] Test cancellation, return, stock restoration and order-state transitions.
 - [ ] Keep COD clearly distinct from online payment; enable a gateway only after credentials, webhook verification and reconciliation tests are supplied.
 
