@@ -124,7 +124,7 @@ export default function D1MerchantCenter(){
           <button className="dm-btn" disabled={busy} type="submit">{busy?"প্রক্রিয়াকরণ চলছে…":mode==="login"?"লগইন করুন":"অ্যাকাউন্ট তৈরি করুন"}</button>
         </form>
         <button className="dm-text-btn" onClick={()=>{setMode(v=>v==="login"?"register":"login");setError("");setNote("");setForm(empty);}}>{mode==="login"?"নতুন দোকান মালিকের অ্যাকাউন্ট খুলুন":"লগইনে ফিরে যান"}</button>
-      </div>      </div>:data===null?<p>Cloudflare D1 থেকে দোকানের তথ্য আনা হচ্ছে…</p>:!store?
+      </div>:data===null?<p>Cloudflare D1 থেকে দোকানের তথ্য আনা হচ্ছে…</p>:!store?
       <section className="dm-panel"><h2>আপনার প্রথম দোকান তৈরি করুন</h2><p className="dm-muted">দোকানটি প্রথমে ব্যক্তিগত থাকবে। পণ্য ও মজুত যোগ করে যাচাইয়ের জন্য জমা দিন। অনুমোদনের পর গ্রাহকরা অর্ডার করতে পারবেন।</p>
         <form className="dm-fields" onSubmit={e=>{e.preventDefault();run(async()=>{await call("/api/merchant/store",{method:"POST",token,body:storeForm});},"দোকানের তথ্য সংরক্ষিত হয়েছে।");}}>
         <Field label="দোকানের নাম"><input style={input} value={storeForm.name} minLength={3} required onChange={e=>setStoreForm(x=>({...x,name:e.target.value}))}/></Field>
