@@ -6,3 +6,4 @@ pytest>=8.3
 # Optional model candidates; install both to enable the full comparison
 lightgbm>=4.0
 catboost>=1.2
+matplotlib>=3.7
