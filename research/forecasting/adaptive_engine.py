@@ -19,7 +19,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 from sklearn.compose import ColumnTransformer
-from sklearn.ensemble import HistGradientBoostingRegressor
+from sklearn.ensemble import HistGradientBoostingClassifier, HistGradientBoostingRegressor
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OrdinalEncoder
 from sklearn.metrics import mean_absolute_error, mean_squared_error
@@ -235,6 +235,8 @@ def _estimator(name: str):
                 l2_regularization=1.0, random_state=42
             ))
         ])
+    if name == "two_stage_hist":
+        raise ValueError("two_stage_hist uses a dedicated classifier-regressor fitting path.")
     if name == "lightgbm":
         from lightgbm import LGBMRegressor
         return Pipeline([
@@ -264,7 +266,33 @@ def _fit_predict(model_name: str, train: pd.DataFrame, predict_rows: pd.DataFram
     X_train = train[feature_cols].copy()
     X_pred = predict_rows[feature_cols].copy()
     y_train = train["target"].to_numpy(dtype=float)
-    if model_name == "catboost":
+    if model_name == "two_stage_hist":
+        if np.unique(y_train > 0).size < 2:
+            raise DataContractError("Two-stage classifier requires both zero and positive horizon targets.")
+        encoder = ColumnTransformer([
+            ("ids", OrdinalEncoder(handle_unknown="use_encoded_value", unknown_value=-1),
+             ["shop_id", "category_id"])
+        ], remainder="passthrough", verbose_feature_names_out=False)
+        X_encoded = encoder.fit_transform(X_train)
+        X_pred_encoded = encoder.transform(X_pred)
+        classifier = HistGradientBoostingClassifier(
+            max_iter=140, learning_rate=0.06, max_leaf_nodes=15,
+            l2_regularization=1.0, random_state=42
+        )
+        classifier.fit(X_encoded, (y_train > 0).astype(int))
+        positive = y_train > 0
+        if int(positive.sum()) < 2:
+            raise DataContractError("Two-stage regressor requires at least two positive training targets.")
+        regressor = HistGradientBoostingRegressor(
+            max_iter=160, learning_rate=0.06, max_leaf_nodes=15,
+            l2_regularization=1.0, random_state=42
+        )
+        regressor.fit(X_encoded[positive], y_train[positive])
+        probability = classifier.predict_proba(X_pred_encoded)[:, 1]
+        conditional_mean = np.maximum(0.0, regressor.predict(X_pred_encoded))
+        # Expected demand = P(positive horizon demand) × E[demand | positive].
+        pred = probability * conditional_mean
+    elif model_name == "catboost":
         model = _estimator(model_name)
         cat_cols = ["shop_id", "category_id"]
         model.fit(X_train, y_train, cat_features=cat_cols)
@@ -321,7 +349,7 @@ def rolling_origins(panel: pd.DataFrame, horizon: int, folds: int = 3,
 def run_experiment(panel: pd.DataFrame, horizons=HORIZONS, folds=3,
                    min_history=56, candidates=None) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Rolling-origin comparison. Final test selection is intentionally separate."""
-    candidates = candidates or ["seasonal_naive_7", "croston", "sba", "tsb",
+    candidates = candidates or ["seasonal_naive_7", "croston", "sba", "tsb", "two_stage_hist",
                                 "hist_gradient_boosting", "lightgbm", "catboost"]
     summaries, predictions = [], []
     panel = panel.sort_values([*KEYS, "date"]).reset_index(drop=True)
@@ -498,6 +526,52 @@ def build_diagnostics(panel: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
+def select_models_by_regime(summary: pd.DataFrame, min_origins: int = 2,
+                            min_forecasts: int = 10) -> pd.DataFrame:
+    """Select candidates using development CV only; insufficient groups stay unselected."""
+    required = {"horizon", "origin", "model", "level", "group_value", "status",
+                "wape", "actual_total", "n"}
+    columns = ["horizon", "demand_regime", "selected_model", "development_wape",
+               "origins", "forecasts", "status"]
+    if summary.empty or not required.issubset(summary.columns):
+        return pd.DataFrame(columns=columns)
+    rows = summary[
+        (summary["level"] == "demand_regime") &
+        (summary["status"] == "ok") &
+        summary["wape"].notna() &
+        (summary["actual_total"] > 0)
+    ].copy()
+    if rows.empty:
+        return pd.DataFrame(columns=columns)
+    rows["absolute_error_total"] = rows["wape"] * rows["actual_total"]
+    aggregate = rows.groupby(["horizon", "group_value", "model"], as_index=False).agg(
+        absolute_error_total=("absolute_error_total", "sum"),
+        actual_total=("actual_total", "sum"),
+        origins=("origin", "nunique"),
+        forecasts=("n", "sum")
+    )
+    aggregate["development_wape"] = aggregate["absolute_error_total"] / aggregate["actual_total"]
+    selected = []
+    for (horizon, regime), group in aggregate.groupby(["horizon", "group_value"]):
+        eligible = group[(group["origins"] >= min_origins) &
+                         (group["forecasts"] >= min_forecasts)]
+        if eligible.empty:
+            selected.append({"horizon": int(horizon), "demand_regime": regime,
+                             "selected_model": None, "development_wape": None,
+                             "origins": int(group["origins"].max()),
+                             "forecasts": int(group["forecasts"].max()),
+                             "status": "insufficient_validation_support"})
+        else:
+            best = eligible.sort_values(["development_wape", "model"]).iloc[0]
+            selected.append({"horizon": int(horizon), "demand_regime": regime,
+                             "selected_model": best["model"],
+                             "development_wape": float(best["development_wape"]),
+                             "origins": int(best["origins"]),
+                             "forecasts": int(best["forecasts"]),
+                             "status": "selected_on_development_cv"})
+    return pd.DataFrame(selected)
+
+
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description="B-SMART adaptive daily-demand forecasting research pipeline")
     parser.add_argument("--input", required=True, help="CSV daily panel with date,shop_id,category_id,demand")
@@ -506,7 +580,7 @@ def main(argv=None) -> int:
     parser.add_argument("--min-history", type=int, default=56)
     parser.add_argument("--fill-missing-dates-as-zero", action="store_true",
                         help="Explicitly assume unrecorded dates inside each series are zero-demand days")
-    parser.add_argument("--candidates", default="seasonal_naive_7,croston,sba,tsb,hist_gradient_boosting,lightgbm,catboost")
+    parser.add_argument("--candidates", default="seasonal_naive_7,croston,sba,tsb,two_stage_hist,hist_gradient_boosting,lightgbm,catboost")
     args = parser.parse_args(argv)
     source = Path(args.input).resolve()
     output = Path(args.output)
@@ -521,6 +595,8 @@ def main(argv=None) -> int:
     diagnostics.to_csv(output / "demand_diagnostics.csv", index=False)
     summary.to_csv(output / "rolling_origin_metrics.csv", index=False)
     predictions.to_csv(output / "rolling_origin_predictions.csv", index=False)
+    regime_selection = select_models_by_regime(summary)
+    regime_selection.to_csv(output / "selected_model_by_regime.csv", index=False)
     manifest = {
         "pipeline": "bsmart_adaptive_demand_forecasting",
         "pipeline_version": "0.1.0",
@@ -542,6 +618,8 @@ def main(argv=None) -> int:
         "platform": platform.platform(),
         "random_seed": 42,
         "final_holdout_evaluated": False,
+        "regime_selection": "selected_model_by_regime.csv; rolling-origin development CV only; requires >=2 origins and >=10 series forecasts",
+        "two_stage_probability_calibration": "not_calibrated_in_v0.1.0; expected demand uses raw classifier probability",
         "prediction_intervals": "not_implemented_in_v0.1.0",
         "selection_rule": "development rolling-origin results only; no final test selection",
         "warnings": [
