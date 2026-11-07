@@ -37,19 +37,22 @@ export async function platformAdminRouter(req,env,path,output,error) {
   try {
     if(method==="GET"&&path==="/api/platform-admin/overview") {
       const row=await env.DB.prepare(
-        "SELECT (SELECT COUNT(*) FROM commerce_stores) AS stores_total,"+
+        "SELECT (SELECT COUNT(*) FROM commerce_stores WHERE is_demo=0) AS stores_total,"+
         "(SELECT COUNT(*) FROM commerce_stores WHERE is_active=1 AND is_demo=0) AS stores_active,"+
-        "(SELECT COUNT(*) FROM commerce_products) AS products_total,"+
+        "(SELECT COUNT(*) FROM commerce_stores WHERE is_demo=1) AS unverified_stores,"+
+        "(SELECT COUNT(*) FROM commerce_products p JOIN commerce_stores s ON s.id=p.store_id WHERE s.is_demo=0) AS products_total,"+
         "(SELECT COUNT(*) FROM commerce_products p JOIN commerce_stores s ON s.id=p.store_id WHERE p.is_listed=1 AND s.is_demo=0) AS products_listed,"+
+        "(SELECT COUNT(*) FROM commerce_products p JOIN commerce_stores s ON s.id=p.store_id WHERE s.is_demo=1) AS unverified_products,"+
         "(SELECT COUNT(*) FROM commerce_customer_accounts) AS customers_total,"+
-        "(SELECT COUNT(*) FROM commerce_orders) AS orders_total,"+
-        "(SELECT COUNT(*) FROM commerce_orders WHERE status='cancelled') AS orders_cancelled,"+
+        "(SELECT COUNT(*) FROM commerce_orders o JOIN commerce_stores s ON s.id=o.store_id WHERE s.is_demo=0) AS orders_total,"+
+        "(SELECT COUNT(*) FROM commerce_orders o JOIN commerce_stores s ON s.id=o.store_id WHERE o.status='cancelled' AND s.is_demo=0) AS orders_cancelled,"+
+        "(SELECT COUNT(*) FROM commerce_orders o JOIN commerce_stores s ON s.id=o.store_id WHERE s.is_demo=1) AS unverified_orders,"+
         "(SELECT COALESCE(SUM(o.total_bdt),0) FROM commerce_orders o JOIN commerce_stores s ON s.id=o.store_id WHERE o.status!='cancelled' AND s.is_demo=1) AS unverified_order_value_bdt,"+
         "(SELECT COALESCE(SUM(o.total_bdt),0) FROM commerce_orders o JOIN commerce_stores s ON s.id=o.store_id WHERE o.status!='cancelled' AND s.is_demo=0 AND o.payment_method='cod') AS cod_order_value_bdt,"+
         "(SELECT COALESCE(SUM(o.total_bdt),0) FROM commerce_orders o JOIN commerce_stores s ON s.id=o.store_id WHERE o.status!='cancelled' AND s.is_demo=0 AND o.payment_method='cod' AND o.payment_status='paid') AS cod_paid_total_bdt,"+
         "(SELECT COALESCE(SUM(o.total_bdt),0) FROM commerce_orders o JOIN commerce_stores s ON s.id=o.store_id WHERE o.status!='cancelled' AND s.is_demo=0 AND o.payment_method='cod' AND o.payment_status='pending_cod') AS cod_pending_total_bdt,"+
-        "(SELECT COUNT(*) FROM commerce_order_returns WHERE status IN ('requested','approved')) AS returns_open,"+
-        "(SELECT COUNT(*) FROM commerce_customer_messages WHERE sender_role='customer' AND read_by_merchant_at IS NULL) AS unread_customer_messages"
+        "(SELECT COUNT(*) FROM commerce_order_returns r JOIN commerce_stores s ON s.id=r.store_id WHERE r.status IN ('requested','approved') AND s.is_demo=0) AS returns_open,"+
+        "(SELECT COUNT(*) FROM commerce_customer_messages m JOIN commerce_stores s ON s.id=m.store_id WHERE m.sender_role='customer' AND m.read_by_merchant_at IS NULL AND s.is_demo=0) AS unread_customer_messages"
       ).first();
       return output(req,{scope:"Cloudflare D1 live merchant storefronts; approved stores support COD and merchant-managed fulfilment",online_payments:false,cash_on_delivery:true,merchant_managed_delivery:true,courier_integration:false,automated_refunds:false,metrics:row});
     }
@@ -76,7 +79,7 @@ export async function platformAdminRouter(req,env,path,output,error) {
         "SELECT o.id,o.order_number,o.status,o.status_note,o.cancellation_reason,o.subtotal_bdt,o.total_bdt,o.payment_method,o.payment_status,o.payment_received_at,o.payment_received_by,o.payment_note,o.placed_at,o.shipping_name,o.shipping_phone,o.shipping_address,"+
         "s.id AS store_id,s.slug AS store_slug,s.name AS store_name,a.id AS account_id,a.display_name AS customer_name,a.email AS customer_email "+
         "FROM commerce_orders o JOIN commerce_stores s ON s.id=o.store_id "+
-        "LEFT JOIN commerce_customer_accounts a ON a.id=o.account_id ORDER BY o.placed_at DESC LIMIT 500"
+        "LEFT JOIN commerce_customer_accounts a ON a.id=o.account_id WHERE s.is_demo=0 ORDER BY o.placed_at DESC LIMIT 500"
       ).all();
       return output(req,{orders:results,note:"Unverified sample order values are excluded from revenue. COD collection is merchant-confirmed and is not independently verified by this system."});
     }
@@ -85,7 +88,7 @@ export async function platformAdminRouter(req,env,path,output,error) {
         "SELECT r.id,r.reason,r.customer_note,r.merchant_note,r.status,r.requested_at,r.updated_at,o.order_number,o.total_bdt,"+
         "s.id AS store_id,s.slug AS store_slug,s.name AS store_name,a.id AS account_id,a.display_name AS customer_name,a.email AS customer_email "+
         "FROM commerce_order_returns r JOIN commerce_orders o ON o.id=r.order_id JOIN commerce_stores s ON s.id=r.store_id "+
-        "JOIN commerce_customer_accounts a ON a.id=r.account_id ORDER BY r.requested_at DESC LIMIT 500"
+        "JOIN commerce_customer_accounts a ON a.id=r.account_id WHERE s.is_demo=0 ORDER BY r.requested_at DESC LIMIT 500"
       ).all();
       return output(req,{returns:results,note:"Return processing does not issue a financial refund."});
     }
