@@ -66,6 +66,7 @@ They are not one integrated database today. The repository's own live-audit note
 **Gate:** catalogue, cart, checkout, order and stock totals reconcile in automated tests.
 
 ### Phase 3 — Owner operations and inventory
+- [x] Add per-product reorder threshold (default 5) and low-stock query support in the D1 owner panel.
 - [ ] Complete product, category, pricing, variant, stock and store-settings CRUD.
 - [ ] Add reorder thresholds and low-stock notifications.
 - [ ] Complete order, return, customer inbox, POS and cashbook workflows.
@@ -75,11 +76,14 @@ They are not one integrated database today. The repository's own live-audit note
 **Gate:** every owner action persists to the correct store and is visible after re-login.
 
 ### Phase 4 — Customer and owner AI assistants
-- [ ] Customer assistant: answer only from the current store's published catalogue, delivery rules and authorised order data.
-- [ ] Owner assistant: answer from the signed-in owner's store metrics and operational data.
+- [x] Add a D1 storefront customer assistant grounded in the current store catalogue, delivery rules and the signed-in customer's own orders.
+- [x] Add a tenant-scoped D1 owner assistant for sales, COD collection, low stock, top products and customer insights.
+- [x] Add privacy-preserving per-minute request limits and a feature-flagged Workers AI binding; deterministic data-grounded fallback remains active when AI is disabled.
+- [ ] Customer assistant: complete legacy FastAPI storefront integration as a separate backend path.
+- [ ] Owner assistant: complete additional business intents, evaluations and long-term analytics.
 - [ ] Add product recommendations based on catalogue attributes and availability.
 - [ ] Add explicit human-support handoff.
-- [ ] Add prompt-injection protections, request limits, privacy minimisation and deterministic fallback.
+- [ ] Complete prompt-injection evaluations, abuse protection, privacy review and AI usage-budget controls.
 - [ ] Verify that AI cannot expose another store's records or invent prices, stock, delivery promises or financial totals.
 
 **Gate:** every numeric/business claim is grounded in a database query; AI failure must not break checkout or owner operations.
@@ -114,7 +118,7 @@ The Worker also uses the Cloudflare secret:
 
 The legacy FastAPI production configuration requires a persistent database and secure environment variables. Do not point SQLAlchemy at a D1 database ID or assume an existing Render PostgreSQL resource is the active database. Confirm the live Render service's actual environment and database before changing it.
 
-Owner email verification/password reset code is in the upgrade branch and requires the Worker secret `RESEND_API_KEY` plus the `AUTH_EMAIL_FROM` sender variable and migration 0009. AI narration needs a configured supported AI provider/binding. Neither provider should be represented as live until its configuration and end-to-end tests pass.
+Owner email verification/password reset code is in the upgrade branch and requires the Worker secret `RESEND_API_KEY` plus the `AUTH_EMAIL_FROM` sender variable and migration 0009. Workers AI binding is configured in the branch but model inference remains disabled unless `AI_ENABLED=true` is deliberately set. Model calls are usage-metered; review current pricing and set a usage budget before enabling. Neither mail nor AI provider should be represented as live until end-to-end tests pass.
 
 ## 5. Credential and store-register policy
 
