@@ -1,6 +1,6 @@
 # Cloudflare D1 — B-SMART commerce database and merchant console
 
-**Project reference:** Database **`bsmart-commerce`**, Worker **`bsmart-commerce-api`**, URL https://bsmart-commerce-api.bcs-written-rakib.workers.dev. The current Worker version was verified deployed on 2026-10-27; the Render frontend is https://thesis-j0n8.onrender.com.
+**Project reference:** Database **`bsmart-commerce`**, Worker **`bsmart-commerce-api`**, URL https://bsmart-commerce-api.bcs-written-rakib.workers.dev. The production Worker and Render frontend were verified live on 2026-11-07; the Render frontend is https://thesis-j0n8.onrender.com.
 
 Render hosts the web application at https://thesis-j0n8.onrender.com. **Cloudflare D1 is the database for the D1 storefront, customer, merchant, product, inventory and order workflows. No Render PostgreSQL database is required for those records.** The frontend uses a dual adapter in `frontend/src/api.js`:
 
@@ -19,6 +19,21 @@ Render hosts the web application at https://thesis-j0n8.onrender.com. **Cloudfla
 - Platform admin may explicitly promote only merchant-owned stores to operational COD checkout after confirmation. Approved operational stores accept COD/manual fulfilment only; seeded demo stores remain demo-only, and online payment, courier and refund integrations are not enabled.
 - Demo-store POS remains simulated. Approved merchant stores can record real cash POS sales, payment collection and inventory movement in one D1 batch. The cashbook records receipts/expenses but is not a double-entry accounting ledger.
 - React Owner Center at `/#/d1-owner` with mobile navigation, plus a secret-protected Platform Admin page at `/#/d1-platform-admin` for store moderation, order oversight and audit history.
+
+## Live D1 data audit (7 November 2026)
+
+The existing database was queried read-only. Its 22 application tables report `commerce_meta.schema_version=8`.
+
+- 10 fictional seeded demo stores and 259 sample products.
+- One retained POS CI fixture (`shop-752c1d2b-b92`) with one test product.
+- Three demo/test orders, three order lines, three inventory movements and one test cashbook receipt.
+- One legacy CI merchant account; zero customer accounts and zero real merchant-owned operational stores.
+- All 11 store rows are still marked `is_demo=1`.
+- Orphan-reference, order-total, payment-state and negative-stock checks returned zero exceptions.
+
+The CI fixture is retained in D1 for audit/reconciliation. The current alignment change hides it from public store discovery and customer account routes; it does not delete or rewrite its records. Seeded demo stores remain visible and demo-only.
+
+The Cloudflare account also contains a separate D1 database named `bcs-written` for study-content records. It is not the B-SMART commerce database and must not be used as a replacement or merged into `bsmart-commerce`.
 
 ## D1 schema
 
@@ -50,7 +65,7 @@ The Render service auto-deploys from `main`. A dedicated Cloudflare Worker deplo
 
 - Render is the application host; it is not the commerce database.
 - Cloudflare D1 (`bsmart-commerce`) is authoritative for the D1 storefront and merchant-commerce routes.
-- The older FastAPI operational modules (legacy tenant login, full POS/accounting/purchasing/receivables/reporting and historical business records) still use their separate SQLAlchemy database. They have **not** been migrated to D1 and must not be described as D1-backed or production-persistent.
+- The older FastAPI operational modules (78 operational model tables, 36 platform-control model tables and 54 registered routers) still use their separate SQLAlchemy database. The latest Render startup log reports ephemeral SQLite with 1 organization, 0 stores, 4 catalogue products and 0 listed store products. They have **not** been migrated to D1 and must not be described as D1-backed. The Render Postgres resource exists but is not connected to the running service; do not use it as an assumed source of truth.
 - Do not create or pay for a Render PostgreSQL database for the D1 commerce store. A future D1 cutover of the legacy modules needs a separate reviewed migration and regression plan.
 
 ## Critical NOT YET migrated
