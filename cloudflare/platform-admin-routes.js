@@ -46,12 +46,12 @@ export async function platformAdminRouter(req,env,path,output,error) {
         "(SELECT COUNT(*) FROM commerce_orders WHERE status='cancelled') AS orders_cancelled,"+
         "(SELECT COALESCE(SUM(o.total_bdt),0) FROM commerce_orders o JOIN commerce_stores s ON s.id=o.store_id WHERE o.status!='cancelled' AND s.is_demo=1) AS demo_order_value_bdt,"+
         "(SELECT COALESCE(SUM(o.total_bdt),0) FROM commerce_orders o JOIN commerce_stores s ON s.id=o.store_id WHERE o.status!='cancelled' AND s.is_demo=0 AND o.payment_method='cod') AS cod_order_value_bdt,"+
-        "(SELECT COALESCE(SUM(o.total_bdt),0) FROM commerce_orders o JOIN commerce_stores s ON s.id=o.store_id WHERE o.status!='cancelled' AND s.is_demo=0 AND o.payment_status='paid') AS cod_paid_total_bdt,"+
-        "(SELECT COALESCE(SUM(o.total_bdt),0) FROM commerce_orders o JOIN commerce_stores s ON s.id=o.store_id WHERE o.status!='cancelled' AND s.is_demo=0 AND o.payment_status='pending_cod') AS cod_pending_total_bdt,"+
+        "(SELECT COALESCE(SUM(o.total_bdt),0) FROM commerce_orders o JOIN commerce_stores s ON s.id=o.store_id WHERE o.status!='cancelled' AND s.is_demo=0 AND o.payment_method='cod' AND o.payment_status='paid') AS cod_paid_total_bdt,"+
+        "(SELECT COALESCE(SUM(o.total_bdt),0) FROM commerce_orders o JOIN commerce_stores s ON s.id=o.store_id WHERE o.status!='cancelled' AND s.is_demo=0 AND o.payment_method='cod' AND o.payment_status='pending_cod') AS cod_pending_total_bdt,"+
         "(SELECT COUNT(*) FROM commerce_order_returns WHERE status IN ('requested','approved')) AS returns_open,"+
         "(SELECT COUNT(*) FROM commerce_customer_messages WHERE sender_role='customer' AND read_by_merchant_at IS NULL) AS unread_customer_messages"
       ).first();
-      return output(req,{scope:"Cloudflare D1 storefronts; approved operational stores are COD/manual fulfilment only",real_payments:false,real_delivery:false,manual_cod_enabled:true,metrics:row});
+      return output(req,{scope:"Cloudflare D1 storefronts; approved stores support COD and merchant-managed fulfilment",online_payments:false,cash_on_delivery:true,merchant_managed_delivery:true,courier_integration:false,automated_refunds:false,metrics:row});
     }
     if(method==="GET"&&path==="/api/platform-admin/stores") {
       const {results}=await env.DB.prepare(
