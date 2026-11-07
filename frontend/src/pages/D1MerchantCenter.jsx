@@ -24,7 +24,7 @@ const ORDER_ACTION_SUCCESS={
 const PAYMENT_STATUS_BN={demo_no_payment:"ডেমো—পেমেন্ট নেই",pending_cod:"COD—টাকা গ্রহণ বাকি",paid:"টাকা গ্রহণ নিশ্চিত",cancelled_no_payment:"বাতিল—টাকা নেওয়া হয়নি",unpaid:"পেমেন্ট বাকি"};
 const RETURN_STATUS_BN={requested:"অনুরোধ এসেছে",approved:"অনুমোদিত",rejected:"প্রত্যাখ্যাত",received:"ফেরত পণ্য গ্রহণ",closed_demo:"প্রক্রিয়া বন্ধ"};
 const CASH_KIND_BN={receipt:"টাকা গ্রহণ",expense:"খরচ"};
-const empty={email:"",access_key:""};
+const empty={email:"",password:""};
 async function call(path,{method="GET",body,token}={}){
   const response=await fetch(BASE+path,{method,headers:{"Content-Type":"application/json",...(token?{Authorization:"Bearer "+token}:{})},...(body?{body:JSON.stringify(body)}:{})});
   const j=await response.json().catch(()=>({}));
@@ -41,7 +41,7 @@ export default function D1MerchantCenter(){
   const [token,setToken]=useState(()=>sessionStorage.getItem("bsmart_d1_merchant")||"");
   const [form,setForm]=useState(empty),[mode,setMode]=useState("login"),[view,setView]=useState("dashboard");
   const [data,setData]=useState(null),[busy,setBusy]=useState(false),[error,setError]=useState(""),[note,setNote]=useState("");
-  const [storeForm,setStoreForm]=useState({name:"",category:"মুদি",area:"",tagline:"",is_active:false});
+  const [storeForm,setStoreForm]=useState({name:"",category:"মুদি",area:"",tagline:""});
   const [newProduct,setNewProduct]=useState({sku:"",name:"",category:"",description:"",brand:"",tags:"",compare_at_price_bdt:"",unit_label:"pcs",price_bdt:"",stock_qty:"",is_listed:true});
   const [edit,setEdit]=useState(null);
   const [posProduct,setPosProduct]=useState("");
@@ -52,12 +52,12 @@ export default function D1MerchantCenter(){
   const [threadMessages,setThreadMessages]=useState([]);
   const [activeCustomerId,setActiveCustomerId]=useState("");
   const [replyText,setReplyText]=useState("");
-  const [oneTimeKey,setOneTimeKey]=useState("");
+  
   const store=data?.store;
   const load=useCallback(async tk=>{
     const latest=await call("/api/merchant/dashboard",{token:tk});
     setData(latest);
-    if(latest.store)setStoreForm({name:latest.store.name,category:latest.store.category||"মুদি",area:latest.store.area||"",tagline:latest.store.tagline||"",is_active:latest.store.is_active});
+    if(latest.store)setStoreForm({name:latest.store.name,category:latest.store.category||"মুদি",area:latest.store.area||"",tagline:latest.store.tagline||""});
     return latest;
   },[]);
   useEffect(()=>{if(!token)return;load(token).catch(e=>{setError(e.message);if(e.status===401){sessionStorage.removeItem("bsmart_d1_merchant");setToken("");}});},[token,load]);
@@ -94,13 +94,11 @@ export default function D1MerchantCenter(){
     e.preventDefault();
     await run(async()=>{
       if(mode==="register"){
-        const registered=await call("/api/merchant/register",{method:"POST",body:{email:form.email}});
-        setOneTimeKey(registered.owner_access_key);
-        setMode("login");setForm(old=>({...old,access_key:registered.owner_access_key}));return;
+        await call("/api/merchant/register",{method:"POST",body:{email:form.email,password:form.password}});
       }
-      const result=await call("/api/merchant/login",{method:"POST",body:form});
-      sessionStorage.setItem("bsmart_d1_merchant",result.token);setToken(result.token);setOneTimeKey("");setForm(empty);
-    },mode==="login"?"D1 দোকান ব্যবস্থাপনায় লগইন করা হয়েছে।":"");
+      const result=await call("/api/merchant/login",{method:"POST",body:{email:form.email,password:form.password}});
+      sessionStorage.setItem("bsmart_d1_merchant",result.token);setToken(result.token);setForm(empty);
+    },mode==="login"?"দোকান ব্যবস্থাপনায় লগইন করা হয়েছে।":"অ্যাকাউন্ট তৈরি হয়েছে এবং লগইন করা হয়েছে।");
   }
   async function logout(){
     try{if(token)await call("/api/merchant/logout",{method:"POST",token});}catch{/* local logout even offline */}
@@ -116,31 +114,26 @@ export default function D1MerchantCenter(){
       <section className="dm-heading"><div><p className="dm-overline">Cloudflare D1 · {store?.is_demo===false?"COD দোকান পরিচালনা":"পরীক্ষামূলক দোকান পরিচালনা"}</p><h1>স্টোর ম্যানেজমেন্ট</h1>
       <p>{store?.is_demo===false?"পণ্য, মজুত, COD অর্ডার এবং হাতে পাওয়া পেমেন্টের তথ্য পরিচালনা করুন।":"নিজের পরীক্ষামূলক দোকান, পণ্য, মজুত ও অর্ডারের তথ্য এক জায়গা থেকে পরিচালনা করুন।"}</p></div>
       {store&&<a className="dm-visit" href={"#/store/"+store.slug}>দোকানের প্রিভিউ দেখুন ↗</a>}</section>
-      <div className="dm-warning" role="note">{store?.is_demo===false?"এই দোকানে COD checkout চালু। অর্ডার ও পেমেন্টের তথ্য D1-তে থাকবে; পেমেন্ট গ্রহণ merchant-কে হাতে নিশ্চিত করতে হবে। অনলাইন পেমেন্ট গেটওয়ে, কুরিয়ার ইন্টিগ্রেশন ও স্বয়ংক্রিয় refund চালু নেই।":"এটি একটি পরীক্ষামূলক দোকান পরিচালনার ব্যবস্থা। এখানে বাস্তব পেমেন্ট ও ডেলিভারি নেই। পুরোনো ব্যবসার হিসাব ও গ্রাহক অ্যাকাউন্টও এখানে যুক্ত নয়। বাস্তব গ্রাহকের তথ্য ব্যবহার করবেন না।"}</div>
+      <div className="dm-warning" role="note">{store?.is_demo ? "এটি একটি পরীক্ষামূলক দোকান। এখানে বাস্তব অর্ডার বা টাকা গ্রহণ করা হয় না।" : !store?.is_active ? "আপনার দোকানটি যাচাইয়ের অপেক্ষায় আছে। পণ্য ও মজুত প্রস্তুত করুন; অনুমোদনের পর দোকানটি প্রকাশিত হবে।" : "আপনার দোকানে Cash on Delivery চালু। অর্ডার, মজুত ও পেমেন্টের অবস্থা Cloudflare D1-তে সংরক্ষিত হয়।"}</div>
       {error&&<p className="dm-error" role="alert">{error}</p>}{note&&<p className="dm-success" role="status">{note}</p>}
       {!token?<div className="dm-auth"><h2>{mode==="login"?"দোকান মালিকের লগইন":"নতুন দোকান মালিকের অ্যাকাউন্ট"}</h2>
-        <p>এটি পুরোনো B-SMART লগইন নয়। এখানে ২৫৬-বিটের গোপন অ্যাক্সেস কী ব্যবহার করা হয়। ইমেইল যাচাই বা হারানো কী পুনরুদ্ধারের ব্যবস্থা এখনো নেই।</p>
-        {oneTimeKey&&<div className="dm-warning" role="status"><strong>আপনার অ্যাক্সেস কী শুধু একবার দেখানো হবে। এখনই নিরাপদ জায়গায় সংরক্ষণ করুন।</strong>
-          <p style={{overflowWrap:"anywhere",fontFamily:"monospace",userSelect:"all"}}>{oneTimeKey}</p>
-          <button className="dm-secondary" type="button" onClick={()=>navigator.clipboard?.writeText(oneTimeKey)}>অ্যাক্সেস কী কপি করুন</button>
-          <p>অ্যাক্সেস কী কারও সঙ্গে শেয়ার করবেন না। হারিয়ে গেলে এই অ্যাকাউন্ট পুনরুদ্ধার করা যাবে না।</p></div>}
-
+        <p>ইমেইল ও শক্তিশালী পাসওয়ার্ড দিয়ে দোকান পরিচালনার অ্যাকাউন্ট তৈরি করুন।</p>
         <form onSubmit={authenticate} className="dm-fields">
           <Field label="ইমেইল"><input style={input} type="email" autoComplete="email" required value={form.email} onChange={e=>setForm(v=>({...v,email:e.target.value}))}/></Field>
-          {mode==="login"&&<Field label="মালিকের অ্যাক্সেস কী (৬৪ অক্ষর)"><input style={input} type="password" minLength={64} maxLength={64} autoComplete="off" required value={form.access_key} onChange={e=>setForm(v=>({...v,access_key:e.target.value}))}/></Field>}
-          <button className="dm-btn" disabled={busy} type="submit">{busy?"প্রক্রিয়াকরণ চলছে…":mode==="login"?"লগইন করুন":"অ্যাকাউন্ট খুলুন"}</button>
+          <Field label={mode==="login"?"পাসওয়ার্ড (অথবা পুরোনো অ্যাক্সেস কী)":"পাসওয়ার্ড (কমপক্ষে ১২ অক্ষর)"}><input style={input} type="password" autoComplete={mode==="login"?"current-password":"new-password"} minLength={12} maxLength={128} required value={form.password} onChange={e=>setForm(v=>({...v,password:e.target.value}))}/></Field>
+          <button className="dm-btn" disabled={busy} type="submit">{busy?"প্রক্রিয়াকরণ চলছে…":mode==="login"?"লগইন করুন":"অ্যাকাউন্ট তৈরি করুন"}</button>
         </form>
-        <button className="dm-text-btn" onClick={()=>{setMode(v=>v==="login"?"register":"login");setError("");setNote("");}}>{mode==="login"?"নতুন দোকান মালিকের অ্যাকাউন্ট খুলুন":"লগইনে ফিরে যান"}</button>
-      </div>:data===null?<p>Cloudflare D1 থেকে দোকানের তথ্য আনা হচ্ছে…</p>:!store?
-      <section className="dm-panel"><h2>আপনার প্রথম স্টোর তৈরি করুন</h2><p className="dm-muted">শুরুতে দোকানটি শুধু আপনার জন্য দৃশ্যমান থাকবে। পরে চাইলে পরীক্ষামূলক প্রিভিউ প্রকাশ করতে পারবেন।</p>
-        <form className="dm-fields" onSubmit={e=>{e.preventDefault();run(async()=>{await call("/api/merchant/store",{method:"POST",token,body:storeForm});},"নতুন পরীক্ষামূলক দোকান সংরক্ষিত হয়েছে।");}}>
+        <button className="dm-text-btn" onClick={()=>{setMode(v=>v==="login"?"register":"login");setError("");setNote("");setForm(empty);}}>{mode==="login"?"নতুন দোকান মালিকের অ্যাকাউন্ট খুলুন":"লগইনে ফিরে যান"}</button>
+      </div>      </div>:data===null?<p>Cloudflare D1 থেকে দোকানের তথ্য আনা হচ্ছে…</p>:!store?
+      <section className="dm-panel"><h2>আপনার প্রথম দোকান তৈরি করুন</h2><p className="dm-muted">দোকানটি প্রথমে ব্যক্তিগত থাকবে। পণ্য ও মজুত যোগ করে যাচাইয়ের জন্য জমা দিন। অনুমোদনের পর গ্রাহকরা অর্ডার করতে পারবেন।</p>
+        <form className="dm-fields" onSubmit={e=>{e.preventDefault();run(async()=>{await call("/api/merchant/store",{method:"POST",token,body:storeForm});},"দোকানের তথ্য সংরক্ষিত হয়েছে।");}}>
         <Field label="দোকানের নাম"><input style={input} value={storeForm.name} minLength={3} required onChange={e=>setStoreForm(x=>({...x,name:e.target.value}))}/></Field>
         <Field label="বিভাগ"><select style={input} value={storeForm.category} onChange={e=>setStoreForm(x=>({...x,category:e.target.value}))}>{categories.map(c=><option key={c}>{c}</option>)}</select></Field>
         <Field label="এলাকা"><input style={input} required value={storeForm.area} onChange={e=>setStoreForm(x=>({...x,area:e.target.value}))} placeholder="যেমন: রাজশাহী"/></Field>
-        <button disabled={busy} type="submit" className="dm-btn">পরীক্ষামূলক দোকান তৈরি করুন</button></form>
+        <button disabled={busy} type="submit" className="dm-btn">দোকান তৈরি করুন</button></form>
       </section>:
       <>
-        <div className="dm-tabs">{[["dashboard","সারসংক্ষেপ"],["products","পণ্য ও মজুত"],["pos","ডেমো বিক্রি ও হিসাব"],["orders","অর্ডার"],["returns","ফেরত"],["chat","ক্রেতার বার্তা"],["store","দোকানের সেটিংস"]].filter(([k])=>k!=="pos"||store.is_demo).map(([k,l])=><button key={k} onClick={()=>setView(k)} className={view===k?"dm-active":""}>{l}</button>)}</div>
+        <div className="dm-tabs">{[["dashboard","সারসংক্ষেপ"],["products","পণ্য ও মজুত"],["pos",store.is_demo?"ডেমো বিক্রি":"ক্যাশ বিক্রি"],["orders","অর্ডার"],["returns","ফেরত"],["chat","ক্রেতার বার্তা"],["store","দোকানের সেটিংস"]].map(([k,l])=><button key={k} onClick={()=>setView(k)} className={view===k?"dm-active":""}>{l}</button>)}</div>
         {view==="dashboard"&&<div className="dm-stack">
           <div className="dm-stats">{store.is_demo?<><Metric title="ডেমো অর্ডার" value={Number(stats.orders||0).toLocaleString("en-BD")}/><Metric title="বাতিল হয়নি এমন নমুনা বিক্রি" value={fmt(stats.placed_total_bdt)} tip="বাস্তবে কোনো টাকা আদায় হয়নি"/><Metric title="প্রকাশিত পণ্য" value={totalProducts}/><Metric title="মজুতের পরিমাণ" value={Number(stats.inventory_units||0)}/></>:<><Metric title="অর্ডার" value={Number(stats.orders||0).toLocaleString("en-BD")}/><Metric title="COD অর্ডারের মোট মূল্য" value={fmt(stats.placed_total_bdt)} tip="এটি অর্ডারের মূল্য; আদায়কৃত টাকা নয়"/><Metric title="COD আদায় নিশ্চিত" value={fmt(stats.cod_paid_total_bdt)}/><Metric title="COD টাকা বাকি" value={fmt(stats.cod_pending_total_bdt)}/><Metric title="প্রকাশিত পণ্য" value={totalProducts}/><Metric title="মজুতের পরিমাণ" value={Number(stats.inventory_units||0)}/></>}</div>
           <div className="dm-panel"><h2>{store.name}</h2><p className="dm-muted">{store.area} · {store.category}</p><p>{store.is_demo?"ডেমো দোকান প্রকাশিত":"দোকান প্রকাশিত"}: <strong>{store.is_active?"হ্যাঁ":"না"}</strong></p><p className="dm-muted">দোকানের লিংক: <code>/#/store/{store.slug}</code></p>
@@ -158,19 +151,19 @@ export default function D1MerchantCenter(){
             <div><strong>{p.name}</strong><p className="dm-muted">{p.sku} · {p.category||"বিভাগ দেওয়া নেই"}</p><p><b>{fmt(p.price_bdt)}</b> · মজুত <b>{p.stock_qty}</b> · {p.is_listed?"প্রকাশিত":"লুকানো"}</p></div>
             <button className="dm-secondary" onClick={()=>setEdit({...p})}>সম্পাদনা</button></article>)}</div>}</section>
         </div>}
-        {view==="pos"&&store.is_demo&&<div className="dm-stack">
-          <section className="dm-panel"><h2>পরীক্ষামূলক কাউন্টার বিক্রি</h2><p className="dm-muted">এখানে দেওয়া বিক্রির নমুনা রেকর্ড D1-তে সংরক্ষিত হবে এবং পরীক্ষামূলক মজুত কমবে। বাস্তবে কোনো টাকা গ্রহণ করা হবে না।</p>
+        {view==="pos"&&<div className="dm-stack">
+          <section className="dm-panel"><h2>{store.is_demo?"পরীক্ষামূলক কাউন্টার বিক্রি":"কাউন্টার বিক্রি"}</h2><p className="dm-muted">{store.is_demo?"নমুনা বিক্রি ও মজুতের পরিবর্তন D1-তে সংরক্ষিত হবে।":"নগদ বিক্রি, পেমেন্ট এবং মজুতের পরিবর্তন একসঙ্গে D1-তে সংরক্ষিত হবে।"}</p>
             <form className="dm-product-form" onSubmit={e=>{e.preventDefault();const selected=posProduct||products.find(p=>p.is_listed&&p.stock_qty>0)?.id;if(!selected){setError("বিক্রির জন্য প্রকাশিত ও মজুত থাকা কোনো পণ্য নেই।");return;}run(()=>call("/api/merchant/pos",{method:"POST",token,body:{items:[{product_id:selected,quantity:Number(posQty)}]}}),"নমুনা বিক্রি ও মজুতের পরিবর্তন সংরক্ষিত হয়েছে।");}}>
               <Field label="পণ্য"><select style={input} required value={posProduct||products.find(p=>p.is_listed&&p.stock_qty>0)?.id||""} onChange={e=>setPosProduct(e.target.value)}>{products.filter(p=>p.is_listed&&p.stock_qty>0).map(p=><option value={p.id} key={p.id}>{p.name} · {fmt(p.price_bdt)} · মজুত {p.stock_qty}</option>)}</select></Field>
               <Field label="পরিমাণ"><input style={input} type="number" min={1} max={30} value={posQty} onChange={e=>setPosQty(e.target.value)}/></Field>
-              <button type="submit" className="dm-btn" disabled={busy||!products.some(p=>p.is_listed&&p.stock_qty>0)}>নমুনা বিক্রি সংরক্ষণ করুন</button>
+              <button type="submit" className="dm-btn" disabled={busy||!products.some(p=>p.is_listed&&p.stock_qty>0)}>{store.is_demo?"নমুনা বিক্রি সংরক্ষণ করুন":"নগদ বিক্রি সংরক্ষণ করুন"}</button>
             </form></section>
-          <section className="dm-panel"><h2>পরীক্ষামূলক নগদ হিসাব</h2><p className="dm-muted">এটি পূর্ণাঙ্গ হিসাবরক্ষণ নয়। এখানে নমুনা টাকা গ্রহণ ও খরচের তথ্য রাখা যায়।</p>
+          <section className="dm-panel"><h2>নগদ হিসাব</h2><p className="dm-muted">{store.is_demo?"এটি পরীক্ষামূলক নগদ হিসাব।":"দৈনন্দিন নগদ গ্রহণ ও খরচের এন্ট্রি এখানে রাখুন।"}</p>
             <form className="dm-product-form" onSubmit={e=>{e.preventDefault();run(async()=>{await call("/api/merchant/cashbook",{method:"POST",token,body:{...cashForm,amount_bdt:Number(cashForm.amount_bdt)}});setCashForm({kind:"expense",amount_bdt:"",description:""});},"নমুনা নগদ হিসাব সংরক্ষিত হয়েছে।");}}>
               <Field label="ধরন"><select style={input} value={cashForm.kind} onChange={e=>setCashForm(v=>({...v,kind:e.target.value}))}><option value="expense">খরচ</option><option value="receipt">টাকা গ্রহণ</option></select></Field>
               <Field label="পরিমাণ (টাকা)"><input style={input} type="number" min={1} max={500000} required value={cashForm.amount_bdt} onChange={e=>setCashForm(v=>({...v,amount_bdt:e.target.value}))}/></Field>
               <Field label="বিবরণ"><input style={input} minLength={3} required value={cashForm.description} onChange={e=>setCashForm(v=>({...v,description:e.target.value}))}/></Field>
-              <button className="dm-btn" disabled={busy} type="submit">নমুনা হিসাব সংরক্ষণ করুন</button></form>
+              <button className="dm-btn" disabled={busy} type="submit">হিসাব সংরক্ষণ করুন</button></form>
           </section>
           <section className="dm-panel"><h2>সাম্প্রতিক নগদ হিসাব</h2>
             {!(data.cashbook||[]).length?<Empty>এখনো কোনো হিসাব যোগ করা হয়নি।</Empty>:<div className="dm-scroll"><table><thead><tr><th>তারিখ</th><th>ধরন</th><th>পরিমাণ</th><th>বিবরণ</th></tr></thead>
@@ -200,13 +193,13 @@ export default function D1MerchantCenter(){
             </div>
           </div>
         </section>}
-        {view==="store"&&<section className="dm-panel"><h2>দোকানের সেটিংস</h2><p className="dm-muted">{store.is_demo?"এই দোকান শুধু পরীক্ষামূলক হিসেবে প্রকাশ করা যাবে। এখানে বাস্তব পেমেন্ট বা ডেলিভারি চালু নেই।":"দোকানটি COD অর্ডার গ্রহণ করে; অনলাইন পেমেন্ট ও কুরিয়ার ইন্টিগ্রেশন নেই।"}</p>
+        {view==="store"&&<section className="dm-panel"><h2>দোকানের সেটিংস</h2><p className="dm-muted">{store.is_demo?"এটি একটি পরীক্ষামূলক দোকান।":"স্টোরের প্রকাশনার অবস্থা: "+(store.is_active?"প্রকাশিত":"অনুমোদনের অপেক্ষায়")}</p>
         <form className="dm-fields" onSubmit={e=>{e.preventDefault();run(()=>call("/api/merchant/store",{method:"PATCH",token,body:storeForm}),"দোকানের তথ্য সংরক্ষিত হয়েছে।");}}>
           <Field label="নাম"><input style={input} required minLength={3} value={storeForm.name} onChange={e=>setStoreForm(v=>({...v,name:e.target.value}))}/></Field>
           <Field label="বিভাগ"><select style={input} value={storeForm.category} onChange={e=>setStoreForm(v=>({...v,category:e.target.value}))}>{categories.map(c=><option key={c}>{c}</option>)}</select></Field>
           <Field label="এলাকা"><input style={input} required value={storeForm.area} onChange={e=>setStoreForm(v=>({...v,area:e.target.value}))}/></Field>
           <Field label="বিবরণ"><input style={input} value={storeForm.tagline} onChange={e=>setStoreForm(v=>({...v,tagline:e.target.value}))}/></Field>
-          <label className="dm-check"><input type="checkbox" checked={storeForm.is_active} onChange={e=>setStoreForm(v=>({...v,is_active:e.target.checked}))}/>{store.is_demo?"পরীক্ষামূলক দোকানটি সবার জন্য দেখান":"দোকানটি সবার জন্য প্রকাশ করুন"}</label>
+          {!store.is_active&&<p className="dm-muted">প্রকাশনার জন্য Platform Admin-এর অনুমোদন প্রয়োজন।</p>}
           <button className="dm-btn" disabled={busy} type="submit">সেটিংস সংরক্ষণ করুন</button>
         </form></section>}
         {edit&&<div className="dm-modal-bg" onClick={()=>setEdit(null)}><section role="dialog" aria-modal="true" aria-label="পণ্য সম্পাদনা" className="dm-panel dm-dialog" onClick={e=>e.stopPropagation()}><h2>পণ্য সম্পাদনা: {edit.name}</h2>
@@ -215,6 +208,6 @@ export default function D1MerchantCenter(){
           <label className="dm-check"><input type="checkbox" checked={!!edit.is_listed} onChange={e=>setEdit(v=>({...v,is_listed:e.target.checked}))}/>প্রকাশিত</label><div className="dm-actions"><button className="dm-btn" disabled={busy} type="submit">পরিবর্তন সংরক্ষণ করুন</button><button type="button" onClick={()=>setEdit(null)} className="dm-secondary">বন্ধ করুন</button></div></form></section></div>}
       </>}
     </div>
-    {token&&store&&<nav className="dm-bottom" aria-label="Owner mobile app navigation">{[["dashboard","হোম","⌂"],["products","পণ্য","▣"],["pos","বিক্রি","⊞"],["orders","অর্ডার","≡"],["returns","ফেরত","↩"],["store","সেটিংস","⚙"]].filter(([k])=>k!=="pos"||store.is_demo).map(([k,t,icon])=><button key={k} className={view===k?"selected":""} onClick={()=>{setView(k);window.scrollTo({top:0,behavior:"smooth"});}}><span>{icon}</span>{t}</button>)}</nav>}
+    {token&&store&&<nav className="dm-bottom" aria-label="Owner mobile app navigation">{[["dashboard","হোম","⌂"],["products","পণ্য","▣"],["pos","বিক্রি","⊞"],["orders","অর্ডার","≡"],["returns","ফেরত","↩"],["store","সেটিংস","⚙"]].map(([k,t,icon])=><button key={k} className={view===k?"selected":""} onClick={()=>{setView(k);window.scrollTo({top:0,behavior:"smooth"});}}><span>{icon}</span>{t}</button>)}</nav>}
   </main>;
 }
