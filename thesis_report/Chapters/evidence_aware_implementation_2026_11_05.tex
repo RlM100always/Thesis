@@ -1,52 +1,56 @@
-% B-SMART evidence-aware implementation chapter, 5 November 2026.
-% Included by the original six-chapter thesis_report/main.tex.
+% Updated B-SMART implementation chapter: multi-horizon RQ1 design, 7 November 2026.
 \section{Implementation Scope and Research--Software Boundary}
 
-B-SMART includes a multi-organisation operational web application and a separate offline empirical research workflow. The operational software supports SME transaction entry, sales, catalogue, inventory, purchasing, finance, role-scoped analytics, and a recommendation review/decision log. The experiments in Chapter~\ref{chapter_experimentalResults} use an independently executed Python evaluation pipeline. The saved LightGBM and XGBoost model artefacts are \emph{not} deployed as production predictive API endpoints. A page labelled Forecast or Segments is not by itself evidence that the thesis models are served in production.
+B-SMART contains a multi-organisation operational web application and a separate offline empirical research workflow. The operational software supports organisation and branch configuration, product catalogue, sales, inventory movements, purchasing, finance, role-scoped analytics, and a recommendation review/decision log. The experiments in Chapter~\ref{chapter_experimentalResults} use a reproducible Python evaluation pipeline. The trained research models are \emph{offline artefacts}; they are not verified production inference endpoints. A page labelled Forecast or Segments is not, by itself, evidence that the thesis models are served in production.
 
 \section{Operational Software Implementation}
 \subsection{Application Architecture}
-The repository uses React and Vite for its frontend, FastAPI and SQLAlchemy for the Python API, and configurable SQLite/PostgreSQL relational storage. A tenant/organisation and branch scope is retained throughout the business data model. The backend enforces capabilities through role-based permission checks; frontend visibility is not treated as sufficient isolation. Operational event records, import events, and recommendation decisions are tracked through auditable routes.
+
+The repository uses React and Vite for its frontend, FastAPI and SQLAlchemy for the Python API, and configurable SQLite/PostgreSQL relational storage. Tenant and branch scope is retained throughout the business data model. The backend enforces capabilities through role-based permission checks; frontend visibility is not treated as sufficient isolation. Operational event records, import events, and recommendation decisions are tracked through auditable routes.
 
 \subsection{Business Modules and Outputs}
-The operational workflow includes authenticated organisation/branch configuration; product catalogue and point-of-sale orders; inventory movements; supplier and purchasing records; sales returns; expense/payment/ledger reporting; and dashboard summary indicators. The application computes traceable operational KPIs where source evidence is adequate. Cost coverage is distinguished from revenue rather than assuming that missing costs represent zero. All time-window definitions and eligible transaction statuses should be documented for reported figures.
+
+The operational workflow includes authenticated organisation/branch configuration; product catalogue and point-of-sale orders; inventory movements; supplier and purchasing records; sales returns; expense, payment and ledger reporting; and dashboard indicators. The application computes traceable operational KPIs where source evidence is adequate. Cost coverage is distinguished from revenue rather than assuming that missing costs represent zero. Reported KPIs require explicit time-window definitions and eligible transaction statuses.
 
 \subsection{Recommendation and Owner Decision Contract}
-Operational candidates may be produced for reorder, near-expiry and eligible retention review. For a candidate to be actionable, its evidence bundle should contain the decision cutoff, eligible source snapshot, suggested action, estimated benefit and uncertainty (where supported), budget/stock/lead-time/capacity/consent constraints, and reason for abstaining when essential data are absent. The user can accept, reject, modify, or defer a recommendation; later outcome capture is a separate event. No predicted retention benefit is a causal campaign-uplift estimate.
+
+An actionable candidate should contain the decision cutoff, eligible source snapshot, suggested action, estimated benefit and uncertainty where supported, stock/budget/lead-time/capacity/consent constraints, and a reason for abstaining when essential data are absent. The owner can accept, reject, modify, or defer a recommendation; later outcome capture is a separate event. A predicted inactivity score is not a causal campaign-uplift estimate, and a demand forecast is not proof that stock was available to meet demand.
 
 \section{Reproducible Offline Model Implementation}
-\subsection{RQ1 Feature Pipeline and Validation}
-The offline demand target is one-day-ahead observed shop--category--day sales, not latent uncensored SKU demand. Feature values are drawn from previous observations: lags 1, 7, 14 and 28 days; trailing 7- and 28-day means; shop/category encodings and calendar terms. Chronological development uses records before August 2025 for training, August--September for validation and October--December for held-out evaluation. An additional exploratory comparison refits LightGBM and trains fixed-parameter XGBoost and two-stage hurdle models on the same target. Reused final test results are explicitly marked exploratory, not pristine model-selection evidence.
+\subsection{Data Validation and Empirical Scope}
 
-\subsection{RQ2 Inactivity Prediction and SHAP}
-The offline customer target is no qualifying purchase during the next 90 days. Training snapshots with outcome windows overlapping the evaluation period are excluded through temporal embargo. Stored Logistic Regression and LightGBM models can be analysed through feature attribution. Global mean absolute TreeSHAP contributions were recomputed over a fixed 1,200-row sample of test snapshots using the LightGBM model. The prominent predictors were lifetime order count, order count over the past 180 days, tenure and recency. Attribution is associational and does not prove a campaign effect or that an owner understands the explanation. SHAP values are in the model's raw score (log-odds) space, not probabilities.
+The forecasting panel contains 561,152 complete shop--category--day rows: 32 shops, 16 categories, and 1,096 calendar days from 1 January 2023 to 31 December 2025. The panel has 512 shop--category series, no duplicate keys, and no missing shop--category--date combinations. The restricted reconstruction joined 736,683 sales lines to 365,447 orders and the product catalogue; the selected source export had no missing order or SKU references and no shop-ID mismatches. Three similarly named sales-line exports overlap and are not independent partitions; only one non-overlapping source copy was used for reconstruction.
 
-\section{RQ1-to-RQ3 and RQ2-to-RQ4 Integration Design}
-An integrated evidence-aware workflow is:
-\[
-\text{Business events}\rightarrow\text{Validated snapshot}
-\rightarrow\text{Forecast/risk estimate}\rightarrow
-\text{Feasibility checks}\rightarrow
-\text{Explanation}\rightarrow
-\text{Owner decision}\rightarrow\text{Outcome audit}.
-\]
-For inventory action, the intended forecast should cover the replenishment lead time, with explicit uncertainty and a service-level constraint. The executed RQ1 experiment is one-day-ahead; it is \emph{not} yet a validated 7-, 14- or lead-time-horizon input to RQ3. The current RQ3 policy cases are separately generated scenarios and are not a backtest driven by RQ1 predictions. For customer retention, a predictive inactivity score can support review priority; RQ4 must additionally validate explanation faithfulness and human usability.
+All 32 shops in the supplied catalogue are labelled grocery/FMCG. The empirical results therefore concern this retail setting, not a representative sample of all SME sectors. Merchant origin, collection permissions, and the original extraction process have not been independently certified. Raw customer-level records and row-level predictions are excluded from this public repository.
 
-\section{Implementation Evidence and Missing Acceptance Tests}
-\begin{table}[htbp]\centering\small
-\caption{Current status of software and empirical components.}
-\begin{tabular}{p{0.38\textwidth}p{0.18\textwidth}p{0.34\textwidth}}
-\toprule
-Component & Status & Evidence boundary\\
-\midrule
-Core transaction and tenant-aware API & Implemented & Code inspection; not a new security certification\\
-Operational recommendation and decision log & Implemented/partial & Rule-based and heuristic path; outcomes require source records\\
-Offline demand and customer risk models & Executed offline & Training and held-out metrics exist\\
-Trained-model serving integration & Pending & No deployed model API established\\
-Real inventory historical replay & Pending & Current RQ3 has synthetic-oracle demand\\
-Human explanation usability evaluation & Pending & Current RQ4 cases are not participant observations\\
-Cross-sector generalisation & Pending & All supplied shops are labelled grocery/FMCG\\
-\bottomrule
-\end{tabular}
-\end{table}
-Screenshots should be obtained from the running application and added only after confirming that the pictured route and dataset are real. No invented interface image is presented as an implementation test.
+The RQ1 wording retains its intended branch--SKU decision focus. The current reliable daily panel supports shop--category targets. SKU-level diagnostics show 13,271 observed shop--SKU pairs, an average of 52.7 selling days per pair over 1,096 days, and a 95.2\% daily zero rate. Accordingly, the executed primary panel experiment is shop--category; a fully validated branch--SKU forecast and SKU-allocation rule remain separate work.
+
+\subsection{Daily Panel Features and Model Selection}
+
+The daily model uses lagged target history and calendar context. The history-rich specification contains 75 predictors: target lags up to 364 days; trailing means, standard deviations and zero-demand rates over 7--84 days; positive-demand size summaries; recent-to-longer-term demand ratios; day-of-week, month and annual-cycle terms; and lagged shop, category and network demand context. All target-derived features are shifted so that the prediction for date \(t\) uses no sales from date \(t\) or later.
+
+A global LightGBM model with an L1 objective is compared with the original smaller-feature LightGBM L2 model. L1 aligns the fitting loss with the absolute-error numerator of WAPE, but it can estimate a conditional median and understate expected volume. Therefore WAPE and aggregate forecast bias are reported together; the L1 daily model is not automatically selected as an inventory order-quantity model.
+
+Transaction-derived lagged price, unit-cost, discount, gross-margin, phone-order-share and SKU-mix summaries were tested as an ablation. They did not improve daily WAPE in the first two rolling folds, so they are not included in the selected primary feature set. The finding does not imply that future-known promotions or market variables are unimportant; those variables were not available as reliable prospective inputs in the supplied panel.
+
+\subsection{Direct Multi-Horizon Demand Forecasting}
+
+To align forecasting with replenishment decisions, separate direct models predict cumulative observed demand over the next 7, 14 and 28 days. Each origin uses up to 84 days of past shop--category demand, demand intermittency and positive-size summaries, calendar terms, and lagged shop/category/network context. The target is the sum of the following \(h\) days, where \(h\in\{7,14,28\}\). Origins are spaced by \(h\) days, so evaluation target windows do not overlap within a horizon. This is a direct horizon-specific forecast, not a recursive sum of one-day predictions.
+
+For each horizon, LightGBM L1 and Tweedie candidates are compared with a last-horizon repeat and a mean of the preceding four horizon blocks. Tweedie is retained as the primary inventory-planning candidate when its WAPE is close to L1 and its total-volume bias is lower. The L1 model remains a useful absolute-error benchmark. The horizon used in a later inventory policy must match the actual supplier lead time or review period; a 28-day forecast is not substituted for a 7-day lead-time forecast.
+
+\subsection{Temporal and Held-Out-Shop Validation}
+
+Three rolling-origin folds use target-end dates to prevent training labels from crossing a validation or test boundary. The test periods are 2025 Q1, Q2 and Q3; validation and calibration windows precede each test period. The October--December 2025 daily test used in earlier work has already been inspected and is not treated as a pristine final holdout.
+
+A separate four-fold held-out-shop experiment excludes eight shops from model fitting in each fold and removes the shop identifier from the predictors. Historical sales from each held-out shop remain available as lagged context. This tests transfer to an unseen shop \emph{with historical sales available}; it is not zero-shot cold-start prediction and it does not establish transfer to a new sector.
+
+Uncertainty was explored with 10th and 90th conditional-quantile models. Their empirical coverage was below the nominal 80\% interval target in the examined test folds. The intervals are therefore diagnostic and are not presented as calibrated service-level guarantees. Further temporal calibration is required before using an upper quantile as a stock-safety rule.
+
+\section{RQ2, RQ3 and RQ4 Offline Implementation Boundaries}
+
+RQ2 predicts no qualifying customer purchase during the following 90 days. Historical snapshots with overlapping outcome windows are excluded through temporal embargo. Stored Logistic Regression and LightGBM models are analysed offline. Aggregate TreeSHAP contributions are reported in raw-score (log-odds) space and do not prove causality or owner understanding.
+
+RQ3 currently evaluates 2,500 synthetic-oracle scenarios. The new 7-, 14- and 28-day forecasts provide candidate demand inputs for a future policy replay, but they have not yet been connected to verified historical stock balances, receipts, supplier lead times, or realised purchase outcomes. The scenario experiment must not be described as a real-data backtest.
+
+RQ4 currently audits 1,800 structured explanation cases. A supplied evidence-complete flag is not independent evidence verification. No SME-owner comprehension or usability study has been completed. Technical feature attribution, a structured business reason, and a human participant's understanding remain distinct outcomes.
