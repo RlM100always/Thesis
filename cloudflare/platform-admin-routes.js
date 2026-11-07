@@ -64,7 +64,7 @@ export async function platformAdminRouter(req,env,path,output,error) {
     }
     if(method==="GET"&&path==="/api/platform-admin/owners") {
       const {results}=await env.DB.prepare(
-        "SELECT a.id,a.email,a.role,a.is_active,a.email_verified_at,a.created_at,"+
+        "SELECT a.id,a.email,a.role,a.is_active,a.email_verified_at,a.created_at,CASE WHEN a.password_hash='ACCESS_KEY_ONLY' THEN 'legacy_access_key' ELSE 'password' END AS auth_mode,"+
         "s.id AS store_id,s.slug AS store_slug,s.name AS store_name,"+
         "(SELECT COUNT(*) FROM merchant_sessions ms WHERE ms.account_id=a.id AND datetime(ms.expires_at)>CURRENT_TIMESTAMP) AS active_sessions "+
         "FROM merchant_accounts a LEFT JOIN commerce_stores s ON s.owner_id=a.id "+
