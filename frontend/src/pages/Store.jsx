@@ -965,7 +965,7 @@ function NagadLogo({ size = 32 }) {
 
 function CheckoutView({ store, cart, products, onBack, onDone, scCustomer, variantSelections }) {
   const orgId = store.organization_id;
-  const defaultPayment = store.payment_cod ? "cod" : store.payment_bkash ? "bkash" : store.payment_nagad ? "nagad" : store.sslcz_store_id ? "sslcommerz" : "cod";
+  const defaultPayment = store.payment_cod ? "cod" : store.payment_bkash ? "bkash" : store.payment_nagad ? "nagad" : store.sslcz_live_enabled ? "sslcommerz" : "cod";
   const prefillDiv = scCustomer?.division || "";
 
   // Auto-fill from logged-in customer profile
@@ -1269,7 +1269,7 @@ function CheckoutView({ store, cart, products, onBack, onDone, scCustomer, varia
                 {form.payment === "nagad" && <span style={{marginLeft:"auto",color:"#F7941D",fontSize:20}}>✓</span>}
               </button>
             )}
-            {store.sslcz_store_id && (
+            {store.sslcz_live_enabled && (
               <button type="button" role="radio" aria-checked={form.payment === "sslcommerz"} className={`s-payment-option${form.payment === "sslcommerz" ? " selected" : ""}`} onClick={() => setForm(f => ({ ...f, payment: "sslcommerz" }))}>
                 <SSLCommerzLogo size={20} />
                 <div>
@@ -1430,14 +1430,14 @@ function CheckoutView({ store, cart, products, onBack, onDone, scCustomer, varia
 function ConfirmationView({ order, store, orgId, onContinue }) {
   const pm = order.payment_method;
   // Direct API mode (store has merchant credentials)
-  const hasBkashApi  = store?.bkash_app_key;
-  const hasNagadApi  = store?.nagad_merchant_id;
+  const hasBkashApi  = store?.bkash_direct_enabled === true;
+  const hasNagadApi  = store?.nagad_direct_enabled === true;
   const isBkashDirect = pm === "bkash" && hasBkashApi;
   const isNagadDirect = pm === "nagad" && hasNagadApi;
   // Manual Send Money mode (store only has phone number)
   const isBkashManual = pm === "bkash" && store?.payment_bkash && store?.bkash_number && !hasBkashApi;
   const isNagadManual = pm === "nagad" && store?.payment_nagad && store?.nagad_number && !hasNagadApi;
-  const isSSL = pm === "sslcommerz" && store?.sslcz_store_id;
+  const isSSL = pm === "sslcommerz" && store?.sslcz_live_enabled === true;
 
   const [busy, setBusy] = useState(false);
   const [payErr, setPayErr] = useState("");
