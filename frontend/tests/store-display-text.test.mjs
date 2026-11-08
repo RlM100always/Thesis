@@ -22,12 +22,12 @@ test("seed/demo boilerplate is localized only for demo shops",()=>{
  assert.equal(displayStoreArea("Automated Test Only",true),"শুধু পরীক্ষামূলক এলাকা");
  assert.equal(isSyntheticDemoArea("Automated Test Only",true),true);
 });
-test("public demo checkout does not invite customers to send real payments",()=>{
+test("public storefront no longer renders archived-store labels and only offers operational payment options",()=>{
  const store=read("pages/Store.jsx");
  const dir=read("pages/StoreDirectory.jsx");
- assert.match(store,/ডেমো অর্ডার—কোনো টাকা নয়/);
- assert.match(store,/!store.is_demo && store.payment_bkash/);
- assert.match(store,/!store.is_demo && store.payment_nagad/);
+ assert.doesNotMatch(store,/ডেমো অর্ডার|ডেমো স্টোর|পরীক্ষামূলক অর্ডার/);
+ assert.match(store,/store.payment_bkash/);
+ assert.match(store,/store.payment_nagad/);
  assert.match(store,/displayStoreTagline\(store.tagline, store.is_demo\)/);
  assert.match(store,/displayStoreDelivery\(store.delivery_note, store.is_demo\)/);
  assert.match(dir,/displayStoreCategory\(s.category\)/);
