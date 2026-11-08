@@ -39,6 +39,8 @@ jobs:
           pdflatex -interaction=nonstopmode -halt-on-error RQ1_Empirical_Development_Report.tex
       - name: Commit PDF to research branch
         run: |
+          git fetch origin research/rq1-development-evidence-2026-11-08
+          git reset --hard origin/research/rq1-development-evidence-2026-11-08
           mkdir -p output/pdf
           cp research/reports/RQ1_Empirical_Development_Report.pdf output/pdf/RQ1_Empirical_Development_Report_2026-11-08.pdf
           git config user.name "github-actions[bot]"
