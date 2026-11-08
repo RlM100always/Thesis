@@ -55,6 +55,19 @@ def test_all_d1_migrations_apply_in_order_and_create_commerce_tables():
         row["name"] for row in db.execute("SELECT name FROM sqlite_master WHERE type='table'")
     }
     assert "commerce_ai_rate_limits" in assistant_tables
+
+    customer_columns = {
+        row["name"] for row in db.execute("PRAGMA table_info(commerce_customer_accounts)")
+    }
+    assert {"password_reset_token_hash", "password_reset_expires_at"} <= customer_columns
+    customer_auth_tables = {
+        row["name"] for row in db.execute("SELECT name FROM sqlite_master WHERE type='table'")
+    }
+    assert "commerce_customer_auth_limits" in customer_auth_tables
+    customer_auth_indexes = {
+        row["name"] for row in db.execute("SELECT name FROM sqlite_master WHERE type='index'")
+    }
+    assert "idx_customer_password_reset_token" in customer_auth_indexes
     order_columns = {row["name"] for row in db.execute("PRAGMA table_info(commerce_orders)")}
     assert {"coupon_code", "coupon_discount_bdt"} <= order_columns
     coupon_tables = {
