@@ -11,7 +11,7 @@ on:
 permissions:
   contents: write
 concurrency:
-  group: rq1-report-\${{ github.ref }}
+  group: rq1-report-${{ github.ref }}
   cancel-in-progress: true
 jobs:
   build-report:
