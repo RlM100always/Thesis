@@ -165,7 +165,7 @@ def test_four_intermittent_series_are_not_enough_for_model_switching():
 def test_weekly_seasonal_naive_uses_matching_weekdays():
     history = np.arange(1, 22, dtype=float)
     assert _seasonal_naive_forecast(history, 1) == pytest.approx(8.0)
-    assert _seasonal_naive_forecast(history, 7) == pytest.approx(74.5)
+    assert _seasonal_naive_forecast(history, 7) == pytest.approx(77.0)
 
 
 def test_drive_rq1_column_names_and_excel_serial_dates_are_supported(tmp_path):
