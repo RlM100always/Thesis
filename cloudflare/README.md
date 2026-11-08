@@ -12,7 +12,7 @@ Render hosts the web application at https://thesis-j0n8.onrender.com. **Cloudfla
 - 10 labelled synthetic business demo stores plus 259 example products, and persistent D1 product/stock listing via Worker.
 - Guest **demo-only** checkout plus explicitly admin-approved merchant-owned COD checkout. Order placement uses transactional D1 batch/stock checks; cancellation restores inventory once and records an inventory movement. Seeded demo stores cannot be promoted to operational checkout.
 - Shared D1 customer accounts across demo stores: registration/login, profile/avatar, password change with session revocation, saved Bangladesh addresses, account-wide order history, server-side per-store carts, cross-store wishlist, verified-purchase reviews, support chat and return requests. Customer contact/address details are stored in D1; use synthetic/test data only.
-- New merchant-owner registration uses PBKDF2-HMAC-SHA-256 password hashes (100,000 iterations), random per-account salts and 12-hour hashed bearer sessions. Existing one-time access-key accounts remain compatible. Email verification and self-service password recovery still require an email provider and are not yet active.
+- New merchant-owner registration uses PBKDF2-HMAC-SHA-256 password hashes (100,000 iterations), random per-account salts and 12-hour hashed bearer sessions. Existing one-time access-key accounts remain compatible. Owner email verification and password recovery have now been implemented in the upgrade branch, but are not live until migration 0009 is safely applied and the Worker is configured with a Resend API key and verified sender address. Migration 0010 adds per-product reorder thresholds and privacy-preserving assistant rate-limit storage. Migration 0011 adds store-scoped coupon definitions, redemption history, order discount fields and atomic usage-limit triggers. Migration 0012 adds owner account activation and an explicit owner role for platform-level account management.
 - Owner store creation creates a real, private draft (`is_demo=0`, `is_active=0`). Owners can manage products and stock, but cannot publish their own store; Platform Admin approval is required. Product descriptions/brands/tags/compare-at prices, stock adjustment logs, owner-scoped order status workflow, customer message inbox and return management are stored in D1.
 - Staged customer-visible order tracking: placed → confirmed → processing → ready → dispatched → delivered. Legacy `fulfilled` and `shipped` statuses remain readable; each merchant transition stores a status note.
 - COD payment state is persisted separately from fulfilment state. Merchant can mark COD as received only after `delivered`/legacy `fulfilled`; timestamp, merchant email and note are saved. Customer and platform-admin views distinguish demo orders, pending COD, collected COD and cancelled-without-payment. No online gateway or automatic refund is active.
@@ -37,7 +37,7 @@ The Cloudflare account also contains a separate D1 database named `bcs-written` 
 
 ## D1 schema
 
-Source migrations extend through `migrations/0008_cod_payment_tracking.sql`. The live D1 database was queried after migration and reports `commerce_meta.schema_version=8`; payment status fields and both payment/inventory triggers are present.
+Live D1 currently reports `commerce_meta.schema_version=8`. The upgrade branch adds `migrations/0009_owner_email_security.sql`, `migrations/0010_assistant_and_reorder_levels.sql` and `migrations/0011_store_coupons.sql` and `migrations/0012_owner_account_management.sql`; none of these migrations is applied to production yet. The live database must be backed up and its schema rechecked before the additive 0009/0010 statements are applied. Payment status fields and both payment/inventory triggers are present in the current live schema.
 
 **Do not blindly run `wrangler d1 migrations apply --remote` on this existing database.** Migrations were applied manually via Cloudflare API, not registered in Wrangler's `d1_migrations` table. One-time `ALTER TABLE` statements would fail if replayed. Before applying any future migration: take and verify a D1 backup/export, query the live schema and `commerce_meta`, apply only reviewed additive SQL that is missing, then re-query columns and triggers.
 
@@ -72,7 +72,7 @@ The Render service auto-deploys from `main`. A dedicated Cloudflare Worker deplo
 
 The previous B-SMART operational business database is still separate: business login/memberships, original POS/cashflow, purchasing, live stock, receivables, accounting journals, invoicing, operational CRM/coupons/reviews/fulfilment, reporting, permissions, and historical business customers/orders remain in FastAPI. D1 customer identities are not synchronized with the legacy customer identity.
 
-No real payment gateways, credential verification, merchant identity validation, email recovery, abuse protection (Turnstile/rate limits), full privacy compliance, DB restore plan or production backup automation have been completed. Do not collect live money or sensitive shopper data here.
+No real payment gateways, merchant identity validation, full abuse protection (Turnstile/rate limits), full privacy compliance, tested DB restore plan or production backup automation have been completed. Owner email verification and password reset are branch-only until migration 0009 and mail-provider configuration are deployed. The customer/owner assistant code and reorder thresholds are branch-only until migration 0010 is applied. Do not collect live money or sensitive shopper data here.
 
 **Temporary CI fixture:** The POS live test created `ci-pos-5b716399edab183e@example.invalid` with an isolated `shop-752c1d2b-b92` demo store and one simulated order. After the test, deletion through the connector was blocked by safety checks, so the fixture remains in D1. It is not a real merchant. Remove it only after checking its exact account/store IDs and dependencies in the Cloudflare dashboard; never run broad deletes against actual merchants.
 
@@ -83,3 +83,38 @@ No real payment gateways, credential verification, merchant identity validation,
 3. Add privacy-preserving verified merchant login, customer identity, chat, coupons, true accounting double-entry journals, payments and reporting.
 4. Implement reliable backups to R2 and tested D1 point-in-time restore before any cutover.
 5. Only after verification, switch legacy FastAPI owner modules to the new D1 backend and retire ephemeral SQLite without losing real records.
+
+
+## Owner email verification and password recovery (upgrade branch)
+
+The branch `production/business-platform-upgrade` adds single-use, hashed owner verification and password-reset tokens. Verification links expire after 24 hours; password-reset links expire after 60 minutes. Password reset revokes all existing owner sessions. Email delivery uses the Resend API and must fail closed if configuration is absent.
+
+Configure these Worker values before enabling new owner registration:
+- Secret `RESEND_API_KEY` — Resend API key (Cloudflare Worker secret).
+- Variable `AUTH_EMAIL_FROM` — sender identity on a domain verified with Resend.
+- Variable `PUBLIC_APP_URL` — `https://thesis-j0n8.onrender.com` (optional; the code has this safe fallback).
+
+The new registration endpoint returns a configuration error until the provider is configured; it does not create an unverified owner account when email delivery is unavailable. Do not put the Resend key or sender credentials in GitHub source files.
+
+
+## Store assistants and reorder alerts (upgrade branch)
+
+The upgrade branch adds:
+- A public D1 storefront assistant at `POST /api/public/assistant/{store-slug}`. It uses the current store's published catalogue and, only when a customer bearer session is supplied, that customer's orders in the same store.
+- An authenticated owner assistant at `POST /api/merchant/assistant`. It queries only the signed-in owner's store and reports order value separately from payments actually collected and pending COD.
+- Per-product `reorder_level` (default 5) and low-stock analysis.
+- Hashed per-minute rate-limit keys; raw customer IPs and chat transcripts are not stored by this feature.
+
+The Worker has a Workers AI binding configured for `@cf/zai-org/glm-4.7-flash`, but inference is deliberately **disabled by default**. It requires the Worker variable `AI_ENABLED=true`. Until enabled, the assistants use deterministic, database-grounded fallback responses; checkout and store operations do not depend on AI. Customer assistant UI is currently mounted on D1 storefronts only; the legacy FastAPI storefront integration remains a separate migration task.
+
+Cloudflare's current model page lists GLM-4.7-Flash as multilingual and shows unit pricing of $0.0605 per million input tokens and $0.40 per million output tokens. Recheck the current model pricing before enabling inference: https://developers.cloudflare.com/workers-ai/models/glm-4.7-flash/
+
+
+## Store coupons (upgrade branch)
+
+The upgrade branch adds owner-scoped coupon CRUD (`GET/POST /api/merchant/coupons`, `PATCH/DELETE /api/merchant/coupons/{id}`), public validation (`POST /api/public/coupons/{store-id}/validate`) and checkout-time revalidation. Percentage and fixed-amount discounts support minimum order values, optional maximum discounts, start/end times, total usage limits and per-customer limits. Redemption rows are inserted in the same D1 batch as the order; SQLite triggers enforce total and per-customer usage limits under concurrent checkout. Coupons are disabled for seeded sample stores. Migration 0011 is branch-only until a D1 backup and live schema review are completed.
+
+
+## Owner account directory and access controls (upgrade branch)
+
+The platform-admin panel adds an owner account directory showing owner email, store association, role, email-verification state, account status and active-session count. Platform administrators can suspend/reactivate an owner. Suspension revokes all existing owner sessions. Passwords and password hashes are never returned by this API or written to README files; owners use email verification and self-service password recovery. Migration 0012 is pending production backup and schema verification.
