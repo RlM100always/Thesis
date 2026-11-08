@@ -34,7 +34,7 @@ const MERCHANT_ROLE_PERMISSIONS = Object.freeze({
  owner: new Set(["*"]),
  manager: new Set(["session:logout","dashboard:read","products:read","products:write","inventory:read","inventory:write","orders:read","orders:write","coupons:read","coupons:write","returns:read","returns:write","support:read","support:write","analytics:read","sales:write","store:write"]),
  sales: new Set(["session:logout","dashboard:read","products:read","inventory:read","orders:read","orders:write","coupons:read","sales:write"]),
- inventory: new Set(["session:logout","dashboard:read","products:read","products:write","inventory:read","inventory:write"]),
+ inventory: new Set(["session:logout","dashboard:read","products:read","inventory:read","inventory:write"]),
  support: new Set(["session:logout","dashboard:read","orders:read","returns:read","returns:write","support:read","support:write"]),
  analyst: new Set(["session:logout","dashboard:read","products:read","inventory:read","orders:read","analytics:read"]),
 });
@@ -58,6 +58,7 @@ export function merchantPermissionFor(method,path) {
  if(path==="/api/merchant/pos"&&method==="POST")return "sales:write";
  if(path==="/api/merchant/products"&&method==="POST")return "products:write";
  if(/^\/api\/merchant\/products\/[^/]+$/.test(path)&&method==="PATCH")return "products:write";
+ if(/^\/api\/merchant\/inventory\/[^/]+$/.test(path)&&method==="PATCH")return "inventory:write";
  if(/^\/api\/merchant\/orders\/[^/]+\/status$/.test(path)&&method==="PATCH")return "orders:write";
  if(/^\/api\/merchant\/orders\/[^/]+\/payment$/.test(path)&&method==="PATCH")return "finance:write";
  return null;
@@ -740,6 +741,31 @@ export async function merchantRouter(req,env,path,output,error){
     await env.DB.batch([update,env.DB.prepare("INSERT INTO commerce_stock_adjustments(id,store_id,product_id,old_quantity,new_quantity,delta,reason) VALUES(?,?,?,?,?,?,?)").bind(crypto.randomUUID(),store.id,p.id,p.stock_qty,qty,diff,"Owner manual inventory correction")]);
    } else await update.run();
    return output(req,{updated:true,stock_change:diff});
+  }
+
+  const inventoryMatch=/^\/api\/merchant\/inventory\/([a-zA-Z0-9-]{2,90})$/.exec(path);
+  if(method==="PATCH"&&inventoryMatch){
+   const store=await storeOnly(env,owner);
+   const product=await env.DB.prepare("SELECT id,stock_qty,reorder_level FROM commerce_products WHERE store_id=? AND id=?").bind(store.id,inventoryMatch[1]).first();
+   if(!product)return bad(req,error,404,"Product not found");
+   const b=await json(req,error);
+   if(Object.keys(b).some(key=>!["stock_qty","reorder_level","reason"].includes(key)))
+    return bad(req,error,403,"Inventory staff may change stock quantity and reorder level only.");
+   const quantity=b.stock_qty===undefined?Number(product.stock_qty):Number(b.stock_qty);
+   const reorder=b.reorder_level===undefined?Number(product.reorder_level??5):Number(b.reorder_level);
+   const reason=short(b.reason||"Manual stock correction",180);
+   if(!integer(quantity,0,1000000)||!integer(reorder,0,1000000)||reason.length<3)
+    return bad(req,error,422,"Enter a valid stock quantity, reorder level and reason.");
+   const delta=quantity-Number(product.stock_qty);
+   const update=env.DB.prepare("UPDATE commerce_products SET stock_qty=?,reorder_level=?,updated_at=CURRENT_TIMESTAMP WHERE id=? AND store_id=?")
+    .bind(quantity,reorder,product.id,store.id);
+   const statements=[update];
+   if(delta)statements.push(env.DB.prepare(
+    "INSERT INTO commerce_stock_adjustments(id,store_id,product_id,old_quantity,new_quantity,delta,reason) VALUES(?,?,?,?,?,?,?)"
+   ).bind(crypto.randomUUID(),store.id,product.id,product.stock_qty,quantity,delta,reason));
+   await env.DB.batch(statements);
+   await merchantAudit(env,store.id,owner.id,"inventory_adjusted","product",product.id,{old_quantity:product.stock_qty,new_quantity:quantity,delta,reorder_level:reorder,reason});
+   return output(req,{updated:true,product_id:product.id,stock_qty:quantity,reorder_level:reorder,stock_change:delta});
   }
   const paymentMatch=/^\/api\/merchant\/orders\/([a-zA-Z0-9-]{2,90})\/payment$/.exec(path);
   if(method==="PATCH"&&paymentMatch){
