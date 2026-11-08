@@ -69,6 +69,8 @@ def _get_order(order_id: str, org_id: str, db: Session) -> SalesDocument:
         raise HTTPException(404, "Order not found")
     if order.payment_status == "paid":
         raise HTTPException(409, "Order already paid")
+    if not order.access_token:
+        raise HTTPException(409, "Order is not eligible for public online payment")
     if str(getattr(order, "status", "")).lower() in ("cancelled", "canceled", "void"):
         raise HTTPException(409, "Cancelled orders cannot be paid")
     return order
@@ -603,6 +605,11 @@ async def sslcz_cancel(
     tran_id: str = Form(...), value_b: str = Form(""), value_c: str = Form(""),
     db: Session = Depends(get_db),
 ):
+    order = db.scalar(select(SalesDocument).where(
+        SalesDocument.id == tran_id, SalesDocument.organization_id == value_b,
+    ))
+    if not order or not value_c or order.access_token != value_c:
+        return RedirectResponse(f"{_base_url(request)}/#/payment-result?status=error&gateway=sslcommerz", status_code=303)
     return _order_redirect(value_b, value_c, "cancel", _base_url(request))
 
 
@@ -632,9 +639,11 @@ async def sslcz_ipn(
 
 # ── Query payment status (public) ─────────────────────────────────────────────
 @router.get("/status/{org_id}/{order_id}")
-def payment_status(org_id: str, order_id: str, db: Session = Depends(get_db)):
+def payment_status(org_id: str, order_id: str, request: Request, db: Session = Depends(get_db)):
     order = db.scalar(select(SalesDocument).where(
         SalesDocument.id == order_id, SalesDocument.organization_id == org_id,
     ))
-    if not order: raise HTTPException(404)
+    access_token = request.query_params.get("access_token", "")
+    if not order or not access_token or order.access_token != access_token:
+        raise HTTPException(404, "Order not found")
     return {"payment_status": order.payment_status, "order_number": order.document_number}
