@@ -224,7 +224,7 @@ def _seed_site_defaults():
 @app.get("/health", response_model=Health, tags=["system"])
 def health():
     return {"status": "ok", "artifacts_loaded": False,
-            "detail": "Research models reset; awaiting new synthetic dataset integration."}
+            "detail": "Research model artifacts are not loaded in this API process."}
 
 
 @app.get("/health/ready", tags=["system"])
