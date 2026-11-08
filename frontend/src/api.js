@@ -735,7 +735,7 @@ export const api = {
     return resp.json();
   },
 
-  getPaymentStatus: (orgId, orderId) => request(`/api/public/payment/status/${orgId}/${orderId}`),
+  getPaymentStatus: (orgId, orderId, accessToken) => request(`/api/public/payment/status/${orgId}/${orderId}?${new URLSearchParams({ access_token: accessToken || "" })}`),
 
   getStoreOrdersFiltered: (params={}) => appRequest(`/api/app/store/orders?${new URLSearchParams(Object.fromEntries(Object.entries(params).filter(([,v])=>v!==undefined&&v!==null&&v!=="")))}`),
 
