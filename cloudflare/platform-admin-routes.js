@@ -1,6 +1,6 @@
 import { canTransitionOrderStatus, defaultOrderStatusNote } from "./order-workflow.js";
 
-/* Privileged controls for the isolated Cloudflare D1 commerce demo.
+/* Privileged controls for the Cloudflare D1 commerce platform.
  * Configure PLATFORM_ADMIN_KEY as a Worker secret; never hard-code it here.
  */
 const encoder = new TextEncoder();
@@ -88,7 +88,7 @@ export async function platformAdminRouter(req,env,path,output,error) {
         "FROM commerce_orders o JOIN commerce_stores s ON s.id=o.store_id "+
         "LEFT JOIN commerce_customer_accounts a ON a.id=o.account_id ORDER BY o.placed_at DESC LIMIT 500"
       ).all();
-      return output(req,{orders:results,note:"Demo order values are not revenue. COD collection is merchant-confirmed and is not independently verified by this system."});
+      return output(req,{orders:results,note:"Archived non-operational order values are not revenue. COD collection is merchant-confirmed and is not independently verified by this system."});
     }
     if(method==="GET"&&path==="/api/platform-admin/returns") {
       const {results}=await env.DB.prepare(
@@ -130,9 +130,9 @@ export async function platformAdminRouter(req,env,path,output,error) {
       const deliveryNote=nextDemo?"Demo orders only":"Cash on delivery; delivery managed by the store.";
       const result=await env.DB.prepare("UPDATE commerce_stores SET is_active=?,is_demo=?,delivery_note=? WHERE id=? AND is_active=? AND is_demo=?")
         .bind(nextActive?1:0,nextDemo?1:0,deliveryNote,id,store.is_active,store.is_demo).run();
-      const action=body.is_demo===false?"store_promoted_to_cod":body.is_demo===true?"store_returned_to_demo":nextActive?"store_activated":"store_suspended";
+      const action=body.is_demo===false?"store_promoted_to_cod":body.is_demo===true?"store_moved_to_non_operational":nextActive?"store_activated":"store_suspended";
       await audit(env,action,"store",id,{slug:store.slug,name:store.name,previous_active:!!store.is_active,is_active:nextActive,previous_demo:!!store.is_demo,is_demo:nextDemo,reason:short(body.reason,250)});
-      return output(req,{updated:!!result.meta?.changes,store:{...store,is_active:nextActive?1:0,is_demo:nextDemo?1:0,delivery_note:deliveryNote},note:nextDemo?"Demo checkout only.":"COD/manual fulfilment enabled; no online payment or courier integration."});
+      return output(req,{updated:!!result.meta?.changes,store:{...store,is_active:nextActive?1:0,is_demo:nextDemo?1:0,delivery_note:deliveryNote},note:nextDemo?"Non-operational checkout is disabled.":"COD/manual fulfilment enabled; no online payment or courier integration."});
     }
     const orderMatch=path.match(/^\/api\/platform-admin\/orders\/([^/]+)$/);
     if(method==="PATCH"&&orderMatch) {
