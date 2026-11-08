@@ -2,6 +2,8 @@ import numpy as np
 import pandas as pd
 import pytest
 
+from research.forecasting.rq1_shop_category_experiment import validate_provenance_evidence, sha256
+
 from research.forecasting.adaptive_engine import (
     DataContractError, demand_profile, load_daily_panel, croston_forecast,
     make_supervised, rolling_origins, _metric_row, _fit_predict, write_figures,
@@ -206,3 +208,55 @@ def test_rolling_origins_never_cross_exclusive_development_cutoff():
     assert len(origins) == 3
     assert all(origin + pd.Timedelta(days=28) <= cutoff for origin in origins)
     assert all(origin < cutoff for origin in origins)
+
+
+def test_verified_observed_requires_source_owner_evidence(tmp_path):
+    source = tmp_path / "panel.csv"
+    source.write_text("shop_id,category,date,units_sold_observed,is_zero_observed_sales\\nA,Rice,2023-01-01,0,1\\n", encoding="utf-8")
+    with pytest.raises(ValueError, match="requires --provenance-evidence"):
+        validate_provenance_evidence(source, "verified_observed", None)
+
+
+def test_verified_observed_requires_matching_input_checksum(tmp_path):
+    source = tmp_path / "panel.csv"
+    source.write_text("source data", encoding="utf-8")
+    evidence = {
+        "source_system": "POS export",
+        "source_owner": "Named source owner",
+        "collection_start": "2023-01-01",
+        "collection_end": "2025-12-31",
+        "collection_method": "Direct system export",
+        "consent_or_licence": "Documented permission",
+        "anonymisation_method": "Pseudonymised identifiers",
+        "data_dictionary": "data_dictionary.pdf",
+        "synthetic_flag_explanation": "Source owner explanation",
+        "input_sha256": "0" * 64,
+    }
+    evidence_path = tmp_path / "evidence.json"
+    import json
+    evidence_path.write_text(json.dumps(evidence), encoding="utf-8")
+    with pytest.raises(ValueError, match="input_sha256 does not match"):
+        validate_provenance_evidence(source, "verified_observed", evidence_path)
+
+
+def test_verified_observed_accepts_complete_checksum_matched_evidence(tmp_path):
+    source = tmp_path / "panel.csv"
+    source.write_text("source data", encoding="utf-8")
+    evidence = {
+        "source_system": "POS export",
+        "source_owner": "Named source owner",
+        "collection_start": "2023-01-01",
+        "collection_end": "2025-12-31",
+        "collection_method": "Direct system export",
+        "consent_or_licence": "Documented permission",
+        "anonymisation_method": "Pseudonymised identifiers",
+        "data_dictionary": "data_dictionary.pdf",
+        "synthetic_flag_explanation": "Source owner explanation",
+        "input_sha256": sha256(source),
+    }
+    evidence_path = tmp_path / "evidence.json"
+    import json
+    evidence_path.write_text(json.dumps(evidence), encoding="utf-8")
+    result = validate_provenance_evidence(source, "verified_observed", evidence_path)
+    assert result["source_system"] == "POS export"
+    assert len(result["evidence_sha256"]) == 64
