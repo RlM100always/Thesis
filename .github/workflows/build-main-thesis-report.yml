@@ -7,6 +7,13 @@ on:
       - 'thesis_report/main.tex'
       - 'thesis_report/logo.pdf'
       - 'thesis_report/Figures/**'
+      - 'thesis_report/Chapters/**'
+      - 'thesis_report/Appendices/**'
+      - 'thesis_report/preamble.tex'
+      - 'thesis_report/title.tex'
+      - 'thesis_report/Bibliography.bib'
+      - 'thesis_report/Thesis.cls'
+      - 'thesis_report/*.sty'
       - '.github/workflows/build-main-thesis-report.yml'
   workflow_dispatch:
 
