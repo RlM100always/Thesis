@@ -3,6 +3,7 @@ import pandas as pd
 import pytest
 
 from research.forecasting.rq1_shop_category_experiment import validate_provenance_evidence, sha256
+from research.forecasting.ablation_transaction_features import features_at
 
 from research.forecasting.adaptive_engine import (
     DataContractError, demand_profile, load_daily_panel, croston_forecast,
@@ -260,3 +261,33 @@ def test_verified_observed_accepts_complete_checksum_matched_evidence(tmp_path):
     result = validate_provenance_evidence(source, "verified_observed", evidence_path)
     assert result["source_system"] == "POS export"
     assert len(result["evidence_sha256"]) == 64
+
+
+def test_transaction_feature_snapshot_ignores_all_future_values():
+    n = 80
+    arr = {
+        "y": np.arange(n, dtype=float) % 7,
+        "price": np.linspace(10, 20, n),
+        "discount_rate": np.linspace(0, 0.2, n),
+        "gross": np.arange(n, dtype=float) * 100,
+        "discount": np.arange(n, dtype=float),
+        "orders": np.ones(n, dtype=float),
+        "customer_days": np.ones(n, dtype=float) * 2,
+    }
+    date = pd.Timestamp("2025-01-01")
+    before = features_at(arr, 60, date, "SHOP1", "Rice", True)
+    changed = {key: value.copy() for key, value in arr.items()}
+    for value in changed.values():
+        value[60:] = value[60:] * 1000 + 999
+    after = features_at(changed, 60, date, "SHOP1", "Rice", True)
+    assert before == after
+
+
+def test_transaction_feature_snapshot_requires_56_days():
+    arr = {
+        "y": np.ones(55), "price": np.ones(55), "discount_rate": np.zeros(55),
+        "gross": np.ones(55), "discount": np.zeros(55), "orders": np.ones(55),
+        "customer_days": np.ones(55),
+    }
+    with pytest.raises(ValueError, match="56 historical days"):
+        features_at(arr, 55, pd.Timestamp("2025-01-01"), "SHOP1", "Rice", True)
