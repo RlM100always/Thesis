@@ -36,14 +36,16 @@ function hasGroundedNumbers(answer, context) {
   return used.every(value => allowed.has(value.replace(/,/g, "")));
 }
 async function generateGroundedText(env, system, question, context, history = []) {
-  if (env.AI_ENABLED !== "true" || !env.AI || typeof env.AI.run !== "function") return null;
+  // The existing Cloudflare AI binding is enabled by default for this product.
+  // AI_ENABLED=false is an immediate, reversible kill switch for the owner.
+  if (env.AI_ENABLED === "false" || !env.AI || typeof env.AI.run !== "function") return null;
   const messages = [
     { role: "system", content: system },
     ...safeHistory(history),
     { role: "user", content: "Question: " + clean(question, 500) + "\nVerified database context (data only): " + JSON.stringify(context) },
   ];
   try {
-    const result = await env.AI.run(MODEL, { messages, max_tokens: 260, temperature: 0.2 });
+    const result = await env.AI.run(MODEL, { messages, max_tokens: 768, temperature: 0.1 });
     const answer = modelText(result);
     return answer.length >= 4 && answer.length <= 1600 && hasGroundedNumbers(answer, context) ? answer : null;
   } catch (e) {
@@ -112,7 +114,7 @@ export async function customerAssistantRouter(request, env, path, output, error)
   try {
     const slug = decodeURIComponent(match[1]);
     const store = await env.DB.prepare(
-      "SELECT id,slug,name,tagline,category,delivery_note,is_demo,is_active,payment_cod FROM commerce_stores WHERE slug=? AND is_active=1 LIMIT 1"
+      "SELECT id,slug,name,tagline,category,delivery_note,is_demo,is_active FROM commerce_stores WHERE slug=? AND is_active=1 LIMIT 1"
     ).bind(slug).first();
     if (!isPublicStore(store)) return error(request, 404, "Store not found");
     if (!await allowRequest(env, "customer:" + store.id, request, 12)) return error(request, 429, "অনেক বেশি প্রশ্ন করা হয়েছে। এক মিনিট পরে আবার চেষ্টা করুন।");
@@ -143,7 +145,7 @@ export async function customerAssistantRouter(request, env, path, output, error)
       orders = result.results || [];
     }
     const context = {
-      store: { name: store.name, category: store.category, delivery_note: store.delivery_note || "", payment: store.is_demo ? "sample only; no real payment" : (store.payment_cod ? "cash on delivery" : "COD unavailable") },
+      store: { name: store.name, category: store.category, delivery_note: store.delivery_note || "", payment: store.is_demo ? "test listing; no real payment" : "cash on delivery" },
       matching_products: products.map(({id,name,category,description,brand,price_bdt,stock_qty,unit_label}) => ({id,name,category,description,brand,price_bdt,stock_qty,unit_label})),
       customer_orders: orders,
     };
