@@ -367,27 +367,33 @@ async def nagad_callback(
     if not order:
         return RedirectResponse(f"{base}/#/payment-result?status=error&gateway=nagad", status_code=303)
 
-    # Verify payment via Nagad
+    # Verify the provider response against the exact order and merchant reference.
     try:
         meta = json.loads(order.notes or "{}")
-        mid     = meta.get("_nagad_mid")
-        is_live = meta.get("_nagad_live", False)
-        base_url = _nagad_base(is_live)
-
-        verify_url = f"{base_url}/remote-payment-gateway-1.0/api/dfs/verify/payment/{payment_ref_id}"
-        headers = {"X-KM-Api-Version": "v-0.2.0", "X-KM-IP-V4": "127.0.0.1", "X-KM-Client-Type": "PC_WEB"}
-        async with httpx.AsyncClient(timeout=20) as c:
-            r = await c.get(verify_url, headers=headers)
-        vdata = r.json()
-
-        if vdata.get("status") == "Success":
-            order.payment_status = "paid"
-        else:
-            order.payment_status = "payment_failed"
-        db.commit()
+        if str(meta.get("_nagad_ref") or "") != payment_ref_id:
+            raise ValueError("Nagad payment reference mismatch")
+        if order_id and str(order_id) != str(order.document_number):
+            raise ValueError("Nagad order reference mismatch")
+        mid = meta.get("_nagad_mid")
+        is_live = bool(meta.get("_nagad_live"))
+        if not mid or not is_live:
+            raise ValueError("Nagad live callback metadata is incomplete")
+        if order.payment_status != "paid":
+            base_url = _nagad_base(is_live)
+            verify_url = f"{base_url}/remote-payment-gateway-1.0/api/dfs/verify/payment/{payment_ref_id}"
+            headers = {"X-KM-Api-Version": "v-0.2.0", "X-KM-IP-V4": "127.0.0.1", "X-KM-Client-Type": "PC_WEB"}
+            async with httpx.AsyncClient(timeout=20) as c:
+                r = await c.get(verify_url, headers=headers)
+            vdata = r.json()
+            if _nagad_payment_verified(vdata, payment_ref_id, mid, order):
+                order.payment_status = "paid"
+            else:
+                order.payment_status = "payment_failed"
+            db.commit()
     except Exception:
-        order.payment_status = "payment_failed"
-        db.commit()
+        if order.payment_status != "paid":
+            order.payment_status = "payment_failed"
+            db.commit()
 
     result = "success" if order.payment_status == "paid" else "failed"
     return _order_redirect(order.organization_id, order.access_token, result, base)
