@@ -1,0 +1,13 @@
+model,regime,n,actual_total,wape,mean_error
+croston_classic,erratic,450,13835,0.3316272487,2.516995
+croston_classic,intermittent,10,24,0.7000479044,-0.006282
+croston_classic,lumpy,1035,12723,0.4786814735,0.455691
+croston_classic,smooth,41,2638,0.2237710273,5.402255
+lightgbm_tweedie,erratic,450,13835,0.2862325597,-0.639217
+lightgbm_tweedie,intermittent,10,24,0.9000620511,0.567248
+lightgbm_tweedie,lumpy,1035,12723,0.4189249160,-0.508853
+lightgbm_tweedie,smooth,41,2638,0.2181941539,-4.715491
+seasonal_naive_7,erratic,450,13835,0.3645645103,4.220556
+seasonal_naive_7,intermittent,10,24,0.8750000000,-0.150000
+seasonal_naive_7,lumpy,1035,12723,0.4826691818,0.462319
+seasonal_naive_7,smooth,41,2638,0.2801364670,8.353659
