@@ -232,6 +232,19 @@ test("new merchant stores are private until platform approval", async () => {
   assert.equal(attemptedPublish.status,403);
 });
 
+test("archived non-operational stores cannot write products or cash operations", async () => {
+  const env=createD1Mock(),email="owner@example.invalid",password="correct-horse-battery";
+  await registerAndVerify(env,email,password);
+  const login=await call(env,"/api/merchant/login",{email,password});
+  const created=await call(env,"/api/merchant/store",{name:"Example Shop",category:"মুদি",area:"Dhaka"},login.body.token);
+  const store=env.inspect.stores.get(created.body.store.id);
+  store.is_demo=1;
+  const product=await call(env,"/api/merchant/products",{sku:"SKU-1",name:"Product",category:"Grocery",price_bdt:10,stock_qty:2},login.body.token);
+  assert.equal(product.status,409);
+  const pos=await call(env,"/api/merchant/pos",{items:[{product_id:"product-1",quantity:1}]},login.body.token);
+  assert.equal(pos.status,409);
+});
+
 test("approved-store POS records real cash collection in D1 rather than a simulated sale", () => {
   assert.match(source,/const methodName=demo\?"demo_pos":"cash"/);
   assert.match(source,/payment_status='paid',payment_received_at=CURRENT_TIMESTAMP,payment_received_by/);
