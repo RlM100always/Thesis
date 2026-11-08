@@ -1452,7 +1452,7 @@ function ConfirmationView({ order, store, orgId, onContinue }) {
       <div className="s-confirm-lottie">✅</div>
       <h2>আপনার অর্ডারটি গ্রহণ করা হয়েছে</h2>
       <p>আপনার অর্ডার নম্বর: <strong style={{color:"var(--sa)",fontSize:20}}>#{order.order_number}</strong></p>
-      {pm==="cod"&&!store?.is_demo&&<p role="status" style={{background:"color-mix(in srgb,#0a8752 8%,var(--s-card,#fff))",border:"1px solid var(--s-border,#dce6df)",borderRadius:10,padding:"11px 13px",fontSize:13,lineHeight:1.6}}>আপনার COD অর্ডারটি সংরক্ষিত হয়েছে। ডেলিভারির সময় পণ্য বুঝে নিয়ে টাকা পরিশোধ করুন। দোকান নিজস্বভাবে ডেলিভারি পরিচালনা করবে।</p>}
+      {pm==="cod"&&<p role="status" style={{background:"color-mix(in srgb,#0a8752 8%,var(--s-card,#fff))",border:"1px solid var(--s-border,#dce6df)",borderRadius:10,padding:"11px 13px",fontSize:13,lineHeight:1.6}}>আপনার COD অর্ডারটি সংরক্ষিত হয়েছে। ডেলিভারির সময় পণ্য বুঝে নিয়ে টাকা পরিশোধ করুন। দোকান নিজস্বভাবে ডেলিভারি পরিচালনা করবে।</p>}
 
       {payErr && <div style={{background:"#fee2e2",color:"#b91c1c",borderRadius:10,padding:"10px 14px",fontSize:13,margin:"8px 0"}}>{payErr}</div>}
 
@@ -2314,7 +2314,7 @@ export default function StorePage() {
           </div>
           <div className="s-footer-column">
             <h3>অর্ডার ও পেমেন্ট</h3>
-            <p>{store.is_demo ? (displayStoreDelivery(store.delivery_note, true) || "এটি শুধু পরীক্ষামূলক দোকান। বাস্তব অর্ডার ও ডেলিভারি নেই।") : (displayStoreDelivery(store.delivery_note) || "অর্ডার নিশ্চিত হলে দোকান থেকে ডেলিভারি সম্পর্কে জানানো হবে।")}</p>
+            <p>{displayStoreDelivery(store.delivery_note) || "অর্ডার নিশ্চিত হলে দোকান থেকে ডেলিভারি সম্পর্কে জানানো হবে।"}</p>
             <p>{store.payment_cod ? "ক্যাশ অন ডেলিভারি" : "এই দোকানের অনলাইন পেমেন্ট চালু নেই"}</p>
             {store.min_order_bdt ? <p>ন্যূনতম অর্ডার: {money(store.min_order_bdt)}</p> : null}
           </div>
