@@ -1,0 +1,5 @@
+regime,series,mean_zero_ratio,median_ADI,median_CV2
+Erratic,153,0.156512,1.190601,0.591520
+Intermittent,4,0.839364,6.394798,0.459751
+Lumpy,342,0.476207,1.831325,0.644919
+Smooth,13,0.036353,1.029345,0.456774
