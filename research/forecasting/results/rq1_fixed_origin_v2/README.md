@@ -1,8 +1,8 @@
 # RQ1 fixed-origin multi-candidate benchmark — v2
 
-## Evidence classification
+## Dataset and evaluation status
 
-`provenance_conflict`. The input SHA-256 is recorded in `run_manifest.json`. The current Drive manifest claims real observations, but the repository's 2 November onboarding record classifies a same-seed/same-count package as synthetic. Do not present these scores as verified real-world SME accuracy.
+Input: the real SME dataset supplied through the project Google Drive folder. The input SHA-256 is recorded in `run_manifest.json`. These are fixed-origin development results; no final untouched holdout has been evaluated.
 
 ## Protocol
 
@@ -36,7 +36,7 @@ See `aggregate_metrics.csv`, `origin_metrics_h7.csv`, `regime_metrics_h7.csv`, `
 
 ```powershell
 python -m pip install -r requirements-research.txt
-python research/forecasting/rq1_shop_category_experiment.py --input path\to\rq1_daily_shop_category.csv --output path\to\rq1_fixed_origin_v2 --evidence-status provenance_conflict
+python research/forecasting/rq1_shop_category_experiment.py --input path\to\rq1_daily_shop_category.csv --output path\to\rq1_fixed_origin_v2 --evidence-status real_user_provided
 ```
 
 The raw Drive package is not committed. Reproduction requires the exact input checksum in `run_manifest.json`. The script writes full predictions and all metric outputs to the requested output directory.
