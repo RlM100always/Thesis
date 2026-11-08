@@ -239,20 +239,20 @@ export default {
    if(merchant!==null)return merchant;
    if(path==="/health"&&method==="GET") {
     const excluded=[...INTERNAL_TEST_STORE_SLUGS],marks=excluded.map(()=>"?").join(",");
-    const row=await env.DB.prepare("SELECT COUNT(*) n FROM commerce_stores WHERE is_active=1 AND slug NOT IN ("+marks+")").bind(...excluded).first();
-    const pro=await env.DB.prepare("SELECT COUNT(*) n FROM commerce_products p JOIN commerce_stores s ON s.id=p.store_id WHERE p.is_listed=1 AND s.is_active=1 AND s.slug NOT IN ("+marks+")").bind(...excluded).first();
+    const row=await env.DB.prepare("SELECT COUNT(*) n FROM commerce_stores WHERE is_active=1 AND is_demo=0 AND slug NOT IN ("+marks+")").bind(...excluded).first();
+    const pro=await env.DB.prepare("SELECT COUNT(*) n FROM commerce_products p JOIN commerce_stores s ON s.id=p.store_id WHERE p.is_listed=1 AND s.is_active=1 AND s.is_demo=0 AND s.slug NOT IN ("+marks+")").bind(...excluded).first();
     return output(request,{status:"ok",database:"Cloudflare D1",scope:"public_storefronts",stores:row.n,products:pro.n,live_payments:false,assistant_enabled:env.AI_ENABLED==="true"&&!!env.AI});
    }
    if((path==="/api/public/store"||path==="/api/public/store/")&&method==="GET") {
     const excluded=[...INTERNAL_TEST_STORE_SLUGS],marks=excluded.map(()=>"?").join(",");
-    const {results}=await env.DB.prepare("SELECT * FROM commerce_stores WHERE is_active=1 AND slug NOT IN ("+marks+") ORDER BY name").bind(...excluded).all();
+    const {results}=await env.DB.prepare("SELECT * FROM commerce_stores WHERE is_active=1 AND is_demo=0 AND slug NOT IN ("+marks+") ORDER BY name").bind(...excluded).all();
     return output(request,results.filter(isPublicStore).map(baseView));
    }
    if(path==="/api/public/store/diagnostics"&&method==="GET") {
     const excluded=[...INTERNAL_TEST_STORE_SLUGS],marks=excluded.map(()=>"?").join(",");
     const stores=await env.DB.prepare("SELECT COUNT(*) n FROM commerce_stores WHERE is_active=1 AND slug NOT IN ("+marks+")").bind(...excluded).first();
     const products=await env.DB.prepare("SELECT COUNT(*) n FROM commerce_products p JOIN commerce_stores s ON s.id=p.store_id WHERE p.is_listed=1 AND s.is_active=1 AND s.slug NOT IN ("+marks+")").bind(...excluded).first();
-    return output(request,{active_stores:stores.n,listed_products:products.n,catalog_ready:!!(stores.n&&products.n),source:"cloudflare_d1",mode:"demo"});
+    return output(request,{active_stores:stores.n,listed_products:products.n,catalog_ready:!!(stores.n&&products.n),source:"cloudflare_d1",mode:"operational"});
    }
    if(path.startsWith("/api/public/store/slug/")&&method==="GET"){
     const slug=decodeURIComponent(path.slice("/api/public/store/slug/".length));
