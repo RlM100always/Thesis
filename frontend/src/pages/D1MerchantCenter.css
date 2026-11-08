@@ -48,3 +48,17 @@
  .dm-page .dm-d1{display:none}
  .dm-page .dm-theme-toggle{width:36px;height:36px;font-size:17px;flex-shrink:0}
 }
+
+/* Store owner data assistant */
+.dm-assistant-panel{display:grid;gap:14px}
+.dm-assistant-heading{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.dm-assistant-heading h2{margin:0 0 4px}
+.dm-assistant-suggestions{display:flex;gap:8px;flex-wrap:wrap}
+.dm-assistant-suggestions button{font-size:12px;min-height:36px}
+.dm-assistant-history{display:grid;gap:10px;max-height:300px;overflow:auto}
+.dm-assistant-turn{padding:12px;border:1px solid var(--dm-line);border-radius:12px;background:var(--dm-bg)}
+.dm-assistant-turn strong{display:block;font-size:13px}
+.dm-assistant-turn p{margin:8px 0 4px;line-height:1.6}
+.dm-assistant-turn small{color:var(--dm-muted)}
+.dm-assistant-form{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px}
+@media(max-width:560px){.dm-assistant-form{grid-template-columns:1fr}.dm-assistant-heading{display:block}.dm-assistant-heading .dm-d1{display:inline-block;margin-top:8px}}
