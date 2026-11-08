@@ -73,7 +73,7 @@ export function customerFallback(question, products, orders, store, signedIn) {
   }
   if (contains(q, ["ডেলিভারি", "delivery", "পেমেন্ট", "payment", "ক্যাশ", "cod", "চার্জ"])) {
     const policy = clean(store.delivery_note, 400) || "ডেলিভারি সম্পর্কে দোকানের সঙ্গে যোগাযোগ করুন।";
-    return policy + (store.is_demo ? " এটি নমুনা স্টোর; বাস্তব পেমেন্ট করবেন না।" : (store.payment_cod ? " এই দোকানে Cash on Delivery পাওয়া যায়।" : " এই দোকানে COD চালু নেই।"));
+    return policy + (store.payment_cod ? " এই দোকানে Cash on Delivery পাওয়া যায়।" : " এই দোকানে COD চালু নেই।");
   }
   if (products.length) {
     return "আপনার প্রশ্নের সঙ্গে মেলে এমন পণ্য:\n" + products.slice(0, 5).map(p =>
@@ -143,7 +143,7 @@ export async function customerAssistantRouter(request, env, path, output, error)
       orders = result.results || [];
     }
     const context = {
-      store: { name: store.name, category: store.category, delivery_note: store.delivery_note || "", payment: store.is_demo ? "sample only; no real payment" : (store.payment_cod ? "cash on delivery" : "COD unavailable") },
+      store: { name: store.name, category: store.category, delivery_note: store.delivery_note || "", payment: store.payment_cod ? "cash on delivery" : "COD unavailable" },
       matching_products: products.map(({id,name,category,description,brand,price_bdt,stock_qty,unit_label}) => ({id,name,category,description,brand,price_bdt,stock_qty,unit_label})),
       customer_orders: orders,
     };
