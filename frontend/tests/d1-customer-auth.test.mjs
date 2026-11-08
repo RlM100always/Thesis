@@ -125,7 +125,7 @@ async function call(env, path, body, token) {
 }
 
 test("D1 password derivation stays within the Cloudflare Worker 100000-iteration limit", () => {
-  const match = source.match(/iterations:\\s*(\\d+),\\s*hash:\\s*"SHA-256"/);
+  const match = source.match(/iterations:\s*(\d+),\s*hash:\s*"SHA-256"/);
   assert.ok(match, "Expected PBKDF2 iteration definition");
   assert.equal(Number(match[1]), 100000);
 });
@@ -223,10 +223,10 @@ test("customer password reset is rate limited per IP and email", async () => {
 });
 
 test("customer authentication does not overwrite the legacy tenant session", () => {
-  assert.doesNotMatch(portal, /saveToken\\(data\\.token\\);/);
-  assert.match(portal, /onLogin\\(data\\.token, data\\.customer\\);/);
-  assert.match(portal, /\\/forgot-password/);
-  assert.match(portal, /\\/reset-password/);
+  assert.doesNotMatch(portal, /saveToken\(data\.token\);/);
+  assert.match(portal, /onLogin\(data\.token, data\.customer\);/);
+  assert.match(portal, /\/forgot-password/);
+  assert.match(portal, /\/reset-password/);
   assert.match(portal, /customer_reset/);
   assert.match(storePage, /customer_reset/);
 });
