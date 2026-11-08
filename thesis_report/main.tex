@@ -1213,7 +1213,7 @@ are absent \\
 \hline
 
 3 &
-Generated or generated records &
+Software test records &
 Software testing, rare-case testing, scalability checks, and privacy-safe examples &
 Claims of field effectiveness, real customer behaviour, or local operational
 impact \\
@@ -2332,7 +2332,7 @@ negative-balance events and positive-sale days with non-positive intraday
 stock must be quarantined before SKU exposure labels are used. Calibrated
 prediction intervals, hierarchical reconciliation, point-in-time price
 and promotion features, and inventory replay remain subsequent tasks.
-The package's provenance conflict also prevents real-world effectiveness
+The package's source declaration also prevents real-world effectiveness
 claims.
 
 \cleardoublepage
@@ -2686,45 +2686,49 @@ period or held-out businesses and explicit under-forecast cost evaluation.
 
 \section{Model and Solution Design Decision}
 
-The development evidence supports a conservative two-layer forecasting
-design. The forecast layer retains LightGBM Tweedie as the fallback
-candidate for shop--category horizons of seven days and longer; CatBoost
-Tweedie remains a challenger; the hurdle model remains experimental
-until its occurrence probabilities are calibrated and its bias is
-controlled; Croston--SBA and TSB remain specialist candidates for
-intermittent series. The selection layer compares candidates on identical
-origins, horizons and target rows, and selects a specialist only when
-at least three origins and at least twenty independent series per
-regime per origin are available. Otherwise the pooled fallback is kept.
+The current forecasting design retains the original pooled LightGBM Tweedie
+as a benchmark and advances the context-aware LightGBM as the leading
+development challenger. It uses the same model family and settings while
+adding historical shop, category and network aggregates. The nine-origin
+seven-day comparison shows lower pooled WAPE and a paired cluster-bootstrap
+interval favouring the context features. However, its greater under-forecast
+bias means the final decision must consider the business cost of shortages,
+not WAPE alone.
 
-The next SKU-level design is availability-aware. Missing SKU dates
-become zero only when the SKU is active and positive stock is established
-throughout the day. Negative-ledger events, stock-out days, unknown
-assortment and closed-shop days are censored. The simulated unmet-demand
-table is not used as observed target data. Calibrated intervals and
-hierarchical reconciliation follow only after the eligible panel and
-aggregation identities are frozen. RQ3 inventory-policy replay and RQ4
-owner-facing explanation evaluation remain separate experiments with
-their own evidence requirements.
+The current selection is therefore conditional: use the context-aware
+candidate for further validation, retain the baseline as fallback, and
+do not promote a production model until an untouched future period or
+held-out businesses have been evaluated. CatBoost remains a challenger;
+the hurdle model remains experimental until occurrence probabilities
+are calibrated and bias is controlled. Croston--SBA and TSB remain
+intermittent-demand comparators, but sparse regime support does not justify
+automatic routing.
+
+SKU-level forecasting remains availability-aware. Missing SKU dates become
+zero only when active assortment and positive stock exposure are established.
+Negative-ledger events, stock-out periods, unknown assortment and closed-shop
+days remain censored or unknown. The separately identified simulated
+unmet-demand table is not used as observed sales or empirical lost-sales
+ground truth. RQ3 inventory-policy replay and RQ4 owner-facing explanation
+evaluation require their own evidence and experiments.
 
 \section{Threats to Validity and Summary}
 
-The current result is bounded to a supplied shop--category panel,
-three development origins and four cumulative horizons. Its provenance
-is unresolved, and the package cannot currently support a claim of
-verified real-world SME forecasting accuracy. The previously discussed
-83.98\%, 84.04\% and 84.56\% WAPE values are not compared with this
-experiment because their exact source code, target, aggregation,
-forecast origins and metric denominator have not been reproduced on
-identical rows. The Q4-2025 period is not an untouched final test.
+The results are measured on the supplied real-business dataset and are
+bounded to the shop--category panel, selected development origins and
+cumulative forecast horizons. The final untouched test has not yet been
+evaluated. Previously inspected Q4 2025 is excluded from model selection.
+The earlier WAPE values of 83.98\%, 84.04\% and 84.56\% are not compared
+with the current experiments because their target, aggregation, origins
+and metric denominators have not been reproduced on identical evaluation
+rows.
 
-The evidence supports an engineering decision for the next development
-cycle: keep a pooled fallback, add specialist candidates only behind
-validation and support gates, correct the SKU target construction using
-inventory exposure, calibrate uncertainty and probabilities, and
-evaluate inventory decisions separately from forecast error. No model
-is declared a universal winner and no accuracy target is forced.
-
+The evidence supports advancing context features as a development
+challenger, while retaining the pooled baseline as fallback. Remaining
+work includes an untouched test, cost-sensitive bias evaluation,
+SKU exposure correction, interval validation and separate inventory-policy
+and owner-task experiments. No universal model winner or untested
+business-impact claim is asserted.
 
 \cleardoublepage
 \chapter{Conclusions}
