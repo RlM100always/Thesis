@@ -1,0 +1,48 @@
+name: Build main thesis report PDF
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'thesis_report/main.tex'
+      - 'thesis_report/logo.pdf'
+      - 'thesis_report/Figures/**'
+      - '.github/workflows/build-main-thesis-report.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: main-thesis-report-pdf
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Install TeX Live
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y texlive-latex-extra texlive-fonts-recommended texlive-pictures
+
+      - name: Compile the existing main report
+        working-directory: thesis_report
+        run: |
+          pdflatex -interaction=nonstopmode -halt-on-error main.tex
+          pdflatex -interaction=nonstopmode -halt-on-error main.tex
+
+      - name: Publish the compiled main report PDF
+        run: |
+          git fetch origin main
+          git reset --hard origin/main
+          cp thesis_report/main.pdf output/pdf/main-thesis-report.pdf
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add output/pdf/main-thesis-report.pdf
+          git diff --cached --quiet || (git commit -m "Build updated main thesis report PDF" && git push origin HEAD:main)
