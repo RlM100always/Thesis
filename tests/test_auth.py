@@ -4,7 +4,7 @@ import jwt
 import pytest
 from fastapi import HTTPException
 
-from api.auth import create_access_token, decode_access_token
+from api.auth import create_access_token, decode_access_token, get_current_user
 from api.config import get_settings
 
 
@@ -23,3 +23,17 @@ def test_wrong_audience_is_rejected():
     with pytest.raises(HTTPException) as error:
         decode_access_token(token)
     assert error.value.status_code == 401
+
+
+def test_render_hosted_runtime_never_uses_the_implicit_development_owner(monkeypatch):
+    monkeypatch.setenv("RENDER", "true")
+    monkeypatch.setenv("APP_ENV", "development")
+    monkeypatch.setenv("AUTH_MODE", "development")
+    get_settings.cache_clear()
+    try:
+        with pytest.raises(HTTPException) as error:
+            get_current_user(None, None)
+        assert error.value.status_code == 401
+        assert error.value.detail == "Authentication required"
+    finally:
+        get_settings.cache_clear()
