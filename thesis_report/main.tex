@@ -3529,65 +3529,37 @@ claims.
 \chapter{Experimental Results}
 \label{chapter_experimentalResults}
 
-\section{Results Analysis}
+\section{Evidence Boundary and Panel Integrity}
 
-\subsection{Daily Panel Integrity}
+The current Drive manifest says the package is real, while the 2 November
+repository onboarding record classifies a same-seed, same-count package as
+synthetic. The current accessible SKU sheet does not expose the previously
+reported \texttt{synthetic\_flag} column. This conflict remains unresolved.
+All numerical results in this chapter are therefore reproducible controlled
+development results on the supplied package, not verified real-world SME
+accuracy. The previously inspected October--December 2025 period is excluded
+from model selection and is not an untouched final test.
 
-The shop--category panel passed the structural checks described in
-Chapter~\ref{chapter_implementation}. The panel has 561,152 observations,
-512 unique shop--category series, and 1,096 days per series. The observed
-quantity totals 1,580,361 units, and 37.5962\% of daily rows have zero
-observed sales. These checks establish internal consistency of the exported
-panel; they do not independently verify every underlying transaction or
-resolve whether a zero-sales day was affected by a stock-out.
+The shop--category panel contains 561,152 observations, 512 unique series
+and 1,096 daily observations per series. It totals 1,580,361 units;
+37.5962\% of rows are explicit zero-sales observations. There are no
+duplicate shop--category--date keys, missing required values, zero-flag
+mismatches or missing dates within the 512 series. Transaction and
+inventory reconciliation results are reported in Chapter~\ref{chapter_implementation}.
 
-\begin{table}[H]
-\centering
-\small
-\caption{Structural audit of the RQ1 daily shop--category panel.}
-\label{tab:rq1_panel_audit}
-\begin{tabularx}{\textwidth}{|p{0.57\textwidth}|Y|}
-\hline
-\textbf{Audit item} & \textbf{Observed result} \\
-\hline
-Shops and categories & 32 shops; 16 categories \\
-\hline
-Unique shop--category series & 512 \\
-\hline
-Date coverage & 1 January 2023--31 December 2025 \\
-\hline
-Rows and expected balanced rows & 561,152 and 561,152 \\
-\hline
-Observed units sold & 1,580,361 \\
-\hline
-Zero-sales observations & 37.5962\% \\
-\hline
-Duplicate shop--category--date keys & 0 \\
-\hline
-Missing required values & 0 \\
-\hline
-Zero-flag mismatches & 0 \\
-\hline
-Missing dates within series & 0 \\
-\hline
-\end{tabularx}
-\end{table}
+\section{Demand-Regime Distribution}
 
-\subsection{Demand-Regime Distribution}
-
-Demand regimes were calculated from the history available up to 30 June
-2025, before the first development forecast origin. The descriptive
-classification used ADI and \(CV^2\) thresholds of 1.32 and 0.49,
-respectively. Of the 512 series, 342 were classified as lumpy, 153 as
-erratic, 13 as smooth, and 4 as intermittent. The intermittent group is
-therefore a very small part of this aggregated panel.
+Regimes are calculated using data available through 30 June 2025, before
+the first development origin. The ADI and \(CV^2\) thresholds are 1.32
+and 0.49. The panel contains 342 lumpy series, 153 erratic series,
+13 smooth series and only 4 intermittent series.
 
 \begin{table}[H]
 \centering
 \small
-\caption{Historical demand-regime distribution across 512 series.}
+\caption{Historical demand-regime distribution across 512 shop--category series.}
 \label{tab:rq1_regime_distribution}
-\begin{tabularx}{\textwidth}{|p{0.25\textwidth}|C{0.16\textwidth}|C{0.22\textwidth}|Y|}
+\begin{tabularx}{\textwidth}{|p{0.25\textwidth}|C{0.16\textwidth}|C{0.18\textwidth}|Y|}
 \hline
 \textbf{Regime} & \textbf{Series} & \textbf{Share} & \textbf{Mean zero-sales ratio} \\
 \hline
@@ -3604,197 +3576,205 @@ Total & 512 & 100.00\% & 37.60\% \\
 \end{tabularx}
 \end{table}
 
-\subsection{Forecasting Performance Across Horizons}
+Four intermittent series are not enough independent support for
+regime-specific automatic model switching. Repeated forecasts of the same
+four series do not create additional independent businesses.
 
-The three development origins were 1 July, 1 August, and 1 September
-2025. At each origin, every one of the 512 shop--category series was
-forecast at the selected horizon. The evaluation therefore contains
-1,536 series-origin observations per horizon. WAPE is calculated over
-the pooled actual and forecast quantities at the corresponding horizon.
-MAE and RMSE are reported in units per series-origin forecast. Signed
-bias is defined as total forecast minus total actual, divided by total
-actual; a negative value indicates under-forecasting.
+\section{Multi-Model Forecasting Performance}
+
+The fixed-origin experiment uses 1 July, 1 August and 1 September 2025.
+Each of the 512 series is forecast at each origin, giving 1,536
+series-origin observations per horizon. The six candidates are LightGBM
+Tweedie, CatBoost Tweedie, a raw two-stage CatBoost hurdle, weekly
+seasonal-naive, Croston--SBA and TSB. All models use the same target
+definition and historical information at each origin.
 
 \begin{table}[H]
 \centering
 \footnotesize
-\setlength{\tabcolsep}{2pt}
-\caption{Pooled development performance by forecast horizon.}
-\label{tab:rq1_horizon_performance}
-\begin{tabularx}{\textwidth}{|C{0.08\textwidth}|C{0.13\textwidth}|C{0.13\textwidth}|C{0.13\textwidth}|C{0.13\textwidth}|Y|}
+\setlength{\tabcolsep}{3pt}
+\caption{Pooled development WAPE by forecast horizon and candidate model.}
+\label{tab:rq1_horizon_performance_v2}
+\begin{tabularx}{\textwidth}{|C{0.09\textwidth}|C{0.13\textwidth}|C{0.13\textwidth}|C{0.13\textwidth}|C{0.13\textwidth}|C{0.13\textwidth}|Y|}
 \hline
-\makecell{\textbf{Horizon}} & \makecell{\textbf{LGBM}\\\textbf{WAPE}} & \makecell{\textbf{Seasonal}\\\textbf{WAPE}} & \makecell{\textbf{SBA}\\\textbf{WAPE}} & \makecell{\textbf{TSB}\\\textbf{WAPE}} & \makecell{\textbf{LGBM}\\\textbf{bias}} \\
+\makecell{\textbf{Horizon}} & \makecell{\textbf{LightGBM}\\\\\textbf{WAPE}} & \makecell{\textbf{CatBoost}\\\\\textbf{WAPE}} & \makecell{\textbf{Hurdle}\\\\\textbf{WAPE}} & \makecell{\textbf{Croston--SBA}\\\\\textbf{WAPE}} & \makecell{\textbf{TSB}\\\\\textbf{WAPE}} & \makecell{\textbf{Seasonal}\\\\\textbf{naive}} \\\\
 \hline
-1 day & 79.88\% & 92.21\% & 84.01\% & 84.78\% & -21.51\% \\
+1 day & 79.80\% & 79.98\% & \textbf{79.23\%} & 84.01\% & 84.78\% & 92.21\% \\\\
 \hline
-7 days & 33.87\% & 40.77\% & 37.74\% & 38.62\% & -7.04\% \\
+7 days & \textbf{33.74\%} & 34.20\% & 35.26\% & 37.74\% & 38.62\% & 40.77\% \\\\
 \hline
-14 days & 24.22\% & 33.97\% & 30.27\% & 32.10\% & -2.50\% \\
+14 days & \textbf{24.11\%} & 24.78\% & 24.54\% & 30.27\% & 32.10\% & 33.97\% \\\\
 \hline
-28 days & 18.57\% & 29.16\% & 25.62\% & 27.38\% & -1.99\% \\
+28 days & \textbf{18.57\%} & 19.28\% & 18.84\% & 25.62\% & 27.38\% & 29.16\% \\\\
 \hline
 \end{tabularx}
 \end{table}
 
-The LightGBM Tweedie model achieved the lowest pooled WAPE among the
-four evaluated methods at all four horizons. Relative to the weekly
-seasonal-naive baseline, its WAPE reduction was 13.37\% at one day,
-16.91\% at seven days, 28.72\% at fourteen days, and 36.33\% at
-twenty-eight days. These percentages are relative reductions in WAPE,
-not percentage-point differences. The horizon values should not be
-compared as if they represented the same target scale: cumulative
-quantities and the degree of temporal aggregation increase with horizon.
+LightGBM has the lowest pooled WAPE at seven, fourteen and twenty-eight
+days. The raw hurdle candidate has the lowest one-day WAPE, but its
+one-day aggregate bias is \(-28.18\%\), compared with \(-21.69\%\) for
+LightGBM. The hurdle probabilities are uncalibrated. Its lower one-day
+WAPE therefore does not justify promotion without calibration and a
+separate cost-sensitive analysis of under-forecasting.
 
 \begin{table}[H]
 \centering
 \small
-\caption{LightGBM error and bias measures by forecast horizon.}
-\label{tab:rq1_lightgbm_error}
-\begin{tabularx}{\textwidth}{|C{0.18\textwidth}|C{0.22\textwidth}|C{0.22\textwidth}|Y|}
+\caption{Forecast bias and horizon-scaled weekly MASE for the principal candidates.}
+\label{tab:rq1_bias_mase}
+\begin{tabularx}{\textwidth}{|C{0.12\textwidth}|C{0.15\textwidth}|C{0.15\textwidth}|C{0.15\textwidth}|Y|}
 \hline
-\textbf{Horizon} & \textbf{MAE} & \textbf{RMSE} & \textbf{Signed bias} \\
+\textbf{Horizon} & \textbf{LightGBM bias} & \textbf{CatBoost bias} & \textbf{Hurdle bias} & \textbf{LightGBM MASE} \\
 \hline
-1 day & 2.351 & 3.635 & -21.51\% \\
+1 day & \(-21.69\%\) & \(-21.24\%\) & \(-28.18\%\) & 0.793 \\
 \hline
-7 days & 6.444 & 8.771 & -7.04\% \\
+7 days & \(-6.59\%\) & \(-7.64\%\) & \(-12.80\%\) & 0.326 \\
 \hline
-14 days & 8.945 & 12.069 & -2.50\% \\
+14 days & \(-2.42\%\) & \(-2.86\%\) & \(-2.86\%\) & 0.226 \\
 \hline
-28 days & 13.827 & 18.729 & -1.99\% \\
+28 days & \(-2.10\%\) & \(-2.84\%\) & \(-1.01\%\) & 0.175 \\
 \hline
 \end{tabularx}
 \end{table}
 
-The one-day result remains weak: WAPE is 79.88\%, and the model
-under-forecasts total units by 21.51\%. The lower WAPE at longer
-horizons is consistent with aggregation smoothing some daily variation;
-it does not mean that the model is equally accurate for individual
-daily replenishment decisions. The bias also shows that improving
-absolute error alone is insufficient; calibration and the operational
-cost of under-forecasting require further examination.
+Horizon-scaled weekly MASE divides absolute forecast error by the
+series-specific mean absolute lag-7 difference multiplied by the
+forecast horizon. It is a scale-normalised diagnostic, not a direct
+business-cost measure. The one-day WAPE remains high; longer-horizon
+results must not be interpreted as evidence of equally accurate daily
+replenishment forecasts.
 
-\subsection{Performance Stability Across Development Origins}
+\section{Seven-Day Stability and Shop-Level Heterogeneity}
 
-The pooled LightGBM WAPE was also examined separately at each origin.
-The model ranked ahead of the three comparators on pooled WAPE at all
-three origins for the seven-, fourteen-, and twenty-eight-day horizons.
-At the one-day horizon, the model also ranked first at all three origins,
-although the absolute error remained high.
+LightGBM has the lowest seven-day pooled WAPE at each development
+origin: 32.52\% on 1 July, 33.86\% on 1 August and 34.92\% on
+1 September. CatBoost records 32.71\%, 34.26\% and 35.72\%;
+the raw hurdle records 33.81\%, 35.54\% and 36.52\%.
+
+\begin{table}[H]
+\centering
+\footnotesize
+\setlength{\tabcolsep}{3pt}
+\caption{Seven-day WAPE by development origin.}
+\label{tab:rq1_h7_origin}
+\begin{tabularx}{\textwidth}{|p{0.17\textwidth}|C{0.14\textwidth}|C{0.14\textwidth}|C{0.14\textwidth}|C{0.14\textwidth}|Y|}
+\hline
+\textbf{Origin} & \textbf{LightGBM} & \textbf{CatBoost} & \textbf{Hurdle} & \textbf{Croston--SBA} & \textbf{TSB} \\
+\hline
+1 July 2025 & \textbf{32.52\%} & 32.71\% & 33.81\% & 37.91\% & 39.82\% \\
+\hline
+1 August 2025 & \textbf{33.86\%} & 34.26\% & 35.54\% & 36.14\% & 35.82\% \\
+\hline
+1 September 2025 & \textbf{34.92\%} & 35.72\% & 36.52\% & 39.21\% & 40.24\% \\
+\hline
+\end{tabularx}
+\end{table}
+
+Across shops, LightGBM has lower seven-day WAPE than CatBoost in
+22 of 32 shops; across categories it wins in 14 of 16. Median
+shop-level WAPE is 35.89\% for LightGBM and 36.79\% for CatBoost.
+The model is not uniformly best for every shop, so per-shop monitoring
+and abstention remain necessary.
 
 \begin{table}[H]
 \centering
 \small
-\caption{LightGBM WAPE by development origin.}
-\label{tab:rq1_origin_stability}
-\begin{tabularx}{\textwidth}{|C{0.17\textwidth}|C{0.20\textwidth}|C{0.20\textwidth}|C{0.20\textwidth}|Y|}
+\caption{Cluster-bootstrap seven-day WAPE differences.}
+\label{tab:rq1_cluster_bootstrap}
+\begin{tabularx}{\textwidth}{|p{0.27\textwidth}|C{0.20\textwidth}|C{0.22\textwidth}|Y|}
 \hline
-\textbf{Horizon} & \textbf{1 July 2025} & \textbf{1 August 2025} & \textbf{1 September 2025} & \textbf{Across-origin range} \\
+\textbf{Challenger} & \textbf{Median difference} & \textbf{95\% interval} & \textbf{Interpretation} \\
 \hline
-1 day & 88.05\% & 71.12\% & 85.09\% & 71.12--88.05\% \\
+CatBoost Tweedie & \(-0.45\) pp & \([-0.85,-0.08]\) pp & LightGBM lower WAPE \\
 \hline
-7 days & 32.82\% & 33.90\% & 34.96\% & 32.82--34.96\% \\
+Raw CatBoost hurdle & \(-1.51\) pp & \([-2.12,-0.93]\) pp & LightGBM lower WAPE \\
 \hline
-14 days & 24.45\% & 23.50\% & 24.70\% & 23.50--24.70\% \\
+Weekly seasonal-naive & \(-7.01\) pp & \([-8.55,-5.59]\) pp & LightGBM lower WAPE \\
 \hline
-28 days & 19.41\% & 18.10\% & 18.19\% & 18.10--19.41\% \\
+Croston--SBA & \(-3.97\) pp & \([-5.04,-2.94]\) pp & LightGBM lower WAPE \\
+\hline
+TSB & \(-4.90\) pp & \([-6.11,-3.72]\) pp & LightGBM lower WAPE \\
 \hline
 \end{tabularx}
 \end{table}
 
-The three origins provide an initial check against dependence on a single
-forecast date, but they do not establish long-run temporal generalization.
-They are development origins rather than a final untouched test set.
+The intervals resample 512 shop--category series with 2,000 bootstrap
+replicates. They quantify variation across the development series under
+the fixed-origin protocol; they are not uncertainty intervals for
+future real-world SME performance and do not replace an untouched test.
 
-\subsection{Seven-Day Performance by Demand Regime}
+\section{Performance by Demand Regime}
 
-The seven-day results were stratified using regime labels derived from
-history available before the first development origin. LightGBM had lower
-WAPE than Croston--SBA for erratic, lumpy, and smooth series. Croston--SBA
-had lower WAPE for the intermittent subset: 77.02\% compared with
-106.25\% for LightGBM. However, that subset contains only four series,
-twelve series-origin forecasts, and 25 actual units. The comparison is
-too small to justify automatic model routing or a claim of specialist
-model superiority.
+At seven days, CatBoost has slightly lower WAPE than LightGBM in the
+erratic group (28.50\% versus 28.67\%), while LightGBM performs better
+in the lumpy and smooth groups. Croston--SBA has lower WAPE in the
+intermittent group (77.02\% versus 106.30\% for LightGBM), but that
+subset contains only four series, twelve series-origin forecasts and
+25 actual units. The raw hurdle has WAPE 83.18\% in the same subset
+but under-forecasts total demand by 74.62\%. None of these sparse
+subgroup results justifies automatic model routing.
 
 \begin{table}[H]
 \centering
 \footnotesize
 \setlength{\tabcolsep}{3pt}
 \caption{Seven-day WAPE by historical demand regime.}
-\label{tab:rq1_regime_performance}
-\begin{tabularx}{\textwidth}{|p{0.16\textwidth}|C{0.14\textwidth}|C{0.14\textwidth}|C{0.14\textwidth}|Y|}
+\label{tab:rq1_regime_performance_v2}
+\begin{tabularx}{\textwidth}{|p{0.18\textwidth}|C{0.12\textwidth}|C{0.14\textwidth}|C{0.14\textwidth}|C{0.14\textwidth}|Y|}
 \hline
-\makecell{\textbf{Regime}} & \makecell{\textbf{Cases}} & \makecell{\textbf{LGBM}\\\textbf{WAPE}} & \makecell{\textbf{SBA}\\\textbf{WAPE}} & \makecell{\textbf{Actual}\\\textbf{units}} \\
+\textbf{Regime} & \textbf{Cases} & \textbf{LightGBM} & \textbf{CatBoost} & \textbf{Hurdle} & \textbf{Croston--SBA} \\
 \hline
-Erratic & 459 & 28.74\% & 32.38\% & 14,035 \\
+Erratic & 459 & 28.67\% & \textbf{28.50\%} & 28.57\% & 32.38\% \\
 \hline
-Lumpy & 1,026 & 42.17\% & 47.09\% & 12,600 \\
+Lumpy & 1,026 & \textbf{42.06\%} & 42.85\% & 45.60\% & 47.09\% \\
 \hline
-Smooth & 39 & 20.51\% & 20.69\% & 2,560 \\
+Smooth & 39 & \textbf{19.89\%} & 22.03\% & 20.60\% & 20.69\% \\
 \hline
-Intermittent & 12 & 106.25\% & 77.02\% & 25 \\
+Intermittent & 12 & 106.30\% & 121.62\% & 83.18\% & \textbf{77.02\%} \\
 \hline
 \end{tabularx}
 \end{table}
 
-The regime results support retaining the pooled model as the current
-shop--category candidate while investigating specialist intermittent
-methods on a larger and correctly constructed SKU-level panel. The
-intermittent result also demonstrates why regime counts and support
-must accompany aggregate error metrics.
+\section{Model and Solution Design Decision}
 
-\subsection{Interpretation and Threats to Validity}
+The development evidence supports a conservative two-layer forecasting
+design. The forecast layer retains LightGBM Tweedie as the fallback
+candidate for shop--category horizons of seven days and longer; CatBoost
+Tweedie remains a challenger; the hurdle model remains experimental
+until its occurrence probabilities are calibrated and its bias is
+controlled; Croston--SBA and TSB remain specialist candidates for
+intermittent series. The selection layer compares candidates on identical
+origins, horizons and target rows, and selects a specialist only when
+at least three origins and at least twenty independent series per
+regime per origin are available. Otherwise the pooled fallback is kept.
 
-The experiment supports a bounded finding: on this supplied balanced
-shop--category panel and these three development origins, LightGBM
-Tweedie achieved lower pooled WAPE than the tested seasonal-naive,
-Croston--SBA, and TSB comparators. It does not establish that LightGBM
-is the best model for every shop, category, SKU, sector, or future period.
+The next SKU-level design is availability-aware. Missing SKU dates
+become zero only when the SKU is active and positive stock is established
+throughout the day. Negative-ledger events, stock-out days, unknown
+assortment and closed-shop days are censored. The simulated unmet-demand
+table is not used as observed target data. Calibrated intervals and
+hierarchical reconciliation follow only after the eligible panel and
+aggregation identities are frozen. RQ3 inventory-policy replay and RQ4
+owner-facing explanation evaluation remain separate experiments with
+their own evidence requirements.
 
-The previously discussed 83.98\% individual-level WAPE is not directly
-compared with the current 79.88\% one-day shop--category WAPE. The
-forecasting unit and aggregation level differ, and the legacy evaluation
-must be reconstructed on identical rows, origins, targets, and metric
-code before a valid improvement claim can be made.
+\section{Threats to Validity and Summary}
 
-The current panel contains no explicit stock-on-hand or stock-out flag.
-Observed sales can therefore be censored demand. Price and promotion
-tables exist in the wider package but have not yet been joined using
-point-in-time availability rules. No calibrated prediction intervals,
-CatBoost comparison, calibrated two-stage model, hierarchical
-reconciliation, or inventory-policy backtest is included in these
-results. The 2025 fourth quarter is not used for selection because it
-was previously inspected. A new untouched period or held-out businesses
-are required for final evaluation.
+The current result is bounded to a supplied shop--category panel,
+three development origins and four cumulative horizons. Its provenance
+is unresolved, and the package cannot currently support a claim of
+verified real-world SME forecasting accuracy. The previously discussed
+83.98\%, 84.04\% and 84.56\% WAPE values are not compared with this
+experiment because their exact source code, target, aggregation,
+forecast origins and metric denominator have not been reproduced on
+identical rows. The Q4-2025 period is not an untouched final test.
 
-\section{Summary of the Experimental Results}
-
-The first RQ1 experiment confirms that the supplied shop--category panel
-is structurally complete and supports a reproducible multi-horizon
-development comparison. Across three development origins and four
-forecast horizons, the pooled LightGBM Tweedie model produced the lowest
-aggregate WAPE among the four implemented candidates. The strongest
-relative advantage over the seasonal-naive baseline appeared at the
-twenty-eight-day horizon, while the one-day horizon remained difficult
-and showed material under-forecasting.
-
-The demand-regime analysis found that most shop--category series were
-classified as lumpy or erratic. Only four series met the intermittent
-threshold, so the apparent Croston--SBA advantage within that subgroup
-must be treated as preliminary. The appropriate next architecture is
-therefore not a hard-coded model switch. It is a validation-selected
-mixture-of-experts design in which the pooled model remains the fallback,
-and specialist methods are enabled only when minimum support and
-same-origin validation demonstrate a stable improvement.
-
-The next implementation stage will add CatBoost and a calibrated
-occurrence--quantity model, examine residual bias and prediction
-intervals, join verified price, promotion, stock, and purchase information,
-and extend validation to additional chronological origins. SKU-level
-experiments will first resolve the meaning of absent SKU-date rows and
-the effect of assortment and stock-outs. Only after those checks will
-the selected forecast be used in the RQ3 inventory-policy replay and
-the RQ4 explanation and owner-facing recommendation evaluation.
+The evidence supports an engineering decision for the next development
+cycle: keep a pooled fallback, add specialist candidates only behind
+validation and support gates, correct the SKU target construction using
+inventory exposure, calibrate uncertainty and probabilities, and
+evaluate inventory decisions separately from forecast error. No model
+is declared a universal winner and no accuracy target is forced.
 
 
 \cleardoublepage
