@@ -1,0 +1,108 @@
+{
+  "pipeline": "bsmart_context_aware_global_tweedie_v1",
+  "input_file": "rq1_daily_shop_category.csv",
+  "input_sha256": "ab741f4d72c49706ba2abc8f096659324d862f758c4f171b84dd55a3ab6cbcbd",
+  "evidence_status": "provenance_conflict",
+  "rows": 561152,
+  "shops": 32,
+  "categories": 16,
+  "series": 512,
+  "date_start": "2023-01-01",
+  "date_end": "2025-12-31",
+  "observed_units": 1580361,
+  "zero_sales_ratio": 0.3759623061131387,
+  "horizon_origins": {
+    "1": [
+      "2025-07-01",
+      "2025-08-01",
+      "2025-09-01"
+    ],
+    "7": [
+      "2025-01-01",
+      "2025-02-01",
+      "2025-03-01",
+      "2025-04-01",
+      "2025-05-01",
+      "2025-06-01",
+      "2025-07-01",
+      "2025-08-01",
+      "2025-09-01"
+    ],
+    "14": [
+      "2025-07-01",
+      "2025-08-01",
+      "2025-09-01"
+    ],
+    "28": [
+      "2025-07-01",
+      "2025-08-01",
+      "2025-09-01"
+    ]
+  },
+  "training_stride_days": 14,
+  "minimum_history_days": 56,
+  "models": [
+    "LightGBM_base",
+    "LightGBM_context"
+  ],
+  "objective": "Tweedie variance power 1.3",
+  "parameters": {
+    "n_estimators": 100,
+    "learning_rate": 0.035,
+    "num_leaves": 31,
+    "min_child_samples": 80,
+    "subsample": 0.85,
+    "subsample_freq": 1,
+    "colsample_bytree": 0.85,
+    "reg_lambda": 2,
+    "random_state": 42
+  },
+  "context_features": [
+    "shop sums/means 7,28,56",
+    "category sums/means 7,28,56",
+    "shop/category 28-day trend",
+    "network sums 7,28",
+    "series share of shop/category",
+    "shop/category share of network"
+  ],
+  "evaluation": "same origins and model settings; direct cumulative targets; all features strictly before origin; target windows end before validation origin",
+  "seven_day_pooled_wape": {
+    "base": 0.3346988104811436,
+    "context": 0.32662720242284904,
+    "absolute_improvement_percentage_points": 0.8071608058294544,
+    "relative_improvement_percent": 2.4116034492896072,
+    "context_wins_origins": 6,
+    "total_origins": 9
+  },
+  "seven_day_bias_pct": {
+    "base": -0.020165782595717607,
+    "context": -0.06054632217942506
+  },
+  "bootstrap": {
+    "clusters": 512,
+    "replicates": 2000,
+    "median_difference": -0.00811471,
+    "ci_95": [
+      -0.01090717,
+      -0.00516989
+    ]
+  },
+  "conformal_intervals": {
+    "method": "prequential scaled absolute residual quantiles",
+    "calibration_origins": "previous origins only",
+    "mean_coverage_80": 0.7942708333333334,
+    "mean_coverage_90": 0.8955078125,
+    "mean_width_80_units": 20.583569221904686,
+    "mean_width_90_units": 26.694170405792477
+  },
+  "bias_calibration": {
+    "raw_wape": 0.32662720242284904,
+    "raw_bias_pct": -0.06054632217942506,
+    "adjusted_wape": 0.3289592711951652,
+    "adjusted_bias_pct": -0.016076975642700164,
+    "policy": "optional trade-off; not applied by default"
+  },
+  "final_holdout_evaluated": false,
+  "legacy_q4_2025_used": false,
+  "raw_business_data_committed": false
+}
