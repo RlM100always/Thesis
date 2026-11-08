@@ -19,7 +19,7 @@
 - Latest Cloudflare Worker code deployment: direct content-only upload from GitHub `main` at `2026-11-08T08:44:30.644445Z`; Worker version `9ce95b0e-5d5e-496d-a1e9-0e6c848ba1b7`, deployment `3512e387-8a43-43b6-9596-e09d0f4957f0`, active at 100%.
 - The content-only upload updated the seven Worker modules without replacing configuration. Post-deploy inspection confirmed the existing D1 binding, Workers AI binding and `PLATFORM_ADMIN_KEY` secret binding remained present.
 - **Automated deployment is still misconfigured:** [workflow run 42463053554](https://github.com/RlM100always/Thesis/actions/runs/42463053554) concluded `success`, but its `Deploy Worker` step was skipped because `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` were empty. The direct upload above is a separate successful deployment; do not treat the skipped workflow as a deployment.
-- A fresh full D1 schema-13 export completed on 8 November. Bookmark: `0000005a-00000000-0000511d-8401ba06e6b9525ec909bf7ed5a411e9`; file: `887fa347-9c22-46b1-a7cf-91a7dbdfc311-0000005a-00000000-0000511d-8401ba06e6b9525ec909bf7ed5a411e9.sql`. The export completed successfully, but a full restore drill is still required.
+- A fresh full D1 schema-13 export completed on 8 November. Bookmark: `0000005c-00000000-0000511d-56aabff7339b8513b1168f62dbd41327`; file: `887fa347-9c22-46b1-a7cf-91a7dbdfc311-0000005c-00000000-0000511d-56aabff7339b8513b1168f62dbd41327.sql`. The export completed successfully, but a full restore drill is still required.
 - The live D1 inventory query found 11 store rows (all inactive and not publicly listed), 260 products, 3 retained test orders, 0 customer accounts, 1 retained CI merchant account and 0 coupons. There are currently no active real merchant stores.
 
 ## Before deployment
@@ -76,7 +76,7 @@ node --check --input-type=module < cloudflare/platform-admin-routes.js
 
 - Keep the existing D1 database ID and Worker `DB` binding.
 - Live D1 schema version is **13**; migrations 0009–0013 have been applied.
-- A full schema-13 D1 export completed on 8 November 2026 (bookmark `0000005a-00000000-0000511d-8401ba06e6b9525ec909bf7ed5a411e9`; filename recorded above). It has not yet been restored into a separate recovery database. Do not claim a tested restore.
+- A full schema-13 D1 export completed on 8 November 2026 (bookmark `0000005c-00000000-0000511d-56aabff7339b8513b1168f62dbd41327`; filename recorded above). It has not yet been restored into a separate recovery database. Do not claim a tested restore.
 - Historical migrations were applied manually and may not be registered in Wrangler's `d1_migrations` ledger. Never blindly run `wrangler d1 migrations apply --remote`.
 - Before future migration: export/backup, inspect live schema, compare with migration, apply only missing reviewed additive SQL, verify columns/indexes/triggers and record counts.
 - Never point SQLAlchemy `DATABASE_URL` at a D1 database ID. D1 access is through a Worker binding and D1-native queries/batches.
