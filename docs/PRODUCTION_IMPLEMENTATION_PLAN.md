@@ -15,7 +15,7 @@ This plan is the active delivery checklist. A feature is not called complete mer
 ### Confirmed infrastructure
 - Render service `thesis` deploys the React website and legacy FastAPI application from `main`.
 - Cloudflare Worker `bsmart-commerce-api` is deployed and its `DB` binding points to the existing D1 database `bsmart-commerce`.
-- D1 schema version is **12**. Migrations 0009–0012 have been applied.
+- D1 schema version is **13**. Migrations 0009–0013 have been applied; migration 0013 adds hashed customer password-reset tokens and rate limits.
 - Render's latest confirmed application deployment is commit `a81b998ac7f267d2217a37d33aedd083d23a13be`.
 - GitHub Actions production storefront checks and D1 read-only smoke checks passed for that commit.
 - The latest D1 smoke test confirms CORS, D1 health, authentication health, public-store visibility, diagnostics and unauthenticated owner-assistant rejection.
@@ -37,7 +37,7 @@ The D1 commerce platform and legacy FastAPI business application are still separ
 | Business AI | Live D1 metrics, top-product and low-stock query foundations; reorder levels exist | Add date-range sales trends, customer cohorts/insights, inventory forecast, exports and calculation tests |
 | E-commerce | Store catalogue, guest/account cart paths, checkout, COD/manual fulfilment, order lifecycle, server-side customer cart, coupons with checkout revalidation and usage limits | End-to-end cart/checkout tests on approved merchant store; delivery fee/rules and notifications; idempotency and concurrency tests; payment gateway only after provider/webhook approval |
 | Inventory | D1 stock quantity, stock movements, owner stock adjustments, reorder thresholds and low-stock indicators | Verify every stock mutation and rollback; add alert delivery, reconciliation, receiving/purchasing and race-condition tests |
-| Customer | Customer registration/login, profile, addresses, account order history, wishlist, product reviews, returns and store messaging | Customer email verification/password recovery, privacy export/deletion, support escalation and complete account lifecycle tests |
+| Customer | Customer registration/login, profile, addresses, account order history, wishlist, product reviews, returns, store messaging and one-time password recovery | Configure Resend and verify recovery email delivery; add privacy export/deletion, support escalation and complete account lifecycle tests |
 | Security | PBKDF2-HMAC-SHA-256 password hashes (100,000 iterations), hashed bearer sessions, owner route scoping, rate controls, email verification/reset code, platform-admin secret | Resend currently not configured (live health check: false); staff roles not implemented; improve abuse controls, session management, security headers, secret rotation and restore drill |
 | Admin | Platform-admin overview, store/owner/customer/order/return/audit views, owner activation/suspension and store approval controls | Add least-privilege admin roles, owner identity review, safe exports, monitoring and auditable bulk actions |
 | Deployment | Render auto-deploy from main; Cloudflare Worker deployment via GitHub Actions; production D1 smoke workflow | Keep CI green, verify each deployment ID and run post-deploy checks; create staging D1 for write tests |
@@ -48,7 +48,7 @@ The D1 commerce platform and legacy FastAPI business application are still separ
 ### Step 0 — Baseline and data protection — VERIFIED
 - [x] Confirm Render workspace/service and Cloudflare Primary account/database.
 - [x] Inspect current repository, deployment workflows and D1 schema.
-- [x] Export D1 before migrations and apply only missing additive migrations 0009–0012.
+- [x] Export D1 before migrations and apply only missing additive migrations 0009–0013.
 - [x] Verify existing D1 record counts and preserve all existing records.
 - [x] Deploy Worker and Render application updates.
 - [x] Pass frontend build, backend compile/integration and production D1 read-only smoke tests.
@@ -105,7 +105,7 @@ The D1 commerce platform and legacy FastAPI business application are still separ
 
 ### Step 6 — Customer account and support
 - [x] Customer accounts, profile, addresses, order history, wishlist, reviews, returns and store messaging.
-- [ ] Complete customer recovery and verified contact flow.
+- [x] Implement customer password recovery with hashed one-time tokens, 60-minute expiry, IP/email rate limits, session revocation and reset-link UI; apply D1 migration 0013.\n- [ ] Configure Resend and verify owner/customer email delivery end to end.\n- [ ] Complete customer verified-contact, privacy export/deletion and support escalation.
 - [ ] Test data export/deletion and retention rules.
 - [ ] Verify customer support threads cannot cross store/customer boundaries.
 
