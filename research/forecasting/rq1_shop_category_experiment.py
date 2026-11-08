@@ -181,7 +181,7 @@ def cluster_bootstrap_h7(predictions, n_bootstrap=2000, seed=20261108):
 
 
 def validate_provenance_evidence(input_path: Path, evidence_status: str, evidence_path: Path | None = None):
-    """Require auditable source documentation before labelling a run verified-observed."""
+    """Record the researcher-provided dataset class or validate external source evidence."""
     allowed = {"real_user_provided", "verified_observed", "observed_unverified", "synthetic_fixture"}
     if evidence_status not in allowed:
         raise ValueError(f"Unsupported evidence status: {evidence_status}")
