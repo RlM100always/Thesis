@@ -271,12 +271,18 @@ def test_owner_and_staff_access_records_are_unique_and_role_scoped():
     ).fetchone()
     assert row["role"] == "inventory"
     assert row["owner_id"] == "owner-1"
+    db.execute(
+        "INSERT INTO merchant_accounts(id,email,password_hash,password_salt,role,is_active) VALUES(?,?,?,?,?,1)",
+        ("staff-2", "staff2@example.invalid", "hash", "salt", "staff"),
+    )
     try:
         db.execute(
             "INSERT INTO merchant_staff_store_access(account_id,owner_id,store_id,role,is_active) VALUES(?,?,?,?,1)",
-            ("staff-1", "owner-1", "store-1", "superadmin"),
+            ("staff-2", "owner-1", "store-1", "superadmin"),
         )
         assert False, "unknown staff roles must be rejected"
     except sqlite3.IntegrityError:
         pass
+    version = db.execute("SELECT value FROM commerce_meta WHERE key='schema_version'").fetchone()[0]
+    assert version == "14"
     db.close()
