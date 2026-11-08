@@ -1,0 +1,6 @@
+horizon,reference_model,challenger_model,series_clusters,bootstrap_replicates,ci_2_5,median_wape_difference,ci_97_5,difference_definition
+7,LightGBM_Tweedie,CatBoost_Tweedie,512,2000,-0.00845235,-0.00448368,-0.00082413,WAPE(LightGBM) - WAPE(challenger)
+7,LightGBM_Tweedie,CatBoost_Hurdle_raw,512,2000,-0.0212252,-0.01508019,-0.00928449,WAPE(LightGBM) - WAPE(challenger)
+7,LightGBM_Tweedie,Seasonal_Naive_7,512,2000,-0.08554906,-0.07008161,-0.055939,WAPE(LightGBM) - WAPE(challenger)
+7,LightGBM_Tweedie,Croston_SBA,512,2000,-0.05039997,-0.03974606,-0.02940226,WAPE(LightGBM) - WAPE(challenger)
+7,LightGBM_Tweedie,TSB,512,2000,-0.06107574,-0.04896289,-0.03724307,WAPE(LightGBM) - WAPE(challenger)
