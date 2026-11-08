@@ -63,6 +63,14 @@ Relative WAPE reduction against the seasonal baseline was 9.7\%, 17.2\%, 23.7\% 
 
 At 7 days, LightGBM WAPE was 28.62\% for erratic, 41.89\% for lumpy, 21.82\% for smooth and 90.01\% for intermittent series. The intermittent result has only ten forecast cases and 24 actual units; it is too small for a firm conclusion. Croston classic was better on this tiny subset, while LightGBM was better on the other three regimes.
 
+\paragraph{Relationship to the previously reported 83.98\% WAPE.}
+That legacy value has not been reproduced in this run because its original
+script, exact test rows, target aggregation, forecast origin and WAPE
+implementation have not yet been independently matched. The present 82.73\%
+1-day score is calculated on shop--category series-origin observations, so it
+must not be treated as a direct improvement over the legacy individual-level
+83.98\% figure. A fair comparison requires rebuilding both results on identical
+series, origins, targets and metric code.
 \section{Architecture decision}
 Retain LightGBM Tweedie as a strong pooled candidate for the balanced shop--category panel, but do not declare it the final model. The next candidate architecture is a validation-selected mixture of experts:
 \begin{enumerate}
