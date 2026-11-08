@@ -67,6 +67,57 @@ async function storeBySlug(env, slug) {
   const row=await env.DB.prepare("SELECT * FROM commerce_stores WHERE slug=? AND is_active=1 LIMIT 1").bind(short(slug, 100)).first();
   return isPublicStore(row)?row:null;
 }
+function customerResetLink(env, storeSlug, token) {
+  const base = String(env.PUBLIC_APP_URL || "https://thesis-j0n8.onrender.com").replace(/\/$/, "");
+  return base + "/#/store/" + encodeURIComponent(storeSlug) + "?customer_reset=" + encodeURIComponent(token);
+}
+async function sendCustomerPasswordReset(env, email, storeSlug, token) {
+  if (!env.RESEND_API_KEY || !env.AUTH_EMAIL_FROM) return false;
+  const link = customerResetLink(env, storeSlug, token);
+  try {
+    const response = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: { Authorization: "Bearer " + env.RESEND_API_KEY, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        from: env.AUTH_EMAIL_FROM,
+        to: [email],
+        subject: "Reset your B-SMART customer password",
+        text: "A password reset was requested for your B-SMART customer account. Open this link to set a new password:\\n" +
+          link + "\\nThis link expires in 60 minutes and can be used only once. If you did not request this, ignore this email.",
+      }),
+    });
+    if (!response.ok) {
+      console.error("customer password reset email delivery failed", response.status);
+      return false;
+    }
+    return true;
+  } catch (e) {
+    console.error("customer password reset email delivery failed", e?.message || e);
+    return false;
+  }
+}
+async function allowCustomerReset(env, request, email) {
+  const ip = short(request.headers.get("CF-Connecting-IP") || "unknown", 80);
+  const windowId = Math.floor(Date.now() / (15 * 60 * 1000));
+  const checks = [
+    { scope: "ip", value: ip, limit: 10 },
+    { scope: "email", value: email.toLowerCase(), limit: 5 },
+  ];
+  let allowed = true;
+  for (const item of checks) {
+    const key = await sha256("customer-password-reset:" + item.scope + ":" + item.value);
+    await env.DB.prepare(
+      "INSERT INTO commerce_customer_auth_limits(identifier_hash,window_id,request_count) VALUES(?,?,1) " +
+      "ON CONFLICT(identifier_hash) DO UPDATE SET " +
+      "request_count=CASE WHEN commerce_customer_auth_limits.window_id=excluded.window_id THEN commerce_customer_auth_limits.request_count+1 ELSE 1 END," +
+      "window_id=excluded.window_id,updated_at=CURRENT_TIMESTAMP"
+    ).bind(key, windowId).run();
+    const row = await env.DB.prepare("SELECT request_count FROM commerce_customer_auth_limits WHERE identifier_hash=?").bind(key).first();
+    if (Number(row?.request_count || 0) > item.limit) allowed = false;
+  }
+  return allowed;
+}
+
 async function listedProduct(env, storeId, productId) {
   return env.DB.prepare("SELECT * FROM commerce_products WHERE id=? AND store_id=? AND is_listed=1 LIMIT 1")
     .bind(short(productId, 80), storeId).first();
@@ -228,6 +279,57 @@ export async function customerRouter(request, env, path, output, error) {
       await env.DB.prepare("DELETE FROM commerce_customer_login_attempts WHERE identifier=?").bind(key).run();
       const session = await createSession(env, account.id);
       return output(request, { ...session, customer: customerView(account) });
+    }
+    if (method === "POST" && path === "/api/customer/forgot-password") {
+      const body = await readJson(request);
+      const email = short(body.email, 180).toLowerCase();
+      const storeSlug = short(body.store_slug, 100);
+      if (!validEmail(email)) return error(request, 422, "সঠিক ইমেইল ঠিকানা লিখুন");
+      if (!storeSlug) return error(request, 422, "দোকানের তথ্য পাওয়া যায়নি");
+      const store = await storeBySlug(env, storeSlug);
+      if (!store) return error(request, 404, "দোকানটি পাওয়া যায়নি");
+      if (!env.RESEND_API_KEY || !env.AUTH_EMAIL_FROM)
+        return error(request, 503, "পাসওয়ার্ড রিসেট ইমেইল সেবা এখনো কনফিগার করা হয়নি");
+      if (!await allowCustomerReset(env, request, email))
+        return error(request, 429, "অনেকবার চেষ্টা করা হয়েছে। ১৫ মিনিট পরে আবার চেষ্টা করুন");
+      const account = await env.DB.prepare(
+        "SELECT id,email FROM commerce_customer_accounts WHERE lower(email)=? LIMIT 1"
+      ).bind(email).first();
+      if (account?.email) {
+        const token = newSecret(32), tokenHash = await sha256(token);
+        const expires = new Date(Date.now() + 60 * 60 * 1000).toISOString();
+        await env.DB.prepare(
+          "UPDATE commerce_customer_accounts SET password_reset_token_hash=?,password_reset_expires_at=?,updated_at=CURRENT_TIMESTAMP WHERE id=?"
+        ).bind(tokenHash, expires, account.id).run();
+        if (!await sendCustomerPasswordReset(env, account.email, store.slug, token)) {
+          await env.DB.prepare(
+            "UPDATE commerce_customer_accounts SET password_reset_token_hash=NULL,password_reset_expires_at=NULL WHERE id=? AND password_reset_token_hash=?"
+          ).bind(account.id, tokenHash).run();
+          console.error("customer password reset email was not delivered; response remains generic");
+        }
+      }
+      return output(request, { sent: true, message: "অ্যাকাউন্ট থাকলে পাসওয়ার্ড রিসেটের নির্দেশনা ইমেইলে পাঠানো হয়েছে।" }, 202);
+    }
+    if (method === "POST" && path === "/api/customer/reset-password") {
+      const body = await readJson(request);
+      const token = String(body.token || "").trim().toLowerCase();
+      const password = String(body.password || "");
+      if (!/^[a-f0-9]{64}$/.test(token)) return error(request, 400, "রিসেট লিংকটি সঠিক নয় বা মেয়াদ শেষ হয়েছে");
+      if (password.length < 8 || password.length > 128) return error(request, 422, "নতুন পাসওয়ার্ড ৮-১২৮ অক্ষরের হতে হবে");
+      const tokenHash = await sha256(token);
+      const now = new Date().toISOString();
+      const account = await env.DB.prepare(
+        "SELECT id FROM commerce_customer_accounts WHERE password_reset_token_hash=? AND password_reset_expires_at>? LIMIT 1"
+      ).bind(tokenHash, now).first();
+      if (!account) return error(request, 400, "রিসেট লিংকটি সঠিক নয় বা মেয়াদ শেষ হয়েছে");
+      const salt = newSecret(16), hash = await passwordDigest(password, salt);
+      const consumed = await env.DB.prepare(
+        "UPDATE commerce_customer_accounts SET password_salt=?,password_hash=?,password_reset_token_hash=NULL,password_reset_expires_at=NULL,updated_at=CURRENT_TIMESTAMP " +
+        "WHERE id=? AND password_reset_token_hash=? AND password_reset_expires_at>?"
+      ).bind(salt, hash, account.id, tokenHash, now).run();
+      if (!consumed.meta?.changes) return error(request, 400, "রিসেট লিংকটি সঠিক নয় বা মেয়াদ শেষ হয়েছে");
+      await env.DB.prepare("DELETE FROM commerce_customer_sessions WHERE account_id=?").bind(account.id).run();
+      return output(request, { reset: true, sessions_revoked: true });
     }
     if (method === "GET" && path === "/api/customer/me") {
       const account = await customerViewer(request, env);
