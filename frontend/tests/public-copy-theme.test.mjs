@@ -44,7 +44,8 @@ test("customers can switch theme on all standalone public shopping routes",()=>{
  const tracking=read("pages/OrderStatus.jsx");
  for(const page of [store,directory,tracking]){
   assert.match(page,/useUi\(\)/);
-  assert.match(page,/toggleTheme/);\n assert.doesNotMatch(page,/পরীক্ষামূলক দোকান|নমুনা বিক্রি|ডেমো বিক্রি/);
+  assert.match(page,/toggleTheme/);
+ assert.doesNotMatch(page,/পরীক্ষামূলক দোকান|নমুনা বিক্রি|ডেমো বিক্রি/);
   assert.match(page,/লাইট মোড চালু করুন/);
   assert.match(page,/ডার্ক মোড চালু করুন/);
  }
