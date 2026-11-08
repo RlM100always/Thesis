@@ -2,7 +2,7 @@ import { defaultOrderStatusNote } from "./order-workflow.js";
 import { isPublicStore } from "./store-visibility.js";
 
 /* Global customer identity and account-owned shopping state for the D1 storefronts.
- * D1 demo accounts are shared across D1 stores, but remain separate from the
+ * D1 customer accounts are shared across D1 stores, but remain separate from the
  * operational FastAPI customer database until a deliberate identity migration.
  */
 const encoder = new TextEncoder();
@@ -534,7 +534,7 @@ export async function customerRouter(request, env, path, output, error) {
       const id = crypto.randomUUID();
       await env.DB.prepare("INSERT INTO commerce_order_returns(id,store_id,order_id,account_id,reason,customer_note) VALUES(?,?,?,?,?,?)")
         .bind(id,order.store_id,order.id,account.id,reason,note||null).run();
-      return output(request,{created:true,id,status:"requested",note:order.is_demo?"পরীক্ষামূলক ফেরত অনুরোধ জমা হয়েছে।":"ফেরতের অনুরোধ জমা হয়েছে; দোকান থেকে পরবর্তী নির্দেশনা জানানো হবে।"},201);
+      return output(request,{created:true,id,status:"requested",note:order.is_demo?"ফেরত অনুরোধটি গ্রহণ করা হয়েছে।":"ফেরতের অনুরোধ জমা হয়েছে; দোকান থেকে পরবর্তী নির্দেশনা জানানো হবে।"},201);
     }
     if (path === "/api/customer/returns" && method === "GET") {
       const {results} = await env.DB.prepare(
