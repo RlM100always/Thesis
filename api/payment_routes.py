@@ -34,56 +34,11 @@ from .domain_models import SalesDocument, Store
 
 router = APIRouter(prefix="/api/public/payment", tags=["payment"])
 
-# ── bKash sandbox defaults (from bKash developer docs / public test store) ───
-BKASH_SANDBOX_BASE = "https://tokenized.sandbox.bka.sh/v1.2.0-beta"
-BKASH_LIVE_BASE    = "https://tokenized.pay.bka.sh/v1.2.0-beta"
-
-BKASH_DEMO_APP_KEY    = os.getenv("BKASH_SANDBOX_APP_KEY", "")
-BKASH_DEMO_APP_SECRET = os.getenv("BKASH_SANDBOX_APP_SECRET", "")
-BKASH_DEMO_USERNAME   = os.getenv("BKASH_SANDBOX_USERNAME", "")
-BKASH_DEMO_PASSWORD   = os.getenv("BKASH_SANDBOX_PASSWORD", "")
-# ── Nagad sandbox defaults ────────────────────────────────────────────────────
-NAGAD_SANDBOX_BASE  = "https://api.mynagad.com"
-NAGAD_LIVE_BASE     = "https://api.nagad.com.bd"
-
-NAGAD_DEMO_MERCHANT_ID     = os.getenv("NAGAD_SANDBOX_MERCHANT_ID", "")
-NAGAD_DEMO_MERCHANT_NUMBER = os.getenv("NAGAD_SANDBOX_MERCHANT_NUMBER", "")
-# Demo RSA keys (Nagad sandbox public test keys — replace with merchant keys for production)
-NAGAD_DEMO_PUB_KEY = os.getenv("NAGAD_SANDBOX_PUBLIC_KEY", "")
-NAGAD_DEMO_PRIV_KEY = os.getenv("NAGAD_SANDBOX_PRIVATE_KEY", "")  # Merchant's private key — store owner must provide
-
-# ── SSLCommerz defaults ───────────────────────────────────────────────────────
-SSLCZ_SANDBOX_INIT = "https://sandbox.sslcommerz.com/gwprocess/v4/api.php"
-SSLCZ_LIVE_INIT    = "https://securepay.sslcommerz.com/gwprocess/v4/api.php"
-SSLCZ_SANDBOX_VAL  = "https://sandbox.sslcommerz.com/validator/api/validationserverAPI.php"
-SSLCZ_LIVE_VAL     = "https://securepay.sslcommerz.com/validator/api/validationserverAPI.php"
-SSLCZ_DEMO_STORE_ID     = os.getenv("SSLCOMMERZ_SANDBOX_STORE_ID", "")
-SSLCZ_DEMO_STORE_PASSWD = os.getenv("SSLCOMMERZ_SANDBOX_STORE_PASSWORD", "")
-
-
-def _base_url(request: Request) -> str:
-    fwd_proto = request.headers.get("x-forwarded-proto", request.url.scheme)
-    fwd_host  = request.headers.get("x-forwarded-host", request.url.netloc)
-    return f"{fwd_proto}://{fwd_host}"
-
-
-def _order_redirect(org_id: str, access_token: str, payment: str, base: str) -> RedirectResponse:
-    return RedirectResponse(
-        f"{base}/#/order-status/{org_id}/{access_token}?payment={payment}",
-        status_code=303,
-    )
-
-
-def _get_order(order_id: str, org_id: str, db: Session) -> SalesDocument:
-    order = db.scalar(select(SalesDocument).where(
-        SalesDocument.id == order_id,
-        SalesDocument.organization_id == org_id,
-    ))
-    if not order:
-        raise HTTPException(404, "Order not found")
-    if order.payment_status == "paid":
-        raise HTTPException(400, "Order already paid")
-    return order
+# Production gateway endpoints. Each store must supply its own verified live credentials.
+BKASH_LIVE_BASE = "https://tokenized.pay.bka.sh/v1.2.0-beta"
+NAGAD_LIVE_BASE = "https://api.nagad.com.bd"
+SSLCZ_LIVE_INIT = "https://securepay.sslcommerz.com/gwprocess/v4/api.php"
+SSLCZ_LIVE_VAL = "https://securepay.sslcommerz.com/validator/api/validationserverAPI.php"
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -91,17 +46,20 @@ def _get_order(order_id: str, org_id: str, db: Session) -> SalesDocument:
 # ═══════════════════════════════════════════════════════════════════════════════
 
 def _bkash_creds(store: Store) -> tuple[str, str, str, str, bool]:
-    """(app_key, app_secret, username, password, is_live)"""
-    ak  = store.bkash_app_key    or BKASH_DEMO_APP_KEY
-    ase = store.bkash_app_secret or BKASH_DEMO_APP_SECRET
-    un  = store.bkash_username   or BKASH_DEMO_USERNAME
-    pw  = store.bkash_password   or BKASH_DEMO_PASSWORD
-    live = bool(store.bkash_app_key and store.bkash_is_live)
-    return ak, ase, un, pw, live
+    """Return only store-owned live bKash credentials."""
+    ak, ase, un, pw = (
+        store.bkash_app_key, store.bkash_app_secret,
+        store.bkash_username, store.bkash_password,
+    )
+    if not all((ak, ase, un, pw)) or not bool(store.bkash_is_live):
+        raise HTTPException(409, "bKash live credentials are not configured for this store.")
+    return ak, ase, un, pw, True
 
 
 def _bkash_base(is_live: bool) -> str:
-    return BKASH_LIVE_BASE if is_live else BKASH_SANDBOX_BASE
+    if not is_live:
+        raise HTTPException(409, "bKash live checkout is not enabled for this store.")
+    return BKASH_LIVE_BASE
 
 
 async def _bkash_grant_token(ak: str, ase: str, un: str, pw: str, is_live: bool) -> str:
@@ -266,17 +224,20 @@ async def bkash_callback(
 # ═══════════════════════════════════════════════════════════════════════════════
 
 def _nagad_base(is_live: bool) -> str:
-    return NAGAD_LIVE_BASE if is_live else NAGAD_SANDBOX_BASE
+    if not is_live:
+        raise HTTPException(409, "Nagad live checkout is not enabled for this store.")
+    return NAGAD_LIVE_BASE
 
 
 def _nagad_creds(store: Store) -> tuple[str, str, str, str, bool]:
-    """(merchant_id, merchant_number, pub_key, priv_key, is_live)"""
-    mid  = store.nagad_merchant_id     or NAGAD_DEMO_MERCHANT_ID
-    mnum = store.nagad_merchant_number or NAGAD_DEMO_MERCHANT_NUMBER
-    pub  = store.nagad_pub_key         or NAGAD_DEMO_PUB_KEY
-    priv = store.nagad_priv_key        or NAGAD_DEMO_PRIV_KEY
-    live = bool(store.nagad_merchant_id and store.nagad_is_live)
-    return mid, mnum, pub, priv, live
+    """Return only store-owned live Nagad credentials."""
+    mid, mnum, pub, priv = (
+        store.nagad_merchant_id, store.nagad_merchant_number,
+        store.nagad_pub_key, store.nagad_priv_key,
+    )
+    if not all((mid, mnum, pub, priv)) or not bool(store.nagad_is_live):
+        raise HTTPException(409, "Nagad live credentials are not configured for this store.")
+    return mid, mnum, pub, priv, True
 
 
 def _nagad_encrypt(data: str, pub_key_b64: str) -> str:
@@ -433,10 +394,11 @@ async def nagad_callback(
 # ═══════════════════════════════════════════════════════════════════════════════
 
 def _sslcz_creds(store: Store) -> tuple[str, str, bool]:
-    sid  = store.sslcz_store_id     or SSLCZ_DEMO_STORE_ID
-    spwd = store.sslcz_store_passwd or SSLCZ_DEMO_STORE_PASSWD
-    live = bool(store.sslcz_store_passwd and store.sslcz_is_live)
-    return sid, spwd, live
+    """Return only store-owned live SSLCommerz credentials."""
+    sid, spwd = store.sslcz_store_id, store.sslcz_store_passwd
+    if not sid or not spwd or not bool(store.sslcz_is_live):
+        raise HTTPException(409, "SSLCommerz live credentials are not configured for this store.")
+    return sid, spwd, True
 
 
 @router.post("/initiate/{org_id}")
@@ -461,7 +423,9 @@ async def sslcz_initiate(
     if amount <= 0:
         raise HTTPException(400, "Order total must be > 0")
 
-    init_url = SSLCZ_LIVE_INIT if is_live else SSLCZ_SANDBOX_INIT
+    if not is_live:
+        raise HTTPException(409, "SSLCommerz live checkout is not enabled for this store.")
+    init_url = SSLCZ_LIVE_INIT
     payload = {
         "store_id": sid, "store_passwd": spwd,
         "total_amount": f"{amount:.2f}", "currency": "BDT",
@@ -503,7 +467,9 @@ async def sslcz_success(
     if not store:
         return RedirectResponse("/#/", status_code=303)
     sid, spwd, is_live = _sslcz_creds(store)
-    val_url = SSLCZ_LIVE_VAL if is_live else SSLCZ_SANDBOX_VAL
+    if not is_live:
+            raise HTTPException(409, "SSLCommerz live payment validation is not enabled for this store.")
+        val_url = SSLCZ_LIVE_VAL
     async with httpx.AsyncClient(timeout=20) as c:
         r = await c.get(val_url, params={"val_id": val_id, "store_id": sid, "store_passwd": spwd, "format": "json"})
     vdata = r.json()
