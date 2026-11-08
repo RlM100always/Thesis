@@ -1,15 +1,59 @@
 \chapter{Introduction}
 \label{chapter_introduction}
 
-	\section{Motivations}
-	
-	\section{Objectives}
-	 
-	\section{Contributions}
-	 
-	\section{Challenges}
-	
+\section{Motivation}
+Small and medium-sized retailers make daily decisions about what to buy, how much stock to keep, which customers may stop purchasing, and how to explain a recommendation to a business owner. These decisions are often made from separate sales, inventory and purchasing records. Business intelligence can help turn these records into useful information, but the value of an analytical system depends on the quality of its data, the validity of its evaluation and whether its outputs can be understood by the people expected to use them \citep{chen2012business,hoque2016ict,shahadat2023digital}.
+
+Retail demand is difficult to forecast at individual product and shop level. Many branch--SKU series are intermittent: a product may sell on some days and have no sales on others. A missing sales row does not prove that demand was zero. The product may have been unavailable, the store may not have recorded a transaction, or the item may not have been active. Forecasting therefore needs to distinguish observed zero sales from periods in which stock availability is unknown. Research on intermittent demand and retail forecasting makes this distinction important for both forecast accuracy and inventory control \citep{croston1972intermittent,syntetos2005intermittent,fildes2022retail}.
+
+Customer prediction has a different problem. A useful customer model must predict an outcome that occurs after the feature cut-off. If later transactions are accidentally included in the features, the test score will not represent a real prediction. Class imbalance also makes accuracy an unsuitable primary measure. Precision--recall analysis and probability calibration are more informative when the score is used to prioritise a limited number of customers \citep{saito2015pr,niculescu2005calibration}.
+
+Inventory recommendations require more than a forecast. The decision also depends on stock on hand, open purchase orders, supplier lead time, pack size, purchasing constraints and the cost of holding excess stock or missing sales. Explanations add a further requirement: a recommendation should show the evidence and constraints behind it. A technically correct output is not enough to establish that a user can interpret it or make a better decision \citep{bertsimas2020prescriptive,miller2019explanation}.
+
+\section{Problem Statement}
+The project addresses the gap between raw SME transaction records and decision support that can be evaluated against explicit research questions. Four connected tasks are studied: forecasting observed branch--SKU sales, predicting future customer inactivity, comparing replenishment decisions under a declared scenario, and preparing an explanation-supported decision evaluation.
+
+The empirical data currently available cover grocery and FMCG retail shops. Although the software architecture is intended to be reusable across SME settings, the results in this report should not be generalised to other sectors without additional data and external validation.
+
+\section{Research Questions and Evaluation Requirements}
+The four research questions and their required comparisons are retained below. The evidence requirements define what can be claimed from the current files and what still needs to be collected.
+
+\begin{table}[htbp]
+\centering
+\scriptsize
+\renewcommand{\arraystretch}{1.25}
+\begin{tabularx}{\textwidth}{p{0.65cm} X X X}
+\toprule
+\textbf{RQ} & \textbf{Unit and Comparison} & \textbf{Primary Measures} & \textbf{Evidence Required}\\
+\midrule
+RQ1 & Unseen branch--SKU periods; context-aware model versus ablated models and forecasting baselines. & WAPE, MASE, interval coverage and related out-of-time forecast measures. & Time-stamped sales, stock, price, promotion, calendar and relevant context data.\\
+RQ2 & Future customer outcome windows; predictive model versus base-rate or rule-based baselines. & PR-AUC, Lift@10\%, Brier score and calibration measures. & Pseudonymous customer transactions with historically valid feature cut-offs and sufficient future follow-up.\\
+RQ3 & Identical demand paths; proposed replenishment policy versus the participating owner's existing policy. & Stock-out units, inventory holding and total cost under declared assumptions. & Stock records, lead times, purchasing constraints and validated cost assumptions.\\
+RQ4 & Equivalent decision situations; explanation-supported output versus output-only condition. & Decision correctness, completion time, confidence and perceived usability. & Consenting target users and counterbalanced decision tasks.\\
+\bottomrule
+\end{tabularx}
+\caption{Research questions, comparisons, measures and required evidence.}
+\label{tab:research_questions}
+\end{table}
+
+\section{Aim and Objectives}
+The aim is to design and evaluate a data-driven decision-support workflow for SME retail operations. The objectives are:
+\begin{enumerate}
+\item construct an exposure-aware branch--SKU forecasting dataset and compare context-aware models with ablations and simple baselines;
+\item train and calibrate a customer inactivity model using only information available at each historical snapshot;
+\item audit historical purchasing records and evaluate the supplied replenishment scenario without confusing scenario outcomes with observed owner-policy outcomes;
+\item validate the internal consistency of generated explanations and prepare a counterbalanced study for target users;
+\item document the evidence, code, assumptions and limitations needed to reproduce the results.
+\end{enumerate}
+
+\section{Contributions}
+The work makes four practical contributions. First, it defines an exposure-aware forecasting unit that avoids treating every absent sales row as zero demand. Second, it implements a temporally evaluated and calibrated customer inactivity model. Third, it separates historical procurement evidence from scenario-based replenishment results. Fourth, it prepares a matched and counterbalanced decision-task bank for a future explanation study. The contribution is an integrated and auditable workflow; it is not a claim that a new forecasting algorithm or a completed human study has been invented.
+
+\section{Scope and Evidence Boundaries}
+The current dataset package contains 32 shops, all classified as grocery and FMCG retail, with a 2023--2025 date range. The model results therefore describe this sample and these data definitions. The current Drive manifest declares the package to contain real SME sales or real people, and the project owner confirms this is the intended source. An earlier repository onboarding note records a conflicting classification for a same-seed package. This report uses the current Drive snapshot as the project owner's declared source but does not claim independent verification of collection, ownership or consent. Fields explicitly labelled as synthetic or scenario-based are treated as scenario evidence, not observed transactions.
+
+\section{Challenges}
+The main challenges are sparse demand, uncertain stock exposure, temporal leakage risk, repeated customer snapshots, incomplete policy-cost documentation and the absence of participant outcomes for RQ4. These challenges are handled by defining an evidence boundary for each research question and reporting incomplete comparisons directly.
 
 \section{Organization}
-
-The thesis is organized in a systematic way. The organization can be seen as: 
+Chapter 2 reviews business analytics, retail forecasting, customer prediction, inventory control and explanation research. Chapter 3 defines the research design and evaluation methods. Chapter 4 describes the implemented data and model pipelines. Chapter 5 reports the experiments and their limitations. Chapter 6 answers the research questions and sets out the remaining work. Appendix A records reproducibility details and the RQ4 study materials.

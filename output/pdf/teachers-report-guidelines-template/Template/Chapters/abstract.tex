@@ -1,4 +1,5 @@
+This report presents the implementation and experimental evaluation of an AI-powered business analytics system for small and medium-sized retail businesses. The system is organised around four research questions: branch--SKU demand forecasting, future customer inactivity prediction, inventory replenishment, and explanation-supported decision making.
 
-\large{
-	\hspace{1cm} Abstract here ... 
-}
+The current project dataset covers 32 grocery and fast-moving consumer goods shops, 480 products, 11,000 customers, 365,447 sales orders, 736,683 sales lines and 994,808 inventory movements from 2023 to 2025. RQ1 uses an exposure-aware branch--SKU panel and LightGBM Tweedie models. The context model gives small WAPE improvements over a history-only model at 7-, 14- and 28-day horizons, but the seasonal-naive baseline remains stronger on MASE at every horizon and on 28-day WAPE. RQ2 uses 72,146 customer snapshots and a temporal test set of 21,164 rows. The Platt-calibrated LightGBM model obtains PR-AUC 0.731, Lift@10\% 2.031, Brier score 0.173 and 10-bin ECE 0.050.
+
+RQ3 combines an audit of 122,422 historical purchase orders with a separate 2,500-case scenario comparison. The trend scenario reduces supplied scenario cost by 0.87\%, while scenario stock-out units rise from 45 to 100. This is not an observed comparison against a participating owner's documented policy. RQ4 validates 1,800 generated cases for action--quantity consistency, but the supplied file contains no participant outcomes. A counterbalanced task bank and study protocol have been prepared; the human study remains to be conducted. The report distinguishes observed records, user-declared provenance and scenario evidence throughout.

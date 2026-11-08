@@ -111,6 +111,10 @@
 \usepackage{epstopdf}
 \usepackage[scriptsize]{subfigure}
 \usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.18}
+\usetikzlibrary{positioning,arrows.meta}
 \usepackage{rotating}
 \usepackage{listings}
 \usepackage{lstpatch}
@@ -162,18 +166,10 @@
 \DEPARTMENT  {\texorpdfstring{\href{http://www.cse.du.ac.bd}
                 {DEPARTMENT OF COMPUTER SCIENCE AND ENGINEERING}}
                 {DEPARTMENT OF COMPUTER SCIENCE AND ENGINEERING}}
-\group       {\texorpdfstring{\href{link of your research group}   %%%%%%%%%%%%%%%%%   ADD YOUR RESEARCH GROUP LINK
-                {}}
-                {}}
-\GROUP       {\texorpdfstring{\href{link of your research group}   %%%%%%%%%%%%%%%%%   ADD YOUR RESEARCH GROUP LINK
-                {}}
-                {}}
-\faculty     {\texorpdfstring{\href{Supervisor profile link}    %%%%%%%%%%%%%%%   ADD Profile Link for Supervisor
-                {Name of the Supervisor}}
-                {Name of the Supervisor}}
-\FACULTY     {\texorpdfstring{\href{Supervisor profile link}    %%%%%%%%%%%%%%%   ADD Profile Link for Supervisor
-				{Name of the Supervisor}}
-				{Name of the Supervisor}}
+\group       {CSE 4114 Project Work}
+\GROUP       {CSE 4114 PROJECT WORK}
+\faculty     {Dr. Saifuddin Md. Tareeq, Professor}
+\FACULTY     {DR. SAIFUDDIN MD. TAREEQ, PROFESSOR}
 \addresses   {}
 \subject     {}
 \keywords    {}
@@ -202,16 +198,16 @@
       {\large \authornames \par}
       \bigskip
       \bigskip 
-      %{\large Supervised by \par}
-      %{\large \facname \par}
-      %{\large \deptname \par}
+      {\large Supervised by \par}
+      {\large \facname \par}
+      {\large \deptname \par}
       \bigskip
       \bigskip
       \bigskip 
       \includegraphics[width=1.5in, height=1.5in]{logo.pdf}
       \vfill
       %{\large A thesis submitted in partial fulfillment for the degree of\par}
-      {\Large Bachelor of Science \par}
+      {\Large \degreename \par}
       
       {\Large \@date \par}
       \bigskip

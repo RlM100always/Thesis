@@ -1,7 +1,30 @@
 \chapter{Related Works}
 \label{chapter_backStudy}
 
+\section{Business Analytics for SMEs}
+Business intelligence and analytics connect operational data with decisions about performance, customers and resources \citep{chen2012business}. For smaller firms, the challenge is often not a lack of data alone; it is the separation of records across sales, inventory, finance and purchasing. Studies of ICT adoption in Bangladesh SMEs identify organisational and environmental factors that affect the use of digital systems \citep{hoque2016ict,shahadat2023digital}. This project responds to that practical setting by treating data integration and evidence quality as part of the research method rather than as a preliminary technical detail.
 
+\section{Retail Demand Forecasting}
+Retail forecasting has to work across many products with different sales volumes, patterns and availability histories. Fildes, Ma and Kolassa review the interaction between forecasting methods and retail practice, including the need to evaluate forecasts in the context of the decisions they support \citep{fildes2022retail}. The M5 competition also illustrates the importance of hierarchical retail data, calendar effects and out-of-time evaluation \citep{makridakis2022m5}.
 
-\section{Problem of Existing Systems} 
-	
+Intermittent demand is difficult because a series may contain many zero-demand periods. Croston proposed a method for forecasting intermittent demand \citep{croston1972intermittent}; later work examined the accuracy of intermittent demand estimates and their use in stock control \citep{syntetos2005intermittent,syntetos2010stock}. For the current data, stock availability must also be considered. A day with no recorded sale is informative only when the item was available for sale. The exposure-aware panel in this project therefore uses inventory movements to identify periods in which observed sales can be treated as demand evidence.
+
+Forecast accuracy should not be measured with a single metric. Hyndman and Koehler discuss weaknesses in common forecast error measures and propose scaled measures for comparisons across series \citep{hyndman2006accuracy}. This report uses WAPE for volume-weighted error and MASE for scaled per-series error. The two measures answer different questions and can rank models differently.
+
+\section{Customer Inactivity Prediction}
+Customer recency, frequency and monetary value are established inputs for customer-base analysis \citep{fader2005rfm}. A supervised model can extend these summaries by learning patterns across transaction history and customer context. However, a customer model is useful only if the prediction target is defined after the feature cut-off. This project predicts a 90-day inactivity outcome from historical snapshots and excludes customer identifiers from the model features.
+
+For imbalanced outcomes, precision--recall curves are often more informative than ROC curves because precision directly reflects the quality of a prioritised customer list \citep{saito2015pr}. A score used for business prioritisation should also have meaningful probabilities. Niculescu-Mizil and Caruana show why calibration matters when predicted probabilities guide decisions \citep{niculescu2005calibration}. The RQ2 evaluation therefore reports PR-AUC, Lift@10\%, Brier score and expected calibration error.
+
+\section{Inventory Replenishment and Prescriptive Analytics}
+Inventory policy connects demand estimates with order quantities, lead times and service levels. Forecasting and stock control must be considered together, particularly for intermittent items and suppliers with variable delivery times \citep{syntetos2010stock}. Prescriptive analytics extends prediction by selecting an action under constraints; Bertsimas and Kallus describe this transition from predictive to prescriptive analytics \citep{bertsimas2020prescriptive}.
+
+A replenishment policy cannot be judged from order volume alone. A policy that orders less may reduce holding cost while increasing stock-outs. A meaningful comparison needs the same demand path for both policies and a declared cost model. It also needs a valid baseline. In this project, historical purchase orders provide evidence of actual ordering and delivery, while the supplied RQ3 case file provides a separate scenario comparison. The two sources are reported separately because the case file does not identify its baseline as the participating owner's documented policy.
+
+\section{Explainable Decision Support}
+An explanation should help a person understand why a system produced an output and what evidence supports it. Miller reviews explanation research across the social sciences and argues that explanations should be evaluated in relation to the person receiving them and the task they are performing \citep{miller2019explanation}. SHAP provides a framework for attributing model predictions to input features \citep{lundberg2017shap}, but feature attribution alone does not establish that a user understands or trusts a recommendation.
+
+RQ4 therefore compares explanation-supported and output-only decision screens under equivalent scenarios. Correctness, completion time, confidence and perceived usability are user-level outcomes. The current case file can support a consistency audit and task preparation, but it cannot replace observations from consenting target users.
+
+\section{Research Gap and Positioning}
+Prior work provides methods for forecasting, customer prediction, inventory control and explanation. The remaining gap in this project is the integration of these methods with explicit evidence boundaries. The system must distinguish observed records from inferred or scenario data, evaluate models at historically valid cut-offs, and avoid presenting a generated explanation as proof of user benefit. The research design follows a design-science approach in which the artefact and its evaluation are both documented \citep{hevner2004design}.
