@@ -16,7 +16,7 @@ test("platform admin order endpoint supplies all payment audit fields used by it
 
 test("platform admin distinguishes archived order value from live COD collections", () => {
   assert.match(route, /AS demo_order_value_bdt/);
-  assert.match(route, /s\\.is_demo=0 AND o\\.payment_method='cod'/);
+  assert.match(route, /s\.is_demo=0 AND o\.payment_method='cod'/);
   assert.match(page, /Archived order value/);
   assert.match(page, /COD received/);
   assert.match(page, /আর্কাইভ করা অকার্যকর অর্ডারগুলো বাস্তব আয় নয়/);
