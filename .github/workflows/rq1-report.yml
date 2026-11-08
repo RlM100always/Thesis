@@ -5,11 +5,14 @@ on:
       - research/rq1-development-evidence-2026-11-08
     paths:
       - 'research/reports/**'
-      - 'research/forecasting/run_rq1_experiment.py'
+      - 'research/forecasting/**'
       - '.github/workflows/rq1-report.yml'
   workflow_dispatch:
 permissions:
   contents: write
+concurrency:
+  group: rq1-report-\${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   build-report:
     runs-on: ubuntu-latest
@@ -17,6 +20,14 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: research/rq1-development-evidence-2026-11-08
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install research dependencies and run tests
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements-research.txt
+          python -m pytest research/forecasting/tests -q
       - name: Install LaTeX
         run: |
           sudo apt-get update
