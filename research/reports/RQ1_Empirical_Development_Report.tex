@@ -78,13 +78,13 @@ Relative WAPE reduction against the seasonal baseline was 9.7\%, 17.2\%, 23.7\% 
 \begin{figure}[H]\centering
 \begin{tikzpicture}
 \begin{axis}[ybar,bar width=8pt,width=.92\textwidth,height=7cm,
- symbolic x coords={1 day,7 days,14 days,28 days},xtick=data,
+ symbolic x coords={D1,D7,D14,D28},xtick=data,xticklabels={1 day,7 days,14 days,28 days},
  ylabel={WAPE (\%)},ymin=0,ymax=100,
  legend style={at={(0.5,-0.22)},anchor=north,legend columns=3},
  x tick label style={rotate=0},grid=major]
-\addplot coordinates {(1 day,82.73) (7 days,33.84) (14 days,24.66) (28 days,18.84)};
-\addplot coordinates {(1 day,91.65) (7 days,40.88) (14 days,32.31) (28 days,25.57)};
-\addplot coordinates {(1 day,85.16) (7 days,38.62) (14 days,31.89) (28 days,27.06)};
+\addplot coordinates {(D1,82.73) (D7,33.84) (D14,24.66) (D28,18.84)};
+\addplot coordinates {(D1,91.65) (D7,40.88) (D14,32.31) (D28,25.57)};
+\addplot coordinates {(D1,85.16) (D7,38.62) (D14,31.89) (D28,27.06)};
 \legend{LightGBM Tweedie,Seasonal naive,Croston classic}
 \end{axis}
 \end{tikzpicture}
