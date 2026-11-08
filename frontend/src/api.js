@@ -24,11 +24,11 @@ export async function d1Commerce(path, { method = "GET", body, headers = {} } = 
   return response.json();
 }
 async function storesFromBothSources() {
-  const [operational, demo] = await Promise.allSettled([
+  const [legacy, d1] = await Promise.allSettled([
     request("/api/public/store/"),
     d1Commerce("/api/public/store/"),
   ]);
-  if (operational.status === "rejected" && demo.status === "rejected") {
+  if (legacy.status === "rejected" && d1.status === "rejected") {
     throw new Error("Business database and Cloudflare D1 storefronts are both unavailable");
   }
   const actual = operational.status === "fulfilled" && Array.isArray(operational.value)
@@ -39,11 +39,11 @@ async function storesFromBothSources() {
   return [...actual, ...demos.filter(x => !seen.has(x.slug))];
 }
 async function storesStatus() {
-  const [real,demo] = await Promise.allSettled([
+  const [legacy,d1] = await Promise.allSettled([
     request("/api/public/store/diagnostics"),
     d1Commerce("/api/public/store/diagnostics"),
   ]);
-  if (real.status === "rejected" && demo.status === "rejected")
+  if (legacy.status === "rejected" && d1.status === "rejected")
     throw new Error("Store availability status is unavailable");
   const r = real.status === "fulfilled" ? real.value : {};
   const d = demo.status === "fulfilled" ? demo.value : {};
