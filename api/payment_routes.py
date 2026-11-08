@@ -469,8 +469,8 @@ async def sslcz_success(
         return RedirectResponse("/#/", status_code=303)
     sid, spwd, is_live = _sslcz_creds(store)
     if not is_live:
-            raise HTTPException(409, "SSLCommerz live payment validation is not enabled for this store.")
-        val_url = SSLCZ_LIVE_VAL
+        raise HTTPException(409, "SSLCommerz live payment validation is not enabled for this store.")
+    val_url = SSLCZ_LIVE_VAL
     async with httpx.AsyncClient(timeout=20) as c:
         r = await c.get(val_url, params={"val_id": val_id, "store_id": sid, "store_passwd": spwd, "format": "json"})
     vdata = r.json()
