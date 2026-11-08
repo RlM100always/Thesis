@@ -206,7 +206,7 @@ export async function merchantRouter(req,env,path,output,error){
   }
   if(method==="POST"&&path==="/api/merchant/delete-account"){
    const body=await json(req,error);
-   if(body.confirm!=="DELETE DEMO ACCOUNT")return bad(req,error,422,"Explicit account deletion confirmation required");
+   if(body.confirm!=="DELETE MERCHANT ACCOUNT")return bad(req,error,422,"Explicit account deletion confirmation required");
    const store=await myStore(env,owner);
    if(store&&!store.id.startsWith("merchant-"))
      return bad(req,error,409,"Only owner-created merchant stores can be deleted automatically");
@@ -317,7 +317,7 @@ export async function merchantRouter(req,env,path,output,error){
     const result=await env.DB.prepare("UPDATE commerce_order_returns SET status=?,merchant_note=?,updated_at=CURRENT_TIMESTAMP WHERE id=? AND store_id=? AND status=?")
      .bind(status,note||null,id,store.id,row.status).run();
     if(!result.meta?.changes)return bad(req,error,409,"Return request changed; refresh and retry");
-    return output(req,{updated:true,status,inventory_restocked:status==="received",note:store.is_demo?"Demo return workflow only; no money was refunded":"Return received and inventory restocked; no automated refund was issued."});
+    return output(req,{updated:true,status,inventory_restocked:status==="received",note:store.is_demo?"Archived return record only; no money was refunded":"Return received and inventory restocked; no automated refund was issued."});
    }
    if(method==="GET"&&path==="/api/merchant/chat"){
     const store=await storeOnly(env,owner),url=new URL(req.url),accountId=short(url.searchParams.get("account_id"),80);
@@ -390,7 +390,7 @@ export async function merchantRouter(req,env,path,output,error){
     env.DB.prepare("INSERT INTO commerce_orders(id,store_id,order_number,access_token,status,subtotal_bdt,total_bdt,payment_method,shipping_name,shipping_phone,shipping_address,customer_id) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)").bind(oid,store.id,number,token,"fulfilled",total,total,methodName,customerName,"","",cid),
     ...details.map(({p,qty})=>env.DB.prepare("INSERT INTO commerce_order_lines(order_id,product_id,product_name,quantity,price_bdt,line_total_bdt) VALUES(?,?,?,?,?,?)").bind(oid,p.id,p.name,qty,p.price_bdt,p.price_bdt*qty)),
     ...(!demo?[env.DB.prepare("UPDATE commerce_orders SET payment_status='paid',payment_received_at=CURRENT_TIMESTAMP,payment_received_by=?,payment_note='Cash collected at POS' WHERE id=?").bind(owner.email,oid)]:[]),
-    env.DB.prepare("INSERT INTO commerce_cashbook(id,store_id,kind,amount_bdt,description,related_order_id) VALUES(?,?,?,?,?,?)").bind(crypto.randomUUID(),store.id,"receipt",total,demo?"Simulated demo POS receipt":"POS cash sale",oid)
+    env.DB.prepare("INSERT INTO commerce_cashbook(id,store_id,kind,amount_bdt,description,related_order_id) VALUES(?,?,?,?,?,?)").bind(crypto.randomUUID(),store.id,"receipt",total,demo?"Archived POS record":"POS cash sale",oid)
    ];
    try{await env.DB.batch(statements);}catch(e){return bad(req,error,409,"Stock or product data changed; refresh and retry");}
    return output(req,{created:true,order_number:number,total_bdt:total,payment_status:demo?"demo_no_payment":"paid",note:demo?"Demo sale recorded":"Cash sale, payment and stock movement recorded"},201);
@@ -440,7 +440,7 @@ export async function merchantRouter(req,env,path,output,error){
   const paymentMatch=/^\/api\/merchant\/orders\/([a-zA-Z0-9-]{2,90})\/payment$/.exec(path);
   if(method==="PATCH"&&paymentMatch){
    const store=await storeOnly(env,owner),body=await json(req,error),id=paymentMatch[1];
-   if(store.is_demo)return bad(req,error,409,"Demo orders have no real payment to collect");
+   if(store.is_demo)return bad(req,error,409,"This order has no payment to collect");
    const order=await env.DB.prepare("SELECT id,status,payment_method,payment_status FROM commerce_orders WHERE store_id=? AND id=?").bind(store.id,id).first();
    if(!order)return bad(req,error,404,"Order not found");
    if(order.payment_method!=="cod")return bad(req,error,409,"Only cash-on-delivery orders can be recorded here");
