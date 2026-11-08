@@ -176,8 +176,8 @@ export async function ownerAssistantAnswer(env, request, owner, store, question,
       "(SELECT COALESCE(SUM(total_bdt),0) FROM commerce_orders WHERE store_id=? AND status!='cancelled' AND payment_status='paid' AND date(payment_received_at,'+6 hours')=date('now','+6 hours')) AS today_collected_bdt," +
       "(SELECT COALESCE(SUM(total_bdt),0) FROM commerce_orders WHERE store_id=? AND status!='cancelled' AND payment_method='cod' AND payment_status='pending_cod') AS cod_pending_total_bdt," +
       "(SELECT COUNT(*) FROM commerce_products WHERE store_id=? AND is_listed=1 AND stock_qty<=reorder_level) AS low_stock_count," +
-      "(SELECT COUNT(DISTINCT account_id) FROM commerce_orders WHERE store_id=? AND account_id IS NOT NULL) AS customer_count," +
-      "(SELECT COUNT(*) FROM (SELECT account_id FROM commerce_orders WHERE store_id=? AND account_id IS NOT NULL GROUP BY account_id HAVING COUNT(*)>1)) AS repeat_customer_count"
+      "(SELECT COUNT(DISTINCT COALESCE(account_id,customer_id)) FROM commerce_orders WHERE store_id=? AND COALESCE(account_id,customer_id) IS NOT NULL) AS customer_count," +
+      "(SELECT COUNT(*) FROM (SELECT COALESCE(account_id,customer_id) AS customer_key FROM commerce_orders WHERE store_id=? AND COALESCE(account_id,customer_id) IS NOT NULL GROUP BY COALESCE(account_id,customer_id) HAVING COUNT(*)>1)) AS repeat_customer_count"
     ).bind(store.id,store.id,store.id,store.id,store.id,store.id,store.id).first(),
     env.DB.prepare("SELECT id,name,stock_qty,reorder_level FROM commerce_products WHERE store_id=? AND is_listed=1 AND stock_qty<=reorder_level ORDER BY stock_qty ASC LIMIT 8").bind(store.id).all(),
     env.DB.prepare(
