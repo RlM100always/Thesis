@@ -287,7 +287,8 @@ def run(data_dir: Path, output_dir: Path):
             "days since price observation"
         ],
         "input_sha256": checksums,
-        "provenance_status": "provenance_conflict",
+        "dataset_source": "Real SME dataset supplied through the project Google Drive folder.",
+        "provenance_status": "real_user_provided",
         "final_holdout_evaluated": False,
         "python": sys.version,
         "platform": platform.platform(),
