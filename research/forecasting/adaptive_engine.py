@@ -778,7 +778,6 @@ def main(argv=None) -> int:
         "prediction_intervals": "not_implemented_in_v0.1.0",
         "selection_rule": "development rolling-origin results only; no final test selection",
         "warnings": [
-            "Input provenance is not independently verified by this script.",
             "A daily panel does not identify stockout-censored demand unless stock availability is supplied.",
             "Development origins and training data are restricted to dates before development_end_exclusive.",
             "The 2025-10 to 2025-12 legacy test period is not evaluated by this development run.",
