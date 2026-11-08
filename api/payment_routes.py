@@ -18,7 +18,9 @@ SSLCommerz flow (all-in-one: bKash + Nagad + cards):
 import base64
 import json
 import os
+import re
 import uuid
+from urllib.parse import urlsplit
 from decimal import Decimal
 
 import httpx
@@ -34,37 +36,21 @@ from .domain_models import SalesDocument, Store
 
 router = APIRouter(prefix="/api/public/payment", tags=["payment"])
 
-# ── bKash sandbox defaults (from bKash developer docs / public test store) ───
-BKASH_SANDBOX_BASE = "https://tokenized.sandbox.bka.sh/v1.2.0-beta"
-BKASH_LIVE_BASE    = "https://tokenized.pay.bka.sh/v1.2.0-beta"
-
-BKASH_DEMO_APP_KEY    = os.getenv("BKASH_SANDBOX_APP_KEY", "")
-BKASH_DEMO_APP_SECRET = os.getenv("BKASH_SANDBOX_APP_SECRET", "")
-BKASH_DEMO_USERNAME   = os.getenv("BKASH_SANDBOX_USERNAME", "")
-BKASH_DEMO_PASSWORD   = os.getenv("BKASH_SANDBOX_PASSWORD", "")
-# ── Nagad sandbox defaults ────────────────────────────────────────────────────
-NAGAD_SANDBOX_BASE  = "https://api.mynagad.com"
-NAGAD_LIVE_BASE     = "https://api.nagad.com.bd"
-
-NAGAD_DEMO_MERCHANT_ID     = os.getenv("NAGAD_SANDBOX_MERCHANT_ID", "")
-NAGAD_DEMO_MERCHANT_NUMBER = os.getenv("NAGAD_SANDBOX_MERCHANT_NUMBER", "")
-# Demo RSA keys (Nagad sandbox public test keys — replace with merchant keys for production)
-NAGAD_DEMO_PUB_KEY = os.getenv("NAGAD_SANDBOX_PUBLIC_KEY", "")
-NAGAD_DEMO_PRIV_KEY = os.getenv("NAGAD_SANDBOX_PRIVATE_KEY", "")  # Merchant's private key — store owner must provide
-
-# ── SSLCommerz defaults ───────────────────────────────────────────────────────
-SSLCZ_SANDBOX_INIT = "https://sandbox.sslcommerz.com/gwprocess/v4/api.php"
-SSLCZ_LIVE_INIT    = "https://securepay.sslcommerz.com/gwprocess/v4/api.php"
-SSLCZ_SANDBOX_VAL  = "https://sandbox.sslcommerz.com/validator/api/validationserverAPI.php"
-SSLCZ_LIVE_VAL     = "https://securepay.sslcommerz.com/validator/api/validationserverAPI.php"
-SSLCZ_DEMO_STORE_ID     = os.getenv("SSLCOMMERZ_SANDBOX_STORE_ID", "")
-SSLCZ_DEMO_STORE_PASSWD = os.getenv("SSLCOMMERZ_SANDBOX_STORE_PASSWORD", "")
+# Production gateway endpoints. Each store must supply its own verified live credentials.
+BKASH_LIVE_BASE = "https://tokenized.pay.bka.sh/v1.2.0-beta"
+NAGAD_LIVE_BASE = "https://api.nagad.com.bd"
+SSLCZ_LIVE_INIT = "https://securepay.sslcommerz.com/gwprocess/v4/api.php"
+SSLCZ_LIVE_VAL = "https://securepay.sslcommerz.com/validator/api/validationserverAPI.php"
 
 
 def _base_url(request: Request) -> str:
-    fwd_proto = request.headers.get("x-forwarded-proto", request.url.scheme)
-    fwd_host  = request.headers.get("x-forwarded-host", request.url.netloc)
-    return f"{fwd_proto}://{fwd_host}"
+    configured = os.getenv("PUBLIC_APP_URL", "https://thesis-j0n8.onrender.com").strip().rstrip("/")
+    parsed = urlsplit(configured)
+    if parsed.scheme not in ("https", "http") or not parsed.netloc:
+        raise HTTPException(500, "PUBLIC_APP_URL is not a valid absolute URL.")
+    if parsed.scheme != "https" and parsed.hostname not in ("localhost", "127.0.0.1", "testserver"):
+        raise HTTPException(500, "Payment callback URLs must use HTTPS.")
+    return f"{parsed.scheme}://{parsed.netloc}"
 
 
 def _order_redirect(org_id: str, access_token: str, payment: str, base: str) -> RedirectResponse:
@@ -82,7 +68,11 @@ def _get_order(order_id: str, org_id: str, db: Session) -> SalesDocument:
     if not order:
         raise HTTPException(404, "Order not found")
     if order.payment_status == "paid":
-        raise HTTPException(400, "Order already paid")
+        raise HTTPException(409, "Order already paid")
+    if not order.access_token:
+        raise HTTPException(409, "Order is not eligible for public online payment")
+    if str(getattr(order, "status", "")).lower() in ("cancelled", "canceled", "void"):
+        raise HTTPException(409, "Cancelled orders cannot be paid")
     return order
 
 
@@ -91,17 +81,20 @@ def _get_order(order_id: str, org_id: str, db: Session) -> SalesDocument:
 # ═══════════════════════════════════════════════════════════════════════════════
 
 def _bkash_creds(store: Store) -> tuple[str, str, str, str, bool]:
-    """(app_key, app_secret, username, password, is_live)"""
-    ak  = store.bkash_app_key    or BKASH_DEMO_APP_KEY
-    ase = store.bkash_app_secret or BKASH_DEMO_APP_SECRET
-    un  = store.bkash_username   or BKASH_DEMO_USERNAME
-    pw  = store.bkash_password   or BKASH_DEMO_PASSWORD
-    live = bool(store.bkash_app_key and store.bkash_is_live)
-    return ak, ase, un, pw, live
+    """Return only store-owned live bKash credentials."""
+    ak, ase, un, pw = (
+        store.bkash_app_key, store.bkash_app_secret,
+        store.bkash_username, store.bkash_password,
+    )
+    if not all((ak, ase, un, pw)) or not bool(store.bkash_is_live):
+        raise HTTPException(409, "bKash live credentials are not configured for this store.")
+    return ak, ase, un, pw, True
 
 
 def _bkash_base(is_live: bool) -> str:
-    return BKASH_LIVE_BASE if is_live else BKASH_SANDBOX_BASE
+    if not is_live:
+        raise HTTPException(409, "bKash live checkout is not enabled for this store.")
+    return BKASH_LIVE_BASE
 
 
 async def _bkash_grant_token(ak: str, ase: str, un: str, pw: str, is_live: bool) -> str:
@@ -238,24 +231,26 @@ async def bkash_callback(
 
     try:
         meta = json.loads(order.notes or "{}")
-        token   = meta.get("_bkash_token", "")
-        ak      = meta.get("_bkash_ak", BKASH_DEMO_APP_KEY)
-        is_live = meta.get("_bkash_live", False)
-
-        result = await _bkash_execute_payment(ak, token, paymentID, is_live)
-
-        if result.get("statusCode") == "0000":
-            order.payment_status = "paid"
-            # Store bKash transaction ID
-            meta["_bkash_trx_id"] = result.get("trxID", "")
-            order.notes = json.dumps(meta)
-        else:
-            order.payment_status = "payment_failed"
-
-        db.commit()
+        if str(meta.get("_bkash_payment_id") or "") != paymentID:
+            raise ValueError("bKash payment reference mismatch")
+        token = meta.get("_bkash_token")
+        ak = meta.get("_bkash_ak")
+        is_live = bool(meta.get("_bkash_live"))
+        if not token or not ak or not is_live:
+            raise ValueError("bKash live callback metadata is incomplete")
+        if order.payment_status != "paid":
+            result = await _bkash_execute_payment(ak, token, paymentID, is_live)
+            if _bkash_payment_verified(result, paymentID, order):
+                order.payment_status = "paid"
+                meta["_bkash_trx_id"] = result.get("trxID", "")
+                order.notes = json.dumps(meta)
+            else:
+                order.payment_status = "payment_failed"
+            db.commit()
     except Exception:
-        order.payment_status = "payment_failed"
-        db.commit()
+        if order.payment_status != "paid":
+            order.payment_status = "payment_failed"
+            db.commit()
 
     payment_result = "success" if order.payment_status == "paid" else "failed"
     return _order_redirect(order.organization_id, order.access_token, payment_result, base)
@@ -266,17 +261,20 @@ async def bkash_callback(
 # ═══════════════════════════════════════════════════════════════════════════════
 
 def _nagad_base(is_live: bool) -> str:
-    return NAGAD_LIVE_BASE if is_live else NAGAD_SANDBOX_BASE
+    if not is_live:
+        raise HTTPException(409, "Nagad live checkout is not enabled for this store.")
+    return NAGAD_LIVE_BASE
 
 
 def _nagad_creds(store: Store) -> tuple[str, str, str, str, bool]:
-    """(merchant_id, merchant_number, pub_key, priv_key, is_live)"""
-    mid  = store.nagad_merchant_id     or NAGAD_DEMO_MERCHANT_ID
-    mnum = store.nagad_merchant_number or NAGAD_DEMO_MERCHANT_NUMBER
-    pub  = store.nagad_pub_key         or NAGAD_DEMO_PUB_KEY
-    priv = store.nagad_priv_key        or NAGAD_DEMO_PRIV_KEY
-    live = bool(store.nagad_merchant_id and store.nagad_is_live)
-    return mid, mnum, pub, priv, live
+    """Return only store-owned live Nagad credentials."""
+    mid, mnum, pub, priv = (
+        store.nagad_merchant_id, store.nagad_merchant_number,
+        store.nagad_pub_key, store.nagad_priv_key,
+    )
+    if not all((mid, mnum, pub, priv)) or not bool(store.nagad_is_live):
+        raise HTTPException(409, "Nagad live credentials are not configured for this store.")
+    return mid, mnum, pub, priv, True
 
 
 def _nagad_encrypt(data: str, pub_key_b64: str) -> str:
@@ -340,7 +338,9 @@ async def nagad_initiate(
 
     try:
         encrypted_sensitive = _nagad_encrypt(sensitive, pub_key)
-        signature = _nagad_sign(sensitive, priv_key) if priv_key else "sandbox_sig"
+        if not priv_key:
+            raise HTTPException(409, "Nagad live signing key is not configured for this store.")
+        signature = _nagad_sign(sensitive, priv_key)
     except Exception as e:
         raise HTTPException(502, f"Nagad encryption error: {e}")
 
@@ -402,27 +402,33 @@ async def nagad_callback(
     if not order:
         return RedirectResponse(f"{base}/#/payment-result?status=error&gateway=nagad", status_code=303)
 
-    # Verify payment via Nagad
+    # Verify the provider response against the exact order and merchant reference.
     try:
         meta = json.loads(order.notes or "{}")
-        mid     = meta.get("_nagad_mid", NAGAD_DEMO_MERCHANT_ID)
-        is_live = meta.get("_nagad_live", False)
-        base_url = _nagad_base(is_live)
-
-        verify_url = f"{base_url}/remote-payment-gateway-1.0/api/dfs/verify/payment/{payment_ref_id}"
-        headers = {"X-KM-Api-Version": "v-0.2.0", "X-KM-IP-V4": "127.0.0.1", "X-KM-Client-Type": "PC_WEB"}
-        async with httpx.AsyncClient(timeout=20) as c:
-            r = await c.get(verify_url, headers=headers)
-        vdata = r.json()
-
-        if vdata.get("status") == "Success":
-            order.payment_status = "paid"
-        else:
-            order.payment_status = "payment_failed"
-        db.commit()
+        if str(meta.get("_nagad_ref") or "") != payment_ref_id:
+            raise ValueError("Nagad payment reference mismatch")
+        if order_id and str(order_id) != str(order.document_number):
+            raise ValueError("Nagad order reference mismatch")
+        mid = meta.get("_nagad_mid")
+        is_live = bool(meta.get("_nagad_live"))
+        if not mid or not is_live:
+            raise ValueError("Nagad live callback metadata is incomplete")
+        if order.payment_status != "paid":
+            base_url = _nagad_base(is_live)
+            verify_url = f"{base_url}/remote-payment-gateway-1.0/api/dfs/verify/payment/{payment_ref_id}"
+            headers = {"X-KM-Api-Version": "v-0.2.0", "X-KM-IP-V4": "127.0.0.1", "X-KM-Client-Type": "PC_WEB"}
+            async with httpx.AsyncClient(timeout=20) as c:
+                r = await c.get(verify_url, headers=headers)
+            vdata = r.json()
+            if _nagad_payment_verified(vdata, payment_ref_id, mid, order):
+                order.payment_status = "paid"
+            else:
+                order.payment_status = "payment_failed"
+            db.commit()
     except Exception:
-        order.payment_status = "payment_failed"
-        db.commit()
+        if order.payment_status != "paid":
+            order.payment_status = "payment_failed"
+            db.commit()
 
     result = "success" if order.payment_status == "paid" else "failed"
     return _order_redirect(order.organization_id, order.access_token, result, base)
@@ -433,10 +439,50 @@ async def nagad_callback(
 # ═══════════════════════════════════════════════════════════════════════════════
 
 def _sslcz_creds(store: Store) -> tuple[str, str, bool]:
-    sid  = store.sslcz_store_id     or SSLCZ_DEMO_STORE_ID
-    spwd = store.sslcz_store_passwd or SSLCZ_DEMO_STORE_PASSWD
-    live = bool(store.sslcz_store_passwd and store.sslcz_is_live)
-    return sid, spwd, live
+    """Return only store-owned live SSLCommerz credentials."""
+    sid, spwd = store.sslcz_store_id, store.sslcz_store_passwd
+    if not sid or not spwd or not bool(store.sslcz_is_live):
+        raise HTTPException(409, "SSLCommerz live credentials are not configured for this store.")
+    return sid, spwd, True
+
+def _amount_matches(actual: object, expected: object) -> bool:
+    try:
+        return Decimal(str(actual)).quantize(Decimal("0.01")) == Decimal(str(expected)).quantize(Decimal("0.01"))
+    except Exception:
+        return False
+
+
+def _bkash_payment_verified(result: dict, payment_id: str, order: SalesDocument) -> bool:
+    return (
+        result.get("statusCode") == "0000"
+        and str(result.get("paymentID") or "") == payment_id
+        and str(result.get("currency") or "").upper() == "BDT"
+        and _amount_matches(result.get("amount"), order.total)
+    )
+
+
+def _nagad_payment_verified(result: dict, payment_ref: str, merchant_id: str, order: SalesDocument) -> bool:
+    returned_ref = result.get("paymentReferenceId") or result.get("payment_ref_id") or result.get("paymentRefId")
+    returned_merchant = result.get("merchantId") or result.get("merchant_id")
+    returned_order = result.get("orderId") or result.get("order_id")
+    return (
+        result.get("status") == "Success"
+        and _amount_matches(result.get("amount") or result.get("amountBDT"), order.total)
+        and (returned_ref is None or str(returned_ref) == payment_ref)
+        and (returned_merchant is None or str(returned_merchant) == merchant_id)
+        and (returned_order is None or str(returned_order) == order.document_number)
+    )
+
+
+def _sslcz_payment_verified(result: dict, order: SalesDocument, store: Store) -> bool:
+    currency = result.get("currency") or result.get("currency_type")
+    return (
+        result.get("status") in ("VALID", "VALIDATED")
+        and str(result.get("tran_id") or "") == order.id
+        and str(result.get("store_id") or "") == str(store.sslcz_store_id)
+        and str(currency or "").upper() == "BDT"
+        and _amount_matches(result.get("amount"), order.total)
+    )
 
 
 @router.post("/initiate/{org_id}")
@@ -445,11 +491,26 @@ async def sslcz_initiate(
     request: Request,
     db: Session = Depends(get_db),
     order_id: str | None = Form(default=None),
+    customer_email: str = Form(default=""),
+    customer_city: str = Form(default=""),
 ):
     if not order_id:
-        try: body = await request.json(); order_id = body.get("order_id")
-        except Exception: pass
+        try:
+            body = await request.json()
+            order_id = body.get("order_id")
+            customer_email = body.get("customer_email") or customer_email
+            customer_city = body.get("customer_city") or customer_city
+        except Exception:
+            pass
     order = _get_order(order_id or "", org_id, db)
+    customer_email = customer_email.strip().lower()
+    customer_city = customer_city.strip()[:80]
+    if not re.fullmatch(r"[^\s@]+@[^\s@]+\.[^\s@]+", customer_email):
+        raise HTTPException(422, "A valid customer email is required for SSLCommerz checkout.")
+    if not customer_city or not order.shipping_name or not order.shipping_phone or not order.shipping_address:
+        raise HTTPException(422, "Complete customer name, phone, address and division are required for SSLCommerz checkout.")
+    if not order.access_token:
+        raise HTTPException(409, "This order is not eligible for public online payment.")
 
     store = db.scalar(select(Store).where(Store.organization_id == org_id))
     if not store:
@@ -461,7 +522,9 @@ async def sslcz_initiate(
     if amount <= 0:
         raise HTTPException(400, "Order total must be > 0")
 
-    init_url = SSLCZ_LIVE_INIT if is_live else SSLCZ_SANDBOX_INIT
+    if not is_live:
+        raise HTTPException(409, "SSLCommerz live checkout is not enabled for this store.")
+    init_url = SSLCZ_LIVE_INIT
     payload = {
         "store_id": sid, "store_passwd": spwd,
         "total_amount": f"{amount:.2f}", "currency": "BDT",
@@ -470,20 +533,20 @@ async def sslcz_initiate(
         "fail_url":    f"{base}/api/public/payment/fail",
         "cancel_url":  f"{base}/api/public/payment/cancel",
         "ipn_url":     f"{base}/api/public/payment/ipn",
-        "cus_name":    order.shipping_name or "Customer",
-        "cus_email":   "customer@bsmart.local",
-        "cus_phone":   order.shipping_phone or "01700000000",
-        "cus_add1":    order.shipping_address or "Bangladesh",
-        "cus_city":    "Dhaka", "cus_country": "Bangladesh",
-        "ship_name":   order.shipping_name or "Customer",
-        "ship_add1":   order.shipping_address or "Bangladesh",
-        "ship_city":   "Dhaka", "ship_postcode": "1000", "ship_country": "Bangladesh",
+        "cus_name":    order.shipping_name,
+        "cus_email":   customer_email,
+        "cus_phone":   order.shipping_phone,
+        "cus_add1":    order.shipping_address,
+        "cus_city":    customer_city, "cus_country": "Bangladesh",
+        "ship_name":   order.shipping_name,
+        "ship_add1":   order.shipping_address,
+        "ship_city":   customer_city, "ship_postcode": "1000", "ship_country": "Bangladesh",
         "shipping_method": "Courier",
         "product_name": f"Order #{order.document_number}",
         "product_category": "general", "product_profile": "general",
         "num_of_item": "1",
         "multi_card_name": "mastercard,visacard,amexcard,bKash,nagad",
-        "value_a": order.id, "value_b": org_id, "value_c": order.access_token or "",
+        "value_a": order.id, "value_b": org_id, "value_c": order.access_token,
     }
     async with httpx.AsyncClient(timeout=30) as c:
         resp = await c.post(init_url, data=payload)
@@ -503,15 +566,21 @@ async def sslcz_success(
     if not store:
         return RedirectResponse("/#/", status_code=303)
     sid, spwd, is_live = _sslcz_creds(store)
-    val_url = SSLCZ_LIVE_VAL if is_live else SSLCZ_SANDBOX_VAL
+    if not is_live:
+        raise HTTPException(409, "SSLCommerz live payment validation is not enabled for this store.")
+    val_url = SSLCZ_LIVE_VAL
     async with httpx.AsyncClient(timeout=20) as c:
         r = await c.get(val_url, params={"val_id": val_id, "store_id": sid, "store_passwd": spwd, "format": "json"})
     vdata = r.json()
-    order = db.scalar(select(SalesDocument).where(SalesDocument.id == tran_id))
-    if order:
-        order.payment_status = "paid" if vdata.get("status") in ("VALID", "VALIDATED") else "payment_failed"
+    order = db.scalar(select(SalesDocument).where(
+        SalesDocument.id == tran_id, SalesDocument.organization_id == value_b,
+    ))
+    if not order or not value_c or order.access_token != value_c:
+        return RedirectResponse(f"{_base_url(request)}/#/payment-result?status=error&gateway=sslcommerz", status_code=303)
+    if order.payment_status != "paid":
+        order.payment_status = "paid" if _sslcz_payment_verified(vdata, order, store) else "payment_failed"
         db.commit()
-    return _order_redirect(value_b, value_c, "success" if order and order.payment_status == "paid" else "failed", _base_url(request))
+    return _order_redirect(value_b, value_c, "success" if order.payment_status == "paid" else "failed", _base_url(request))
 
 
 @router.post("/fail")
@@ -519,8 +588,14 @@ async def sslcz_fail(
     request: Request, db: Session = Depends(get_db),
     tran_id: str = Form(...), value_b: str = Form(""), value_c: str = Form(""),
 ):
-    order = db.scalar(select(SalesDocument).where(SalesDocument.id == tran_id))
-    if order: order.payment_status = "payment_failed"; db.commit()
+    order = db.scalar(select(SalesDocument).where(
+        SalesDocument.id == tran_id, SalesDocument.organization_id == value_b,
+    ))
+    if not order or not value_c or order.access_token != value_c:
+        return RedirectResponse(f"{_base_url(request)}/#/payment-result?status=error&gateway=sslcommerz", status_code=303)
+    if order.payment_status != "paid":
+        order.payment_status = "payment_failed"
+        db.commit()
     return _order_redirect(value_b, value_c, "fail", _base_url(request))
 
 
@@ -530,6 +605,11 @@ async def sslcz_cancel(
     tran_id: str = Form(...), value_b: str = Form(""), value_c: str = Form(""),
     db: Session = Depends(get_db),
 ):
+    order = db.scalar(select(SalesDocument).where(
+        SalesDocument.id == tran_id, SalesDocument.organization_id == value_b,
+    ))
+    if not order or not value_c or order.access_token != value_c:
+        return RedirectResponse(f"{_base_url(request)}/#/payment-result?status=error&gateway=sslcommerz", status_code=303)
     return _order_redirect(value_b, value_c, "cancel", _base_url(request))
 
 
@@ -542,22 +622,28 @@ async def sslcz_ipn(
     store = db.scalar(select(Store).where(Store.organization_id == value_b))
     if not store: return {"status": "store_not_found"}
     sid, spwd, is_live = _sslcz_creds(store)
-    val_url = SSLCZ_LIVE_VAL if is_live else SSLCZ_SANDBOX_VAL
+    if not is_live:
+        raise HTTPException(409, "SSLCommerz live payment validation is not enabled for this store.")
+    val_url = SSLCZ_LIVE_VAL
     async with httpx.AsyncClient(timeout=20) as c:
         r = await c.get(val_url, params={"val_id": val_id, "store_id": sid, "store_passwd": spwd, "format": "json"})
     vdata = r.json()
-    order = db.scalar(select(SalesDocument).where(SalesDocument.id == tran_id))
-    if order:
-        order.payment_status = "paid" if vdata.get("status") in ("VALID", "VALIDATED") else "payment_failed"
+    order = db.scalar(select(SalesDocument).where(
+        SalesDocument.id == tran_id, SalesDocument.organization_id == value_b,
+    ))
+    if order and order.payment_status != "paid":
+        order.payment_status = "paid" if _sslcz_payment_verified(vdata, order, store) else "payment_failed"
         db.commit()
-    return {"status": "ok"}
+    return {"status": "ok" if order else "order_not_found"}
 
 
 # ── Query payment status (public) ─────────────────────────────────────────────
 @router.get("/status/{org_id}/{order_id}")
-def payment_status(org_id: str, order_id: str, db: Session = Depends(get_db)):
+def payment_status(org_id: str, order_id: str, request: Request, db: Session = Depends(get_db)):
     order = db.scalar(select(SalesDocument).where(
         SalesDocument.id == order_id, SalesDocument.organization_id == org_id,
     ))
-    if not order: raise HTTPException(404)
+    access_token = request.query_params.get("access_token", "")
+    if not order or not access_token or order.access_token != access_token:
+        raise HTTPException(404, "Order not found")
     return {"payment_status": order.payment_status, "order_number": order.document_number}

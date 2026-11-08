@@ -7,7 +7,7 @@ import { customerAssistantRouter } from "./assistant-routes.js";
 /*
  B-SMART Cloudflare D1 Commerce API.
  Public storefront catalogues, customer accounts, saved addresses, account-linked
- order history and support chat. Seeded/demo stores accept simulated orders only.
+ order history and support chat. Archived non-operational store records remain private.
  An explicitly admin-approved merchant store may accept cash-on-delivery orders
  with manual fulfilment; no online payment gateway, courier integration or refund
  automation is active. Legacy FastAPI business and historical customer records
@@ -156,7 +156,7 @@ async function checkout(env,request,id) {
  let data;
  try{data=await request.json();}catch{return error(request,400,"Invalid JSON");}
  if(store.is_demo && data.payment_method && !["cod","demo"].includes(data.payment_method))
-   return error(request,422,"Demo stores do not accept real payments.");
+   return error(request,422,"This store is not approved for live checkout.");
  if(!store.is_demo && data.payment_method!=="cod")
    return error(request,422,"This store accepts cash on delivery only; online payments are not configured.");
  const shippingName=safe(data.shipping_name||(store.is_demo?"Demo customer":""));
@@ -187,11 +187,11 @@ async function checkout(env,request,id) {
   subtotal+=qty*price;
   details.push({p,qty,price});
  }
- if(subtotal>(store.is_demo?500000:5000000))return error(request,422,store.is_demo?"Demo order total too high":"Order total exceeds the store limit.");
+ if(subtotal>(store.is_demo?500000:5000000))return error(request,422,"Order total exceeds the permitted limit.");
   const couponCode=String(data.coupon_code||"").trim().toUpperCase();
   let coupon=null,couponDiscount=0,customerKeyHash=null;
   if(couponCode){
-   if(store.is_demo)return error(request,422,"Coupons are not available on sample stores.");
+   if(store.is_demo)return error(request,422,"Coupons are available only for approved operational stores.");
      if(!await allowCouponPreview(env,store,request))return error(request,429,"Too many coupon checks. Please wait a minute and try again.");
    const customerIdentity=account?.id?"account:"+account.id:"phone:"+shippingPhone.replace(/[^0-9]/g,"");
    customerKeyHash=await hashValue(store.id+":"+customerIdentity);
@@ -239,20 +239,20 @@ export default {
    if(merchant!==null)return merchant;
    if(path==="/health"&&method==="GET") {
     const excluded=[...INTERNAL_TEST_STORE_SLUGS],marks=excluded.map(()=>"?").join(",");
-    const row=await env.DB.prepare("SELECT COUNT(*) n FROM commerce_stores WHERE is_active=1 AND slug NOT IN ("+marks+")").bind(...excluded).first();
-    const pro=await env.DB.prepare("SELECT COUNT(*) n FROM commerce_products p JOIN commerce_stores s ON s.id=p.store_id WHERE p.is_listed=1 AND s.is_active=1 AND s.slug NOT IN ("+marks+")").bind(...excluded).first();
+    const row=await env.DB.prepare("SELECT COUNT(*) n FROM commerce_stores WHERE is_active=1 AND is_demo=0 AND slug NOT IN ("+marks+")").bind(...excluded).first();
+    const pro=await env.DB.prepare("SELECT COUNT(*) n FROM commerce_products p JOIN commerce_stores s ON s.id=p.store_id WHERE p.is_listed=1 AND s.is_active=1 AND s.is_demo=0 AND s.slug NOT IN ("+marks+")").bind(...excluded).first();
     return output(request,{status:"ok",database:"Cloudflare D1",scope:"public_storefronts",stores:row.n,products:pro.n,live_payments:false,assistant_enabled:env.AI_ENABLED==="true"&&!!env.AI});
    }
    if((path==="/api/public/store"||path==="/api/public/store/")&&method==="GET") {
     const excluded=[...INTERNAL_TEST_STORE_SLUGS],marks=excluded.map(()=>"?").join(",");
-    const {results}=await env.DB.prepare("SELECT * FROM commerce_stores WHERE is_active=1 AND slug NOT IN ("+marks+") ORDER BY name").bind(...excluded).all();
+    const {results}=await env.DB.prepare("SELECT * FROM commerce_stores WHERE is_active=1 AND is_demo=0 AND slug NOT IN ("+marks+") ORDER BY name").bind(...excluded).all();
     return output(request,results.filter(isPublicStore).map(baseView));
    }
    if(path==="/api/public/store/diagnostics"&&method==="GET") {
     const excluded=[...INTERNAL_TEST_STORE_SLUGS],marks=excluded.map(()=>"?").join(",");
-    const stores=await env.DB.prepare("SELECT COUNT(*) n FROM commerce_stores WHERE is_active=1 AND slug NOT IN ("+marks+")").bind(...excluded).first();
-    const products=await env.DB.prepare("SELECT COUNT(*) n FROM commerce_products p JOIN commerce_stores s ON s.id=p.store_id WHERE p.is_listed=1 AND s.is_active=1 AND s.slug NOT IN ("+marks+")").bind(...excluded).first();
-    return output(request,{active_stores:stores.n,listed_products:products.n,catalog_ready:!!(stores.n&&products.n),source:"cloudflare_d1",mode:"demo"});
+    const stores=await env.DB.prepare("SELECT COUNT(*) n FROM commerce_stores WHERE is_active=1 AND is_demo=0 AND slug NOT IN ("+marks+")").bind(...excluded).first();
+    const products=await env.DB.prepare("SELECT COUNT(*) n FROM commerce_products p JOIN commerce_stores s ON s.id=p.store_id WHERE p.is_listed=1 AND s.is_active=1 AND s.is_demo=0 AND s.slug NOT IN ("+marks+")").bind(...excluded).first();
+    return output(request,{active_stores:stores.n,listed_products:products.n,catalog_ready:!!(stores.n&&products.n),source:"cloudflare_d1",mode:"operational"});
    }
    if(path.startsWith("/api/public/store/slug/")&&method==="GET"){
     const slug=decodeURIComponent(path.slice("/api/public/store/slug/".length));
@@ -270,7 +270,7 @@ export default {
     if(method==="POST"&&couponRoute){
      const id=decodeURIComponent(couponRoute[1]),store=await getStore(env,id,false);
      if(!store)return error(request,404,"Store not found");
-     if(store.is_demo)return error(request,422,"Coupons are not available on sample stores.");
+     if(store.is_demo)return error(request,422,"Coupons are available only for approved operational stores.");
       if(!await allowCouponPreview(env,store,request))return error(request,429,"Too many coupon checks. Please wait a minute and try again.");
      const raw=await request.text();if(raw.length>2000)return error(request,413,"Coupon request too large");
      let body;try{body=JSON.parse(raw);}catch{return error(request,400,"Invalid JSON");}
@@ -310,7 +310,7 @@ const m=path.match(/^\/api\/public\/orders\/([^/]+)(?:\/(.*))?$/);
      return orderDetails(env,request,id,token);
     }
     if(method==="POST"&&action.startsWith("payment-screenshot/"))
-      return error(request,501,"Demo store does not accept payment evidence.");
+      return error(request,501,"This store is not approved for live payment evidence.");
    }
    return error(request,404,"Route not found");
   }catch(e){

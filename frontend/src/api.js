@@ -6,9 +6,9 @@ import { authedFetch, clearTokens, getTokens, saveTokens } from "./auth";
 
 const BASE = import.meta.env.VITE_API_URL ?? (import.meta.env.PROD ? "" : "http://127.0.0.1:8000");
 
-/* Dedicated, durable Cloudflare D1 commerce demo API.
-   Operational tenant POS/auth/order data remain in the existing FastAPI
-   database until their audited migration; never represent demo stores as real. */
+/* Dedicated, durable Cloudflare D1 commerce API.
+   Legacy FastAPI business records and Cloudflare D1 commerce records remain
+   separate until their audited migration; only active approved stores are listed. */
 export const D1_COMMERCE = (import.meta.env.VITE_D1_COMMERCE_URL ||
   "https://bsmart-commerce-api.bcs-written-rakib.workers.dev").replace(/\/$/, "");
 export const isD1Store = (id) => /^(demo-bsmart-|merchant-|shop-)/.test(String(id || ""));
@@ -24,35 +24,39 @@ export async function d1Commerce(path, { method = "GET", body, headers = {} } = 
   return response.json();
 }
 async function storesFromBothSources() {
-  const [operational, demo] = await Promise.allSettled([
+  const [legacy, d1] = await Promise.allSettled([
     request("/api/public/store/"),
     d1Commerce("/api/public/store/"),
   ]);
-  if (operational.status === "rejected" && demo.status === "rejected") {
+  if (legacy.status === "rejected" && d1.status === "rejected") {
     throw new Error("Business database and Cloudflare D1 storefronts are both unavailable");
   }
-  const actual = operational.status === "fulfilled" && Array.isArray(operational.value)
-    ? operational.value : [];
-  const demos = demo.status === "fulfilled" && Array.isArray(demo.value)
-    ? demo.value : [];
-  const seen = new Set(actual.map(x => x.slug));
-  return [...actual, ...demos.filter(x => !seen.has(x.slug))];
+  const legacyStores = legacy.status === "fulfilled" && Array.isArray(legacy.value)
+    ? legacy.value : [];
+  const d1Stores = d1.status === "fulfilled" && Array.isArray(d1.value)
+    ? d1.value : [];
+  const seen = new Set(legacyStores.map(x => x.slug));
+  return [...legacyStores, ...d1Stores.filter(x => !seen.has(x.slug))];
 }
 async function storesStatus() {
-  const [real,demo] = await Promise.allSettled([
+  const [legacy, d1] = await Promise.allSettled([
     request("/api/public/store/diagnostics"),
     d1Commerce("/api/public/store/diagnostics"),
   ]);
-  if (real.status === "rejected" && demo.status === "rejected")
+  if (legacy.status === "rejected" && d1.status === "rejected")
     throw new Error("Store availability status is unavailable");
-  const r = real.status === "fulfilled" ? real.value : {};
-  const d = demo.status === "fulfilled" ? demo.value : {};
-  const active = Number(r.active_stores || 0) + Number(d.active_stores || 0);
-  const listed = Number(r.listed_products || 0) + Number(d.listed_products || 0);
-  return {active_stores:active,listed_products:listed,catalog_ready:active>0&&listed>0,
-    operational_active_stores:Number(r.active_stores||0),
-    d1_demo_stores:Number(d.active_stores||0),
-    source:"operational + Cloudflare D1 demo"};
+  const legacyStatus = legacy.status === "fulfilled" ? legacy.value : {};
+  const d1Status = d1.status === "fulfilled" ? d1.value : {};
+  const active = Number(legacyStatus.active_stores || 0) + Number(d1Status.active_stores || 0);
+  const listed = Number(legacyStatus.listed_products || 0) + Number(d1Status.listed_products || 0);
+  return {
+    active_stores: active,
+    listed_products: listed,
+    catalog_ready: active > 0 && listed > 0,
+    legacy_active_stores: Number(legacyStatus.active_stores || 0),
+    cloudflare_active_stores: Number(d1Status.active_stores || 0),
+    source: "legacy FastAPI + Cloudflare D1",
+  };
 }
 
 
@@ -705,9 +709,11 @@ export const api = {
 
   publicUploadPaymentScreenshot: (orgId, token, body) => post(`/api/public/orders/${encodeURIComponent(orgId)}/payment-screenshot/${encodeURIComponent(token)}`, body),
 
-  initiateSSLCommerzPayment: async (orgId, orderId) => {
+  initiateSSLCommerzPayment: async (orgId, orderId, customerEmail, customerCity) => {
     const form = new FormData();
     form.append("order_id", orderId);
+    form.append("customer_email", customerEmail || "");
+    form.append("customer_city", customerCity || "");
     const resp = await fetch(`/api/public/payment/initiate/${orgId}`, { method: "POST", body: form });
     if (!resp.ok) throw new Error((await resp.json()).detail || "Payment initiation failed");
     return resp.json();
@@ -729,7 +735,7 @@ export const api = {
     return resp.json();
   },
 
-  getPaymentStatus: (orgId, orderId) => request(`/api/public/payment/status/${orgId}/${orderId}`),
+  getPaymentStatus: (orgId, orderId, accessToken) => request(`/api/public/payment/status/${orgId}/${orderId}?${new URLSearchParams({ access_token: accessToken || "" })}`),
 
   getStoreOrdersFiltered: (params={}) => appRequest(`/api/app/store/orders?${new URLSearchParams(Object.fromEntries(Object.entries(params).filter(([,v])=>v!==undefined&&v!==null&&v!=="")))}`),
 

@@ -35,6 +35,52 @@ def _seed_store(engine, organization_id, product_id, slug, display_name):
         return store.id
 
 
+def test_public_store_hides_archived_records_and_never_exposes_gateway_secrets(engine, world, client_for):
+    store_id = _seed_store(engine, world["org_a"], world["product_a"], "shop-secure-a", "Secure Shop")
+    with Session(engine) as db:
+        store = db.get(Store, store_id)
+        store.sslcz_store_id = "public-identifier-must-not-leak"
+        store.sslcz_store_passwd = "ssl-secret"
+        store.sslcz_is_live = True
+        store.bkash_app_key = "bkash-key"
+        store.bkash_app_secret = "bkash-secret"
+        store.bkash_username = "bkash-user"
+        store.bkash_password = "bkash-password"
+        store.bkash_is_live = True
+        store.nagad_merchant_id = "nagad-merchant"
+        store.nagad_merchant_number = "01711111111"
+        store.nagad_pub_key = "nagad-public"
+        store.nagad_priv_key = "nagad-private"
+        store.nagad_is_live = True
+        db.commit()
+
+    client, _ = client_for("owner")
+    public = client.get("/api/public/store/slug/shop-secure-a")
+    assert public.status_code == 200, public.text
+    data = public.json()
+    assert data["sslcz_live_enabled"] is True
+    assert data["bkash_direct_enabled"] is True
+    assert data["nagad_direct_enabled"] is True
+    for secret_field in (
+        "sslcz_store_id", "sslcz_store_passwd", "bkash_app_key",
+        "bkash_app_secret", "bkash_username", "bkash_password",
+        "nagad_merchant_id", "nagad_merchant_number", "nagad_pub_key", "nagad_priv_key",
+    ):
+        assert secret_field not in data
+
+    before = client.get("/api/public/store/diagnostics").json()["active_stores"]
+    with Session(engine) as db:
+        store = db.get(Store, store_id)
+        store.slug = "demo-bsmart-archived"
+        db.commit()
+    archived = client.get("/api/public/store/slug/demo-bsmart-archived")
+    assert archived.status_code == 404
+    directory = client.get("/api/public/store/").json()
+    assert "demo-bsmart-archived" not in {row["slug"] for row in directory}
+    after = client.get("/api/public/store/diagnostics").json()["active_stores"]
+    assert after == before - 1
+
+
 def test_customer_can_manage_multiple_saved_addresses(world, client_for):
     client, _ = client_for("owner")
     _, headers = _register(client)

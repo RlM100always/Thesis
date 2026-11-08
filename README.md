@@ -16,7 +16,19 @@ The D1 owner console has **a separate account system**. New owner accounts use P
 
 The user's original local ZIP lacked the primary `bsmart.db` and contained only `bsmart.db-wal` / `bsmart.db-shm`. The connected R2 research bucket held setup metadata, not a complete merchant-data backup. Real historic orders/customers cannot be restored without a valid database/backup.
 
-## Production upgrade deployment (8 November 2026)\n\n- [Merged production upgrade PR #20](https://github.com/RlM100always/Thesis/pull/20)\n- [Production CI: frontend, backend, D1 schema and Worker checks](https://github.com/RlM100always/Thesis/actions/runs/42443796673)\n- [Cloudflare Worker deployment](https://github.com/RlM100always/Thesis/actions/runs/42443796647)\n- Render deployment commit: `3cc005fd46f048fd5dcece1f072abbda36ce72c4` (live)\n- Cloudflare D1 schema version: **12** (migrations 0009–0012 applied after schema inspection and export)\n- Cloudflare Worker version: `836c5aa8-0c51-482a-bb01-29432d8d1f38` (100% deployment)\n\nThe Worker AI binding is present, but model inference is disabled by default. Assistants use deterministic database-grounded fallback answers until `AI_ENABLED=true` is deliberately configured. Owner email flows remain unavailable until the Resend provider is configured.\n\n## Implementation and verification
+## Production upgrade deployment (8 November 2026)
+
+- [Merged production upgrade PR #20](https://github.com/RlM100always/Thesis/pull/20)
+- [Latest storefront recovery/build CI](https://github.com/RlM100always/Thesis/actions/runs/42444053016)
+- [Latest Cloudflare D1 read-only smoke](https://github.com/RlM100always/Thesis/actions/runs/42444052960)
+- [Cloudflare Worker deployment](https://github.com/RlM100always/Thesis/actions/runs/42444050685)
+- Render deployment commit: `a81b998ac7f267d2217a37d33aedd083d23a13be` (live)
+- Cloudflare D1 schema version: **12** (migrations 0009–0012 applied after schema inspection and export)
+- Cloudflare Worker version: `836c5aa8-0c51-482a-bb01-29432d8d1f38` (100% deployment)
+
+The Worker AI binding is present, but model inference is disabled by default. Assistants use deterministic database-grounded fallback answers until `AI_ENABLED=true` is deliberately configured. Owner email flows remain unavailable until the Resend provider is configured.
+
+## Implementation and verification
 
 - [Cloudflare D1 source, Worker, migrations and technical status](cloudflare/README.md)
 - [Legacy data recovery precautions](docs/STOREFRONT_DATABASE_RECOVERY.md)

@@ -337,7 +337,7 @@ export default function StoreDirectory() {
       <div className="sd-hero">
         <div className="sd-hero-eyebrow">🇧🇩 বাংলাদেশের ব্যবসার জন্য</div>
         <h1>আপনার প্রয়োজনের দোকান খুঁজে নিন</h1>
-        <p>এলাকা ও ব্যবসার ধরন অনুযায়ী দোকান এবং পণ্য দেখুন। ডেমো দোকানে বাস্তব পেমেন্ট বা ডেলিভারি হয় না।</p>
+        <p>এলাকা ও ব্যবসার ধরন অনুযায়ী অনুমোদিত দোকান এবং তাদের পণ্য দেখুন।</p>
         <div className="sd-search-wrap">
           <span className="sd-search-icon">🔍</span>
           <input
@@ -359,8 +359,8 @@ export default function StoreDirectory() {
               <div className="sd-hero-stat-label">বিভাগ</div>
             </div>
             <div className="sd-hero-stat">
-              <div className="sd-hero-stat-num">{stores.filter(s => !s.is_demo && s.payment_cod).length}</div>
-              <div className="sd-hero-stat-label">ডেমো ছাড়া COD দোকান</div>
+              <div className="sd-hero-stat-num">{stores.filter(s => s.payment_cod).length}</div>
+              <div className="sd-hero-stat-label">COD সুবিধাযুক্ত দোকান</div>
             </div>
           </div>
         )}
@@ -375,7 +375,7 @@ export default function StoreDirectory() {
           <div className="sd-filters-label">এলাকা বেছে নিন</div>
           <div className="sd-filters">
             <button className={`sd-filter-btn${!activeArea ? " active" : ""}`} onClick={() => setActiveArea(null)}>সব এলাকা</button>
-            {areas.map(area => <button key={area} className={`sd-filter-btn${activeArea === area ? " active" : ""}`} onClick={() => setActiveArea(activeArea === area ? null : area)}>📍 {displayStoreArea(area, true)}</button>)}
+            {areas.map(area => <button key={area} className={`sd-filter-btn${activeArea === area ? " active" : ""}`} onClick={() => setActiveArea(activeArea === area ? null : area)}>📍 {displayStoreArea(area)}</button>)}
           </div>
         </div>
       )}
@@ -447,20 +447,19 @@ export default function StoreDirectory() {
                 {/* Body */}
                 <div className="sd-card-body">
                   <div className="sd-card-name">{s.display_name}</div>
-                  {s.is_demo && <span className="sd-demo-label">শুধু পরীক্ষামূলক দোকান</span>}
-                  <div className="sd-card-tagline">{displayStoreTagline(s.tagline, s.is_demo) || " "}</div>
+                  <div className="sd-card-tagline">{displayStoreTagline(s.tagline) || " "}</div>
                   <div className="sd-card-chips">
                     {s.category && <span className="sd-chip sd-chip-cat">{emoji} {displayStoreCategory(s.category)}</span>}
-                    {s.area && <span className="sd-chip sd-chip-area">📍 {displayStoreArea(s.area, s.is_demo)}</span>}
+                    {s.area && <span className="sd-chip sd-chip-area">📍 {displayStoreArea(s.area)}</span>}
                   </div>
                 </div>
                 {/* Footer */}
                 <div className="sd-card-footer">
-                  <span className="sd-visit-btn">{s.is_demo ? "ডেমো দোকান দেখুন" : "দোকান দেখুন"} <span>→</span></span>
+                  <span className="sd-visit-btn">দোকান দেখুন <span>→</span></span>
                   <div className="sd-payment-row">
-                    {!s.is_demo && s.payment_cod && <span className="sd-pay-badge" title="ক্যাশ অন ডেলিভারি">💵</span>}
-                    {!s.is_demo && s.payment_bkash && <span className="sd-pay-badge" title="bKash">📱</span>}
-                    {!s.is_demo && s.payment_nagad && <span className="sd-pay-badge" title="Nagad">💳</span>}
+                    {s.payment_cod && <span className="sd-pay-badge" title="ক্যাশ অন ডেলিভারি">💵</span>}
+                    {s.payment_bkash && <span className="sd-pay-badge" title="bKash">📱</span>}
+                    {s.payment_nagad && <span className="sd-pay-badge" title="Nagad">💳</span>}
                   </div>
                 </div>
               </a>
@@ -469,7 +468,7 @@ export default function StoreDirectory() {
         </div>
       )}
 
-      <section style={{textAlign:"center",padding:"20px 16px",background:"var(--sd-card)",color:"var(--sd-text)"}}><strong>নিজের অনলাইন দোকানের ডেমো তৈরি করুন</strong><p style={{color:"var(--sd-muted)"}}>দোকানের তথ্য, পণ্য ও পরীক্ষামূলক অর্ডার একটি জায়গা থেকে পরিচালনা করুন।</p><a className="sd-filter-btn" style={{display:"inline-block",textDecoration:"none"}} href="#/d1-owner">দোকান ব্যবস্থাপনা খুলুন →</a></section>
+      <section style={{textAlign:"center",padding:"20px 16px",background:"var(--sd-card)",color:"var(--sd-text)"}}><strong>নিজের অনলাইন দোকান তৈরি করুন</strong><p style={{color:"var(--sd-muted)"}}>দোকানের তথ্য, পণ্য, মজুত, অর্ডার ও বিক্রি একটি জায়গা থেকে পরিচালনা করুন।</p><a className="sd-filter-btn" style={{display:"inline-block",textDecoration:"none"}} href="#/d1-owner">দোকান ব্যবস্থাপনা খুলুন →</a></section>
       {/* Footer */}
       <footer className="sd-footer">
         <p>প্রযুক্তি সহায়তায় <a href="#/">B-SMART</a> · বাংলাদেশের ব্যবসার জন্য তৈরি</p>

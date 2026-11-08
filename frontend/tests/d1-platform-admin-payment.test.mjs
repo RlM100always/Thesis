@@ -14,8 +14,11 @@ test("platform admin order endpoint supplies all payment audit fields used by it
   assert.match(page, /r\.payment_note/);
 });
 
-test("platform admin does not describe every order amount as a demo amount", () => {
-  assert.match(route, /Demo order values are not revenue/);
-  assert.match(route, /COD collection is merchant-confirmed/);
-  assert.doesNotMatch(route, /Amounts are demo order values, not money received/);
+test("platform admin distinguishes archived order value from live COD collections", () => {
+  assert.match(route, /AS demo_order_value_bdt/);
+  assert.match(route, /s\.is_demo=0 AND o\.payment_method='cod'/);
+  assert.match(page, /Archived order value/);
+  assert.match(page, /COD received/);
+  assert.match(page, /আর্কাইভ করা অকার্যকর অর্ডারগুলো বাস্তব আয় নয়/);
+  assert.doesNotMatch(page, /Demo order value|Demo order values are not revenue/);
 });

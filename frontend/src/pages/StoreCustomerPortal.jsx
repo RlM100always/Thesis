@@ -66,57 +66,95 @@ function Ok({ msg }) {
 
 // ── Auth View ─────────────────────────────────────────────────────────────────
 
-function AuthView({ storeSlug, onLogin }) {
-  const [mode, setMode] = useState("login"); // login | register
+function AuthView({ storeSlug, onLogin, resetToken = "", onResetComplete }) {
+  const [mode, setMode] = useState(resetToken ? "reset" : "login");
+  const [token, setToken] = useState(resetToken);
   const [form, setForm] = useState({ display_name: "", email_or_phone: "", email: "", phone: "", password: "" });
+  const [forgotEmail, setForgotEmail] = useState("");
   const [err, setErr] = useState("");
+  const [note, setNote] = useState("");
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (resetToken) { setToken(resetToken); setMode("reset"); setErr(""); setNote(""); }
+  }, [resetToken]);
 
   const set = (k) => (e) => setForm(f => ({ ...f, [k]: e.target.value }));
 
   async function submit(e) {
     e.preventDefault();
-    setErr(""); setLoading(true);
+    setErr(""); setNote(""); setLoading(true);
     try {
-      let data;
       if (mode === "login") {
-        data = await scFetch(storeSlug, "/login", { method: "POST", body: JSON.stringify({ email_or_phone: form.email_or_phone, password: form.password }) }, null);
-      } else {
-        if (!form.email && !form.phone) { setErr("ইমেইল অথবা ফোন নম্বর লিখুন।"); setLoading(false); return; }
-        data = await scFetch(storeSlug, "/register", { method: "POST", body: JSON.stringify({ display_name: form.display_name, email: form.email || undefined, phone: form.phone || undefined, password: form.password }) }, null);
+        const data = await scFetch(storeSlug, "/login", {
+          method: "POST", body: JSON.stringify({ email_or_phone: form.email_or_phone, password: form.password }),
+        }, null);
+        onLogin(data.token, data.customer);
+      } else if (mode === "register") {
+        if (!form.email && !form.phone) throw new Error("ইমেইল অথবা ফোন নম্বর লিখুন।");
+        const data = await scFetch(storeSlug, "/register", {
+          method: "POST", body: JSON.stringify({ display_name: form.display_name, email: form.email || undefined, phone: form.phone || undefined, password: form.password }),
+        }, null);
+        onLogin(data.token, data.customer);
+      } else if (mode === "forgot") {
+        await scFetch(storeSlug, "/forgot-password", {
+          method: "POST", body: JSON.stringify({ email: forgotEmail, store_slug: storeSlug }),
+        }, null);
+        setNote("অ্যাকাউন্ট থাকলে পাসওয়ার্ড রিসেটের নির্দেশনা ইমেইলে পাঠানো হয়েছে।");
+        setMode("login");
+      } else if (mode === "reset") {
+        await scFetch(storeSlug, "/reset-password", {
+          method: "POST", body: JSON.stringify({ token, password: form.password }),
+        }, null);
+        setToken("");
+        setForm(f => ({ ...f, password: "" }));
+        setMode("login");
+        onResetComplete?.();
+        window.history.replaceState(null, "", window.location.pathname + "#/store/" + encodeURIComponent(storeSlug));
+        setNote("পাসওয়ার্ড পরিবর্তন হয়েছে। নতুন পাসওয়ার্ড দিয়ে লগইন করুন।");
       }
-      onLogin(data.token, data.customer);
     } catch (ex) {
-      setErr(ex.message);
+      setErr(ex.message || "অনুরোধটি সম্পন্ন করা যায়নি।");
     } finally {
       setLoading(false);
     }
   }
 
   const inp = { style: { width: "100%", padding: "10px 12px", borderRadius: 10, border: "1px solid var(--border)", background: "var(--bg)", color: "var(--text)", fontSize: 14, boxSizing: "border-box", marginBottom: 10 } };
+  const title = mode === "login" ? "ক্রেতার অ্যাকাউন্টে লগইন" : mode === "register" ? "নতুন ক্রেতা অ্যাকাউন্ট" : mode === "forgot" ? "পাসওয়ার্ড পুনরুদ্ধার" : "নতুন পাসওয়ার্ড সেট করুন";
 
   return (
     <div style={{ maxWidth: 380, margin: "0 auto", padding: "24px 20px" }}>
       <div style={{ textAlign: "center", marginBottom: 24 }}>
         <div style={{ fontSize: 32, marginBottom: 6 }}>🛍️</div>
-        <h2 style={{ margin: 0, fontSize: 20, color: "var(--text)" }}>ক্রেতার অ্যাকাউন্ট</h2>
+        <h2 style={{ margin: 0, fontSize: 20, color: "var(--text)" }}> {title} </h2>
         <p style={{ margin: "6px 0 0", fontSize: 13, color: "var(--text-muted)" }}>
-          {mode === "login" ? "আপনার অর্ডার দেখুন এবং দোকানের সঙ্গে যোগাযোগ করুন" : "নতুন অ্যাকাউন্ট খুলুন"}
+          {mode === "login" ? "আপনার অর্ডার দেখুন এবং দোকানের সঙ্গে যোগাযোগ করুন" :
+            mode === "register" ? "নতুন অ্যাকাউন্ট খুলুন" :
+              mode === "forgot" ? "অ্যাকাউন্টের ইমেইল ঠিকানা লিখুন।" :
+                "ইমেইলে পাওয়া লিংক দিয়ে নতুন পাসওয়ার্ড নির্ধারণ করুন।"}
         </p>
-
       </div>
 
-      <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
-        {["login", "register"].map(m => (
-          <button key={m} onClick={() => { setMode(m); setErr(""); }}
-            style={{ flex: 1, padding: "9px 0", borderRadius: 10, border: "none", cursor: "pointer", fontWeight: 600, fontSize: 13,
-              background: mode === m ? "var(--green)" : "var(--surface)", color: mode === m ? "var(--sc-on-green)" : "var(--text-muted)" }}>
-            {m === "login" ? "লগইন" : "নিবন্ধন"}
-          </button>
-        ))}
-      </div>
+      {(mode === "login" || mode === "register") ? (
+        <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
+          {["login", "register"].map(m => (
+            <button key={m} type="button" onClick={() => { setMode(m); setErr(""); setNote(""); }}
+              style={{ flex: 1, padding: "9px 0", borderRadius: 10, border: "none", cursor: "pointer", fontWeight: 600, fontSize: 13,
+                background: mode === m ? "var(--green)" : "var(--surface)", color: mode === m ? "var(--sc-on-green)" : "var(--text-muted)" }}>
+              {m === "login" ? "লগইন" : "নিবন্ধন"}
+            </button>
+          ))}
+        </div>
+      ) : (
+        <button type="button" onClick={() => { setMode("login"); setErr(""); setNote(""); setToken(""); onResetComplete?.(); }}
+          style={{ marginBottom: 14, border: 0, background: "transparent", color: "var(--green)", cursor: "pointer", fontWeight: 650 }}>
+          ← লগইনে ফিরে যান
+        </button>
+      )}
 
       <Err msg={err} />
+      <Ok msg={note} />
       <form onSubmit={submit}>
         {mode === "register" && (
           <>
@@ -128,11 +166,25 @@ function AuthView({ storeSlug, onLogin }) {
         {mode === "login" && (
           <input {...inp} placeholder="ইমেইল বা ফোন নম্বর" value={form.email_or_phone} onChange={set("email_or_phone")} required />
         )}
-        <input {...inp} type="password" autoComplete={mode === "login" ? "current-password" : "new-password"} minLength={mode === "register" ? 8 : undefined} placeholder={mode === "register" ? "পাসওয়ার্ড (কমপক্ষে ৮ অক্ষর) *" : "পাসওয়ার্ড *"} value={form.password} onChange={set("password")} required />
+        {mode === "forgot" && (
+          <input {...inp} type="email" autoComplete="email" placeholder="অ্যাকাউন্টের ইমেইল ঠিকানা" value={forgotEmail} onChange={e => setForgotEmail(e.target.value)} required />
+        )}
+        {(mode === "login" || mode === "register" || mode === "reset") && (
+          <input {...inp} type="password" autoComplete={mode === "login" ? "current-password" : "new-password"}
+            minLength={mode === "login" ? undefined : 8} maxLength={128}
+            placeholder={mode === "login" ? "পাসওয়ার্ড *" : "পাসওয়ার্ড (কমপক্ষে ৮ অক্ষর) *"}
+            value={form.password} onChange={set("password")} required />
+        )}
         <button type="submit" disabled={loading} style={{ width: "100%", padding: "11px 0", borderRadius: 10, border: "none", background: "var(--green)", color: "var(--sc-on-green)", fontWeight: 700, fontSize: 14, cursor: loading ? "not-allowed" : "pointer", opacity: loading ? .7 : 1 }}>
-          {loading ? "অপেক্ষা করুন…" : mode === "login" ? "লগইন করুন" : "অ্যাকাউন্ট তৈরি করুন"}
+          {loading ? "অপেক্ষা করুন…" : mode === "login" ? "লগইন করুন" : mode === "register" ? "অ্যাকাউন্ট তৈরি করুন" : mode === "forgot" ? "রিসেট লিংক পাঠান" : "পাসওয়ার্ড পরিবর্তন করুন"}
         </button>
       </form>
+      {mode === "login" && isD1Store(storeSlug) && (
+        <button type="button" onClick={() => { setMode("forgot"); setErr(""); setNote(""); }}
+          style={{ marginTop: 12, width: "100%", border: 0, background: "transparent", color: "var(--green)", cursor: "pointer", fontSize: 13 }}>
+          পাসওয়ার্ড ভুলে গেছেন?
+        </button>
+      )}
     </div>
   );
 }
@@ -301,22 +353,22 @@ function OrderReturnForm({ order, token, storeSlug, onSubmitted }) {
     <textarea value={note} onChange={e => setNote(e.target.value)} maxLength={1000} rows={2} placeholder="অতিরিক্ত তথ্য (ঐচ্ছিক)" style={{ width: "100%", boxSizing: "border-box", padding: 9, borderRadius: 8, border: "1px solid var(--border)", background: "var(--bg)", color: "var(--text)", fontSize: 12, resize: "vertical" }}/>
     {error && <div role="alert" style={{ color: "#dc2626", fontSize: 11 }}>{error}</div>}
     <button type="submit" disabled={busy} style={{ padding: "9px 12px", borderRadius: 8, border: 0, background: "var(--green)", color: "var(--sc-on-green)", fontWeight: 700, cursor: busy ? "wait" : "pointer", fontSize: 12 }}>{busy ? "জমা হচ্ছে…" : "ফেরতের অনুরোধ জমা দিন"}</button>
-    <div style={{ fontSize: 10, color: "var(--text-muted)" }}>{order.is_demo ? "পরীক্ষামূলক ব্যবস্থা: কোনো অর্থ ফেরত দেওয়া হয় না।" : "ফেরত অনুমোদন বা পণ্য গ্রহণ মানেই অর্থ ফেরত নয়; দোকানের সঙ্গে আলাদাভাবে নিষ্পত্তি করুন।"}</div>
+    <div style={{ fontSize: 10, color: "var(--text-muted)" }}>"ফেরত অনুমোদন বা পণ্য গ্রহণ মানেই অর্থ ফেরত নয়; দোকানের সঙ্গে আলাদাভাবে নিষ্পত্তি করুন।"</div>
   </form>;
 }
 
 const PAYMENT_STATUS_LABEL = {
-  demo_no_payment: "ডেমো অর্ডার—বাস্তব পেমেন্ট নেই",
+  demo_no_payment: "পেমেন্ট প্রযোজ্য নয়",
   pending_cod: "COD—টাকা গ্রহণ নিশ্চিত হয়নি",
   paid: "পেমেন্ট গ্রহণ নিশ্চিত",
   cancelled_no_payment: "বাতিল—পেমেন্ট নেওয়া হয়নি",
   unpaid: "পেমেন্ট বাকি",
 };
-const PAYMENT_METHOD_LABEL = { cod: "Cash on Delivery", demo: "ডেমো", demo_pos: "ডেমো কাউন্টার" };
+const PAYMENT_METHOD_LABEL = { cod: "Cash on Delivery", demo: "পেমেন্ট প্রযোজ্য নয়", demo_pos: "কাউন্টার বিক্রি" };
 const RETURN_LABEL = {
   requested: "অনুরোধ জমা হয়েছে", approved: "দোকান অনুমোদন করেছে",
   rejected: "দোকান অনুরোধ প্রত্যাখ্যান করেছে", received: "ফেরত পণ্য গ্রহণ করা হয়েছে",
-  closed_demo: "পরীক্ষামূলকভাবে বন্ধ",
+  closed_demo: "বন্ধ",
 };
 
 // ── Orders View ───────────────────────────────────────────────────────────────
@@ -420,7 +472,7 @@ function OrdersView({ storeSlug, token, onReorder }) {
               style={{ padding: "12px 14px", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
               <div>
                 <div style={{ fontWeight: 700, fontSize: 13, color: "var(--text)" }}>{o.document_number}</div>
-                {o.store_name && <div style={{ fontSize: 11, color: "var(--green)", marginTop: 2 }}>{o.store_name}{o.is_demo ? " · পরীক্ষামূলক দোকান" : ""}</div>}
+                {o.store_name && <div style={{ fontSize: 11, color: "var(--green)", marginTop: 2 }}>{o.store_name}</div>}
                 <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>
                   {o.issued_at ? new Date(o.issued_at).toLocaleDateString("bn-BD", { day: "numeric", month: "long", year: "numeric" }) : "—"} · ৳{Number(o.total).toLocaleString("bn-BD")}
                 </div>
@@ -596,6 +648,11 @@ const TABS = [
 ];
 
 export default function StoreCustomerPortal({ storeSlug, storeName, onClose, onAuthChange, onReorder, onAddToCart }) {
+  const [resetToken, setResetToken] = useState(() => {
+    const hash = window.location.hash || "";
+    const query = hash.includes("?") ? hash.slice(hash.indexOf("?") + 1) : "";
+    return new URLSearchParams(query).get("customer_reset") || "";
+  });
   const [token, setToken] = useState(() => loadToken(storeSlug));
   const [customer, setCustomer] = useState(null);
   const [tab, setTab] = useState("profile");
@@ -604,6 +661,9 @@ export default function StoreCustomerPortal({ storeSlug, storeName, onClose, onA
 
   useEffect(() => {
     const saved = loadToken(storeSlug);
+    const hash = window.location.hash || "";
+    const query = hash.includes("?") ? hash.slice(hash.indexOf("?") + 1) : "";
+    setResetToken(new URLSearchParams(query).get("customer_reset") || "");
     setTokenScope(storeSlug); setToken(saved); setCustomer(null); setLoading(!!saved); setTab("profile");
   }, [storeSlug]);
 
@@ -655,7 +715,7 @@ export default function StoreCustomerPortal({ storeSlug, storeName, onClose, onA
         {/* Content */}
         <div style={{ flex: 1, overflowY: "auto", padding: "16px 18px" }}>
           {loading ? <Spinner /> : !token || !customer ? (
-            <AuthView storeSlug={storeSlug} onLogin={handleLogin} />
+            <AuthView storeSlug={storeSlug} onLogin={handleLogin} resetToken={resetToken} onResetComplete={() => setResetToken("")} />
           ) : (
             <>
               {/* Tabs */}
@@ -675,8 +735,7 @@ export default function StoreCustomerPortal({ storeSlug, storeName, onClose, onA
               {tab === "orders" && <OrdersView storeSlug={storeSlug} token={token} onReorder={onReorder ? (items) => { onReorder(items); onClose(); } : null} />}
               {tab === "wishlist" && <WishlistView token={token} storeSlug={storeSlug} onAddToCart={onAddToCart ? (productId) => { onAddToCart(productId); onClose(); } : null} />}
               {tab === "security" && <SecurityView token={token} storeSlug={storeSlug} onTokenChange={handleTokenChange} />}
-              {tab === "chat" && !isD1Store(storeSlug) && <ChatView storeSlug={storeSlug} token={token} storeName={storeName} />}
-              {tab === "chat" && isD1Store(storeSlug) && <div style={{padding:20,textAlign:"center",color:"var(--text-muted)",fontSize:13}}>এই পরীক্ষামূলক দোকানে লাইভ চ্যাট এখনো চালু হয়নি। অর্ডার ও ঠিকানা ব্যবস্থাপনা ব্যবহার করতে পারবেন।</div>}
+              {tab === "chat" && <ChatView storeSlug={storeSlug} token={token} storeName={storeName} />}
             </>
           )}
         </div>

@@ -87,7 +87,7 @@ No real payment gateway, courier integration, verified merchant identity workflo
 
 ## Owner email verification and password recovery (deployed; provider configuration pending)
 
-The branch `production/business-platform-upgrade` adds single-use, hashed owner verification and password-reset tokens. Verification links expire after 24 hours; password-reset links expire after 60 minutes. Password reset revokes all existing owner sessions. Email delivery uses the Resend API and must fail closed if configuration is absent.
+The deployed production Worker provides single-use, hashed owner verification and password-reset tokens. Verification links expire after 24 hours; password-reset links expire after 60 minutes. Password reset revokes all existing owner sessions. Email delivery uses the Resend API and fails closed if the provider or verified sender is absent. The live owner-auth health check currently reports email verification and password-reset delivery as not configured.
 
 Configure these Worker values before enabling new owner registration:
 - Secret `RESEND_API_KEY` — Resend API key (Cloudflare Worker secret).
