@@ -116,24 +116,44 @@ async function viewer(req,env){
  const match=/^Bearer ([a-f0-9]{64})$/.exec(bearer);
  if(!match)return null;
  const digest=await sha256(match[1]);
- return env.DB.prepare("SELECT a.id,a.email,a.role FROM merchant_sessions s JOIN merchant_accounts a ON a.id=s.account_id WHERE s.token_hash=? AND s.expires_at>? AND a.is_active=1").bind(digest,new Date().toISOString()).first();
+ return env.DB.prepare(
+  "SELECT a.id,a.email,a.role,a.display_name,ss.store_id,ss.owner_id,ss.role AS staff_role " +
+  "FROM merchant_sessions s JOIN merchant_accounts a ON a.id=s.account_id " +
+  "LEFT JOIN merchant_staff_store_access ss ON ss.account_id=a.id AND ss.is_active=1 " +
+  "LEFT JOIN merchant_accounts oa ON oa.id=ss.owner_id " +
+  "WHERE s.token_hash=? AND s.expires_at>? AND a.is_active=1 " +
+  "AND (a.role='owner' OR (a.role='staff' AND oa.is_active=1))"
+ ).bind(digest,new Date().toISOString()).first();
 }
 async function myStore(env,owner){
+ if(owner.role==="staff"){
+  return env.DB.prepare(
+   "SELECT s.* FROM commerce_stores s JOIN merchant_staff_store_access x ON x.store_id=s.id " +
+   "WHERE x.account_id=? AND x.owner_id=s.owner_id AND x.is_active=1 LIMIT 1"
+  ).bind(owner.id).first();
+ }
  return env.DB.prepare("SELECT * FROM commerce_stores WHERE owner_id=? ORDER BY created_at LIMIT 1").bind(owner.id).first();
 }
 async function storeOnly(env,owner){const row=await myStore(env,owner);if(!row)throw new Error("Create a store first");return row;}
 function stripStore(s){return {id:s.id,slug:s.slug,name:s.name,tagline:s.tagline||"",category:s.category||"",area:s.area||"",is_active:!!s.is_active,is_demo:!!s.is_demo,created_at:s.created_at};}
 async function dashboard(env,owner){
  const store=await myStore(env,owner);
- if(!store)return {account:{email:owner.email},store:null,products:[],orders:[],metrics:{orders:0,inventory_units:0,placed_total_bdt:0},stock_adjustments:[],cashbook:[]};
+ const isOwner=owner.role==="owner";
+ const can=permission=>isOwner||hasMerchantPermission(owner.staff_role,permission);
+ const account={email:owner.email,display_name:owner.display_name||owner.email,role:owner.role,staff_role:owner.staff_role||null,is_staff:!isOwner};
+ if(!store)return {account,store:null,products:[],orders:[],metrics:{orders:0,inventory_units:0},stock_adjustments:[],cashbook:[]};
  const [products,orders,stats,adjustments,cashbook]=await Promise.all([
-  env.DB.prepare("SELECT id,sku,name,category,description,brand,tags,compare_at_price_bdt,unit_label,price_bdt,stock_qty,reorder_level,is_listed,created_at,updated_at FROM commerce_products WHERE store_id=? ORDER BY created_at DESC LIMIT 200").bind(store.id).all(),
-  env.DB.prepare("SELECT id,order_number,status,status_note,cancellation_reason,total_bdt,placed_at,payment_method,payment_status,payment_received_at,payment_received_by,payment_note,shipping_name,shipping_phone,shipping_address FROM commerce_orders WHERE store_id=? ORDER BY placed_at DESC LIMIT 150").bind(store.id).all(),
+  can("products:read")?env.DB.prepare("SELECT id,sku,name,category,description,brand,tags,compare_at_price_bdt,unit_label,price_bdt,stock_qty,reorder_level,is_listed,created_at,updated_at FROM commerce_products WHERE store_id=? ORDER BY created_at DESC LIMIT 200").bind(store.id).all():Promise.resolve({results:[]}),
+  can("orders:read")?env.DB.prepare("SELECT id,order_number,status,status_note,cancellation_reason,total_bdt,placed_at,payment_method,payment_status,payment_received_at,payment_received_by,payment_note,shipping_name,shipping_phone,shipping_address FROM commerce_orders WHERE store_id=? ORDER BY placed_at DESC LIMIT 150").bind(store.id).all():Promise.resolve({results:[]}),
   env.DB.prepare("SELECT (SELECT COUNT(*) FROM commerce_orders WHERE store_id=?) AS orders,(SELECT COALESCE(SUM(stock_qty),0) FROM commerce_products WHERE store_id=?) AS inventory_units,(SELECT COALESCE(SUM(total_bdt),0) FROM commerce_orders WHERE store_id=? AND status!='cancelled') AS placed_total_bdt,(SELECT COALESCE(SUM(total_bdt),0) FROM commerce_orders WHERE store_id=? AND status!='cancelled' AND payment_method='cod' AND payment_status='paid') AS cod_paid_total_bdt,(SELECT COALESCE(SUM(total_bdt),0) FROM commerce_orders WHERE store_id=? AND status!='cancelled' AND payment_method='cod' AND payment_status='pending_cod') AS cod_pending_total_bdt,(SELECT COUNT(*) FROM commerce_products WHERE store_id=? AND is_listed=1 AND stock_qty<=reorder_level) AS low_stock_count").bind(store.id,store.id,store.id,store.id,store.id,store.id).first(),
-  env.DB.prepare("SELECT product_id,old_quantity,new_quantity,delta,reason,created_at FROM commerce_stock_adjustments WHERE store_id=? ORDER BY created_at DESC LIMIT 25").bind(store.id).all(),
-  env.DB.prepare("SELECT id,kind,amount_bdt,description,created_at,related_order_id FROM commerce_cashbook WHERE store_id=? ORDER BY created_at DESC LIMIT 75").bind(store.id).all()
+  can("inventory:read")?env.DB.prepare("SELECT product_id,old_quantity,new_quantity,delta,reason,created_at FROM commerce_stock_adjustments WHERE store_id=? ORDER BY created_at DESC LIMIT 25").bind(store.id).all():Promise.resolve({results:[]}),
+  isOwner?env.DB.prepare("SELECT id,kind,amount_bdt,description,created_at,related_order_id FROM commerce_cashbook WHERE store_id=? ORDER BY created_at DESC LIMIT 75").bind(store.id).all():Promise.resolve({results:[]})
  ]);
- return {account:{email:owner.email},store:stripStore(store),products:products.results,orders:orders.results,metrics:stats,stock_adjustments:adjustments.results,cashbook:cashbook.results};
+ const metrics={...(stats||{})};
+ if(!can("orders:read"))metrics.orders=0;
+ if(!can("inventory:read")){delete metrics.inventory_units;delete metrics.low_stock_count;}
+ if(!can("analytics:read")){delete metrics.placed_total_bdt;delete metrics.cod_paid_total_bdt;delete metrics.cod_pending_total_bdt;}
+ return {account,store:stripStore(store),products:products.results||[],orders:orders.results||[],metrics,stock_adjustments:adjustments.results||[],cashbook:cashbook.results||[]};
 }
 const errorCode=e=>/UNIQUE constraint failed/.test(e.message||"")?409:500;
 export async function merchantRouter(req,env,path,output,error){
@@ -221,7 +241,7 @@ export async function merchantRouter(req,env,path,output,error){
    const now=new Date().toISOString();
    const lock=await env.DB.prepare("SELECT failures,lock_until FROM merchant_login_attempts WHERE email=?").bind(email).first();
    if(lock?.lock_until&&lock.lock_until>now)return bad(req,error,429,"Too many attempts; try again later");
-   const acc=await env.DB.prepare("SELECT id,email,password_hash,password_salt,access_key_digest,email_verified_at,is_active,role FROM merchant_accounts WHERE email=?").bind(email).first();
+   const acc=await env.DB.prepare("SELECT id,email,display_name,password_hash,password_salt,access_key_digest,email_verified_at,is_active,role FROM merchant_accounts WHERE email=?").bind(email).first();
    let valid=false;
    if(acc&&password.length>=12&&acc.password_salt&&acc.password_salt!=="DISABLED"&&acc.password_hash!=="ACCESS_KEY_ONLY"){
     valid=constantTimeEqual(await passwordDigest(password,acc.password_salt),acc.password_hash);
@@ -230,7 +250,16 @@ export async function merchantRouter(req,env,path,output,error){
     valid=constantTimeEqual(await sha256(legacyKey),acc.access_key_digest||"");
    }
    if(valid&&!Number(acc.is_active??1))return bad(req,error,403,"This owner account is suspended. Contact the platform administrator.");
-   if(valid&&acc.role!=="owner")return bad(req,error,403,"This account role cannot access the owner panel.");
+   if(valid&& !["owner","staff"].includes(acc.role))return bad(req,error,403,"This account role cannot access the merchant panel.");
+   let staffAccess=null;
+   if(valid&&acc.role==="staff"){
+    staffAccess=await env.DB.prepare(
+     "SELECT x.store_id,x.owner_id,x.role FROM merchant_staff_store_access x " +
+     "JOIN merchant_accounts a ON a.id=x.owner_id JOIN commerce_stores s ON s.id=x.store_id " +
+     "WHERE x.account_id=? AND x.is_active=1 AND a.is_active=1 AND s.owner_id=a.id LIMIT 1"
+    ).bind(acc.id).first();
+    if(!staffAccess)return bad(req,error,403,"Staff access is suspended or no longer assigned to a store.");
+   }
    if(valid&&acc.password_hash!=="ACCESS_KEY_ONLY"&&!acc.email_verified_at)
     return bad(req,error,403,"Please verify your email before signing in. Use the verification link sent to your inbox.");
    if(!valid){
@@ -241,7 +270,8 @@ export async function merchantRouter(req,env,path,output,error){
    await env.DB.prepare("DELETE FROM merchant_login_attempts WHERE email=?").bind(email).run();
    const token=newSession(),tokenHash=await sha256(token),expires=new Date(Date.now()+12*60*60*1000).toISOString();
    await env.DB.prepare("INSERT INTO merchant_sessions(token_hash,account_id,expires_at) VALUES(?,?,?)").bind(tokenHash,acc.id,expires).run();
-   return output(req,{token,expires_at:expires,email:acc.email});
+   if(acc.role==="staff")await env.DB.prepare("UPDATE merchant_staff_store_access SET last_login_at=CURRENT_TIMESTAMP,updated_at=CURRENT_TIMESTAMP WHERE account_id=?").bind(acc.id).run();
+   return output(req,{token,expires_at:expires,email:acc.email,display_name:acc.display_name||null,role:acc.role,staff_role:staffAccess?.role||null});
   }
   const owner=await viewer(req,env);
   if(!owner)return bad(req,error,401,"Merchant login required");
