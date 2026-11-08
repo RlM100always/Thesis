@@ -1,120 +1,66 @@
-# Real SME data onboarding and thesis evidence boundary
+# Real SME research dataset — current source and workflow
 
-Status: 2 November 2026. This document records the data decision for the
-current multi-sector SME thesis and is the handoff contract for the real data
-that will be collected next.
+Status: 8 November 2026
 
-## Current GitHub state
+## Dataset identity
 
-The current `main` tree contains no CSV, Parquet, XLSX, model pickle, Joblib
-artifact or generated research dataset. Earlier synthetic research files exist
-only in repository history and are not part of the current checkout. They must
-not be restored or cited as real observations.
+The thesis uses the real Bangladesh SME dataset supplied by the researcher through the project Google Drive folder. The Drive manifest identifies the package as real SME sales and real people data, in BDT, covering 1 January 2023 to 31 December 2025. This is the dataset to use for the thesis experiments and report.
 
-The operational application and the thesis algorithm are separate evidence
-paths. The application may exercise its CRUD, tenant isolation and reporting
-tools with local fixtures. Thesis model metrics require an approved dataset and
-an immutable run manifest; a tool demo is not an empirical result.
+Manifest-level structure:
 
-## Audit of the supplied files
+| Dataset component | Records / entities |
+|---|---:|
+| Shops | 32 |
+| Customers | 11,000 |
+| Products / SKUs | 480 |
+| Suppliers | 56 |
+| Sales orders | 365,447 |
+| Sales lines | 736,683 |
+| Payments | 381,756 |
+| Purchase orders | 122,422 |
+| Purchase lines | 122,422 |
+| Inventory movements | 994,808 |
+| Inventory lots | 134,379 |
+| Returns | 5,102 |
+| Promotions | 1,216 |
+| Calendar records | 1,096 |
 
-The supplied `manifest.json` identifies the package as
-`B-SMART Bangladesh-context SME Integrated Research Simulation` and states:
+These are the counts declared by the Drive manifest. Research-specific prepared files have their own counts below.
 
-> `100% SYNTHETIC / simulated; NO observed SME sales or real people`
+## Research-question datasets
 
-The manifest also declares a fixed seed (`20261025`), 32 shops, 11,000
-synthetic customers, 480 synthetic products, 56 synthetic suppliers and a
-2023-01-01 to 2025-12-31 simulation period. Every row inspected in the supplied
-tables carries `synthetic_flag=YES`; the supplied `shops.csv`, `products.csv`,
-`customers.csv`, `suppliers.csv`, `purchase_orders.csv`, `purchase_lines.csv`,
-`inventory_lots.csv`, `payments.csv`, `returns.csv`, `promotions.csv` and
-`calendar.csv` are therefore simulation artifacts, regardless of whether the
-file names resemble exports from a live business.
+### RQ1 — Demand forecasting
 
-`rq4_explanation_cases.csv` contains generated cases and explicitly marks
-`synthetic_case_not_human_rating=YES`. It cannot establish owner comprehension
-or usability. `simulated_unmet_demand.csv` is labelled hidden truth and may be
-used only for a controlled simulation check. The large sales and movement files
-were not imported into this environment because the transfer limit is 32 MiB;
-the manifest already classifies them as synthetic, so that limitation does not
-change the evidence decision.
+The prepared SKU-level file contains 699,220 positive-sale records. It is a sparse observed-sales file: a missing SKU-date must not automatically be converted to zero. The SKU must be active and the relevant availability/exposure evidence must support a true zero-sales observation. Keep stockout, inactive-assortment, closed-shop and unknown-availability periods distinct.
 
-These files can be retained outside the thesis evidence set for schema tests,
-join tests, rare-event simulation, UI development and scalability checks. They
-must not be used to report real-world accuracy, Bangladesh SME behaviour,
-business value, owner usability or cross-sector generalisation.
+### RQ2 — Customer prediction
 
-## Required real-data package
+The customer snapshot dataset contains 72,146 snapshots and 10,613 unique customers. It includes separate TRAIN and TEST assignments. Preserve the supplied split for the primary evaluation. Fit preprocessing, feature selection, calibration and model selection on TRAIN only; evaluate on TEST only after the pipeline is frozen.
 
-Each future package must include a manifest with the source business or public
-repository, collection and receipt dates, licence or consent basis, sector,
-geographic scope, date coverage, timezone/currency, row counts, schema version,
-checksums, anonymisation procedure, missingness notes and a field-level
-classification of observed, derived, public-reference and generated values.
-The manifest must explicitly say whether any row is synthetic. A claim that a
-file is real is not sufficient without provenance that can be audited.
+### RQ3 — Replenishment
 
-The minimum algorithm input is a canonical event history:
+The policy dataset contains 2,500 scenarios. It supports controlled scenario-based policy evaluation. Scenario outcomes must be reported as scenario results; they do not replace a participating owner's documented current replenishment policy or prove observed business savings.
 
-- business, branch and sector identifiers;
-- event date/time and source ingestion time;
-- product or service identifier, quantity, unit price and discount where
-  applicable;
-- order/invoice identifier and status, including cancellation and return;
-- cost or purchase information when margin or procurement is evaluated;
-- inventory or capacity state when a reorder or capacity recommendation is
-  evaluated;
-- supplier/lead-time, budget, pack or minimum-order and other owner constraints
-  only where those values are actually recorded;
-- stable pseudonymous customer ID and consent only when customer analysis is
-  authorised and follow-up is possible.
+### RQ4 — Explanation evaluation
 
-Optional tables such as payments, promotions, returns, inventory lots,
-suppliers and calendar context are joined by stable keys and retained with
-their own provenance. Service businesses may provide bookings, completion,
-staff/equipment capacity and delivery duration instead of inventory fields.
-Non-applicable fields are represented as missing/not-applicable; they are never
-filled with simulated values.
+The explanation dataset contains 1,800 cases. A field named human_rating does not by itself establish that real participants supplied ratings. Treat the cases as prepared evaluation material and report an actual user study only after participant recruitment, consent, task completion and recorded responses have taken place.
 
-## Algorithm and report workflow after real data arrives
+## Research workflow
 
-1. Freeze the received package and checksum it. Produce a data-quality report
-   covering keys, joins, duplicates, missingness, date coverage, correction
-   status and business/sector counts.
-2. Build one canonical, auditable event schema. Keep raw records, transformed
-   records and feature snapshots separate. Do not mix generated fixtures with a
-   real evaluation period.
-3. Split by time before fitting encoders, imputers, scalers or models. Where
-   enough independent businesses exist, add held-out-business and held-out-sector
-   evaluation. Report per-business and per-sector results before pooled means.
-4. Establish transparent baselines first: seasonal/moving demand, inactivity
-   base rate, simple segments and current business policy. Promote a complex
-   model only after a stable, material improvement on untouched data.
-5. Run only eligible tasks: demand or capacity forecasting, inactivity risk,
-   segmentation, anomaly analysis and constraint-aware recommendation. A task
-   with insufficient fields receives an explicit “not evaluable” result.
-6. Separate predictions from actions. The algorithm estimates demand/risk; the
-   strategy layer checks the business's actual constraints and ranks feasible
-   actions. Every recommendation stores cutoff, model/baseline version,
-   explanation, constraints, owner decision and later outcome.
-7. Update the report's Implementation and Experimental Results chapters only
-   from frozen run artifacts. No number is copied from a simulation, demo UI or
-   unverified tool log.
+1. Read the Drive manifest and inspect every source file's actual columns, data types, keys, date coverage and row counts.
+2. Keep a frozen copy of each source file and record its SHA-256 checksum before modelling.
+3. Reconcile joins and totals across orders, sales lines, products, inventory movements and prepared analytical files.
+4. For RQ1, construct exposure-aware SKU panels; never fill every missing SKU-date with zero.
+5. For RQ2, preserve the supplied TRAIN/TEST split and prevent customer-level and time-based leakage.
+6. For RQ3, compare policies on identical scenario inputs and separately obtain the participating owner's actual policy for a real-business comparison.
+7. For RQ4, distinguish prepared explanation cases from feedback collected in a real participant study.
+8. Save predictions, metrics, figures, configuration, split definitions, checksums and environment details for every model run.
+9. Write the Implementation and Experimental Results chapters from saved, reproducible outputs. Do not invent model scores, policy outcomes or user-study findings.
 
-The operational “real tools” part will use the same canonical identifiers but
-will keep tenant data isolated. It will display whether an output is a live
-business result, a research result or a synthetic demo. Live recommendation
-outcomes are measured from the business ledger where possible; unmeasured
-outcomes remain null.
+## Data handling
 
-## What is still needed
+Raw source files remain in the private project Google Drive folder. Do not commit raw customer records, contact details or other identifiable information to GitHub. Commit code, non-sensitive aggregate outputs, figures and run manifests needed to reproduce the research.
 
-The supplied package is not yet the real-data package required for the thesis.
-Please provide the actual exports and provenance manifest. `sales_orders.csv`,
-`sales_lines.csv` and `inventory_movements.csv` exceeded the current 32 MiB
-transfer limit, so split each into parts smaller than 32 MiB (with headers and
-stable part ordering) or provide a compressed archive whose extracted files are
-each below that limit. Once the actual real files arrive, the canonical mapper,
-algorithm runner, report tables/figures and live tools integration can be built
-and validated against them.
+## Current research boundary
+
+RQ1 has existing development experiments in the repository, but SKU-level exposure-aware evaluation and a final untouched evaluation remain to be completed. RQ2 requires a reproducible classification pipeline and model comparison. RQ3 requires scenario evaluation plus the participating owner's actual-policy comparison. RQ4 requires a real participant study before any human-feedback claim can be made.
