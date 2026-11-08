@@ -1,0 +1,2 @@
+horizon,reference,challenger,series_clusters,origins,replicates,median_WAPE_difference,ci_2_5,ci_97_5,difference_definition
+7,LightGBM_base,LightGBM_context,512,9,2000,-0.00811471,-0.01090717,-0.00516989,"WAPE(context)-WAPE(base); negative favours context"
