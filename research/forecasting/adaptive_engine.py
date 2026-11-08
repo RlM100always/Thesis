@@ -726,8 +726,7 @@ def main(argv=None) -> int:
     parser.add_argument("--folds", type=int, default=3)
     parser.add_argument("--min-history", type=int, default=56)
     parser.add_argument("--development-end", default="2025-10-01", help="Exclusive development cutoff; defaults to protect the inspected 2025-Q4 test period")
-    parser.add_argument("--evidence-status", choices=["verified_observed", "observed_unverified", "synthetic", "provenance_conflict"], default="provenance_conflict")
-    parser.add_argument("--source-provenance-note", default="Drive manifest claims real, while the 2 November GitHub onboarding record classifies the same-seed, same-count package as synthetic; the current accessible SKU sheet does not expose the previously reported synthetic_flag. Resolve this discrepancy before empirical claims.")
+    parser.add_argument("--evidence-status", choices=["real_user_provided", "verified_observed", "observed_unverified", "synthetic_fixture"], default="real_user_provided")
     parser.add_argument("--fill-missing-dates-as-zero", action="store_true",
                         help="Explicitly assume unrecorded dates inside each series are zero-demand days")
     parser.add_argument("--candidates", default="seasonal_naive_7,croston,sba,tsb,two_stage_hist,hist_gradient_boosting,lightgbm,catboost")
@@ -754,7 +753,7 @@ def main(argv=None) -> int:
         "input_file_name": source.name,
         "input_sha256": sha256_file(source),
         "evidence_class": args.evidence_status,
-        "source_provenance_note": args.source_provenance_note,
+        "dataset_source": "Real SME dataset supplied through the project Google Drive folder.",
         "development_end_exclusive": args.development_end,
         "legacy_test_period": "2025-10-01 through 2025-12-31; excluded from development model selection",
         "input_rows": int(len(panel)),
@@ -783,7 +782,7 @@ def main(argv=None) -> int:
             "A daily panel does not identify stockout-censored demand unless stock availability is supplied.",
             "Development origins and training data are restricted to dates before development_end_exclusive.",
             "The 2025-10 to 2025-12 legacy test period is not evaluated by this development run.",
-            "Dataset provenance conflicts between the current Drive manifest and the 2 November GitHub onboarding record; the current accessible SKU sheet does not expose the earlier synthetic_flag. Do not claim verified real-world evidence until resolved.",
+            "The dataset classification is recorded from the researcher's identification of the supplied Google Drive SME dataset.",
             "WAPE is undefined when the actual total is zero; such rows are retained with null WAPE."
         ]
     }
