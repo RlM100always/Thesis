@@ -135,6 +135,37 @@ export async function merchantRouter(req,env,path,output,error){
    return output(req,{deleted:true});
   }
   if(method==="GET"&&path==="/api/merchant/dashboard")return output(req,await dashboard(env,owner));
+
+  if(method==="POST"&&path==="/api/merchant/assistant"){
+   const store=await storeOnly(env,owner),body=await json(req,error,4000),question=short(body.question,300);
+   if(question.length<2)return bad(req,error,422,"কমপক্ষে ২ অক্ষরের প্রশ্ন লিখুন");
+   const q=question.toLowerCase();
+   let answer="",data={},intent="help";
+   if(["স্টক","মজুত","low stock","কমে"].some(k=>q.includes(k))){
+    const {results}=await env.DB.prepare("SELECT name,stock_qty FROM commerce_products WHERE store_id=? AND is_listed=1 AND stock_qty<=5 ORDER BY stock_qty ASC,name LIMIT 10").bind(store.id).all();
+    data.items=results;intent="low_stock";
+    answer=results.length?("৫ বা তার কম স্টক থাকা পণ্য: "+results.map(x=>x.name+" ("+x.stock_qty+")").join(", ")+"."):"এখন প্রকাশিত কোনো পণ্যের স্টক ৫ বা তার কম নয়।";
+   }else if(["সেরা","বেশি বিক্রি","popular","top product","বেস্ট"].some(k=>q.includes(k))){
+    const {results}=await env.DB.prepare("SELECT l.product_name,SUM(l.quantity) AS units,SUM(l.line_total_bdt) AS revenue_bdt FROM commerce_order_lines l JOIN commerce_orders o ON o.id=l.order_id WHERE o.store_id=? AND o.status!='cancelled' GROUP BY l.product_id,l.product_name ORDER BY units DESC LIMIT 5").bind(store.id).all();
+    data.products=results;intent="top_products";
+    answer=results.length?("অর্ডার অনুযায়ী সবচেয়ে বেশি বিক্রি হওয়া পণ্য: "+results.map((x,i)=>(i+1)+". "+x.product_name+" — "+x.units+" ইউনিট").join("; ")+"."):"এখনো বাতিল হয়নি এমন অর্ডারে বিক্রির তথ্য নেই।";
+   }else if(["আজ","today","বিক্রি","sales","revenue"].some(k=>q.includes(k))){
+    const stats=await env.DB.prepare("SELECT COUNT(*) AS orders,COALESCE(SUM(total_bdt),0) AS order_value_bdt FROM commerce_orders WHERE store_id=? AND status!='cancelled' AND date(placed_at)=date('now')").bind(store.id).first();
+    data=stats||{orders:0,order_value_bdt:0};intent="today_sales";
+    answer="আজকের অর্ডার "+Number(data.orders||0)+"টি; অর্ডারকৃত মোট মূল্য ৳"+Number(data.order_value_bdt||0).toLocaleString("en-BD")+". এটি অর্ডারের মূল্য, নিশ্চিতভাবে আদায়কৃত নগদ নয়।";
+   }else if(["অর্ডার","order","pending","অবস্থা","status"].some(k=>q.includes(k))){
+    const {results}=await env.DB.prepare("SELECT status,COUNT(*) AS count FROM commerce_orders WHERE store_id=? GROUP BY status ORDER BY count DESC").bind(store.id).all();
+    data.statuses=results;intent="orders";
+    answer=results.length?("অর্ডারের অবস্থা: "+results.map(x=>x.status+" "+x.count+"টি").join(", ")+"."):"এখনো কোনো অর্ডার নেই।";
+   }else if(["ক্যাশ","আদায়","payment","পেমেন্ট"].some(k=>q.includes(k))){
+    const stats=await env.DB.prepare("SELECT COUNT(*) AS pending_orders,COALESCE(SUM(total_bdt),0) AS pending_amount_bdt FROM commerce_orders WHERE store_id=? AND status!='cancelled' AND payment_method='cod' AND payment_status='pending_cod'").bind(store.id).first();
+    data=stats||{pending_orders:0,pending_amount_bdt:0};intent="pending_cod";
+    answer="COD-তে টাকা গ্রহণ বাকি "+Number(data.pending_orders||0)+"টি অর্ডারে; মোট ৳"+Number(data.pending_amount_bdt||0).toLocaleString("en-BD")+".";
+   }else{
+    answer="আমি আপনার দোকানের তথ্য থেকে স্টক, সেরা বিক্রি হওয়া পণ্য, আজকের বিক্রি, অর্ডারের অবস্থা এবং COD টাকা গ্রহণ সম্পর্কে উত্তর দিতে পারি।";
+   }
+   return output(req,{answered:true,intent,answer,data,source:"live_d1_store_data",notice:store.is_demo?"এটি নমুনা দোকানের তথ্য।":"উত্তরটি আপনার দোকানের সংরক্ষিত তথ্য থেকে তৈরি।"});
+  }
    if(method==="GET"&&path==="/api/merchant/returns"){
     const store=await storeOnly(env,owner);
     const {results}=await env.DB.prepare(
