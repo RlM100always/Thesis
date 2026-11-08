@@ -5,7 +5,7 @@ import pytest
 from research.forecasting.adaptive_engine import (
     DataContractError, demand_profile, load_daily_panel, croston_forecast,
     make_supervised, rolling_origins, _metric_row, _fit_predict, write_figures,
-    select_models_by_regime
+    select_models_by_regime, _seasonal_naive_forecast
 )
 
 
@@ -138,14 +138,34 @@ def test_two_stage_hurdle_candidate_returns_expected_nonnegative_demand():
 
 def test_regime_selection_uses_only_supported_development_groups():
     rows = []
-    for origin in ("2024-03-01", "2024-03-08"):
+    for origin in ("2024-03-01", "2024-03-08", "2024-03-15"):
         for model, wape in (("croston", 0.7), ("lightgbm", 0.5)):
             rows.append({"horizon": 7, "origin": origin, "model": model,
-                         "level": "demand_regime", "group_value": "intermittent",
-                         "status": "ok", "wape": wape, "actual_total": 100.0, "n": 8})
+                         "level": "demand_regime", "group_value": "erratic",
+                         "status": "ok", "wape": wape, "actual_total": 100.0,
+                         "n": 12, "series_count": 12})
     selected = select_models_by_regime(pd.DataFrame(rows))
     assert selected.iloc[0]["selected_model"] == "lightgbm"
     assert selected.iloc[0]["status"] == "selected_on_development_cv"
+
+
+def test_four_intermittent_series_are_not_enough_for_model_switching():
+    rows = []
+    for origin in ("2024-03-01", "2024-03-08", "2024-03-15"):
+        for model, wape in (("croston", 0.3), ("lightgbm", 0.5)):
+            rows.append({"horizon": 7, "origin": origin, "model": model,
+                         "level": "demand_regime", "group_value": "intermittent",
+                         "status": "ok", "wape": wape, "actual_total": 25.0,
+                         "n": 4, "series_count": 4})
+    selected = select_models_by_regime(pd.DataFrame(rows))
+    assert selected.iloc[0]["selected_model"] is None
+    assert selected.iloc[0]["status"] == "insufficient_validation_support"
+
+
+def test_weekly_seasonal_naive_uses_matching_weekdays():
+    history = np.arange(1, 22, dtype=float)
+    assert _seasonal_naive_forecast(history, 1) == pytest.approx(15.0)
+    assert _seasonal_naive_forecast(history, 7) == pytest.approx(126.0)
 
 
 def test_drive_rq1_column_names_and_excel_serial_dates_are_supported(tmp_path):
