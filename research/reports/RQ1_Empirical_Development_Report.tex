@@ -1,6 +1,6 @@
 \documentclass[11pt,a4paper]{article}
 \usepackage[margin=1in]{geometry}
-\usepackage{booktabs,longtable,tabularx,array,graphicx,float,amsmath,hyperref,xcolor,enumitem}
+\usepackage{booktabs,longtable,tabularx,array,graphicx,float,amsmath,hyperref,xcolor,enumitem,pgfplots}\pgfplotsset{compat=1.18}
 \hypersetup{colorlinks=true,linkcolor=blue,urlcolor=blue}
 \title{B-SMART RQ1: Empirical Dataset Audit and Development-Stage Forecasting Evaluation}
 \author{Research and Reproducibility Report}
@@ -34,6 +34,20 @@ Smooth & 15 & 3.8\% & 1.036 & 0.462\\
 Intermittent & 3 & 83.1\% & 5.768 & 0.463\\\bottomrule\end{tabular}\end{table}
 Only three series meet the intermittent threshold, so conclusions for that segment are highly uncertain. Test-series regime labels are calculated from the history available at each forecast origin, not from future observations.
 
+\begin{figure}[H]\centering
+\begin{tikzpicture}
+\begin{axis}[ybar,bar width=18pt,width=.82\textwidth,height=6cm,
+ symbolic x coords={Lumpy,Erratic,Smooth,Intermittent},xtick=data,
+ ylabel={Number of series},ymin=0,ymax=400,
+ nodes near coords, nodes near coords align={vertical},
+ x tick label style={rotate=15,anchor=east},grid=major]
+\addplot coordinates {(Lumpy,352) (Erratic,142) (Smooth,15) (Intermittent,3)};
+\end{axis}
+\end{tikzpicture}
+\caption{Demand-regime counts for the 512 shop--category series.}
+\end{figure}
+
+
 \section{Forecasting design}
 The target is observed sales quantity, not revenue or unconstrained latent demand. For series $s$, origin $t$ and horizon $h$, the direct target is
 \[
@@ -60,6 +74,23 @@ Horizon & Model & Forecasts & WAPE & MAE & RMSE\\\midrule
 28 & Seasonal naive & 1,536 & 25.57\% & 19.038 & 26.813\\\bottomrule
 \end{tabular}\end{table}
 Relative WAPE reduction against the seasonal baseline was 9.7\%, 17.2\%, 23.7\% and 26.3\% at 1-, 7-, 14- and 28-day horizons respectively. These are relative reductions, not percentage-point changes. Horizon-specific WAPE values are not directly comparable because target totals differ.
+
+\begin{figure}[H]\centering
+\begin{tikzpicture}
+\begin{axis}[ybar,bar width=8pt,width=.92\textwidth,height=7cm,
+ symbolic x coords={1 day,7 days,14 days,28 days},xtick=data,
+ ylabel={WAPE (\%)},ymin=0,ymax=100,
+ legend style={at={(0.5,-0.22)},anchor=north,legend columns=3},
+ x tick label style={rotate=0},grid=major]
+\addplot coordinates {(1 day,82.73) (7 days,33.84) (14 days,24.66) (28 days,18.84)};
+\addplot coordinates {(1 day,91.65) (7 days,40.88) (14 days,32.31) (28 days,25.57)};
+\addplot coordinates {(1 day,85.16) (7 days,38.62) (14 days,31.89) (28 days,27.06)};
+\legend{LightGBM Tweedie,Seasonal naive,Croston classic}
+\end{axis}
+\end{tikzpicture}
+\caption{Pooled development WAPE by horizon. Horizon-specific scores are not directly comparable because the target totals differ.}
+\end{figure}
+
 
 At 7 days, LightGBM WAPE was 28.62\% for erratic, 41.89\% for lumpy, 21.82\% for smooth and 90.01\% for intermittent series. The intermittent result has only ten forecast cases and 24 actual units; it is too small for a firm conclusion. Croston classic was better on this tiny subset, while LightGBM was better on the other three regimes.
 
