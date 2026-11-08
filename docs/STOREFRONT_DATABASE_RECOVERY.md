@@ -6,7 +6,7 @@
 
 | Resource | Current verified role | Data boundary |
 |---|---|---|
-| Cloudflare D1 `bsmart-commerce` | Authoritative for D1 storefront, customer, merchant, catalogue, inventory and order workflows | Existing 22 application tables; schema version **12** |
+| Cloudflare D1 `bsmart-commerce` | Authoritative for D1 storefront, customer, merchant, catalogue, inventory and order workflows | Existing 22 application tables; schema version **13** |
 | Cloudflare Worker `bsmart-commerce-api` | API for D1 commerce | Worker binding `DB` points to existing `bsmart-commerce` |
 | Render `thesis` | Hosts React frontend and legacy FastAPI | Existing Render service; FastAPI still has separate SQLAlchemy database |
 | Render Postgres `thesis-db` | Resource exists but is not verified as active source of legacy data | Do not assume it contains current records or switch the app to it without audit |
@@ -20,7 +20,7 @@ These systems are not synchronized. A D1 database ID is not a SQLAlchemy connect
 
 ## 2. Live D1 inventory
 
-The existing D1 database was queried before and after the upgrade. Migrations 0009–0012 were applied sequentially after checking the live schema; `commerce_meta.schema_version=12`.
+The existing D1 database was queried before and after the upgrade. Migrations 0009–0013 were applied sequentially after checking the live schema; `commerce_meta.schema_version=13`. Migration 0013 adds customer password-reset token hashes/expiry and privacy-preserving rate-limit storage.
 
 | Data | Preserved count/state |
 |---|---:|
