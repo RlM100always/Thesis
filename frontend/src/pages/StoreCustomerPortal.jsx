@@ -353,22 +353,22 @@ function OrderReturnForm({ order, token, storeSlug, onSubmitted }) {
     <textarea value={note} onChange={e => setNote(e.target.value)} maxLength={1000} rows={2} placeholder="অতিরিক্ত তথ্য (ঐচ্ছিক)" style={{ width: "100%", boxSizing: "border-box", padding: 9, borderRadius: 8, border: "1px solid var(--border)", background: "var(--bg)", color: "var(--text)", fontSize: 12, resize: "vertical" }}/>
     {error && <div role="alert" style={{ color: "#dc2626", fontSize: 11 }}>{error}</div>}
     <button type="submit" disabled={busy} style={{ padding: "9px 12px", borderRadius: 8, border: 0, background: "var(--green)", color: "var(--sc-on-green)", fontWeight: 700, cursor: busy ? "wait" : "pointer", fontSize: 12 }}>{busy ? "জমা হচ্ছে…" : "ফেরতের অনুরোধ জমা দিন"}</button>
-    <div style={{ fontSize: 10, color: "var(--text-muted)" }}>{order.is_demo ? "পরীক্ষামূলক ব্যবস্থা: কোনো অর্থ ফেরত দেওয়া হয় না।" : "ফেরত অনুমোদন বা পণ্য গ্রহণ মানেই অর্থ ফেরত নয়; দোকানের সঙ্গে আলাদাভাবে নিষ্পত্তি করুন।"}</div>
+    <div style={{ fontSize: 10, color: "var(--text-muted)" }}>"ফেরত অনুমোদন বা পণ্য গ্রহণ মানেই অর্থ ফেরত নয়; দোকানের সঙ্গে আলাদাভাবে নিষ্পত্তি করুন।"</div>
   </form>;
 }
 
 const PAYMENT_STATUS_LABEL = {
-  demo_no_payment: "ডেমো অর্ডার—বাস্তব পেমেন্ট নেই",
+  demo_no_payment: "পেমেন্ট প্রযোজ্য নয়",
   pending_cod: "COD—টাকা গ্রহণ নিশ্চিত হয়নি",
   paid: "পেমেন্ট গ্রহণ নিশ্চিত",
   cancelled_no_payment: "বাতিল—পেমেন্ট নেওয়া হয়নি",
   unpaid: "পেমেন্ট বাকি",
 };
-const PAYMENT_METHOD_LABEL = { cod: "Cash on Delivery", demo: "ডেমো", demo_pos: "ডেমো কাউন্টার" };
+const PAYMENT_METHOD_LABEL = { cod: "Cash on Delivery", demo: "পেমেন্ট প্রযোজ্য নয়", demo_pos: "কাউন্টার বিক্রি" };
 const RETURN_LABEL = {
   requested: "অনুরোধ জমা হয়েছে", approved: "দোকান অনুমোদন করেছে",
   rejected: "দোকান অনুরোধ প্রত্যাখ্যান করেছে", received: "ফেরত পণ্য গ্রহণ করা হয়েছে",
-  closed_demo: "পরীক্ষামূলকভাবে বন্ধ",
+  closed_demo: "বন্ধ",
 };
 
 // ── Orders View ───────────────────────────────────────────────────────────────
@@ -472,7 +472,7 @@ function OrdersView({ storeSlug, token, onReorder }) {
               style={{ padding: "12px 14px", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
               <div>
                 <div style={{ fontWeight: 700, fontSize: 13, color: "var(--text)" }}>{o.document_number}</div>
-                {o.store_name && <div style={{ fontSize: 11, color: "var(--green)", marginTop: 2 }}>{o.store_name}{o.is_demo ? " · পরীক্ষামূলক দোকান" : ""}</div>}
+                {o.store_name && <div style={{ fontSize: 11, color: "var(--green)", marginTop: 2 }}>{o.store_name}</div>}
                 <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>
                   {o.issued_at ? new Date(o.issued_at).toLocaleDateString("bn-BD", { day: "numeric", month: "long", year: "numeric" }) : "—"} · ৳{Number(o.total).toLocaleString("bn-BD")}
                 </div>
