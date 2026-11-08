@@ -196,18 +196,20 @@ def _features(history: pd.DataFrame, origin: pd.Timestamp) -> dict:
     return out
 
 
-def make_supervised(panel: pd.DataFrame, horizon: int, min_history: int = 56) -> pd.DataFrame:
+def make_supervised(panel: pd.DataFrame, horizon: int, min_history: int = 56, stride: int = 7) -> pd.DataFrame:
     """Build direct-horizon examples with vectorised, strictly historical features."""
     if min_history < max(LAGS):
         raise DataContractError(f"min_history must be at least {max(LAGS)} days for the configured lag features.")
     if horizon < 1:
         raise DataContractError("Forecast horizon must be a positive number of days.")
+    if stride < 1:
+        raise DataContractError("Training stride must be a positive number of days.")
     rows = []
     for key, group in panel.groupby(KEYS, sort=False):
         group = group.sort_values("date")
         values = group["demand"].to_numpy(dtype=np.float64)
         dates = pd.DatetimeIndex(group["date"])
-        indices = np.arange(min_history, len(values) - horizon + 1, dtype=np.int32)
+        indices = np.arange(min_history, len(values) - horizon + 1, stride, dtype=np.int32)
         if not len(indices):
             continue
 
@@ -352,9 +354,10 @@ def _estimator(name: str):
         ])
     if name == "catboost":
         from catboost import CatBoostRegressor
-        # CatBoost receives identifiers as categorical features without ordinal assumptions.
+        # Tweedie is appropriate for non-negative, right-skewed cumulative demand.
         return CatBoostRegressor(
-            iterations=500, depth=6, learning_rate=0.03, loss_function="RMSE",
+            iterations=500, depth=6, learning_rate=0.03,
+            loss_function="Tweedie:variance_power=1.3",
             l2_leaf_reg=5.0, random_seed=42, verbose=False, allow_writing_files=False
         )
     raise ValueError(name)
@@ -395,6 +398,22 @@ def _fit_predict(model_name: str, train: pd.DataFrame, predict_rows: pd.DataFram
         model = _estimator(model_name)
         cat_cols = ["shop_id", "category_id"]
         model.fit(X_train, y_train, cat_features=cat_cols)
+        pred = model.predict(X_pred)
+    elif model_name == "lightgbm":
+        from lightgbm import LGBMRegressor
+        cat_cols = ["shop_id", "category_id"]
+        for column in cat_cols:
+            categories = pd.Index(X_train[column].astype(str).unique())
+            X_train[column] = pd.Categorical(X_train[column].astype(str), categories=categories)
+            X_pred[column] = pd.Categorical(X_pred[column].astype(str), categories=categories)
+        model = LGBMRegressor(
+            objective="tweedie", tweedie_variance_power=1.3,
+            n_estimators=500, learning_rate=0.025, num_leaves=15,
+            max_depth=-1, min_child_samples=30, reg_lambda=2.0,
+            subsample=0.85, subsample_freq=1, colsample_bytree=0.85,
+            random_state=42, verbosity=-1
+        )
+        model.fit(X_train, y_train, categorical_feature=cat_cols)
         pred = model.predict(X_pred)
     else:
         model = _estimator(model_name)
@@ -451,6 +470,24 @@ def rolling_origins(panel: pd.DataFrame, horizon: int, folds: int = 3,
                for k in reversed(range(folds))]
     return [origin for origin in origins if origin >= earliest and origin + pd.Timedelta(days=horizon) <= cutoff]
 
+def _seasonal_naive_forecast(history: np.ndarray, horizon: int, season: int = 7,
+                                lookback_cycles: int = 4) -> float:
+    """Sum forecasts from matching weekdays in up to four completed weekly cycles."""
+    values = np.asarray(history, dtype=float)
+    if len(values) == 0:
+        return 0.0
+    daily = []
+    for step in range(horizon):
+        target_index = len(values) + step
+        matches = [
+            values[target_index - season * cycle]
+            for cycle in range(1, lookback_cycles + 1)
+            if 0 <= target_index - season * cycle < len(values)
+        ]
+        daily.append(float(np.mean(matches)) if matches else float(np.mean(values[-min(season, len(values)):])) )
+    return max(0.0, float(np.sum(daily)))
+
+
 def run_experiment(panel: pd.DataFrame, horizons=HORIZONS, folds=3,
                    min_history=56, candidates=None,
                    development_end: str | pd.Timestamp | None = None) -> tuple[pd.DataFrame, pd.DataFrame]:
@@ -469,7 +506,8 @@ def run_experiment(panel: pd.DataFrame, horizons=HORIZONS, folds=3,
             summaries.append({"horizon": horizon, "model": "ALL", "status": "not_evaluable",
                               "reason": "insufficient_development_history_for_requested_folds"})
             continue
-        supervised = make_supervised(development_panel, horizon, min_history)
+        training_stride = max(7, horizon)
+        supervised = make_supervised(development_panel, horizon, min_history, stride=training_stride)
         for origin in origins:
             train = supervised.loc[
                 supervised["origin"] + pd.Timedelta(days=horizon) <= origin
@@ -494,17 +532,14 @@ def run_experiment(panel: pd.DataFrame, horizons=HORIZONS, folds=3,
             actual_arr = np.asarray(actuals)
             scales = []
             for hist_values in histories:
-                one_day_scale = float(np.mean(np.abs(np.diff(hist_values)))) if len(hist_values) > 1 else 0.0
-                scales.append(one_day_scale * horizon if np.isfinite(one_day_scale) and one_day_scale > 0 else 1.0)
+                weekly_scale = float(np.mean(np.abs(hist_values[7:] - hist_values[:-7]))) if len(hist_values) > 7 else 0.0
+                scales.append(weekly_scale * horizon if np.isfinite(weekly_scale) and weekly_scale > 0 else 1.0)
             scales = np.asarray(scales, dtype=float)
             regimes = [demand_profile(h).regime for h in histories]
             for name in candidates:
                 try:
                     if name == "seasonal_naive_7":
-                        forecasts = [
-                            float(h[-horizon-7:-7].sum()) if len(h) >= horizon + 7
-                            else float(h[-horizon:].sum()) for h in histories
-                        ]
+                        forecasts = [_seasonal_naive_forecast(h, horizon) for h in histories]
                     elif name in {"croston", "sba", "tsb"}:
                         forecasts = [croston_forecast(h, horizon, name) for h in histories]
                     else:
@@ -523,7 +558,7 @@ def run_experiment(panel: pd.DataFrame, horizons=HORIZONS, folds=3,
                     metrics = _metric_row(actual_arr, forecasts, scales)
                     summaries.append({"horizon": horizon, "origin": origin.date().isoformat(),
                                       "model": name, "level": "all", "group_value": "all",
-                                      "status": "ok", **metrics})
+                                      "status": "ok", "series_count": int(len(actual_arr)), **metrics})
                     dimensions = {
                         "shop": pred_frame["shop_id"].astype(str).to_numpy(),
                         "category": pred_frame["category_id"].astype(str).to_numpy(),
@@ -535,7 +570,7 @@ def run_experiment(panel: pd.DataFrame, horizons=HORIZONS, folds=3,
                             subgroup_metrics = _metric_row(actual_arr[mask], forecasts[mask], scales[mask])
                             summaries.append({"horizon": horizon, "origin": origin.date().isoformat(),
                                               "model": name, "level": level, "group_value": label,
-                                              "status": "ok", **subgroup_metrics})
+                                              "status": "ok", "series_count": int(mask.sum()), **subgroup_metrics})
                 except ImportError as exc:
                     summaries.append({"horizon": horizon, "origin": origin.date().isoformat(),
                                       "model": name, "level": "all", "group_value": "all",
@@ -635,13 +670,13 @@ def build_diagnostics(panel: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
-def select_models_by_regime(summary: pd.DataFrame, min_origins: int = 2,
-                            min_forecasts: int = 10) -> pd.DataFrame:
+def select_models_by_regime(summary: pd.DataFrame, min_origins: int = 3,
+                            min_series_per_origin: int = 20) -> pd.DataFrame:
     """Select candidates using development CV only; insufficient groups stay unselected."""
     required = {"horizon", "origin", "model", "level", "group_value", "status",
-                "wape", "actual_total", "n"}
+                "wape", "actual_total", "n", "series_count"}
     columns = ["horizon", "demand_regime", "selected_model", "development_wape",
-               "origins", "forecasts", "status"]
+               "origins", "min_series_per_origin", "forecasts", "status"]
     if summary.empty or not required.issubset(summary.columns):
         return pd.DataFrame(columns=columns)
     rows = summary[
@@ -657,17 +692,19 @@ def select_models_by_regime(summary: pd.DataFrame, min_origins: int = 2,
         absolute_error_total=("absolute_error_total", "sum"),
         actual_total=("actual_total", "sum"),
         origins=("origin", "nunique"),
-        forecasts=("n", "sum")
+        forecasts=("n", "sum"),
+        min_series_per_origin=("series_count", "min")
     )
     aggregate["development_wape"] = aggregate["absolute_error_total"] / aggregate["actual_total"]
     selected = []
     for (horizon, regime), group in aggregate.groupby(["horizon", "group_value"]):
         eligible = group[(group["origins"] >= min_origins) &
-                         (group["forecasts"] >= min_forecasts)]
+                         (group["min_series_per_origin"] >= min_series_per_origin)]
         if eligible.empty:
             selected.append({"horizon": int(horizon), "demand_regime": regime,
                              "selected_model": None, "development_wape": None,
                              "origins": int(group["origins"].max()),
+                             "min_series_per_origin": int(group["min_series_per_origin"].max()),
                              "forecasts": int(group["forecasts"].max()),
                              "status": "insufficient_validation_support"})
         else:
@@ -676,6 +713,7 @@ def select_models_by_regime(summary: pd.DataFrame, min_origins: int = 2,
                              "selected_model": best["model"],
                              "development_wape": float(best["development_wape"]),
                              "origins": int(best["origins"]),
+                             "min_series_per_origin": int(best["min_series_per_origin"]),
                              "forecasts": int(best["forecasts"]),
                              "status": "selected_on_development_cv"})
     return pd.DataFrame(selected)
@@ -689,7 +727,7 @@ def main(argv=None) -> int:
     parser.add_argument("--min-history", type=int, default=56)
     parser.add_argument("--development-end", default="2025-10-01", help="Exclusive development cutoff; defaults to protect the inspected 2025-Q4 test period")
     parser.add_argument("--evidence-status", choices=["verified_observed", "observed_unverified", "synthetic", "provenance_conflict"], default="provenance_conflict")
-    parser.add_argument("--source-provenance-note", default="Drive manifest claims 100% real, but the related RQ1 SKU file labels all rows synthetic_flag=YES; resolve before empirical claims.")
+    parser.add_argument("--source-provenance-note", default="Drive manifest claims real, while the 2 November GitHub onboarding record classifies the same-seed, same-count package as synthetic; the current accessible SKU sheet does not expose the previously reported synthetic_flag. Resolve this discrepancy before empirical claims.")
     parser.add_argument("--fill-missing-dates-as-zero", action="store_true",
                         help="Explicitly assume unrecorded dates inside each series are zero-demand days")
     parser.add_argument("--candidates", default="seasonal_naive_7,croston,sba,tsb,two_stage_hist,hist_gradient_boosting,lightgbm,catboost")
@@ -728,6 +766,8 @@ def main(argv=None) -> int:
         "missing_dates_filled_as_zero": bool(args.fill_missing_dates_as_zero),
         "horizons_days": horizons,
         "rolling_folds": args.folds,
+        "training_stride_days_by_horizon": {str(h): max(7, h) for h in horizons},
+        "mase_definition": "horizon-scaled seasonal MASE using mean absolute lag-7 difference in each series history",
         "min_history_days": args.min_history,
         "candidate_models": [x.strip() for x in args.candidates.split(",") if x.strip()],
         "python": sys.version,
@@ -743,7 +783,7 @@ def main(argv=None) -> int:
             "A daily panel does not identify stockout-censored demand unless stock availability is supplied.",
             "Development origins and training data are restricted to dates before development_end_exclusive.",
             "The 2025-10 to 2025-12 legacy test period is not evaluated by this development run.",
-            "Dataset provenance conflicts between the Drive manifest and the RQ1 SKU synthetic_flag; do not claim verified real-world evidence until resolved.",
+            "Dataset provenance conflicts between the current Drive manifest and the 2 November GitHub onboarding record; the current accessible SKU sheet does not expose the earlier synthetic_flag. Do not claim verified real-world evidence until resolved.",
             "WAPE is undefined when the actual total is zero; such rows are retained with null WAPE."
         ]
     }
