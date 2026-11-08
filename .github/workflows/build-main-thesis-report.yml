@@ -2,18 +2,9 @@ name: Build main thesis report PDF
 
 on:
   push:
-    branches: [main]
+    branches: [main, thesis-report-upgrade-2026-11-08]
     paths:
-      - 'thesis_report/main.tex'
-      - 'thesis_report/logo.pdf'
-      - 'thesis_report/Figures/**'
-      - 'thesis_report/Chapters/**'
-      - 'thesis_report/Appendices/**'
-      - 'thesis_report/preamble.tex'
-      - 'thesis_report/title.tex'
-      - 'thesis_report/Bibliography.bib'
-      - 'thesis_report/Thesis.cls'
-      - 'thesis_report/*.sty'
+      - 'output/pdf/teachers-report-guidelines-template/Template/**'
       - '.github/workflows/build-main-thesis-report.yml'
   workflow_dispatch:
 
@@ -28,32 +19,42 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout main
+      - name: Checkout source branch
         uses: actions/checkout@v4
         with:
-          ref: main
+          ref: ${{ github.ref }}
 
       - name: Install TeX Live
         run: |
           sudo apt-get update
           sudo apt-get install -y texlive-latex-extra texlive-fonts-recommended texlive-pictures texlive-science poppler-utils
 
-      - name: Compile the existing main report
-        working-directory: thesis_report
+      - name: Compile the teacher-template report
+        working-directory: output/pdf/teachers-report-guidelines-template/Template
         run: |
-          pdflatex -interaction=nonstopmode -halt-on-error main.tex
-          pdflatex -interaction=nonstopmode -halt-on-error main.tex
+          mkdir -p /tmp/teacher-template-build
+          pdflatex -output-directory=/tmp/teacher-template-build -interaction=nonstopmode -halt-on-error main.tex
+          bibtex /tmp/teacher-template-build/main
+          pdflatex -output-directory=/tmp/teacher-template-build -interaction=nonstopmode -halt-on-error main.tex
+          pdflatex -output-directory=/tmp/teacher-template-build -interaction=nonstopmode -halt-on-error main.tex
           echo '--- PDF page count ---'
-          pdfinfo main.pdf | grep -E '^(Pages|Page size|File size):'
+          pdfinfo /tmp/teacher-template-build/main.pdf | grep -E '^(Pages|Page size|File size):'
           echo '--- LaTeX warnings ---'
-          grep -n 'LaTeX Warning' main.log || true
+          grep -n 'LaTeX Warning' /tmp/teacher-template-build/main.log || true
 
-      - name: Publish the compiled main report PDF
+      - name: Publish compiled report PDF
         run: |
-          git fetch origin main
-          git reset --hard origin/main
-          cp thesis_report/main.pdf output/pdf/main-thesis-report.pdf
+          git fetch origin ${{ github.ref_name }}
+          git reset --hard origin/${{ github.ref_name }}
+          cp /tmp/teacher-template-build/main.pdf output/pdf/main-thesis-report.pdf
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add output/pdf/main-thesis-report.pdf
-          git diff --cached --quiet || (git commit -m "Build updated main thesis report PDF" && git push origin HEAD:main)
+          git diff --cached --quiet || (git commit -m "Build updated teacher-template thesis report PDF" && git push origin HEAD:${{ github.ref_name }})
+
+      - name: Upload PDF artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: teacher-template-thesis-report
+          path: output/pdf/main-thesis-report.pdf
+          if-no-files-found: error

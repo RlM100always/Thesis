@@ -1,12 +1,29 @@
 \chapter{Conclusions}
 \label{chapter_conclusion}
 
-	 
-	
 \section{Research Summary}
-\label{researchsummary}
-	 
+This project integrates forecasting, customer prediction, replenishment evidence and explanation preparation into one SME retail analytics workflow. The evaluation was organised around the four research questions and the evidence each question requires.
+
+For RQ1, the context-aware model produces small WAPE improvements over the history-only model. However, MASE remains worse than the seasonal-naive baseline at all tested horizons, and the 28-day WAPE also favours the naive baseline. The model is therefore not a universal replacement for simple forecasting. Future work should improve intermittent-demand handling, evaluate later test periods and assess transfer to shops not used in training.
+
+For RQ2, the Platt-calibrated LightGBM model achieves PR-AUC 0.731 and Lift@10\% 2.031 on the temporal test set. Calibration reduces Brier score to 0.173 and ECE to 0.050. This supports customer prioritisation within the supplied data, but does not establish that a retention campaign changes customer behaviour.
+
+For RQ3, historical purchasing records show a median supplier lead time of seven days. The supplied trend-policy scenario reduces scenario cost by 0.87\% but increases stock-out units by 122.2\%. Because the scenario demand is synthetic oracle demand and the baseline is not identified as the owner's documented policy, the result cannot be presented as a field-tested owner-policy comparison.
+
+For RQ4, all 1,800 generated cases pass the action--quantity consistency rule. A counterbalanced task bank and data collection protocol have been prepared. The human study has not been conducted, so correctness, completion time, confidence and usability remain unknown.
+
+\section{Contributions}
+The completed work provides an exposure-aware branch--SKU forecasting pipeline, a calibrated temporal customer model, an audit of historical procurement and scenario policy outputs, and a prepared explanation-study instrument. It also establishes a reporting rule: observed transaction evidence, user-declared provenance and generated scenario evidence are kept separate.
 
 \section{Future Work Plan}
-\label{futureplans}      
-	
+The next work should follow this order:
+\begin{enumerate}
+\item improve the RQ1 model and compare it with intermittent-demand baselines using a later untouched test period;
+\item confirm the current dataset version lineage and retain source-owner documentation for the real-data declaration;
+\item obtain the participating owner's written replenishment rule, validate holding and shortage costs, and run a matched historical replay for RQ3;
+\item obtain required ethics approval, recruit consenting target users and collect the RQ4 counterbalanced task outcomes;
+\item only after these steps, evaluate model integration in a live decision-support workflow and assess operational impact.
+\end{enumerate}
+
+\section{Final Assessment}
+The implementation and predictive experiments have progressed substantially, but the evidence does not support describing all four research questions as fully completed. RQ1 and RQ2 have reproducible model results with stated limitations. RQ3 has historical procurement evidence and a scenario comparison, but not a validated owner-policy experiment. RQ4 has generated-case checks and study materials, but no human-participant results. The report records this status directly so that the next stage can be completed without inventing data or results.

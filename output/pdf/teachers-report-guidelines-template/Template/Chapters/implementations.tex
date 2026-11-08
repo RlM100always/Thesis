@@ -1,3 +1,71 @@
 \chapter{Implementation}
 \label{chapter_implementation}
 
+\section{System Architecture}
+The implementation separates data preparation, prediction, decision logic and evaluation. The same data contract is used across the four research questions, but each model has a separate target and evaluation procedure.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[node distance=1.1cm and 0.8cm, >=Stealth,
+  block/.style={draw,rounded corners,align=center,text width=3.2cm,minimum height=0.9cm,font=\small},
+  smallblock/.style={draw,rounded corners,align=center,text width=2.7cm,minimum height=0.85cm,font=\small}]
+\node[block] (data) {Drive data package\\sales, stock, customers, purchases};
+\node[block,below=of data] (prep) {Validation and feature preparation\\time cut-offs, exposure, joins};
+\node[smallblock,below left=of prep,xshift=-0.6cm] (rq1) {RQ1\\Branch--SKU forecasting};
+\node[smallblock,below=of prep] (rq2) {RQ2\\Customer inactivity};
+\node[smallblock,below right=of prep,xshift=0.6cm] (rq3) {RQ3\\Replenishment evidence};
+\node[block,below=1.3cm of rq2] (rq4) {RQ4\\Explanation cases and user-study tasks};
+\node[block,below=of rq4] (eval) {Evaluation outputs\\metrics, intervals, audit trail};
+\draw[->] (data)--(prep);
+\draw[->] (prep)--(rq1);
+\draw[->] (prep)--(rq2);
+\draw[->] (prep)--(rq3);
+\draw[->] (rq1)--(rq4);
+\draw[->] (rq2)--(rq4);
+\draw[->] (rq3)--(rq4);
+\draw[->] (rq4)--(eval);
+\end{tikzpicture}
+\caption{Research implementation architecture. The diagram represents the experiment workflow, not a claim of a live production deployment.}
+\label{fig:system_architecture}
+\end{figure}
+
+\section{Data Ingestion and Validation}
+The Drive spreadsheets were exported to CSV for reproducible local analysis. The pipeline checks row counts, unique identifiers, missing cells, key joins, date ranges and input hashes. The RQ1 exposure panel is constructed from inventory movements and daily observed sales. RQ2 snapshots are checked for duplicate snapshot identifiers and missing values. Purchase orders are joined to purchase lines using purchase-order identifiers. RQ3 and RQ4 scenario files retain their scenario labels.
+
+The current empirical shop table contains only the business type Grocery and FMCG Retail. The report therefore describes a retail dataset rather than claiming coverage of multiple SME sectors.
+
+\section{RQ1 Forecasting Implementation}
+The forecasting runner builds one sample per shop--SKU series and forecast origin. The target is the cumulative observed sales over 7, 14 or 28 days. The feature pipeline includes lagged sales, rolling means and dispersion, exposed-day counts, days since last sale, product context, shop context, price, pack size, promotion and calendar features. The Tweedie objective is used because the target is non-negative and contains many low or zero values.
+
+The 45-tree comparison produces a model for each horizon and ablation. Three context model artefacts were saved for the 7-, 14- and 28-day horizons. A separate 250-tree challenger was also trained on the full training partition. The model files are research artefacts; their existence does not imply that a production prediction API is deployed.
+
+\section{RQ2 Customer Prediction Implementation}
+The customer pipeline reads the 90-day snapshot table, enforces the historical feature cut-offs and creates a temporal training, validation and test split. LightGBM learns the inactivity score. The validation set is used to fit Platt calibration. Test metrics are computed only on the later snapshots. Customer-level bootstrap resampling provides uncertainty intervals without treating repeated snapshots from the same customer as independent.
+
+\section{RQ3 Procurement and Policy Audit}
+The procurement audit joins purchase lines to purchase orders and calculates observed delivery lead times. It reports the distribution of order status, ordered and received units, supplier coverage and recorded purchase spend. The separate RQ3 scenario runner checks the supplied baseline and trend-policy columns, verifies the cost-gap arithmetic and performs shop-cluster bootstrap resampling. The historical ledger and scenario runner are intentionally kept separate.
+
+\section{RQ4 Explanation and Task Preparation}
+The RQ4 case audit checks the consistency between action and suggested order quantity, counts constraint reasons and checks whether participant-study fields are present. It also creates a collection template, scoring key, matched task pairs and two counterbalanced forms. The generated cases are not treated as human responses.
+
+\section{Decision Workflow}
+The implemented workflow can be summarised as follows.
+
+\begin{algorithm}[htbp]
+\caption{Evidence-aware SME decision-support workflow}
+\label{alg:evidence_workflow}
+\KwIn{Time-stamped sales, stock movements, customer snapshots, purchase records and scenario cases}
+\KwOut{Forecasts, customer scores, replenishment evidence and explanation-study materials}
+Validate identifiers, dates, joins and source manifests\;
+Construct the in-stock branch--SKU panel; preserve unknown exposure as unknown\;
+Train and evaluate forecasting models on historical origins; retain seasonal-naive comparisons\;
+Train the customer inactivity model using cut-off-valid features; calibrate on validation data\;
+Audit historical purchase orders and supplier lead times\;
+Evaluate supplied replenishment scenarios separately from observed purchase records\;
+Check generated explanation cases and prepare counterbalanced task forms\;
+Write metrics, uncertainty intervals, input hashes and evidence limitations\;
+\Return{Reproducible experiment outputs and an evidence-status report}\;
+\end{algorithm}
+
+\section{Software and Reproducibility}
+The experiments use Python, pandas, NumPy, LightGBM, scikit-learn, joblib and Matplotlib. The LaTeX report is built from the teacher-provided Thesis template in the repository. Run manifests record the data snapshot hashes, model configuration, temporal splits and package versions. Raw transaction exports and customer-level predictions are not committed to the public repository.

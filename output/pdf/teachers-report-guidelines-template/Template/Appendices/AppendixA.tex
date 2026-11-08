@@ -1,7 +1,21 @@
-% Appendix A
+\chapter{Reproducibility and Study Materials}
+\label{appendix_reproducibility}
 
-\chapter{Appendix Title Here}
-\label{AppendixA}
-\lhead{Appendix A. \emph{Appendix Title Here}}
+\section{RQ1 Experiment Configuration}
+The RQ1 panel uses 13,272 shop--SKU series over 1,096 dates. Eligibility requires at least 80\% historical exposure in the preceding 180 days, at least three exposed positive-sale days, and verified in-stock exposure throughout the target horizon. The primary comparison uses LightGBM Tweedie with 45 trees and 80,000 sampled training rows per horizon. The context model includes sales history, shop and SKU identity, category, district, business type, urbanicity, price, pack size, promotion and calendar features. The separate 250-tree challenger uses the full training partition. The test origins are July, August and September 2025.
 
-Write your Appendix content here.
+\section{RQ2 Experiment Configuration}
+The RQ2 file contains 72,146 snapshots and 10,613 unique pseudonymous customers. The test set contains 21,164 rows. Customer identifiers are excluded from predictors and used only for cluster bootstrap resampling. The test cut-offs are 31 March 2025 and 30 June 2025. The reported customer bootstrap uses 400 resamples.
+
+\section{RQ3 Procurement and Scenario Evidence}
+The historical procurement audit uses 122,422 purchase orders and 122,422 purchase lines. The observed lead-time median is seven days and the 90th percentile is 13 days. The scenario comparison uses 2,500 cases at 31 July 2025. Its future demand is labelled synthetic oracle demand. The report does not claim that the scenario baseline is the participating owner's documented policy, and it does not invent missing holding-cost or stock-out-cost components.
+
+\section{RQ4 Human Study Protocol}
+Before recruitment, obtain supervisor and institutional ethics approval where required. Recruit consenting SME owners or managers who match the target-user definition. Use a participant code and avoid collecting direct identifiers in the analysis file.
+
+Use a counterbalanced within-participant design. Assign participants randomly to Form A or Form B. Each participant should complete a manageable subset of matched pairs, for example 10--12 pairs, rather than all 1,798 tasks. Within each pair, one scenario is shown with an explanation and the other with output only. Form B reverses the condition assignment. Do not show the same scenario twice to one participant.
+
+Record participant code, consent confirmation, scenario ID, task order, condition, start and end time, selected action, correctness, confidence, perceived usability, explanation helpfulness, information overload and optional feedback. Define the expected action and scoring rule before data collection. Analyse repeated tasks within participants. Do not report user-study findings until real consented observations have been collected.
+
+\section{Evidence Files}
+Aggregate experiment outputs and run manifests are stored separately from the raw Drive exports. RQ1 predictions and customer-level outputs are retained locally for analysis and are not included in the public repository. The report tables reproduce the aggregate metrics recorded by the experiment runs.

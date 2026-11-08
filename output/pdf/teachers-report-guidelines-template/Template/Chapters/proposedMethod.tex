@@ -1,2 +1,85 @@
 \chapter{Proposed Methodologies}
 \label{chapter_proposedMethod}
+
+\section{Research Design}
+The project follows a design-science approach: an analytical artefact is constructed, evaluated against research questions and revised in response to the evidence \citep{hevner2004design}. Each research question has its own unit of analysis, comparison, measures and evidence requirement. A result from one question is not used as a substitute for another.
+
+\section{Dataset and Provenance}
+The user-linked Drive package is dated from 1 January 2023 to 31 December 2025 and uses BDT as its currency. Its manifest lists 32 shops, 11,000 customers, 480 products and 56 suppliers. The package contains 365,447 sales orders, 736,683 sales lines, 381,756 payments, 122,422 purchase orders, 122,422 purchase lines, 994,808 inventory movements, 134,379 inventory lots, 5,102 returns, 1,216 promotions and 1,096 calendar dates. It also contains 32,852 simulated unmet-demand records and 1,800 RQ4 explanation cases. All 32 shops are classified as grocery and FMCG retail.
+
+The current Drive manifest declares the package to contain real SME sales or real people. The project owner confirms this is the intended source. An earlier repository note has a conflicting classification for a same-seed package. The present analysis uses the current Drive snapshot as the owner-declared source and records the lineage conflict. It does not claim independent verification of data collection or consent. RQ3's synthetic future oracle demand and RQ4's synthetic scenario fields are treated as generated scenario inputs, not observed transactions.
+
+\begin{table}[htbp]
+\centering
+\small
+\begin{tabular}{lr}
+\toprule
+\textbf{Data component} & \textbf{Rows or entities}\\
+\midrule
+Shops & 32\\
+Customers & 11,000\\
+Products & 480\\
+Suppliers & 56\\
+Sales orders & 365,447\\
+Sales lines & 736,683\\
+Inventory movements & 994,808\\
+Purchase orders / purchase lines & 122,422 / 122,422\\
+Inventory lots & 134,379\\
+Promotions / calendar dates & 1,216 / 1,096\\
+Simulated unmet-demand records & 32,852\\
+RQ4 explanation cases & 1,800\\
+\bottomrule
+\end{tabular}
+\caption{Summary of the current Drive dataset manifest.}
+\label{tab:dataset_profile}
+\end{table}
+
+\section{Data Preparation and Leakage Controls}
+All model features are defined at or before the prediction cut-off. Future outcome fields are retained only as labels or evaluation targets. Customer identifiers are used for grouping and bootstrap resampling, not as model predictors. Branch and SKU identifiers are retained as categorical context in the forecasting model. Raw customer-level predictions are kept out of the public repository.
+
+\subsection{RQ1: Exposure-Aware Branch--SKU Forecasting}
+The RQ1 unit is a shop--SKU series. The derived daily sales file contains 699,220 observed shop--SKU--date rows and 1,580,361 observed units. Inventory movements are used to reconstruct daily stock exposure. A target window is eligible only when the item is verified in stock throughout that horizon. Missing sales rows are not automatically converted to zero demand. The panel contains 13,272 shop--SKU series across 1,096 dates.
+
+Features include lagged sales at 1, 7, 14, 28 and 56 days; rolling sales and exposure summaries; days since last sale; shop and SKU identifiers; category and district; base price; pack and case-pack sizes; promotion exposure; and calendar features. The principal model is a LightGBM Tweedie regressor \citep{ke2017lightgbm}. Comparisons include a history-only model, a context-aware model, 7-day ablations without price/promotion and without calendar features, and a seasonal-naive forecast.
+
+The primary development run uses 45 trees and an 80,000-row training sample per horizon. Training origins are monthly from July 2023 to April 2025; May and June 2025 are reserved for calibration; July, August and September 2025 are out-of-time test origins. A separate 250-tree full-training challenger is reported as exploratory. The target is observed sales during verified in-stock windows, not latent demand during stock-outs.
+
+The primary measures are:
+\[
+\mathrm{WAPE}=\frac{\sum_i |y_i-\hat y_i|}{\sum_i y_i},
+\qquad
+\mathrm{MASE}=\frac{1}{N}\sum_i
+\frac{|y_i-\hat y_i|}{s_i},
+\]
+where \(s_i\) is the in-sample one-step naive scale for series \(i\). WAPE weights high-volume observations more heavily, while MASE gives each eligible series a scaled contribution \citep{hyndman2006accuracy}. Prediction intervals use an empirical 80th percentile of absolute calibration residuals; their observed test coverage and mean width are reported.
+
+\subsection{RQ2: Future Customer Inactivity Prediction}
+The RQ2 dataset contains 72,146 customer snapshots for 10,613 pseudonymous customers. The target is the 90-day inactivity label. The feature set uses transaction history and snapshot context available at the cut-off. Customer IDs are excluded from predictors.
+
+The temporal design uses snapshots dated 31 December 2023, 31 March 2024 and 30 June 2024 for training; 30 September 2024 for validation and probability calibration; and 31 March 2025 and 30 June 2025 for testing. The training outcomes end by 28 September 2024, the validation outcomes end by 29 December 2024, and the test begins on 31 March 2025. The test is a temporal evaluation of repeat customer identities, not a cold-start evaluation on unseen customers.
+
+A LightGBM binary classifier is compared with a base-rate predictor and a recency rule. Platt scaling is fitted on the validation period. Measures include PR-AUC, Lift@10\%, Brier score, expected calibration error (ECE) and ROC-AUC. PR-AUC is emphasised because the outcome is imbalanced \citep{saito2015pr}; Brier score and ECE assess probability quality \citep{brier1950verification,niculescu2005calibration}.
+
+\[
+\mathrm{Brier}=\frac{1}{N}\sum_{i=1}^{N}(p_i-y_i)^2,
+\qquad
+\mathrm{Lift@10}=\frac{\mathrm{Precision@Top10\%}}{\mathrm{Prevalence}}.
+\]
+
+\subsection{RQ3: Replenishment Policy Evidence}
+The RQ3 evidence has two parts. First, the historical purchase ledger contains 122,422 purchase orders and 122,422 purchase lines. Actual delivery dates allow lead-time analysis. Second, the supplied offline comparison contains 2,500 shop--SKU cases at a single cut-off date, 31 July 2025. Its future demand column is explicitly labelled as synthetic oracle demand.
+
+The scenario file compares a supplied baseline with a trend policy under the same generated demand path. It provides order quantities, stock-out units, mean stock and total scenario cost. The cost difference is arithmetically consistent with the supplied cost columns, but the file does not provide separate holding-cost, stock-out-penalty or order-cost components. It also does not identify the baseline as a participating owner's documented policy. Therefore, scenario results are reported as scenario results. Historical purchase orders are reported separately as observed purchasing behaviour; they are not converted into a written policy rule.
+
+A full RQ3 owner-policy evaluation requires a documented current policy, matched demand paths, stock records, lead times, purchasing constraints and owner-validated cost assumptions. The current report does not fabricate these missing inputs.
+
+\subsection{RQ4: Explanation-Supported Decision Evaluation}
+The RQ4 file contains 1,800 generated cases. It includes an action, suggested order quantity, constraint reason, evidence-completeness flag, explanation text and a human-rating field. The action--quantity rule is audited: a REORDER action must have a positive suggested quantity, while NO_ACTION must have zero. The human-rating field contains YES for every row; it is not a measured rating scale. No participant identifiers, consent records, condition assignments, task responses, correctness scores, completion times, confidence scores or usability ratings are supplied.
+
+A task bank was prepared from 899 matched pairs, with two counterbalanced forms containing 1,798 tasks each and two reserve cases. The planned study compares explanation-supported and output-only screens. Participants must be consenting target users, and condition order must be counterbalanced. Primary outcomes are decision correctness and completion time; confidence and perceived usability are secondary outcomes. No human-study result is reported until the study is conducted.
+
+\section{Statistical Analysis}
+For RQ1, paired branch--SKU cluster bootstrap resampling estimates uncertainty in the 7-day WAPE difference between context and history-only models. For RQ2, customer-cluster bootstrap resampling accounts for repeated snapshots belonging to the same customer. For RQ3, shop-cluster bootstrap resampling is descriptive for the supplied scenario comparison. Bootstrap intervals do not repair missing source evidence or convert a scenario into a field trial.
+
+\section{Ethics and Reproducibility}
+The report uses pseudonymous customer records and does not publish customer identifiers or raw customer-level predictions. RQ4 recruitment requires informed consent and any necessary institutional approval. Experiment scripts, aggregate metrics, manifests and model configurations are recorded separately from the source transaction files. The repository contains no raw transaction export.
