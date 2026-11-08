@@ -41,7 +41,8 @@ def audit(root: Path, output: Path, onboarding: Path | None = None) -> dict:
     current_claim = str(manifest.get("dataset_nature", ""))
     historical_synthetic = "100% SYNTHETIC" in onboarding_text.upper() or "SYNTHETIC / SIMULATED" in onboarding_text.upper()
     current_claim_real = "real" in current_claim.lower()
-    provenance = "provenance_conflict" if current_claim_real and historical_synthetic else "observed_unverified"
+    current_claim_synthetic = "synthetic" in current_claim.lower() or "simulated" in current_claim.lower()
+    provenance = "provenance_conflict" if current_claim_real and historical_synthetic else ("synthetic" if current_claim_synthetic else "observed_unverified")
     sku = read_csv(root, "rq1_daily_sku_sales_observed", ["date"])
     shopcat = read_csv(root, "rq1_daily_shop_category", ["date"])
     orders = read_csv(root, "sales_orders", ["order_datetime"])
@@ -236,6 +237,10 @@ def audit(root: Path, output: Path, onboarding: Path | None = None) -> dict:
     synthetic_flag_yes = int(
         sku["synthetic_flag"].astype(str).str.upper().isin(["YES", "TRUE", "1"]).sum()
     ) if synthetic_flag_column else None
+    if synthetic_flag_yes and synthetic_flag_yes > 0 and current_claim_real:
+        provenance = "provenance_conflict"
+    elif synthetic_flag_yes and synthetic_flag_yes > 0:
+        provenance = "synthetic"
     add(rows, "current_sku_sheet_has_synthetic_flag", bool(synthetic_flag_column), "boolean", "current accessible sheet schema")
     if synthetic_flag_column:
         add(rows, "current_sku_synthetic_flag_yes", synthetic_flag_yes, "rows", "requires source-owner explanation")
@@ -249,7 +254,7 @@ def audit(root: Path, output: Path, onboarding: Path | None = None) -> dict:
         "current_sku_synthetic_flag_yes": synthetic_flag_yes,
         "manifest_sha256": sha256(manifest_path) if manifest_path.exists() else None,
         "source_files": {
-            name: {"rows": int(len(frame)), "columns": list(frame.columns)}
+            name: {"rows": int(len(frame)), "columns": list(frame.columns), "sha256": sha256(root / f"{name}.csv")}
             for name, frame in {
                 "sales_orders": orders, "sales_lines": lines,
                 "rq1_daily_sku_sales_observed": sku,
