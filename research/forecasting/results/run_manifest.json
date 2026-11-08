@@ -49,5 +49,11 @@
   "lightgbm": "4.6.0",
   "scikit_learn": "1.8.0",
   "final_holdout_evaluated": false,
-  "fourth_quarter_2025_used_for_selection": false
+  "fourth_quarter_2025_used_for_selection": false,
+  "dataset_manifest_claim": "100% real SME sales or real people (as declared in supplied manifest)",
+  "dataset_country": "Bangladesh",
+  "currency": "BDT",
+  "simulated_unmet_demand_rows": 32852,
+  "simulated_unmet_demand_used_as_observed_sales_target": false,
+  "raw_dataset_committed_to_repository": false
 }
