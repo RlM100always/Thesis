@@ -469,7 +469,7 @@ export async function merchantRouter(req,env,path,output,error){
      "COALESCE(SUM(CASE WHEN status!='cancelled' THEN total_bdt ELSE 0 END),0) AS order_value_bdt,"+
      "COALESCE(SUM(CASE WHEN status!='cancelled' AND payment_status='paid' THEN total_bdt ELSE 0 END),0) AS collected_bdt,"+
      "COALESCE(SUM(CASE WHEN status!='cancelled' AND payment_method='cod' AND payment_status='pending_cod' THEN total_bdt ELSE 0 END),0) AS pending_cod_bdt,"+
-     "COUNT(DISTINCT CASE WHEN status!='cancelled' THEN account_id END) AS customers,"+
+     "COUNT(DISTINCT CASE WHEN status!='cancelled' THEN COALESCE(account_id,customer_id) END) AS customers,"+
      "COALESCE(AVG(CASE WHEN status!='cancelled' THEN total_bdt END),0) AS average_order_bdt,"+
      "SUM(CASE WHEN status='cancelled' THEN 1 ELSE 0 END) AS cancelled_orders "+
      "FROM commerce_orders WHERE store_id=? AND date(placed_at,'+6 hours') BETWEEN ? AND ?"
@@ -503,8 +503,8 @@ export async function merchantRouter(req,env,path,output,error){
     ).bind(store.id).first(),
     env.DB.prepare(
      "SELECT COUNT(*) AS repeat_customers FROM ("+
-     "SELECT account_id FROM commerce_orders WHERE store_id=? AND account_id IS NOT NULL AND status!='cancelled' "+
-     "AND date(placed_at,'+6 hours') BETWEEN ? AND ? GROUP BY account_id HAVING COUNT(*)>1)"
+     "SELECT COALESCE(account_id,customer_id) AS customer_key FROM commerce_orders WHERE store_id=? AND COALESCE(account_id,customer_id) IS NOT NULL AND status!='cancelled' "+
+     "AND date(placed_at,'+6 hours') BETWEEN ? AND ? GROUP BY COALESCE(account_id,customer_id) HAVING COUNT(*)>1)"
     ).bind(store.id,from,to).first()
    ]);
    return output(req,{period:{from,to,timezone:"Asia/Dhaka"},summary:{...(summary||{}),repeat_customers:Number(repeatCustomers?.repeat_customers||0)},daily:daily.results||[],top_products:topProducts.results||[],categories:categories.results||[],inventory:inventory||{}});
