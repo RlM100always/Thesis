@@ -1,0 +1,53 @@
+{
+  "experiment": "seven_day_historical_price_activity_ablation_v1",
+  "horizon_days": 7,
+  "origins": [
+    "2025-01-01",
+    "2025-02-01",
+    "2025-03-01",
+    "2025-04-01",
+    "2025-05-01",
+    "2025-06-01",
+    "2025-07-01",
+    "2025-08-01",
+    "2025-09-01"
+  ],
+  "series_per_origin": 512,
+  "series_origin_forecasts_per_model": 4608,
+  "training_stride_days": 28,
+  "minimum_history_days": 56,
+  "models": [
+    "LightGBM Tweedie baseline",
+    "LightGBM Tweedie + historical price/activity"
+  ],
+  "feature_policy": "All transaction covariates use records strictly before the forecast origin; no future price, promotion, inventory, or customer outcomes.",
+  "transaction_features": [
+    "last observed unit price",
+    "7/28/56-day mean unit price and price CV",
+    "7/28/56-day orders and customer-days",
+    "7/28/56-day revenue and discount",
+    "7/28/56-day discount rate and units per order",
+    "price change versus 28-day mean",
+    "days since price observation"
+  ],
+  "input_sha256": {
+    "rq1_daily_shop_category.csv": "ab741f4d72c49706ba2abc8f096659324d862f758c4f171b84dd55a3ab6cbcbd",
+    "sales_lines.csv": "afd694f3b731e4eae8558df572a7e49556e6e54310cb8ed2d259901d6e33f714",
+    "sales_orders.csv": "09b1c0833bbc191d82889f9e39664625688bd65e63e0b4e0eb92c96861a4f48f",
+    "products.csv": "ab96545725e7ff96120da8f151b79419ec8bdf255a333edd97e097346a0efe4e"
+  },
+  "provenance_status": "provenance_conflict",
+  "final_holdout_evaluated": false,
+  "python": "3.13.5",
+  "pandas": "2.2.3",
+  "numpy": "2.3.5",
+  "lightgbm": "4.6.0",
+  "results_summary": {
+    "baseline_pooled_WAPE": 0.33731303444001737,
+    "price_activity_pooled_WAPE": 0.3383575981431795,
+    "absolute_WAPE_difference": 0.00104456370316213,
+    "origins_where_price_activity_wins": 5,
+    "origins_where_baseline_wins": 4,
+    "decision": "Do not adopt transaction-derived features in the current model; they did not improve pooled WAPE or mean MAE across the nine development origins."
+  }
+}
