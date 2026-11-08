@@ -424,11 +424,11 @@ function ProductPreview() {
   const missionItems = site.getJson("preview.mission_items", PREVIEW_MISSION_DEFAULT);
   return (
     <div className="public-productshot" aria-label="B-SMART dashboard preview">
-      <div className="productshot-bar"><span /><span /><span /><b>{site.get("preview.branch_name","B-SMART · মিরপুর শাখা")}</b><em>ডেমো ডেটা</em></div>
+      <div className="productshot-bar"><span /><span /><span /><b>{site.get("preview.branch_name","B-SMART · মিরপুর শাখা")}</b><em>ইন্টারফেসের নমুনা</em></div>
       <div className="productshot-layout">
         <aside><strong>আজকের কাজ</strong>{["ড্যাশবোর্ড", "বিক্রি", "স্টক", "ক্রয়", "হিসাব"].map((x, i) => <span className={i === 0 ? "on" : ""} key={x}>{x}</span>)}</aside>
         <div className="productshot-main">
-          <div className="productshot-welcome"><div><small>{site.get("preview.date_label","নমুনা দিন · ডেমো তথ্য")}</small><strong>{site.get("preview.greeting","নমুনা ব্যবসার ড্যাশবোর্ড")}</strong><span>{site.get("preview.task_subtitle","৩টি কাজ এখন আপনার মনোযোগ চায়")}</span></div><i><Icon name="zap" size={18} /> Today Mission</i></div>
+          <div className="productshot-welcome"><div><small>{site.get("preview.date_label","ইন্টারফেসের নমুনা")}</small><strong>{site.get("preview.greeting","ব্যবসার ড্যাশবোর্ডের নমুনা")}</strong><span>{site.get("preview.task_subtitle","৩টি কাজ এখন আপনার মনোযোগ চায়")}</span></div><i><Icon name="zap" size={18} /> Today Mission</i></div>
           <div className="productshot-stats">{stats.map((s) => <div key={s.label}><span>{s.label}</span><b>{s.value}</b><small>{s.note}</small></div>)}</div>
           <div className="productshot-bottom"><div className="fake-chart"><span>বিক্রির ধারা</span><svg viewBox="0 0 420 100" role="img" aria-label="ঊর্ধ্বমুখী বিক্রির রেখা"><path d="M4 86 C45 80 52 61 88 68 S140 87 170 54 S230 67 264 38 S330 52 416 12" /></svg></div><div className="mission-list"><span>এখন করুন</span>{missionItems.map((label, i) => <b key={label}><i>{i + 1}</i> {label}</b>)}</div></div>
         </div>
