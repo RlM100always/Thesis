@@ -31,6 +31,6 @@ export function canTransitionOrderStatus(current, next) {
 export function defaultOrderStatusNote(status, isDemo = true) {
   const note = STATUS_NOTES[status] || "অর্ডারের অবস্থা হালনাগাদ হয়েছে।";
   return isDemo
-    ? `পরীক্ষামূলক অর্ডার: ${note} বাস্তব ডেলিভারি বা পেমেন্ট নেই।`
+    ? `আর্কাইভ করা অর্ডার: ${note} বাস্তব ডেলিভারি বা পেমেন্ট নেই।`
     : note;
 }
