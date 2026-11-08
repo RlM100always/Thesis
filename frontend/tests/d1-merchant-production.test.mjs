@@ -128,3 +128,12 @@ test("merchant UI uses password auth and exposes POS for approved stores", () =>
   assert.match(ui,/\{view==="pos"&&<div className="dm-stack">/);
   assert.doesNotMatch(ui,/filter\(\(\[k\]\)=>k!=="pos"\|\|store\.is_demo\)/);
 });
+
+
+test("merchant assistant is authenticated, tenant-scoped and answers only from D1 queries", async () => {
+  assert.match(source,/path==="\/api\/merchant\/assistant"/);
+  assert.match(source,/WHERE store_id=\? AND is_listed=1 AND stock_qty<=5/);
+  assert.match(source,/source:"live_d1_store_data"/);
+  assert.match(ui,/Smart Business Assistant/);
+  assert.match(ui,/api\/merchant\/assistant/);
+});
