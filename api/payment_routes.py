@@ -456,11 +456,26 @@ async def sslcz_initiate(
     request: Request,
     db: Session = Depends(get_db),
     order_id: str | None = Form(default=None),
+    customer_email: str = Form(default=""),
+    customer_city: str = Form(default=""),
 ):
     if not order_id:
-        try: body = await request.json(); order_id = body.get("order_id")
-        except Exception: pass
+        try:
+            body = await request.json()
+            order_id = body.get("order_id")
+            customer_email = body.get("customer_email") or customer_email
+            customer_city = body.get("customer_city") or customer_city
+        except Exception:
+            pass
     order = _get_order(order_id or "", org_id, db)
+    customer_email = customer_email.strip().lower()
+    customer_city = customer_city.strip()[:80]
+    if not re.fullmatch(r"[^\\s@]+@[^\\s@]+\\.[^\\s@]+", customer_email):
+        raise HTTPException(422, "A valid customer email is required for SSLCommerz checkout.")
+    if not customer_city or not order.shipping_name or not order.shipping_phone or not order.shipping_address:
+        raise HTTPException(422, "Complete customer name, phone, address and division are required for SSLCommerz checkout.")
+    if not order.access_token:
+        raise HTTPException(409, "This order is not eligible for public online payment.")
 
     store = db.scalar(select(Store).where(Store.organization_id == org_id))
     if not store:
