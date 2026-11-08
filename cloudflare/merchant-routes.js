@@ -347,6 +347,13 @@ export async function merchantRouter(req,env,path,output,error){
   }
   const owner=await viewer(req,env);
   if(!owner)return bad(req,error,401,"Merchant login required");
+  if(owner.role==="staff"){
+   const permission=merchantPermissionFor(method,path);
+   if(!permission||!hasMerchantPermission(owner.staff_role,permission))
+    return bad(req,error,403,"Your store role does not allow this action.");
+  }else if(owner.role!=="owner"){
+   return bad(req,error,403,"Merchant account role is not authorised.");
+  }
   if(method==="POST"&&path==="/api/merchant/logout"){
    const token=req.headers.get("Authorization").slice(7);
    await env.DB.prepare("DELETE FROM merchant_sessions WHERE token_hash=?").bind(await sha256(token)).run();
@@ -380,6 +387,155 @@ export async function merchantRouter(req,env,path,output,error){
    return output(req,{deleted:true});
   }
   if(method==="GET"&&path==="/api/merchant/dashboard")return output(req,await dashboard(env,owner));
+
+  if(method==="GET"&&path==="/api/merchant/staff"){
+   if(owner.role!=="owner")return bad(req,error,403,"Only the store owner can manage staff.");
+   const store=await storeOnly(env,owner);
+   const [staff,invites]=await Promise.all([
+    env.DB.prepare(
+     "SELECT a.id,a.email,a.display_name,x.role,x.is_active,a.is_active AS account_active,x.created_at,x.last_login_at " +
+     "FROM merchant_staff_store_access x JOIN merchant_accounts a ON a.id=x.account_id " +
+     "WHERE x.store_id=? AND x.owner_id=? ORDER BY x.created_at DESC"
+    ).bind(store.id,owner.id).all(),
+    env.DB.prepare(
+     "SELECT id,email,display_name,role,expires_at,created_at FROM merchant_staff_invites " +
+     "WHERE store_id=? AND owner_id=? AND accepted_at IS NULL AND revoked_at IS NULL ORDER BY created_at DESC"
+    ).bind(store.id,owner.id).all()
+   ]);
+   return output(req,{staff:staff.results||[],invites:invites.results||[],roles:["manager","sales","inventory","support","analyst"]});
+  }
+  if(method==="POST"&&path==="/api/merchant/staff"){
+   if(owner.role!=="owner")return bad(req,error,403,"Only the store owner can invite staff.");
+   const store=await storeOnly(env,owner),b=await json(req,error);
+   const email=short(b.email,180).toLowerCase(),displayName=short(b.display_name,120),role=short(b.role,24);
+   if(!validEmail(email)||displayName.length<2||!["manager","sales","inventory","support","analyst"].includes(role))
+    return bad(req,error,422,"Provide a valid staff name, email and role.");
+   if(await env.DB.prepare("SELECT id FROM merchant_accounts WHERE email=?").bind(email).first())
+    return bad(req,error,409,"This email already has a merchant account. Each staff login must use a unique email.");
+   const token=newSession(),tokenHash=await sha256(token),id=crypto.randomUUID();
+   const expires=new Date(Date.now()+72*60*60*1000).toISOString();
+   try{
+    await env.DB.batch([
+     env.DB.prepare("UPDATE merchant_staff_invites SET revoked_at=CURRENT_TIMESTAMP WHERE store_id=? AND email=? AND accepted_at IS NULL AND revoked_at IS NULL").bind(store.id,email),
+     env.DB.prepare("INSERT INTO merchant_staff_invites(id,owner_id,store_id,email,display_name,role,token_hash,expires_at) VALUES(?,?,?,?,?,?,?,?)").bind(id,owner.id,store.id,email,displayName,role,tokenHash,expires)
+    ]);
+   }catch(e){return bad(req,error,errorCode(e),"Staff invitation could not be created.");}
+   await merchantAudit(env,store.id,owner.id,"staff_invite_created","staff_invite",id,{email,display_name:displayName,role,expires_at:expires});
+   return output(req,{created:true,id,email,display_name:displayName,role,expires_at:expires,invite_url:ownerPortalLink(env,"staff_invite",token),share_once:true},201);
+  }
+  const staffMatch=/^\/api\/merchant\/staff\/([a-zA-Z0-9-]{2,90})$/.exec(path);
+  if(method==="PATCH"&&staffMatch){
+   if(owner.role!=="owner")return bad(req,error,403,"Only the store owner can change staff access.");
+   const store=await storeOnly(env,owner),b=await json(req,error),id=staffMatch[1];
+   const current=await env.DB.prepare(
+    "SELECT x.account_id,x.role,x.is_active,a.email FROM merchant_staff_store_access x JOIN merchant_accounts a ON a.id=x.account_id " +
+    "WHERE x.account_id=? AND x.store_id=? AND x.owner_id=?"
+   ).bind(id,store.id,owner.id).first();
+   if(!current)return bad(req,error,404,"Staff account not found for this store.");
+   const role=b.role===undefined?current.role:short(b.role,24);
+   const active=b.is_active===undefined?!!current.is_active:b.is_active;
+   if(!["manager","sales","inventory","support","analyst"].includes(role)||typeof active!=="boolean")
+    return bad(req,error,422,"Invalid staff role or status.");
+   await env.DB.batch([
+    env.DB.prepare("UPDATE merchant_staff_store_access SET role=?,is_active=?,updated_at=CURRENT_TIMESTAMP WHERE account_id=? AND store_id=? AND owner_id=?").bind(role,active?1:0,id,store.id,owner.id),
+    env.DB.prepare("UPDATE merchant_accounts SET is_active=? WHERE id=? AND role='staff'").bind(active?1:0,id),
+    ...(!active?[env.DB.prepare("DELETE FROM merchant_sessions WHERE account_id=?").bind(id)]:[])
+   ]);
+   await merchantAudit(env,store.id,owner.id,active?"staff_access_updated":"staff_access_suspended","staff_account",id,{email:current.email,previous_role:current.role,role,is_active:active});
+   return output(req,{updated:true,role,is_active:active,sessions_revoked:!active});
+  }
+  const staffInviteMatch=/^\/api\/merchant\/staff-invites\/([a-zA-Z0-9-]{2,90})$/.exec(path);
+  if(method==="PATCH"&&staffInviteMatch){
+   if(owner.role!=="owner")return bad(req,error,403,"Only the store owner can revoke staff invitations.");
+   const store=await storeOnly(env,owner),id=staffInviteMatch[1];
+   const result=await env.DB.prepare(
+    "UPDATE merchant_staff_invites SET revoked_at=CURRENT_TIMESTAMP WHERE id=? AND store_id=? AND owner_id=? AND accepted_at IS NULL AND revoked_at IS NULL"
+   ).bind(id,store.id,owner.id).run();
+   if(!result.meta?.changes)return bad(req,error,404,"Pending staff invitation not found.");
+   await merchantAudit(env,store.id,owner.id,"staff_invite_revoked","staff_invite",id,{});
+   return output(req,{revoked:true});
+  }
+  if(method==="GET"&&path==="/api/merchant/analytics"){
+   const store=await storeOnly(env,owner),url=new URL(req.url);
+   const to=url.searchParams.get("to")||dhakaDate();
+   const from=url.searchParams.get("from")||shiftIsoDate(to,-29);
+   if(!validIsoDate(from)||!validIsoDate(to)||from>to)return bad(req,error,422,"Choose a valid analytics date range.");
+   const days=(Date.parse(to+"T00:00:00Z")-Date.parse(from+"T00:00:00Z"))/86400000;
+   if(days>365)return bad(req,error,422,"Analytics range cannot exceed 366 days.");
+   const [summary,daily,topProducts,categories,inventory,repeatCustomers]=await Promise.all([
+    env.DB.prepare(
+     "SELECT COUNT(*) AS orders_total,"+
+     "COALESCE(SUM(CASE WHEN status!='cancelled' THEN total_bdt ELSE 0 END),0) AS order_value_bdt,"+
+     "COALESCE(SUM(CASE WHEN status!='cancelled' AND payment_status='paid' THEN total_bdt ELSE 0 END),0) AS collected_bdt,"+
+     "COALESCE(SUM(CASE WHEN status!='cancelled' AND payment_method='cod' AND payment_status='pending_cod' THEN total_bdt ELSE 0 END),0) AS pending_cod_bdt,"+
+     "COUNT(DISTINCT CASE WHEN status!='cancelled' THEN account_id END) AS customers,"+
+     "COALESCE(AVG(CASE WHEN status!='cancelled' THEN total_bdt END),0) AS average_order_bdt,"+
+     "SUM(CASE WHEN status='cancelled' THEN 1 ELSE 0 END) AS cancelled_orders "+
+     "FROM commerce_orders WHERE store_id=? AND date(placed_at,'+6 hours') BETWEEN ? AND ?"
+    ).bind(store.id,from,to).first(),
+    env.DB.prepare(
+     "SELECT date(placed_at,'+6 hours') AS day,COUNT(*) AS orders,"+
+     "COALESCE(SUM(total_bdt),0) AS order_value_bdt,"+
+     "COALESCE(SUM(CASE WHEN payment_status='paid' THEN total_bdt ELSE 0 END),0) AS collected_bdt "+
+     "FROM commerce_orders WHERE store_id=? AND status!='cancelled' AND date(placed_at,'+6 hours') BETWEEN ? AND ? "+
+     "GROUP BY date(placed_at,'+6 hours') ORDER BY day"
+    ).bind(store.id,from,to).all(),
+    env.DB.prepare(
+     "SELECT l.product_id,l.product_name AS name,SUM(l.quantity) AS units_sold,SUM(l.line_total_bdt) AS sales_bdt "+
+     "FROM commerce_order_lines l JOIN commerce_orders o ON o.id=l.order_id "+
+     "WHERE o.store_id=? AND o.status!='cancelled' AND date(o.placed_at,'+6 hours') BETWEEN ? AND ? "+
+     "GROUP BY l.product_id,l.product_name ORDER BY units_sold DESC,sales_bdt DESC LIMIT 10"
+    ).bind(store.id,from,to).all(),
+    env.DB.prepare(
+     "SELECT COALESCE(p.category,'অন্যান্য') AS category,SUM(l.quantity) AS units_sold,SUM(l.line_total_bdt) AS sales_bdt "+
+     "FROM commerce_order_lines l JOIN commerce_orders o ON o.id=l.order_id "+
+     "LEFT JOIN commerce_products p ON p.id=l.product_id AND p.store_id=o.store_id "+
+     "WHERE o.store_id=? AND o.status!='cancelled' AND date(o.placed_at,'+6 hours') BETWEEN ? AND ? "+
+     "GROUP BY COALESCE(p.category,'অন্যান্য') ORDER BY sales_bdt DESC LIMIT 12"
+    ).bind(store.id,from,to).all(),
+    env.DB.prepare(
+     "SELECT COUNT(*) AS listed_products,COALESCE(SUM(stock_qty),0) AS stock_units,"+
+     "SUM(CASE WHEN stock_qty<=reorder_level THEN 1 ELSE 0 END) AS low_stock_count,"+
+     "SUM(CASE WHEN stock_qty=0 THEN 1 ELSE 0 END) AS out_of_stock_count,"+
+     "COALESCE(SUM(stock_qty*price_bdt),0) AS stock_retail_value_bdt "+
+     "FROM commerce_products WHERE store_id=? AND is_listed=1"
+    ).bind(store.id).first(),
+    env.DB.prepare(
+     "SELECT COUNT(*) AS repeat_customers FROM ("+
+     "SELECT account_id FROM commerce_orders WHERE store_id=? AND account_id IS NOT NULL AND status!='cancelled' "+
+     "AND date(placed_at,'+6 hours') BETWEEN ? AND ? GROUP BY account_id HAVING COUNT(*)>1)"
+    ).bind(store.id,from,to).first()
+   ]);
+   return output(req,{period:{from,to,timezone:"Asia/Dhaka"},summary:{...(summary||{}),repeat_customers:Number(repeatCustomers?.repeat_customers||0)},daily:daily.results||[],top_products:topProducts.results||[],categories:categories.results||[],inventory:inventory||{}});
+  }
+  if(method==="GET"&&path==="/api/merchant/inventory-alerts"){
+   const store=await storeOnly(env,owner);
+   const [alerts,summary,movements,adjustments]=await Promise.all([
+    env.DB.prepare(
+     "SELECT id,sku,name,category,stock_qty,reorder_level,unit_label,price_bdt,"+
+     "CASE WHEN stock_qty=0 THEN 'out_of_stock' ELSE 'low_stock' END AS alert_type "+
+     "FROM commerce_products WHERE store_id=? AND is_listed=1 AND stock_qty<=reorder_level "+
+     "ORDER BY CASE WHEN stock_qty=0 THEN 0 ELSE 1 END,stock_qty ASC,name LIMIT 100"
+    ).bind(store.id).all(),
+    env.DB.prepare(
+     "SELECT COUNT(*) AS listed_products,COALESCE(SUM(stock_qty),0) AS stock_units,"+
+     "SUM(CASE WHEN stock_qty<=reorder_level THEN 1 ELSE 0 END) AS low_stock_count,"+
+     "SUM(CASE WHEN stock_qty=0 THEN 1 ELSE 0 END) AS out_of_stock_count "+
+     "FROM commerce_products WHERE store_id=? AND is_listed=1"
+    ).bind(store.id).first(),
+    env.DB.prepare(
+     "SELECT m.id,m.product_id,p.name AS product_name,m.quantity_change,m.reason,m.created_at "+
+     "FROM commerce_inventory_movements m LEFT JOIN commerce_products p ON p.id=m.product_id "+
+     "WHERE m.store_id=? ORDER BY m.created_at DESC LIMIT 50"
+    ).bind(store.id).all(),
+    env.DB.prepare(
+     "SELECT a.id,a.product_id,p.name AS product_name,a.old_quantity,a.new_quantity,a.delta,a.reason,a.created_at "+
+     "FROM commerce_stock_adjustments a LEFT JOIN commerce_products p ON p.id=a.product_id "+
+     "WHERE a.store_id=? ORDER BY a.created_at DESC LIMIT 50"
+    ).bind(store.id).all()
+   ]);
+   return output(req,{summary:summary||{},alerts:alerts.results||[],movements:movements.results||[],adjustments:adjustments.results||[]});
+  }
    if(method==="GET"&&path==="/api/merchant/coupons"){
     const store=await storeOnly(env,owner);
     const {results}=await env.DB.prepare("SELECT c.*,(SELECT COUNT(*) FROM commerce_coupon_redemptions r WHERE r.coupon_id=c.id) AS usage_count FROM commerce_coupons c WHERE c.store_id=? ORDER BY c.created_at DESC").bind(store.id).all();
