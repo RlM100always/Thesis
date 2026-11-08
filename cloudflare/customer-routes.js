@@ -1,5 +1,6 @@
 import { defaultOrderStatusNote } from "./order-workflow.js";
 import { isPublicStore } from "./store-visibility.js";
+import { isLoginLocked, nextLoginFailure } from "./login-lockout.mjs";
 
 /* Global customer identity and account-owned shopping state for the D1 storefronts.
  * D1 demo accounts are shared across D1 stores, but remain separate from the
@@ -95,6 +96,27 @@ async function sendCustomerPasswordReset(env, email, storeSlug, token) {
     console.error("customer password reset email delivery failed", e?.message || e);
     return false;
   }
+}
+async function allowCustomerAuth(env, request, action, identifier, ipLimit = 20, identifierLimit = 10) {
+  const ip = short(request.headers.get("CF-Connecting-IP") || "unknown", 80);
+  const windowId = Math.floor(Date.now() / 60000);
+  const checks = [
+    { scope: "ip", value: ip, limit: ipLimit },
+    { scope: "identifier", value: String(identifier || "").toLowerCase(), limit: identifierLimit },
+  ];
+  let allowed = true;
+  for (const item of checks) {
+    const key = await sha256("customer-auth:" + action + ":" + item.scope + ":" + item.value);
+    await env.DB.prepare(
+      "INSERT INTO commerce_customer_auth_limits(identifier_hash,window_id,request_count) VALUES(?,?,1) " +
+      "ON CONFLICT(identifier_hash) DO UPDATE SET " +
+      "request_count=CASE WHEN commerce_customer_auth_limits.window_id=excluded.window_id THEN commerce_customer_auth_limits.request_count+1 ELSE 1 END," +
+      "window_id=excluded.window_id,updated_at=CURRENT_TIMESTAMP"
+    ).bind(key, windowId).run();
+    const row = await env.DB.prepare("SELECT request_count FROM commerce_customer_auth_limits WHERE identifier_hash=?").bind(key).first();
+    if (Number(row?.request_count || 0) > item.limit) allowed = false;
+  }
+  return allowed;
 }
 async function allowCustomerReset(env, request, email) {
   const ip = short(request.headers.get("CF-Connecting-IP") || "unknown", 80);
@@ -241,6 +263,8 @@ export async function customerRouter(request, env, path, output, error) {
           (phone && !validPhone(phone)) || password.length < 8 || password.length > 128) {
         return error(request, 422, "নাম, সঠিক ইমেইল বা ফোন এবং কমপক্ষে ৮ অক্ষরের পাসওয়ার্ড দিন");
       }
+      if (!await allowCustomerAuth(env, request, "register", (email || "") + "|" + (phone || ""), 10, 3))
+        return error(request, 429, "অনেকবার অ্যাকাউন্ট তৈরির চেষ্টা হয়েছে। পরে আবার চেষ্টা করুন");
       const daily = await env.DB.prepare("SELECT COUNT(*) AS n FROM commerce_customer_accounts WHERE created_at >= datetime('now','start of day')").first();
       if (Number(daily?.n || 0) >= 50) return error(request, 429, "আজকের নতুন অ্যাকাউন্ট তৈরির সীমা শেষ হয়েছে");
       const salt = newSecret(16), hash = await passwordDigest(password, salt), id = crypto.randomUUID();
@@ -261,19 +285,20 @@ export async function customerRouter(request, env, path, output, error) {
       const key = identifier.includes("@") ? identifier.toLowerCase() : identifier.replace(/\s+/g, " ");
       const password = String(body.password || "");
       if (!key || password.length > 128) return error(request, 401, "ইমেইল/ফোন বা পাসওয়ার্ড সঠিক নয়");
+      if (!await allowCustomerAuth(env, request, "login", key, 30, 10))
+        return error(request, 429, "অনেকবার লগইনের চেষ্টা হয়েছে। পরে আবার চেষ্টা করুন");
       const now = new Date().toISOString();
       const lock = await env.DB.prepare("SELECT failures,lock_until FROM commerce_customer_login_attempts WHERE identifier=?").bind(key).first();
-      if (lock?.lock_until && lock.lock_until > now) return error(request, 429, "অনেকবার চেষ্টা করা হয়েছে। ১৫ মিনিট পরে আবার চেষ্টা করুন");
+      if (isLoginLocked(lock, Date.now())) return error(request, 429, "অনেকবার চেষ্টা করা হয়েছে। ১৫ মিনিট পরে আবার চেষ্টা করুন");
       const account = await env.DB.prepare("SELECT * FROM commerce_customer_accounts WHERE lower(email)=? OR phone=? LIMIT 1")
         .bind(key, key).first();
       const salt = account?.password_salt || "bsmart-customer-invalid-account-salt";
       const actual = await passwordDigest(password, salt);
       const valid = !!account && constantTimeEqual(actual, account.password_hash);
       if (!valid) {
-        const failures = Number(lock?.failures || 0) + 1;
-        const lockUntil = failures >= 6 ? new Date(Date.now() + 15*60*1000).toISOString() : null;
+        const attempt = nextLoginFailure(lock, Date.now());
         await env.DB.prepare("INSERT INTO commerce_customer_login_attempts(identifier,failures,lock_until,updated_at) VALUES(?,?,?,CURRENT_TIMESTAMP) ON CONFLICT(identifier) DO UPDATE SET failures=excluded.failures,lock_until=excluded.lock_until,updated_at=CURRENT_TIMESTAMP")
-          .bind(key, failures, lockUntil).run();
+          .bind(key, attempt.failures, attempt.lock_until).run();
         return error(request, 401, "ইমেইল/ফোন বা পাসওয়ার্ড সঠিক নয়");
       }
       await env.DB.prepare("DELETE FROM commerce_customer_login_attempts WHERE identifier=?").bind(key).run();
