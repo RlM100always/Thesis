@@ -156,6 +156,22 @@ async function dashboard(env,owner){
  return {account,store:stripStore(store),products:products.results||[],orders:orders.results||[],metrics,stock_adjustments:adjustments.results||[],cashbook:cashbook.results||[]};
 }
 const errorCode=e=>/UNIQUE constraint failed/.test(e.message||"")?409:500;
+async function merchantAudit(env,storeId,actorId,action,targetType,targetId,details={}) {
+ await env.DB.prepare(
+  "INSERT INTO commerce_merchant_audit(id,store_id,actor_account_id,action,target_type,target_id,details) VALUES(?,?,?,?,?,?,?)"
+ ).bind(crypto.randomUUID(),storeId,actorId||null,action,targetType,targetId||null,JSON.stringify(details)).run();
+}
+function storeSlug(name) {
+ const base=String(name||"").normalize("NFKD").replace(/[\\u0300-\\u036f]/g,"").toLowerCase()
+  .replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"").slice(0,42)||"store";
+ return base+"-"+randomHex(3);
+}
+async function createMerchantSession(env,accountId) {
+ const token=newSession(),tokenHash=await sha256(token),expires=new Date(Date.now()+12*60*60*1000).toISOString();
+ await env.DB.prepare("INSERT INTO merchant_sessions(token_hash,account_id,expires_at) VALUES(?,?,?)").bind(tokenHash,accountId,expires).run();
+ return {token,expires_at:expires};
+}
+
 export async function merchantRouter(req,env,path,output,error){
  if(!path.startsWith("/api/merchant/"))return null;
  const method=req.method;
@@ -163,6 +179,62 @@ export async function merchantRouter(req,env,path,output,error){
   if(method==="GET"&&path==="/api/merchant/health"){
    const secret=newSession(),digest=await sha256(secret);
    return output(req,{status:"ok",db:"D1",password_auth_ready:true,password_hash:"PBKDF2-HMAC-SHA-256",password_iterations:100000,legacy_access_key_support:true,email_verification_configured:authMailConfigured(env),password_reset_configured:authMailConfigured(env),health_digest_ok:digest.length===64});
+  }
+
+  if(method==="POST"&&path==="/api/merchant/accept-owner-invite"){
+   const b=await json(req,error),token=String(b.token||"").trim().toLowerCase(),password=String(b.password||"");
+   const displayName=short(b.display_name,120);
+   if(!/^[a-f0-9]{64}$/.test(token))return bad(req,error,400,"Invalid or expired owner invitation");
+   if(password.length<12||password.length>128)return bad(req,error,422,"Password must contain 12-128 characters");
+   if(displayName.length<2)return bad(req,error,422,"Owner name must contain at least 2 characters");
+   const now=new Date().toISOString(),tokenHash=await sha256(token);
+   const invite=await env.DB.prepare(
+    "SELECT * FROM merchant_owner_invites WHERE token_hash=? AND expires_at>? AND accepted_at IS NULL AND revoked_at IS NULL AND identity_confirmed=1 LIMIT 1"
+   ).bind(tokenHash,now).first();
+   if(!invite)return bad(req,error,400,"Invalid or expired owner invitation");
+   if(await env.DB.prepare("SELECT id FROM merchant_accounts WHERE email=?").bind(invite.email).first())
+    return bad(req,error,409,"An account already exists for this owner email");
+   const accountId=crypto.randomUUID(),storeId="merchant-"+crypto.randomUUID();
+   const slug=storeSlug(invite.store_name),salt=randomHex(16),hash=await passwordDigest(password,salt);
+   const sessionToken=newSession(),sessionHash=await sha256(sessionToken),sessionExpires=new Date(Date.now()+12*60*60*1000).toISOString();
+   try{
+    await env.DB.batch([
+     env.DB.prepare("UPDATE merchant_owner_invites SET accepted_at=CURRENT_TIMESTAMP WHERE id=? AND accepted_at IS NULL AND revoked_at IS NULL AND expires_at>?").bind(invite.id,now),
+     env.DB.prepare("INSERT INTO merchant_accounts(id,email,display_name,password_hash,password_salt,access_key_digest,email_verified_at,email_verification_method,is_active,role) VALUES(?,?,?,?,?,NULL,CURRENT_TIMESTAMP,'platform_admin_invite',1,'owner')").bind(accountId,invite.email,displayName,hash,salt),
+     env.DB.prepare("INSERT INTO commerce_stores(id,slug,name,tagline,category,area,theme,color,is_demo,is_active,owner_id,delivery_note) VALUES(?,?,?,?,?,?,?,?,0,0,?,?)").bind(storeId,slug,invite.store_name,invite.tagline||"",invite.category,invite.area,"clean","#087e59",accountId,"Awaiting platform review"),
+     env.DB.prepare("INSERT INTO merchant_sessions(token_hash,account_id,expires_at) VALUES(?,?,?)").bind(sessionHash,accountId,sessionExpires),
+     env.DB.prepare("INSERT INTO commerce_platform_admin_audit(id,action,target_type,target_id,details) VALUES(?,?,?,?,?)").bind(crypto.randomUUID(),"owner_invite_accepted","merchant_account",accountId,JSON.stringify({invite_id:invite.id,email:invite.email,store_id:storeId,store_slug:slug,verification_method:"platform_admin_out_of_band"}))
+    ]);
+   }catch(e){return bad(req,error,errorCode(e),"Owner account could not be created. The invitation may already have been used.");}
+   return output(req,{created:true,token:sessionToken,expires_at:sessionExpires,email:invite.email,store:{id:storeId,slug,name:invite.store_name,is_active:false},note:"Your store account is ready. The store remains private until platform approval."},201);
+  }
+  if(method==="POST"&&path==="/api/merchant/staff/accept-invite"){
+   const b=await json(req,error),token=String(b.token||"").trim().toLowerCase(),password=String(b.password||"");
+   const displayName=short(b.display_name,120);
+   if(!/^[a-f0-9]{64}$/.test(token))return bad(req,error,400,"Invalid or expired staff invitation");
+   if(password.length<12||password.length>128)return bad(req,error,422,"Password must contain 12-128 characters");
+   if(displayName.length<2)return bad(req,error,422,"Staff name must contain at least 2 characters");
+   const now=new Date().toISOString(),tokenHash=await sha256(token);
+   const invite=await env.DB.prepare(
+    "SELECT i.*,s.name AS store_name,a.is_active AS owner_active FROM merchant_staff_invites i " +
+    "JOIN commerce_stores s ON s.id=i.store_id JOIN merchant_accounts a ON a.id=i.owner_id " +
+    "WHERE i.token_hash=? AND i.expires_at>? AND i.accepted_at IS NULL AND i.revoked_at IS NULL AND a.is_active=1 AND s.owner_id=a.id LIMIT 1"
+   ).bind(tokenHash,now).first();
+   if(!invite)return bad(req,error,400,"Invalid or expired staff invitation");
+   if(await env.DB.prepare("SELECT id FROM merchant_accounts WHERE email=?").bind(invite.email).first())
+    return bad(req,error,409,"An account already exists for this email. Contact the store owner.");
+   const accountId=crypto.randomUUID(),salt=randomHex(16),hash=await passwordDigest(password,salt);
+   const sessionToken=newSession(),sessionHash=await sha256(sessionToken),sessionExpires=new Date(Date.now()+12*60*60*1000).toISOString();
+   try{
+    await env.DB.batch([
+     env.DB.prepare("UPDATE merchant_staff_invites SET accepted_at=CURRENT_TIMESTAMP WHERE id=? AND accepted_at IS NULL AND revoked_at IS NULL AND expires_at>?").bind(invite.id,now),
+     env.DB.prepare("INSERT INTO merchant_accounts(id,email,display_name,password_hash,password_salt,access_key_digest,email_verified_at,email_verification_method,is_active,role) VALUES(?,?,?,?,?,NULL,CURRENT_TIMESTAMP,'store_staff_invite',1,'staff')").bind(accountId,invite.email,displayName,hash,salt),
+     env.DB.prepare("INSERT INTO merchant_staff_store_access(account_id,owner_id,store_id,role,is_active) VALUES(?,?,?,?,1)").bind(accountId,invite.owner_id,invite.store_id,invite.role),
+     env.DB.prepare("INSERT INTO merchant_sessions(token_hash,account_id,expires_at) VALUES(?,?,?)").bind(sessionHash,accountId,sessionExpires),
+     env.DB.prepare("INSERT INTO commerce_merchant_audit(id,store_id,actor_account_id,action,target_type,target_id,details) VALUES(?,?,?,?,?,?,?)").bind(crypto.randomUUID(),invite.store_id,invite.owner_id,"staff_invite_accepted","staff_account",accountId,JSON.stringify({invite_id:invite.id,email:invite.email,role:invite.role}))
+    ]);
+   }catch(e){return bad(req,error,errorCode(e),"Staff account could not be created. The invitation may already have been used.");}
+   return output(req,{created:true,token:sessionToken,expires_at:sessionExpires,email:invite.email,display_name:displayName,role:"staff",staff_role:invite.role,store_name:invite.store_name},201);
   }
   if(method==="POST"&&path==="/api/merchant/register"){
    const b=await json(req,error),email=short(b.email,200).toLowerCase(),password=String(b.password||"");
