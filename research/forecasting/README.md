@@ -21,6 +21,8 @@ See `docs/DRIVE_DATASET_AUDIT_2026-11-07.md` for the full 8 November source, tra
 
 ## Reproducible source and model experiments
 
+A run may be labelled `verified_observed` only when a source-owner provenance JSON is supplied. The experiment runner checks the required source-system, owner, collection-period, collection-method, consent/licence, anonymisation, data-dictionary, prior synthetic-flag explanation, and exact input SHA-256 fields. A manifest label alone cannot promote a dataset to verified-observed status.
+
 - `audit_rq1_sources.py` reconciles sales orders/lines, the prepared SKU daily export, the shop-category panel, inventory SALE movements, purchase receipts and intraday stock exposure. It writes aggregate audit outputs only; raw files are not committed.
 - `rq1_shop_category_experiment.py` runs the fixed-origin LightGBM/CatBoost/hurdle/baseline benchmark and writes the complete prediction file, per-origin metrics, regime metrics, MASE, cluster-bootstrap intervals and a SHA-256 run manifest.
 - The committed v2 aggregate outputs are under `research/forecasting/results/rq1_fixed_origin_v2/`.
