@@ -17,12 +17,12 @@ This is an access directory, not a password vault. It records URLs, owner email,
 
 ## Current verified production status
 
-- Cloudflare D1 `bsmart-commerce` is schema version 12.
+- Cloudflare D1 `bsmart-commerce` is schema version 13 (customer password-recovery migration applied).
 - 11 store rows and 260 product rows are retained, all stores currently inactive and marked sample/demo.
 - 3 existing orders, 3 order lines, 3 stock movements, 1 cashbook receipt and 1 legacy CI merchant account remain preserved.
 - Public store directory returns zero stores and zero products because there are no approved real merchant stores.
 - There are zero verified real owner accounts and zero customer accounts recorded in the last live D1 audit.
-- Live owner authentication health reports PBKDF2 password authentication ready; email verification/password reset delivery is **not configured** (Resend sender setup pending).
+- Owner authentication uses PBKDF2 password hashes. Owner and customer password-recovery code is deployed; email delivery is **not configured** because Resend API key and verified sender are pending. Recovery endpoints fail closed until configured.
 - Do not distribute the legacy CI account or use sample stores as real merchant accounts.
 
 ## Owner onboarding — not open for real production registration yet
@@ -30,7 +30,7 @@ This is an access directory, not a password vault. It records URLs, owner email,
 1. Configure Cloudflare Worker secret `RESEND_API_KEY`.
 2. Verify a sender identity/domain in Resend and set `AUTH_EMAIL_FROM`.
 3. Set `PUBLIC_APP_URL=https://thesis-j0n8.onrender.com`.
-4. Run staging tests for registration, email verification, login, forgot password, token expiry/reuse and session revocation.
+4. Run staging tests for owner/customer registration, email verification, login, forgot password, token expiry/reuse and session revocation.
 5. Re-run live owner auth health and confirm email verification/password reset are configured.
 6. Only then allow a real business owner to register at `/#/d1-owner`.
 7. Owner creates a private store draft and adds genuine store details/products.
