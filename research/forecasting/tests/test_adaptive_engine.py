@@ -230,7 +230,6 @@ def test_verified_observed_requires_matching_input_checksum(tmp_path):
         "consent_or_licence": "Documented permission",
         "anonymisation_method": "Pseudonymised identifiers",
         "data_dictionary": "data_dictionary.pdf",
-        "synthetic_flag_explanation": "Source owner explanation",
         "input_sha256": "0" * 64,
     }
     evidence_path = tmp_path / "evidence.json"
@@ -252,7 +251,6 @@ def test_verified_observed_accepts_complete_checksum_matched_evidence(tmp_path):
         "consent_or_licence": "Documented permission",
         "anonymisation_method": "Pseudonymised identifiers",
         "data_dictionary": "data_dictionary.pdf",
-        "synthetic_flag_explanation": "Source owner explanation",
         "input_sha256": sha256(source),
     }
     evidence_path = tmp_path / "evidence.json"
@@ -291,3 +289,10 @@ def test_transaction_feature_snapshot_requires_56_days():
     }
     with pytest.raises(ValueError, match="56 historical days"):
         features_at(arr, 55, pd.Timestamp("2025-01-01"), "SHOP1", "Rice", True)
+
+
+def test_researcher_identified_real_drive_dataset_needs_no_extra_provenance_file(tmp_path):
+    source = tmp_path / "panel.csv"
+    source.write_text("shop_id,category,date,units_sold_observed,is_zero_observed_sales\\nA,Rice,2023-01-01,0,1\\n", encoding="utf-8")
+    result = validate_provenance_evidence(source, "real_user_provided", None)
+    assert result["classification"] == "researcher_identified_real_sme_dataset"
