@@ -1,4 +1,76 @@
 \chapter{Experimental Results}
 \label{chapter_experimentalResults}
+\section{Status of the Current Evaluation}
+This chapter records a development-stage RQ1 experiment, not a final empirical
+claim. The supplied Drive manifest and earlier repository audit contain
+conflicting provenance information. The dataset is therefore classified as
+\texttt{provenance\_conflict}; results remain exploratory until the data owner
+supplies traceable source records and resolves synthetic/observed status.
+The 2025 Q4 period is excluded because it was previously inspected and cannot
+serve as an untouched final holdout.
 
-% This chapter is intentionally reserved until the proposed experiments are run.
+\section{Daily Panel Audit}
+The supplied shop--category panel contains 561,152 observations, 32 shops,
+16 categories and 512 shop--category series from 1 January 2023 to
+31 December 2025. It contains 1,580,361 observed units and has a 37.5962\%
+zero-sales share. No duplicate shop--category--date keys, missing required
+values, zero-indicator mismatches or missing dates were found. This establishes
+internal structural consistency, not external provenance or unconstrained
+demand validity.
+
+The separate SKU-level export contains 699,220 observed positive-sales rows.
+Its missing dates cannot be interpreted automatically as zero demand. SKU
+intermittent-demand experiments require a separately verified daily calendar
+and stock/closure/missing-export semantics.
+
+\section{Development Forecasting Experiment}
+A pooled LightGBM Tweedie model was compared with a weekly seasonal-naive
+baseline and a classic Croston average-rate diagnostic. Direct cumulative
+targets were evaluated at 1, 7, 14 and 28 days using origins 1 July,
+1 August and 1 September 2025. All predictors used data strictly before the
+forecast origin. The training-origin stride was 90 days. Each horizon contains
+1,536 series-origin predictions.
+
+\begin{table}[H]
+\centering
+\caption{Development WAPE by forecast horizon}
+\label{tab:rq1_development_wape}
+\begin{tabular}{lrrr}
+\toprule
+Horizon & LightGBM Tweedie & Seasonal naive & Croston classic\\
+\midrule
+1 day  & 82.73\% & 91.65\% & 85.16\%\\
+7 days & 33.84\% & 40.88\% & 38.62\%\\
+14 days& 24.66\% & 32.31\% & 31.89\%\\
+28 days& 18.84\% & 25.57\% & 27.06\%\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+LightGBM achieved lower pooled WAPE than the seasonal-naive baseline at all
+four horizons in this development sample. Relative WAPE reductions were
+9.7\%, 17.2\%, 23.7\% and 26.3\%, respectively. These are relative reductions
+within each horizon; horizon scores are not directly comparable because target
+totals differ.
+
+\section{Interpretation and Limitations}
+The result supports retaining LightGBM Tweedie as a strong pooled candidate
+for the balanced shop--category panel. It does not establish a final adaptive
+model. Only three origins were evaluated; no hyperparameter search, calibrated
+prediction intervals, CatBoost, calibrated hurdle model, validated SBA/TSB,
+hierarchical reconciliation or final holdout was run. Only three series were
+classified as intermittent, so that subgroup is too small for a reliable
+model-family conclusion. Observed sales may be censored by stockouts and are
+not equivalent to unconstrained demand.
+
+The next experiment should compare a calibrated two-stage model, correctly
+implemented Croston/SBA/TSB candidates for verified SKU series, and
+validation-selected regime-aware blending. Model routing must be learned from
+development folds with minimum-support rules, not assigned arbitrarily.
+Uncertainty calibration, per-shop/category error dispersion and a new
+untouched holdout are required before final thesis claims. Inventory-policy
+evaluation must remain separate and use verified stock, receipt, lead-time
+and cost evidence.
+
+The detailed reproducibility report is maintained at
+\texttt{research/reports/RQ1\_Empirical\_Development\_Report.tex}.
