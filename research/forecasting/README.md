@@ -19,6 +19,24 @@ See `docs/DRIVE_DATASET_AUDIT_2026-11-07.md` for the full 8 November source, tra
 - The inventory ledger reproduces all sale quantities, but 269 negative-balance events across 253 shop-SKU combinations and 330 positive-sale days with non-positive reconstructed intraday stock require quarantine/reconciliation.
 - Every zero-sales category-day has at least one recorded SKU in positive reconstructed stock. This does not rule out item-level stockouts or unrecorded assortment.
 
+## Reproducible source and model experiments
+
+- `audit_rq1_sources.py` reconciles sales orders/lines, the prepared SKU daily export, the shop-category panel, inventory SALE movements, purchase receipts and intraday stock exposure. It writes aggregate audit outputs only; raw files are not committed.
+- `rq1_shop_category_experiment.py` runs the fixed-origin LightGBM/CatBoost/hurdle/baseline benchmark and writes the complete prediction file, per-origin metrics, regime metrics, MASE, cluster-bootstrap intervals and a SHA-256 run manifest.
+- The committed v2 aggregate outputs are under `research/forecasting/results/rq1_fixed_origin_v2/`.
+
+Example source audit (run from the repository root):
+
+```powershell
+python research/forecasting/audit_rq1_sources.py --data-dir path\\to\\frozen_drive_export --output-dir artifacts\\source_audit --historical-onboarding docs\\REAL_DATA_ONBOARDING.md
+```
+
+Example fixed-origin candidate benchmark:
+
+```powershell
+python research/forecasting/rq1_shop_category_experiment.py --input path\\to\\rq1_daily_shop_category.csv --output artifacts\\rq1_fixed_origin_v2 --evidence-status provenance_conflict
+```
+
 ## Input contract
 
 The generic engine accepts CSV/XLSX with:
