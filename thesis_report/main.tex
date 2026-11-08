@@ -3404,7 +3404,7 @@ agrees with the observed quantity. It then verifies that every shop--category
 series contains the same complete daily calendar. No missing dates are filled
 by assumption. The audit found zero duplicate keys, zero missing required
 values, zero zero-flag mismatches, and zero missing dates in the supplied
-panel. The zero-sales share is 37.5962\\%.
+panel. The zero-sales share is 37.5962\%.
 
 The dedicated SKU-level export is not substituted for this complete
 shop--category panel. Its absent SKU-date rows require a separate source-aware
@@ -3471,7 +3471,7 @@ report does not describe planned modules as completed software.
 The shop--category panel passed the structural checks described in
 Chapter~\ref{chapter_implementation}. The panel has 561,152 observations,
 512 unique shop--category series, and 1,096 days per series. The observed
-quantity totals 1,580,361 units, and 37.5962\\% of daily rows have zero
+quantity totals 1,580,361 units, and 37.5962\% of daily rows have zero
 observed sales. These checks establish internal consistency of the exported
 panel; they do not independently verify every underlying transaction or
 resolve whether a zero-sales day was affected by a stock-out.
@@ -3495,7 +3495,7 @@ Rows and expected balanced rows & 561,152 and 561,152 \\
 \hline
 Observed units sold & 1,580,361 \\
 \hline
-Zero-sales observations & 37.5962\\% \\
+Zero-sales observations & 37.5962\% \\
 \hline
 Duplicate shop--category--date keys & 0 \\
 \hline
@@ -3526,15 +3526,15 @@ therefore a very small part of this aggregated panel.
 \hline
 \textbf{Regime} & \textbf{Series} & \textbf{Share} & \textbf{Mean zero-sales ratio} \\
 \hline
-Lumpy & 342 & 66.80\\% & 47.62\\% \\
+Lumpy & 342 & 66.80\% & 47.62\% \\
 \hline
-Erratic & 153 & 29.88\\% & 15.65\\% \\
+Erratic & 153 & 29.88\% & 15.65\% \\
 \hline
-Smooth & 13 & 2.54\\% & 3.64\\% \\
+Smooth & 13 & 2.54\% & 3.64\% \\
 \hline
-Intermittent & 4 & 0.78\\% & 83.94\\% \\
+Intermittent & 4 & 0.78\% & 83.94\% \\
 \hline
-Total & 512 & 100.00\\% & 37.60\\% \\
+Total & 512 & 100.00\% & 37.60\% \\
 \hline
 \end{tabularx}
 \end{table}
@@ -3559,21 +3559,21 @@ actual; a negative value indicates under-forecasting.
 \hline
 \textbf{Horizon} & \textbf{LightGBM WAPE} & \textbf{Seasonal WAPE} & \textbf{Croston--SBA WAPE} & \textbf{TSB WAPE} & \textbf{LightGBM bias} \\
 \hline
-1 day & 79.88\\% & 92.21\\% & 84.01\\% & 84.78\\% & -21.51\\% \\
+1 day & 79.88\% & 92.21\% & 84.01\% & 84.78\% & -21.51\% \\
 \hline
-7 days & 33.87\\% & 40.77\\% & 37.74\\% & 38.62\\% & -7.04\\% \\
+7 days & 33.87\% & 40.77\% & 37.74\% & 38.62\% & -7.04\% \\
 \hline
-14 days & 24.22\\% & 33.97\\% & 30.27\\% & 32.10\\% & -2.50\\% \\
+14 days & 24.22\% & 33.97\% & 30.27\% & 32.10\% & -2.50\% \\
 \hline
-28 days & 18.57\\% & 29.16\\% & 25.62\\% & 27.38\\% & -1.99\\% \\
+28 days & 18.57\% & 29.16\% & 25.62\% & 27.38\% & -1.99\% \\
 \hline
 \end{tabularx}
 \end{table}
 
 The LightGBM Tweedie model achieved the lowest pooled WAPE among the
 four evaluated methods at all four horizons. Relative to the weekly
-seasonal-naive baseline, its WAPE reduction was 13.37\\% at one day,
-16.91\\% at seven days, 28.72\\% at fourteen days, and 36.33\\% at
+seasonal-naive baseline, its WAPE reduction was 13.37\% at one day,
+16.91\% at seven days, 28.72\% at fourteen days, and 36.33\% at
 twenty-eight days. These percentages are relative reductions in WAPE,
 not percentage-point differences. The horizon values should not be
 compared as if they represented the same target scale: cumulative
@@ -3588,19 +3588,19 @@ quantities and the degree of temporal aggregation increase with horizon.
 \hline
 \textbf{Horizon} & \textbf{MAE} & \textbf{RMSE} & \textbf{Signed bias} \\
 \hline
-1 day & 2.351 & 3.635 & -21.51\\% \\
+1 day & 2.351 & 3.635 & -21.51\% \\
 \hline
-7 days & 6.444 & 8.771 & -7.04\\% \\
+7 days & 6.444 & 8.771 & -7.04\% \\
 \hline
-14 days & 8.945 & 12.069 & -2.50\\% \\
+14 days & 8.945 & 12.069 & -2.50\% \\
 \hline
-28 days & 13.827 & 18.729 & -1.99\\% \\
+28 days & 13.827 & 18.729 & -1.99\% \\
 \hline
 \end{tabularx}
 \end{table}
 
-The one-day result remains weak: WAPE is 79.88\\%, and the model
-under-forecasts total units by 21.51\\%. The lower WAPE at longer
+The one-day result remains weak: WAPE is 79.88\%, and the model
+under-forecasts total units by 21.51\%. The lower WAPE at longer
 horizons is consistent with aggregation smoothing some daily variation;
 it does not mean that the model is equally accurate for individual
 daily replenishment decisions. The bias also shows that improving
@@ -3624,13 +3624,13 @@ although the absolute error remained high.
 \hline
 \textbf{Horizon} & \textbf{1 July 2025} & \textbf{1 August 2025} & \textbf{1 September 2025} & \textbf{Across-origin range} \\
 \hline
-1 day & 88.05\\% & 71.12\\% & 85.09\\% & 71.12--88.05\\% \\
+1 day & 88.05\% & 71.12\% & 85.09\% & 71.12--88.05\% \\
 \hline
-7 days & 32.82\\% & 33.90\\% & 34.96\\% & 32.82--34.96\\% \\
+7 days & 32.82\% & 33.90\% & 34.96\% & 32.82--34.96\% \\
 \hline
-14 days & 24.45\\% & 23.50\\% & 24.70\\% & 23.50--24.70\\% \\
+14 days & 24.45\% & 23.50\% & 24.70\% & 23.50--24.70\% \\
 \hline
-28 days & 19.41\\% & 18.10\\% & 18.19\\% & 18.10--19.41\\% \\
+28 days & 19.41\% & 18.10\% & 18.19\% & 18.10--19.41\% \\
 \hline
 \end{tabularx}
 \end{table}
@@ -3644,8 +3644,8 @@ They are development origins rather than a final untouched test set.
 The seven-day results were stratified using regime labels derived from
 history available before the first development origin. LightGBM had lower
 WAPE than Croston--SBA for erratic, lumpy, and smooth series. Croston--SBA
-had lower WAPE for the intermittent subset: 77.02\\% compared with
-106.25\\% for LightGBM. However, that subset contains only four series,
+had lower WAPE for the intermittent subset: 77.02\% compared with
+106.25\% for LightGBM. However, that subset contains only four series,
 twelve series-origin forecasts, and 25 actual units. The comparison is
 too small to justify automatic model routing or a claim of specialist
 model superiority.
@@ -3659,13 +3659,13 @@ model superiority.
 \hline
 \textbf{Regime} & \textbf{Forecast cases} & \textbf{LightGBM WAPE} & \textbf{Croston--SBA WAPE} & \textbf{Observed units} \\
 \hline
-Erratic & 459 & 28.74\\% & 32.38\\% & 14,035 \\
+Erratic & 459 & 28.74\% & 32.38\% & 14,035 \\
 \hline
-Lumpy & 1,026 & 42.17\\% & 47.09\\% & 12,600 \\
+Lumpy & 1,026 & 42.17\% & 47.09\% & 12,600 \\
 \hline
-Smooth & 39 & 20.51\\% & 20.69\\% & 2,560 \\
+Smooth & 39 & 20.51\% & 20.69\% & 2,560 \\
 \hline
-Intermittent & 12 & 106.25\\% & 77.02\\% & 25 \\
+Intermittent & 12 & 106.25\% & 77.02\% & 25 \\
 \hline
 \end{tabularx}
 \end{table}
@@ -3684,8 +3684,8 @@ Tweedie achieved lower pooled WAPE than the tested seasonal-naive,
 Croston--SBA, and TSB comparators. It does not establish that LightGBM
 is the best model for every shop, category, SKU, sector, or future period.
 
-The previously discussed 83.98\\% individual-level WAPE is not directly
-compared with the current 79.88\\% one-day shop--category WAPE. The
+The previously discussed 83.98\% individual-level WAPE is not directly
+compared with the current 79.88\% one-day shop--category WAPE. The
 forecasting unit and aggregation level differ, and the legacy evaluation
 must be reconstructed on identical rows, origins, targets, and metric
 code before a valid improvement claim can be made.
@@ -3748,7 +3748,7 @@ dataset and does not establish SKU-level or cross-sector effectiveness.
 The current development comparison found that a pooled LightGBM Tweedie
 model achieved lower pooled WAPE than weekly seasonal-naive, Croston--SBA,
 and TSB comparators at the 1-, 7-, 14-, and 28-day cumulative horizons.
-However, the one-day WAPE remained 79.88\\%, with a 21.51\\% aggregate
+However, the one-day WAPE remained 79.88\%, with a 21.51\% aggregate
 under-forecast. The longer-horizon results are more favourable but must
 not be interpreted as evidence that individual daily demand is accurately
 predicted. Four series were classified as intermittent, which is
