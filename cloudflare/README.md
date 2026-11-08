@@ -118,3 +118,14 @@ The production Worker provides owner-scoped coupon CRUD (`GET/POST /api/merchant
 ## Owner account directory and access controls (deployed)
 
 The platform-admin panel adds an owner account directory showing owner email, store association, role, email-verification state, account status and active-session count. Platform administrators can suspend/reactivate an owner. Suspension revokes all existing owner sessions. Passwords and password hashes are never returned by this API or written to README files; owners use email verification and self-service password recovery. Migration 0012 is applied in production after the D1 export and schema verification.
+
+
+## Verified release state — 8 November 2026
+
+- The latest Worker source from GitHub `main`, including customer password recovery, was uploaded through the content-only Worker API at `2026-11-08T08:44:30.644445Z`.
+- Active Worker version: `9ce95b0e-5d5e-496d-a1e9-0e6c848ba1b7` (100% traffic). The upload preserved the existing D1, Workers AI and `PLATFORM_ADMIN_KEY` bindings.
+- The latest GitHub Worker deployment workflow did not deploy: run [42463053554](https://github.com/RlM100always/Thesis/actions/runs/42463053554) skipped its Deploy Worker step because the two Cloudflare repository secrets were empty. Configure them before relying on automatic deployments. The workflow has been changed to fail loudly instead of reporting a misleading success when credentials are missing.
+- The latest storefront recovery workflow [42463053524](https://github.com/RlM100always/Thesis/actions/runs/42463053524) and D1 read-only smoke [42463053531](https://github.com/RlM100always/Thesis/actions/runs/42463053531) passed.
+- A full schema-13 D1 export completed on 8 November 2026. Bookmark: `0000005c-00000000-0000511d-56aabff7339b8513b1168f62dbd41327`. A full restore drill has not yet been completed.
+- Live D1 inventory: 11 inactive store rows, 260 products, 3 retained test orders, 0 customer accounts, 1 retained CI merchant account and 0 coupons. No active real merchant stores are currently approved.
+- Owner/customer email recovery remains fail-closed until `RESEND_API_KEY` and a verified `AUTH_EMAIL_FROM` are configured. Workers AI inference remains disabled until `AI_ENABLED=true` is deliberately approved and set.
