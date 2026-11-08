@@ -28,8 +28,8 @@ test("public storefront no longer renders archived-store labels and only offers 
  assert.doesNotMatch(store,/ডেমো অর্ডার|ডেমো স্টোর|পরীক্ষামূলক অর্ডার/);
  assert.match(store,/store.payment_bkash/);
  assert.match(store,/store.payment_nagad/);
- assert.match(store,/displayStoreTagline\(store.tagline, store.is_demo\)/);
- assert.match(store,/displayStoreDelivery\(store.delivery_note, store.is_demo\)/);
+ assert.match(store,/displayStoreTagline\(store.tagline\)/);
+ assert.match(store,/displayStoreDelivery\(store.delivery_note\)/);
  assert.match(dir,/displayStoreCategory\(s.category\)/);
- assert.match(dir,/displayStoreTagline\(s.tagline, s.is_demo\)/);
+ assert.match(dir,/displayStoreTagline\(s.tagline\)/);
 });
