@@ -1,12 +1,11 @@
 # B-SMART — Full System Architecture (10 layers)
 
-> **Scope notice (2 November 2026).** This file contains the earlier
-> pharmacy-oriented architecture and simulation-era measurements. It is kept
-> as historical design context, not as the current multi-sector SME thesis
-> evidence. The active data contract is
-> [`REAL_DATA_ONBOARDING.md`](REAL_DATA_ONBOARDING.md); no numbers below may be
-> reported as results until the collected real dataset is independently
-> validated and a new run manifest is frozen.
+> **Scope notice (8 November 2026).** This file is an older pharmacy-oriented
+> architecture reference. The active thesis uses the real multi-sector SME
+> dataset supplied through the project Google Drive folder and described in
+> [`REAL_DATA_ONBOARDING.md`](REAL_DATA_ONBOARDING.md). Pharmacy-only examples
+> and historical measurements below do not describe the current dataset and
+> must not be reported as results from the current multi-sector study.
 
 This is the authoritative architecture for the thesis. Every layer below is
 either **[IMPLEMENTED]**, **[PARTIAL]** or **[PROPOSED]** — that status is not
@@ -43,11 +42,11 @@ Customer · Payment · Expense · Promotion · Price.
 | `api/domain_models.py` (live multi-tenant SQL app) | **[IMPLEMENTED]** — all 12 entities exist as tables |
 | `00a_generate_pharmacy_dataset.py` (research dataset) | **[PARTIAL]** — Sales, Products, Price, Stock level, Batch, Expiry, Customer, Payment, Promotion present; Supplier, Purchase order and Expense are not generated |
 
-Real vs synthetic provenance for every column is in
-`normalized_data/DATASET_MANIFEST.md`. The medicine catalogue (111 SKUs:
-brand, generic, dosage form, manufacturer) is **real** — Mendeley
-DOI 10.17632/zhtvkny53n.1. Demand seasonality is fitted from a **real**
-Bangladeshi daily-demand series, DOI 10.17632/xwmbk7n3c8.1.
+The current empirical source is the real SME dataset supplied through the
+project Google Drive folder. Its manifest covers 32 shops, 480 products,
+11,000 customers and the period 2023–2025. The pharmacy catalogue and demand
+examples referenced in older sections of this architecture are historical
+context and are not the current thesis dataset.
 
 ## Layer 2 — Data Validation & Canonical Layer **[PARTIAL]**
 
@@ -268,7 +267,7 @@ purchase-order and expense generation in the research dataset (layer 1).
 5. **It keeps the owner in charge.** The system ranks and explains; the
    pharmacist decides (layer 9, once built).
 
-**What it is not, yet:** validated on real pharmacy data. The dataset is
-real-catalogue-anchored but its transactions are synthetic (Tier 3). Tier 1
-collection under `docs/REAL_DATA_PROTOCOL.md` is what converts "a working
-algorithm" into "a proven one".
+**Scope limitation:** this historical pharmacy architecture does not establish
+that the current multi-sector SME framework has been validated. Current thesis
+claims must be based on the real Drive dataset, the corresponding model runs,
+and the evaluation protocol for each research question.
