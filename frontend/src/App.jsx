@@ -189,9 +189,9 @@ function Shell() {
   if (pathname === "/reset-password") return <AcceptInvite mode="reset" />;
   if (pathname === "/login") return <Login initialMode="login" />;
   if (pathname === "/signup") return <Login initialMode="register" />;
-  // Standalone Cloudflare D1 demo owner system; no legacy SQLite dependency.
+  // Standalone Cloudflare D1 owner portal; no legacy SQLite dependency.
   if (pathname === "/d1-owner") return <D1MerchantCenter />;
-  // Privileged Cloudflare D1 demo commerce console; separately protected by Worker secret.
+  // Privileged Cloudflare D1 commerce console; separately protected by Worker secret.
   if (pathname === "/d1-platform-admin") return <D1PlatformAdmin />;
   // The public storefront and order-status lookup need no account at all —
   // a visitor opens these from a link the shop shares, not through the app.
