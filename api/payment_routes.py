@@ -17,8 +17,10 @@ SSLCommerz flow (all-in-one: bKash + Nagad + cards):
 
 import base64
 import json
+import os
 import re
 import uuid
+from urllib.parse import urlsplit
 from decimal import Decimal
 
 import httpx
@@ -39,6 +41,37 @@ BKASH_LIVE_BASE = "https://tokenized.pay.bka.sh/v1.2.0-beta"
 NAGAD_LIVE_BASE = "https://api.nagad.com.bd"
 SSLCZ_LIVE_INIT = "https://securepay.sslcommerz.com/gwprocess/v4/api.php"
 SSLCZ_LIVE_VAL = "https://securepay.sslcommerz.com/validator/api/validationserverAPI.php"
+
+
+def _base_url(request: Request) -> str:
+    configured = os.getenv("PUBLIC_APP_URL", "https://thesis-j0n8.onrender.com").strip().rstrip("/")
+    parsed = urlsplit(configured)
+    if parsed.scheme not in ("https", "http") or not parsed.netloc:
+        raise HTTPException(500, "PUBLIC_APP_URL is not a valid absolute URL.")
+    if parsed.scheme != "https" and parsed.hostname not in ("localhost", "127.0.0.1", "testserver"):
+        raise HTTPException(500, "Payment callback URLs must use HTTPS.")
+    return f"{parsed.scheme}://{parsed.netloc}"
+
+
+def _order_redirect(org_id: str, access_token: str, payment: str, base: str) -> RedirectResponse:
+    return RedirectResponse(
+        f"{base}/#/order-status/{org_id}/{access_token}?payment={payment}",
+        status_code=303,
+    )
+
+
+def _get_order(order_id: str, org_id: str, db: Session) -> SalesDocument:
+    order = db.scalar(select(SalesDocument).where(
+        SalesDocument.id == order_id,
+        SalesDocument.organization_id == org_id,
+    ))
+    if not order:
+        raise HTTPException(404, "Order not found")
+    if order.payment_status == "paid":
+        raise HTTPException(409, "Order already paid")
+    if str(getattr(order, "status", "")).lower() in ("cancelled", "canceled", "void"):
+        raise HTTPException(409, "Cancelled orders cannot be paid")
+    return order
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
