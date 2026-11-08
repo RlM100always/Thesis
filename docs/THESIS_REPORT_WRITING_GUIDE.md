@@ -25,13 +25,13 @@ published report. The compiled PDF is
 `output/pdf/main-thesis-report.pdf`. This current repository state
 supersedes the older Overleaf-only note below.
 
-The active report currently describes a multi-sector Bangladesh SME
-framework and clearly labels the supplied RQ1 package as
-`provenance_conflict`. The older pharmacy-specific scope note above is
-historical supervisor context; do not use it to overwrite the active
-multi-sector scope without a new supervisor instruction. Preserve the
-existing University of Dhaka LaTeX class, title page, chapter order,
-spacing, margins, headers, bibliography and table conventions.
+The active report describes a multi-sector Bangladesh SME framework and uses
+the real SME research dataset supplied through the project Google Drive folder.
+The older pharmacy-specific scope note above is historical supervisor context;
+do not use it to overwrite the active multi-sector scope without a new
+supervisor instruction. Preserve the existing University of Dhaka LaTeX class,
+title page, chapter order, spacing, margins, headers, bibliography and table
+conventions.
 
 
 ## Execution order (stated by the user, keep this rule)
