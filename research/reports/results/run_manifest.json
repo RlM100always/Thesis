@@ -1,0 +1,44 @@
+{
+  "pipeline": "rq1_empirical_development_v1",
+  "input_file": "rq1_daily_shop_category.csv",
+  "input_sha256": "ab741f4d72c49706ba2abc8f096659324d862f758c4f171b84dd55a3ab6cbcbd",
+  "rows": 561152,
+  "series": 512,
+  "shops": 32,
+  "categories": 16,
+  "date_start": "2023-01-01",
+  "date_end": "2025-12-31",
+  "development_origins": [
+    "2025-07-01",
+    "2025-08-01",
+    "2025-09-01"
+  ],
+  "development_end_exclusive": "2025-10-01",
+  "horizons": [
+    1,
+    7,
+    14,
+    28
+  ],
+  "evidence_status": "provenance_conflict",
+  "final_holdout_evaluated": false,
+  "legacy_q4_2025_excluded": true,
+  "training_origin_stride_days": 90,
+  "model": "LightGBM Tweedie direct cumulative horizon; categorical shop/category; historical-only features",
+  "comparators": [
+    "weekly seasonal naive",
+    "classic Croston average-rate diagnostic"
+  ],
+  "limitations": [
+    "provenance conflict unresolved",
+    "sales are not unconstrained demand",
+    "three development origins only",
+    "no hyperparameter search",
+    "no calibrated intervals",
+    "no final holdout",
+    "Croston classic is not SBA/TSB"
+  ],
+  "elapsed_seconds": 24.16,
+  "python": "3.13.5",
+  "platform": "Linux x86_64"
+}
