@@ -292,7 +292,7 @@ export default function D1MerchantCenter(){
           <section className="dm-panel"><h2>আপনার পণ্য ({products.length})</h2>
           {products.length===0?<Empty>এখনো কোনো পণ্য যোগ করা হয়নি।</Empty>:<div className="dm-product-list">{products.map(p=><article key={p.id} className="dm-product">
             <div><strong>{p.name}</strong><p className="dm-muted">{p.sku} · {p.category||"বিভাগ দেওয়া নেই"}</p><p><b>{fmt(p.price_bdt)}</b> · মজুত <b>{p.stock_qty}</b> · সতর্কতা {p.reorder_level??5} · {p.is_listed?"প্রকাশিত":"লুকানো"}</p></div>
-            <button className="dm-secondary" onClick={()=>setEdit({...p})}>সম্পাদনা</button></article>)}</div>}</section>
+            <div className="dm-row-actions"><button className="dm-secondary" onClick={()=>setEdit({...p})}>সম্পাদনা</button><button className="dm-secondary" disabled={busy||store.is_demo} onClick={()=>run(()=>call("/api/merchant/products/"+encodeURIComponent(p.id),{method:"PATCH",token,body:{is_listed:!p.is_listed}}),p.is_listed?"পণ্যটি দোকান থেকে আড়াল করা হয়েছে।":"পণ্যটি আবার প্রকাশ করা হয়েছে।")}>{p.is_listed?"আড়াল করুন":"আবার প্রকাশ করুন"}</button></div></article>)}</div>}</section>
         </div>}
         {view==="pos"&&<div className="dm-stack">
           <section className="dm-panel"><h2>{"কাউন্টার বিক্রি"}</h2><p className="dm-muted">{store.is_demo?"এই স্টোরটি বর্তমানে অপারেশনাল নয়।":"নগদ বিক্রি, পেমেন্ট এবং মজুতের পরিবর্তন একসঙ্গে D1-তে সংরক্ষিত হবে।"}</p>
