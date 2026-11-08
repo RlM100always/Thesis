@@ -166,7 +166,7 @@ def run(input_path: Path, output_path: Path):
             model = lgb.LGBMRegressor(
                 objective="tweedie", tweedie_variance_power=1.3,
                 n_estimators=100, learning_rate=0.035, num_leaves=31,
-                min_child_samples=80, subsample=0.85, colsample_bytree=0.85,
+                min_child_samples=80, subsample=0.85, subsample_freq=1, colsample_bytree=0.85,
                 reg_lambda=2.0, random_state=42, n_jobs=4, verbosity=-1
             )
             fit_start = time.time()
