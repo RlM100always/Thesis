@@ -1303,9 +1303,9 @@ function SettingsTab({ store, onRefresh }) {
       )}
       <Sh>💳 SSLCommerz পেমেন্ট গেটওয়ে</Sh>
       <p style={{ fontSize: 13, color: "var(--text-muted)", margin: "0 0 14px", lineHeight: 1.6 }}>
-        SSLCommerz দিয়ে bKash, Nagad, Visa/Mastercard সব একসাথে accept করুন।{" "}
+        SSLCommerz-এর যাচাইকৃত merchant credentials ব্যবহার করে bKash, Nagad, Visa ও Mastercard পেমেন্ট গ্রহণ করুন।{" "}
         <a href="https://developer.sslcommerz.com" target="_blank" rel="noopener noreferrer" style={{ color: "#0a6ebd" }}>developer.sslcommerz.com</a>
-        {" "}থেকে sandbox account খুলুন — ফ্রি।
+        {" "}থেকে আপনার merchant account-এর live Store ID ও password সংগ্রহ করুন।
       </p>
       <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 12, padding: "16px 18px", marginBottom: 16 }}>
         <div style={{ display: "grid", gap: 12 }}>
@@ -1317,11 +1317,11 @@ function SettingsTab({ store, onRefresh }) {
             <label style={{ fontSize: 13, fontWeight: 700, color: "var(--text-muted)", display: "block", marginBottom: 6 }}>Store Password / Secret</label>
             <input type="password" value={form.sslcz_store_passwd} onChange={set("sslcz_store_passwd")} placeholder="SSLCommerz Store Password" style={{ width: "100%", boxSizing: "border-box" }} />
           </div>
-          <Row label="Live Mode চালু করুন" hint="বন্ধ = Sandbox (টেস্ট), চালু = Real payment" field="sslcz_is_live" />
+          <Row label="Live Mode চালু করুন" hint="বন্ধ থাকলে পেমেন্ট বন্ধ; চালু করলে যাচাইকৃত live credentials ব্যবহার হবে" field="sslcz_is_live" />
         </div>
         {!form.sslcz_store_id && (
           <div style={{ marginTop: 12, background: "#f0f7ff", borderRadius: 8, padding: "10px 14px", fontSize: 12, color: "#1a4a7a", lineHeight: 1.6 }}>
-            💡 <strong>খালি রাখলে:</strong> demo sandbox credentials দিয়ে চলবে — real টাকা কাটবে না, শুধু flow test হবে।
+            পেমেন্ট চালু করতে Store ID, Store Password এবং Live Mode—তিনটিই প্রয়োজন। কোনো shared বা fallback credential ব্যবহার করা হবে না।
           </div>
         )}
       </div>
