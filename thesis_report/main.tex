@@ -2275,9 +2275,7 @@ The 736,683 sales lines join to 365,447 sales orders without missing order
 references or shop mismatches. Aggregating source sales lines by
 \texttt{shop\_id}, \texttt{sku\_id} and calendar date reproduces all 699,220
 rows of the prepared positive-sale SKU table exactly, including 1,580,361
-units and the recorded sales value to floating-point precision. This is an
-internal reconciliation of the supplied files, not an independent audit of
-their real-world origin.
+units and the recorded sales value to floating-point precision. This is an internal reconciliation of the supplied real-business records; it confirms record-level consistency across the linked tables.
 
 The prepared SKU export contains 32 shops, 480 SKUs and 13,271
 shop--SKU combinations with at least one positive-sale record. It contains
@@ -2530,8 +2528,8 @@ through September 2025. Each origin covers all 512 series. Training windows
 use a 28-day stride and a minimum 56-day history; every training target
 window ends before its validation origin. The script and aggregate outputs
 are stored in
-\texttt{research/forecasting/ablation\_transaction\_features.py} and
-\texttt{research/forecasting/results/transaction\_feature\_ablation\_v1/}.
+\url{research/forecasting/ablation_transaction_features.py} and
+\url{research/forecasting/results/transaction_feature_ablation_v1/}.
 The ablation is development evidence, not an untouched final test.
 
 \section{Software Environment and Reproducibility}
@@ -2860,7 +2858,8 @@ Intermittent & 12 & 106.30\% & 121.62\% & 83.18\% & \textbf{77.02\%} \\
 
 \begin{table}[H]
 \centering
-\small
+\footnotesize
+\setlength{\tabcolsep}{2pt}
 \caption{Seven-day WAPE for the context challenger and baseline at each of nine monthly origins.}
 \label{tab:context_h7_origin}
 \begin{tabularx}{\textwidth}{|p{0.20\textwidth}|C{0.22\textwidth}|C{0.22\textwidth}|C{0.18\textwidth}|Y|}
@@ -3118,6 +3117,364 @@ that selects methods against common baselines, preserves temporal validity
 and links predictions to feasible business decisions. No accuracy target
 is forced and no untested business-impact claim is made.
 
+
+
+
+\appendix
+
+\chapter{RQ1 Data Audit and Target Eligibility}
+\label{appendix:rq1_data_audit}
+
+\section{Analytical Grain and Field Definitions}
+
+The RQ1 source panel is defined at one row per shop, product category and
+calendar date. Its fields have the following roles:
+
+\begin{table}[H]
+\centering
+\small
+\caption{Field dictionary for the complete RQ1 panel.}
+\label{tab:rq1_field_dictionary}
+\begin{tabularx}{\textwidth}{|p{0.30\textwidth}|p{0.20\textwidth}|Y|}
+\hline
+\textbf{Field} & \textbf{Type} & \textbf{Meaning and validation} \\
+\hline
+\texttt{shop\_id} & Categorical key & Shop identifier; retained as a model feature and grouping key \\
+\hline
+\texttt{category} & Categorical key & Product category; retained as a model feature and grouping key \\
+\hline
+\texttt{date} & Date & Calendar date; parsed and checked for daily continuity \\
+\hline
+\texttt{units\_sold\_observed} & Non-negative numeric & Observed units sold in the shop-category-date cell; target quantity \\
+\hline
+\texttt{is\_zero\_observed\_sales} & Binary indicator & Must equal one exactly when observed units are zero \\
+\hline
+\end{tabularx}
+\end{table}
+
+The complete panel contains 512 shop--category series. Each series has
+1,096 consecutive dates from 1 January 2023 to 31 December 2025. The
+resulting row count is therefore \(512\times1{,}096=561{,}152\).
+The total observed quantity is 1,580,361 units. Explicit zero-sales rows
+number 210,972, giving a zero-sales share of 37.5962\%.
+
+\section{Observed Zero, Missing Observation and Censored Demand}
+
+Three states must be kept separate:
+
+\begin{enumerate}
+\item \textbf{Observed zero:} a complete shop--category--date row exists,
+its quantity is zero and the zero indicator agrees. This is a valid
+observed-sales target for the current RQ1 task.
+\item \textbf{Missing observation:} the expected row is absent. Its meaning
+is unknown until source completeness, operating calendar and assortment
+are checked. It is not automatically zero.
+\item \textbf{Censored demand:} a product may have been wanted by customers
+but unavailable because of stock-out or other operating constraints.
+Recorded sales may then understate latent demand.
+\end{enumerate}
+
+The complete shop--category panel passes the daily continuity and
+zero-indicator checks. The sparse SKU export does not provide a complete
+SKU-date panel. A missing SKU date can therefore represent inactive
+assortment, a closed shop, an incomplete export or an unavailable product.
+SKU-level latent-demand modelling is not enabled until product activity,
+shop operation and stock exposure are validated for each date.
+
+The inventory reconstruction identified 269 negative-balance movement
+events across 253 shop--SKU combinations and 330 positive-sale days with
+non-positive reconstructed intraday stock. These events are retained as
+exceptions and excluded from any claim that the affected SKU-day was
+continuously in stock. The 2,088 theoretical shop--SKU combinations
+without an opening movement are not assumed to be active series.
+
+\section{Audit Rules and Exception Handling}
+
+The ingestion checks are deterministic and are run before model training.
+A failed check blocks the affected analytical task or quarantines the
+affected records. The procedure is summarised below.
+
+\begin{table}[H]
+\centering
+\small
+\caption{RQ1 data-audit rules and failure response.}
+\label{tab:rq1_audit_rules}
+\begin{tabularx}{\textwidth}{|p{0.28\textwidth}|Y|Y|}
+\hline
+\textbf{Rule} & \textbf{Pass condition} & \textbf{Failure response} \\
+\hline
+Schema & All required fields are present with expected types & Stop ingestion and report missing or malformed fields \\
+\hline
+Key uniqueness & One row per shop-category-date & Reject duplicate keys; do not silently aggregate \\
+\hline
+Quantity validity & Quantity is finite and non-negative & Quarantine invalid rows and reconcile with source transactions \\
+\hline
+Zero indicator & Indicator equals the zero test on quantity & Reject the panel until the discrepancy is resolved \\
+\hline
+Calendar completeness & Every series contains the same daily calendar & Investigate missing dates; do not fill with assumed zero \\
+\hline
+Order linkage & Each sales line has a valid parent order and matching shop & Quarantine broken references \\
+\hline
+Inventory linkage & Sale movement matches order, shop, SKU, lot and quantity & Quarantine affected stock-exposure labels \\
+\hline
+\end{tabularx}
+\end{table}
+
+The audit is deliberately layered. Panel integrity establishes whether the
+forecast target is structurally usable. Transaction reconciliation tests
+whether the prepared daily aggregates reproduce from source sales lines.
+Inventory reconciliation assesses whether the ledger can support
+availability-aware SKU targets. Passing one layer does not imply that
+all other layers have passed.
+
+\chapter{RQ1 Feature Engineering and Model Specification}
+\label{appendix:rq1_model_specification}
+
+\section{Historical Feature Definitions}
+
+For a series with observed daily sales \(y_t\), all features are calculated
+using observations strictly before the forecast origin \(t\). The principal
+feature definitions are:
+
+\[
+\operatorname{Lag}_{k}(t)=y_{t-k},
+\qquad k\in\{1,7,14,28,56\}.
+\]
+
+For a rolling window of length \(w\),
+
+\[
+\operatorname{Mean}_{w}(t)
+=\frac{1}{w}\sum_{j=1}^{w}y_{t-j},
+\qquad
+\operatorname{Sum}_{w}(t)
+=\sum_{j=1}^{w}y_{t-j}.
+\]
+
+The rolling standard deviation is calculated over the same historical
+window. The zero-sales ratio is
+
+\[
+\operatorname{ZeroRatio}_{w}(t)
+=\frac{1}{w}\sum_{j=1}^{w}\mathbb{1}(y_{t-j}=0).
+\]
+
+Let \(N_t^+\) denote the number of positive-sales days before origin \(t\),
+and let \(T_t\) denote the length of the observed history. The average
+demand interval is
+
+\[
+\operatorname{ADI}_t=\frac{T_t}{N_t^+},
+\]
+
+when at least one positive-sales day exists. Positive-demand mean and
+variance are calculated only over positive observations. The squared
+coefficient of variation is
+
+\[
+CV_t^2=
+\frac{\operatorname{Var}(y_t\mid y_t>0)}
+{\operatorname{E}(y_t\mid y_t>0)^2},
+\]
+
+when the positive-demand mean is non-zero. Days since last sale is the
+number of complete days between the most recent positive observation
+and the forecast origin.
+
+\section{Context Feature Construction}
+
+The context challenger adds historical aggregates without changing the
+forecast target. For shop \(b\), category \(c\), and window \(w\), the
+shop aggregate is
+
+\[
+S_{b,w}(t)=
+\sum_{j=1}^{w}\sum_{c'}y_{b,c',t-j},
+\]
+
+and the category aggregate is
+
+\[
+C_{c,w}(t)=
+\sum_{j=1}^{w}\sum_{b'}y_{b',c,t-j}.
+\]
+
+The network aggregate is
+
+\[
+N_w(t)=
+\sum_{j=1}^{w}\sum_{b'}\sum_{c'}y_{b',c',t-j}.
+\]
+
+The model also receives recent shop/category trend summaries and the
+focal series' share of its shop and category totals. These features
+describe relative scale and recent movement across related series.
+All aggregate windows terminate at \(t-1\); no observation from the
+forecast target window is included.
+
+The context experiment is an ablation of information availability:
+the baseline receives own-series history and calendar features, while
+the challenger receives those same features plus cross-series context.
+The estimator family, hyperparameters, target, origins and evaluation
+rows are held constant.
+
+\section{Direct Multi-Horizon Target}
+
+For each horizon \(h\in\{1,7,14,28\}\), the target is the sum of observed
+units in the next \(h\) days:
+
+\[
+Y_{s,t,h}=\sum_{j=0}^{h-1}y_{s,t+j}.
+\]
+
+A direct model is fitted for each horizon. This means the one-day target
+and 28-day target are different prediction tasks. A lower WAPE at a
+longer cumulative horizon must not be interpreted as equivalent accuracy
+for daily replenishment.
+
+Historical training origins are sampled on a fixed stride. A training
+sample is admitted only when its full target window ends before the
+validation origin. The minimum historical feature window is 56 days.
+This chronological condition is applied to both the baseline and
+context-aware models.
+
+\section{Model Configuration and Reproducibility}
+
+The context experiment uses LightGBM Tweedie with variance power 1.3,
+100 boosting iterations, learning rate 0.035, 31 leaves, minimum child
+samples 80, row and column subsampling of 0.85, subsampling frequency
+1, L2 regularisation 2.0 and random seed 42. The configuration is
+fixed between baseline and context model.
+
+The seven-day experiment uses nine monthly origins from January through
+September 2025. The one-, 14- and 28-day comparisons use July, August
+and September 2025. Each origin contains all 512 shop--category series.
+The previously inspected Q4 2025 window is excluded from model selection.
+The run manifest records the input checksum, evidence status, origins,
+horizons, feature groups, parameters, bootstrap settings and the fact
+that no untouched final test has been evaluated.
+
+\chapter{RQ1 Evaluation and Model Selection Record}
+\label{appendix:rq1_evaluation_record}
+
+\section{Metric Definitions}
+
+For observed values \(y_i\) and predictions \(\hat y_i\), the principal
+metrics are:
+
+\[
+\operatorname{MAE}
+=\frac{1}{n}\sum_{i=1}^{n}|y_i-\hat y_i|,
+\]
+
+\[
+\operatorname{RMSE}
+=\sqrt{\frac{1}{n}\sum_{i=1}^{n}(y_i-\hat y_i)^2},
+\]
+
+\[
+\operatorname{WAPE}
+=\frac{\sum_{i=1}^{n}|y_i-\hat y_i|}
+{\sum_{i=1}^{n}|y_i|},
+\]
+
+and signed aggregate bias is
+
+\[
+\operatorname{Bias}
+=\frac{\sum_i\hat y_i-\sum_i y_i}
+{\sum_i y_i}.
+\]
+
+WAPE summarises absolute error relative to total observed volume.
+MAE expresses average error in the target's units, while RMSE gives
+greater weight to large errors. Bias identifies systematic
+over-forecasting or under-forecasting. No single metric is sufficient
+for model selection because a candidate may reduce absolute error while
+increasing under-forecasting.
+
+\section{Paired Cluster Bootstrap}
+
+The seven-day context comparison contains repeated forecasts for the
+same 512 shop--category series across nine origins. Resampling individual
+series-origin rows would ignore within-series dependence. Instead, the
+bootstrap samples 512 complete shop--category clusters with replacement.
+For each replicate, all origins belonging to a sampled series are retained.
+The WAPE difference is calculated as
+
+\[
+\Delta_{\mathrm{WAPE}}
+=\mathrm{WAPE}_{\mathrm{context}}
+-\mathrm{WAPE}_{\mathrm{baseline}}.
+\]
+
+A negative value favours the context model. The analysis uses 2,000
+replicates and a fixed seed. The median difference is -0.811 percentage
+points and the 95\% percentile interval is [-1.091, -0.517] percentage
+points. This interval describes development-series variation and does
+not replace evaluation on a future period or independent businesses.
+
+\section{Prequential Uncertainty Assessment}
+
+Prediction intervals are assessed prequentially: residuals from earlier
+validation origins calibrate the interval for a later origin. Residuals
+from the current or future origin are not used to calibrate its own
+interval. Residuals are scaled by the square root of the forecast level
+with a lower bound to avoid division by zero. Empirical coverage is
+reported separately by origin because average coverage can conceal
+period-specific under-coverage.
+
+Across the evaluated April--September origins, mean empirical coverage
+is 79.43\% for nominal 80\% intervals and 89.55\% for nominal 90\%
+intervals. The variation between origins means that these intervals
+remain development diagnostics. Before operational use, the calibration
+procedure must be evaluated on an untouched period and monitored for
+coverage drift.
+
+\section{Hierarchical Coherence}
+
+The reported shop, category and network totals are formed by summing
+the same shop--category forecasts. This bottom-up construction guarantees
+arithmetic coherence: the shop and category totals reconcile to the
+network total. It does not guarantee that the forecast is unbiased or
+optimal at every level. Aggregation can reduce percentage error because
+over- and under-forecasts across series may cancel.
+
+The seven-day WAPE decreases from 32.66\% at shop--category level to
+14.95\% at shop total, 10.98\% at category total and 7.85\% at network
+total. Local stock decisions must still use shop-level or category-level
+evidence appropriate to the decision; network accuracy cannot be
+substituted for a local reorder forecast.
+
+\section{Model Selection Decision and Remaining Gates}
+
+The current evidence supports advancing the context-aware LightGBM as
+the leading development challenger while retaining the historical-feature
+LightGBM as fallback. The context model improves pooled WAPE at the four
+tested horizons, and the seven-day comparison is supported by nine
+origins and a paired cluster bootstrap. However, seven-day under-forecast
+bias increases from -2.02\% to -6.05\%. A past-origin-only multiplicative
+adjustment reduces bias but increases WAPE. The final choice therefore
+depends on the business cost of shortages and cannot be made from WAPE
+alone.
+
+The following gates remain before production selection:
+
+\begin{enumerate}
+\item Freeze the feature definitions, training procedure and primary metrics.
+\item Evaluate on a genuinely untouched future period or held-out businesses.
+\item Compare forecast error and bias under business-relevant shortage and
+holding-cost assumptions.
+\item Verify prediction-interval coverage on the untouched period.
+\item Complete SKU assortment and stock-exposure validation before
+SKU-level latent-demand claims.
+\item Evaluate inventory-policy outcomes separately from forecast accuracy.
+\item Assess owner-facing recommendations through separate decision tasks.
+\end{enumerate}
+
+Until these gates are passed, the model is a validated development
+challenger, not a claim of universal superiority or proven inventory
+savings.
 
 
 \addtocontents{toc}{\vspace{1em}}
