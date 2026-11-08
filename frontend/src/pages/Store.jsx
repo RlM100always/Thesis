@@ -965,7 +965,7 @@ function NagadLogo({ size = 32 }) {
 
 function CheckoutView({ store, cart, products, onBack, onDone, scCustomer, variantSelections }) {
   const orgId = store.organization_id;
-  const defaultPayment = store.is_demo ? "cod" : store.payment_cod ? "cod" : store.payment_bkash ? "bkash" : store.payment_nagad ? "nagad" : "cod";
+  const defaultPayment = store.payment_cod ? "cod" : store.payment_bkash ? "bkash" : store.payment_nagad ? "nagad" : store.sslcz_store_id ? "sslcommerz" : "cod";
   const prefillDiv = scCustomer?.division || "";
 
   // Auto-fill from logged-in customer profile
@@ -976,6 +976,7 @@ function CheckoutView({ store, cart, products, onBack, onDone, scCustomer, varia
   const [form, setForm] = useState({
     name: scCustomer?.display_name || "",
     phone: scCustomer?.phone || "",
+    email: scCustomer?.email || "",
     address: prefillAddress,
     division: prefillDiv,
     payment: defaultPayment,
@@ -1096,6 +1097,16 @@ function CheckoutView({ store, cart, products, onBack, onDone, scCustomer, varia
       setError("দুঃখিত, এই এলাকায় ডেলিভারি দেওয়া সম্ভব নয়।");
       return;
     }
+    if (form.payment === "sslcommerz") {
+      if (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(form.email.trim())) {
+        setError("অনলাইন পেমেন্টের জন্য সঠিক ইমেইল ঠিকানা দিতে হবে।");
+        return;
+      }
+      if (!form.division) {
+        setError("অনলাইন পেমেন্টের জন্য বিভাগ নির্বাচন করুন।");
+        return;
+      }
+    }
     setBusy(true); setError("");
     try {
       const scToken = getCustomerToken(store.slug);
@@ -1116,7 +1127,7 @@ function CheckoutView({ store, cart, products, onBack, onDone, scCustomer, varia
         coupon_code: couponResult?.code || undefined,
       });
       setSubmitCooldown(30);
-      onDone({ ...order, payment_method: form.payment });
+      onDone({ ...order, payment_method: form.payment, customer_email: form.email.trim(), customer_city: form.division });
     } catch (err) {
       setError(explain(err, { 404: "একটি পণ্য এখন মজুত আছে না।", 409: "এই দোকান এখন অর্ডার নিচ্ছে না।" }));
     } finally {
@@ -1218,6 +1229,12 @@ function CheckoutView({ store, cart, products, onBack, onDone, scCustomer, varia
           <label>বিশেষ নির্দেশনা (ঐচ্ছিক)</label>
           <input className="s-input" value={form.note} onChange={set("note")} />
         </div>
+        {form.payment === "sslcommerz" && (
+          <div className="s-form-group">
+            <label>ইমেইল ঠিকানা (অনলাইন পেমেন্টের রসিদের জন্য) <span>*</span></label>
+            <input className="s-input" type="email" autoComplete="email" value={form.email} onChange={set("email")} required placeholder="name@example.com" />
+          </div>
+        )}
 
         <div className="s-form-group">
           <label>পেমেন্ট পদ্ধতি <span>*</span></label>
@@ -1442,7 +1459,7 @@ function ConfirmationView({ order, store, orgId, onContinue }) {
   async function redirectToSSL() {
     setBusy(true); setPayErr("");
     try {
-      const { gateway_url } = await api.initiateSSLCommerzPayment(order.organization_id, order.id);
+      const { gateway_url } = await api.initiateSSLCommerzPayment(order.organization_id, order.id, order.customer_email, order.customer_city);
       window.location.href = gateway_url;
     } catch (e) { setPayErr(e.message || "পেমেন্ট শুরু করা যায়নি"); setBusy(false); }
   }
