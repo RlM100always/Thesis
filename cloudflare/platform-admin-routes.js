@@ -203,7 +203,7 @@ export async function platformAdminRouter(req,env,path,output,error) {
       const nextActive=body.is_active===undefined?!!store.is_active:body.is_active;
       const nextDemo=body.is_demo===undefined?!!store.is_demo:body.is_demo;
       if(body.is_demo===false && !store.owner_id)return error(req,409,"Seeded demo stores cannot be promoted to operational checkout");
-      if(body.is_demo===false && INTERNAL_TEST_STORE_SLUGS.includes(store.slug))return error(req,409,"Internal test records cannot be published as customer stores.");
+      if(body.is_demo===false && INTERNAL_TEST_STORE_SLUGS.has(store.slug))return error(req,409,"Internal test records cannot be published as customer stores.");
       if(body.is_demo===false && body.confirm_production!=="ENABLE COD CHECKOUT")return error(req,422,"Explicit COD checkout confirmation required");
       const deliveryNote=nextDemo?"Demo orders only":"Cash on delivery; delivery managed by the store.";
       const result=await env.DB.prepare("UPDATE commerce_stores SET is_active=?,is_demo=?,delivery_note=? WHERE id=? AND is_active=? AND is_demo=?")
