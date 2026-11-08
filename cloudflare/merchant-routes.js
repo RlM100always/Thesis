@@ -30,6 +30,52 @@ async function json(request,error,max=10000){
 const short=(value,n=120)=>String(value??"").trim().slice(0,n);
 const validEmail=email=>/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)&&email.length<=180;
 const authMailConfigured=env=>Boolean(env.RESEND_API_KEY&&env.AUTH_EMAIL_FROM);
+const MERCHANT_ROLE_PERMISSIONS = Object.freeze({
+ owner: new Set(["*"]),
+ manager: new Set(["session:logout","dashboard:read","products:read","products:write","inventory:read","inventory:write","orders:read","orders:write","coupons:read","coupons:write","returns:read","returns:write","support:read","support:write","analytics:read","sales:write","store:write"]),
+ sales: new Set(["session:logout","dashboard:read","products:read","inventory:read","orders:read","orders:write","coupons:read","sales:write"]),
+ inventory: new Set(["session:logout","dashboard:read","products:read","products:write","inventory:read","inventory:write"]),
+ support: new Set(["session:logout","dashboard:read","orders:read","returns:read","returns:write","support:read","support:write"]),
+ analyst: new Set(["session:logout","dashboard:read","products:read","inventory:read","orders:read","analytics:read"]),
+});
+export function hasMerchantPermission(role, permission) {
+ const permissions=MERCHANT_ROLE_PERMISSIONS[role];
+ return Boolean(permissions && (permissions.has("*") || permissions.has(permission)));
+}
+export function merchantPermissionFor(method,path) {
+ if(method==="POST"&&path==="/api/merchant/logout")return "session:logout";
+ if(method==="GET"&&path==="/api/merchant/dashboard")return "dashboard:read";
+ if(method==="GET"&&path==="/api/merchant/analytics")return "analytics:read";
+ if(method==="GET"&&path==="/api/merchant/inventory-alerts")return "inventory:read";
+ if(path==="/api/merchant/coupons")return method==="GET"?"coupons:read":method==="POST"?"coupons:write":null;
+ if(/^\/api\/merchant\/coupons\/[^/]+$/.test(path))return method==="GET"?"coupons:read":(["PATCH","DELETE"].includes(method)?"coupons:write":null);
+ if(method==="POST"&&path==="/api/merchant/assistant")return "analytics:read";
+ if(path==="/api/merchant/returns")return method==="GET"?"returns:read":null;
+ if(/^\/api\/merchant\/returns\/[^/]+$/.test(path)&&method==="PATCH")return "returns:write";
+ if(path==="/api/merchant/chat")return method==="GET"?"support:read":method==="POST"?"support:write":null;
+ if(path==="/api/merchant/store"&&method==="PATCH")return "store:write";
+ if(path==="/api/merchant/cashbook"&&method==="POST")return "finance:write";
+ if(path==="/api/merchant/pos"&&method==="POST")return "sales:write";
+ if(path==="/api/merchant/products"&&method==="POST")return "products:write";
+ if(/^\/api\/merchant\/products\/[^/]+$/.test(path)&&method==="PATCH")return "products:write";
+ if(/^\/api\/merchant\/orders\/[^/]+\/status$/.test(path)&&method==="PATCH")return "orders:write";
+ if(/^\/api\/merchant\/orders\/[^/]+\/payment$/.test(path)&&method==="PATCH")return "finance:write";
+ return null;
+}
+function dhakaDate(value=Date.now()) {
+ return new Date(value+6*60*60*1000).toISOString().slice(0,10);
+}
+function shiftIsoDate(value,days) {
+ const date=new Date(value+"T00:00:00.000Z");
+ date.setUTCDate(date.getUTCDate()+days);
+ return date.toISOString().slice(0,10);
+}
+function validIsoDate(value) {
+ if(!/^\d{4}-\d{2}-\d{2}$/.test(String(value||"")))return false;
+ const date=new Date(value+"T00:00:00.000Z");
+ return Number.isFinite(date.getTime())&&date.toISOString().slice(0,10)===value;
+}
+
 function ownerPortalLink(env,parameter,token){
  const base=String(env.PUBLIC_APP_URL||"https://thesis-j0n8.onrender.com").replace(/\/$/,"");
  return base+"/#/d1-owner?"+parameter+"="+encodeURIComponent(token);
