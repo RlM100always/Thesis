@@ -4,7 +4,6 @@ import argparse, hashlib, json, platform, sys, time
 from pathlib import Path
 import numpy as np
 import pandas as pd
-import lightgbm as lgb
 from sklearn.metrics import mean_absolute_error, mean_squared_error
 
 KEYS = ["shop_id", "category"]
@@ -119,6 +118,10 @@ def main():
             "total_units":float(y.sum()),"regime":regime(y)})
     pd.DataFrame(diag).to_csv(out/"demand_regime_diagnostics.csv",index=False)
     preds=[]; summaries=[]
+    try:
+        import lightgbm as lgb
+    except ImportError as exc:
+        raise RuntimeError("Install the optional LightGBM dependency from requirements-research.txt") from exc
     for h in HORIZONS:
         for origin in ORIGINS:
             train=training_rows(panel,h,origin); rows=[]; actual=[]; histories=[]; regimes=[]
