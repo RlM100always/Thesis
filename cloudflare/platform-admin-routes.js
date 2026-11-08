@@ -1,6 +1,6 @@
 import { canTransitionOrderStatus, defaultOrderStatusNote } from "./order-workflow.js";
 
-/* Privileged controls for the isolated Cloudflare D1 commerce demo.
+/* Privileged controls for the Cloudflare Primary commerce platform.
  * Configure PLATFORM_ADMIN_KEY as a Worker secret; never hard-code it here.
  */
 const encoder = new TextEncoder();
