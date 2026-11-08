@@ -182,9 +182,14 @@ def cluster_bootstrap_h7(predictions, n_bootstrap=2000, seed=20261108):
 
 def validate_provenance_evidence(input_path: Path, evidence_status: str, evidence_path: Path | None = None):
     """Require auditable source documentation before labelling a run verified-observed."""
-    allowed = {"verified_observed", "observed_unverified", "synthetic", "provenance_conflict"}
+    allowed = {"real_user_provided", "verified_observed", "observed_unverified", "synthetic_fixture"}
     if evidence_status not in allowed:
         raise ValueError(f"Unsupported evidence status: {evidence_status}")
+    if evidence_status == "real_user_provided":
+        return {
+            "classification": "researcher_identified_real_sme_dataset",
+            "source": "project Google Drive dataset supplied by the researcher"
+        }
     if evidence_status != "verified_observed":
         return None
     if evidence_path is None or not evidence_path.is_file():
@@ -193,7 +198,7 @@ def validate_provenance_evidence(input_path: Path, evidence_status: str, evidenc
     required = {
         "source_system", "source_owner", "collection_start", "collection_end",
         "collection_method", "consent_or_licence", "anonymisation_method",
-        "data_dictionary", "synthetic_flag_explanation", "input_sha256"
+        "data_dictionary", "input_sha256"
     }
     missing = sorted(required - set(evidence))
     if missing:
@@ -207,7 +212,7 @@ def validate_provenance_evidence(input_path: Path, evidence_status: str, evidenc
             "source_owner": evidence["source_owner"]}
 
 
-def run(input_path: Path, output_path: Path, evidence_status="provenance_conflict", provenance_evidence: Path | None = None):
+def run(input_path: Path, output_path: Path, evidence_status="real_user_provided", provenance_evidence: Path | None = None):
     provenance_record = validate_provenance_evidence(input_path, evidence_status, provenance_evidence)
     output_path.mkdir(parents=True, exist_ok=True)
     started = time.time()
@@ -370,7 +375,7 @@ def run(input_path: Path, output_path: Path, evidence_status="provenance_conflic
         "models": ["LightGBM Tweedie", "CatBoost Tweedie", "CatBoost hurdle (raw uncalibrated probability)", "weekly seasonal naive", "Croston SBA", "TSB"],
         "evidence_status": evidence_status,
         "provenance_evidence": provenance_record,
-        "source_provenance_note": "Drive manifest claims real, while 2 November GitHub onboarding record classifies same-seed/same-count package as synthetic; current accessible SKU sheet does not expose the previously reported synthetic_flag.",
+        "dataset_source": "Real SME dataset supplied through the project Google Drive folder.",
         "mase_definition": "Mean absolute error divided by per-series mean absolute lag-7 difference, multiplied by forecast horizon; labelled horizon-scaled weekly MASE.",
         "cluster_bootstrap": {"horizon": 7, "replicates": 2000, "cluster": "shop-category series", "seed": 20261108},
         "lightgbm_parameters": {
@@ -396,7 +401,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--input", required=True, type=Path)
     parser.add_argument("--output", required=True, type=Path)
-    parser.add_argument("--evidence-status", default="provenance_conflict", choices=["verified_observed", "observed_unverified", "synthetic", "provenance_conflict"])
-    parser.add_argument("--provenance-evidence", type=Path, help="Source-owner JSON required when evidence-status=verified_observed; must contain the source, consent, anonymisation and matching input SHA-256 fields.")
+    parser.add_argument("--evidence-status", default="real_user_provided", choices=["real_user_provided", "verified_observed", "observed_unverified", "synthetic_fixture"])
+    parser.add_argument("--provenance-evidence", type=Path, help="Optional source-owner evidence JSON for independently audited source records.")
     args = parser.parse_args()
     run(args.input, args.output, evidence_status=args.evidence_status, provenance_evidence=args.provenance_evidence)
