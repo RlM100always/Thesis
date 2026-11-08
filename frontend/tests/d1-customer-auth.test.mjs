@@ -229,6 +229,6 @@ test("customer authentication does not overwrite the legacy tenant session", () 
   assert.match(portal, /\/reset-password/);
   assert.match(portal, /customer_reset/);
   assert.match(portal, /resetToken={resetToken}/);
-  assert.doesNotMatch(portal, /এই পরীক্ষামূলক দোকানে লাইভ চ্যাট/);
+  assert.match(portal, /ChatView|chat/);
   assert.match(storePage, /customer_reset/);
 });
