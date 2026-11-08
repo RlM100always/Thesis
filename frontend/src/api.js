@@ -709,9 +709,11 @@ export const api = {
 
   publicUploadPaymentScreenshot: (orgId, token, body) => post(`/api/public/orders/${encodeURIComponent(orgId)}/payment-screenshot/${encodeURIComponent(token)}`, body),
 
-  initiateSSLCommerzPayment: async (orgId, orderId) => {
+  initiateSSLCommerzPayment: async (orgId, orderId, customerEmail, customerCity) => {
     const form = new FormData();
     form.append("order_id", orderId);
+    form.append("customer_email", customerEmail || "");
+    form.append("customer_city", customerCity || "");
     const resp = await fetch(`/api/public/payment/initiate/${orgId}`, { method: "POST", body: form });
     if (!resp.ok) throw new Error((await resp.json()).detail || "Payment initiation failed");
     return resp.json();
