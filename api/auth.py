@@ -1,7 +1,8 @@
-"""Local prototype identity, optional JWTs, and tenant authorization.
+"""JWT identity and tenant authorization.
 
-Google sign-in is outside the current thesis implementation scope. During local
-development an absent bearer token resolves to one stable prototype owner.
+The no-token prototype identity is available only on an explicitly local
+development machine. Render sets RENDER=true, so hosted deployments always
+require a real bearer token even if APP_ENV was accidentally left at development.
 """
 
 from __future__ import annotations
@@ -105,7 +106,7 @@ def get_current_user(
 ) -> User:
     if credentials is None:
         settings = get_settings()
-        if settings.auth_mode == "development" and not settings.is_production:
+        if settings.auth_mode == "development" and not settings.is_production and not settings.is_hosted:
             user = db.scalar(select(User).where(User.email == "developer@bsmart.local"))
             if user is None:
                 user = User(email="developer@bsmart.local", display_name="Development Owner", is_platform_admin=True)
