@@ -180,7 +180,35 @@ def cluster_bootstrap_h7(predictions, n_bootstrap=2000, seed=20261108):
     return pd.DataFrame(rows)
 
 
-def run(input_path: Path, output_path: Path, evidence_status="provenance_conflict"):
+def validate_provenance_evidence(input_path: Path, evidence_status: str, evidence_path: Path | None = None):
+    """Require auditable source documentation before labelling a run verified-observed."""
+    allowed = {"verified_observed", "observed_unverified", "synthetic", "provenance_conflict"}
+    if evidence_status not in allowed:
+        raise ValueError(f"Unsupported evidence status: {evidence_status}")
+    if evidence_status != "verified_observed":
+        return None
+    if evidence_path is None or not evidence_path.is_file():
+        raise ValueError("verified_observed requires --provenance-evidence JSON from the source owner.")
+    evidence = json.loads(evidence_path.read_text(encoding="utf-8"))
+    required = {
+        "source_system", "source_owner", "collection_start", "collection_end",
+        "collection_method", "consent_or_licence", "anonymisation_method",
+        "data_dictionary", "synthetic_flag_explanation", "input_sha256"
+    }
+    missing = sorted(required - set(evidence))
+    if missing:
+        raise ValueError(f"Provenance evidence is incomplete; missing fields: {missing}")
+    if evidence["input_sha256"].lower() != sha256(input_path).lower():
+        raise ValueError("Provenance evidence input_sha256 does not match the supplied dataset.")
+    empty = [key for key in required if not str(evidence[key]).strip()]
+    if empty:
+        raise ValueError(f"Provenance evidence contains empty fields: {sorted(empty)}")
+    return {"evidence_sha256": sha256(evidence_path), "source_system": evidence["source_system"],
+            "source_owner": evidence["source_owner"]}
+
+
+def run(input_path: Path, output_path: Path, evidence_status="provenance_conflict", provenance_evidence: Path | None = None):
+    provenance_record = validate_provenance_evidence(input_path, evidence_status, provenance_evidence)
     output_path.mkdir(parents=True, exist_ok=True)
     started = time.time()
     data, series, start, end = load_panel(input_path)
@@ -341,6 +369,7 @@ def run(input_path: Path, output_path: Path, evidence_status="provenance_conflic
         "training_origin_stride_days": 28, "feature_history_days": 56,
         "models": ["LightGBM Tweedie", "CatBoost Tweedie", "CatBoost hurdle (raw uncalibrated probability)", "weekly seasonal naive", "Croston SBA", "TSB"],
         "evidence_status": evidence_status,
+        "provenance_evidence": provenance_record,
         "source_provenance_note": "Drive manifest claims real, while 2 November GitHub onboarding record classifies same-seed/same-count package as synthetic; current accessible SKU sheet does not expose the previously reported synthetic_flag.",
         "mase_definition": "Mean absolute error divided by per-series mean absolute lag-7 difference, multiplied by forecast horizon; labelled horizon-scaled weekly MASE.",
         "cluster_bootstrap": {"horizon": 7, "replicates": 2000, "cluster": "shop-category series", "seed": 20261108},
@@ -368,5 +397,6 @@ if __name__ == "__main__":
     parser.add_argument("--input", required=True, type=Path)
     parser.add_argument("--output", required=True, type=Path)
     parser.add_argument("--evidence-status", default="provenance_conflict", choices=["verified_observed", "observed_unverified", "synthetic", "provenance_conflict"])
+    parser.add_argument("--provenance-evidence", type=Path, help="Source-owner JSON required when evidence-status=verified_observed; must contain the source, consent, anonymisation and matching input SHA-256 fields.")
     args = parser.parse_args()
-    run(args.input, args.output, evidence_status=args.evidence_status)
+    run(args.input, args.output, evidence_status=args.evidence_status, provenance_evidence=args.provenance_evidence)
