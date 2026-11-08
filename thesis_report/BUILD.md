@@ -1,46 +1,23 @@
-# Building the thesis progress report
+# Building the main thesis progress report
 
-The report uses the supplied University of Dhaka `Thesis.cls` template. This
-initial submission completes Introduction, Background Study and Related Work,
-Proposed Methodology, and a current-stage Conclusion. Implementation and
-Experimental Results remain heading-only placeholders.
+`thesis_report/main.tex` is the single source of truth for the active report. It contains the title page, front matter, all six chapters, figures, tables, and bibliography. Do not create a parallel standalone report or substitute a different LaTeX template.
 
-> Current scope (2 November 2026): the report covers Bangladeshi SME businesses
-> across sectors. A shared operational core is extended for inventory-based and
-> service businesses, with sector-specific constraints and evidence-bounded
-> business/sector transfer evaluation. This supersedes the report's former
-> pharmacy-only scope. Historical documents outside this report may retain that
-> earlier scope; they do not define this revision's research population.
+## Build locally
 
-## Tectonic (portable, recommended)
-
-From `thesis_report/`:
+From the repository root:
 
 ```powershell
-tectonic main.tex --keep-logs --keep-intermediates
+cd thesis_report
+pdflatex -interaction=nonstopmode -halt-on-error main.tex
+pdflatex -interaction=nonstopmode -halt-on-error main.tex
 ```
 
-If using the repository's portable compiler instead, run
-`..\.tools\tectonic\tectonic.exe main.tex --keep-logs --keep-intermediates`.
-Tectonic resolves the bibliography and repeated references automatically.
+The source uses the existing University of Dhaka report layout, A4 paper, 11-point book class, line spacing, page margins and headers, DU colour palette, and table conventions. Keep those settings unchanged when editing the report.
 
-## Overleaf or Prism
+## Main report PDF
 
-Upload the current `main.tex` and `Figures/logo.pdf` as a new project, placing
-the logo at the project root, and set `main.tex` as the main document. Chapter
-text, template definitions and the resolved bibliography are embedded in
-`main.tex`. Diagrams use editable TikZ. Older exported ZIPs are not the source
-of truth for this revision.
-Use pdfLaTeX or XeLaTeX.
+The compiled report is published at `output/pdf/main-thesis-report.pdf`. A GitHub Actions workflow builds the PDF when the main report source or its build workflow changes. The PDF is copied back to the same repository path after successful compilation.
 
-## TeX Live or MiKTeX
+## Research evidence
 
-```powershell
-pdflatex main.tex
-bibtex main
-pdflatex main.tex
-pdflatex main.tex
-```
-
-The final verified PDF is copied to
-`../output/pdf/Thesis_Progress_Report_2026.pdf`.
+The RQ1 forecasting script and machine-readable development outputs are stored under `research/forecasting/`. The raw SME dataset remains in its controlled Google Drive location and is not committed to the public repository. Numerical results in Chapter 5 must be regenerated from the source panel and must not be manually typed or invented.
