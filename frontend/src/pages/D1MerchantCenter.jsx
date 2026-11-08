@@ -52,6 +52,9 @@ export default function D1MerchantCenter(){
   const [threadMessages,setThreadMessages]=useState([]);
   const [activeCustomerId,setActiveCustomerId]=useState("");
   const [replyText,setReplyText]=useState("");
+  const [assistantQuestion,setAssistantQuestion]=useState("");
+  const [assistantHistory,setAssistantHistory]=useState([]);
+  const [assistantBusy,setAssistantBusy]=useState(false);
   
   const store=data?.store;
   const load=useCallback(async tk=>{
@@ -104,6 +107,17 @@ export default function D1MerchantCenter(){
     try{if(token)await call("/api/merchant/logout",{method:"POST",token});}catch{/* local logout even offline */}
     sessionStorage.removeItem("bsmart_d1_merchant");setToken("");setData(null);setNote("");setError("");
   }
+  async function askBusinessAssistant(question=assistantQuestion){
+    const q=String(question||"").trim();
+    if(!q||assistantBusy)return;
+    setAssistantBusy(true);setAssistantQuestion("");
+    try{
+      const result=await call("/api/merchant/assistant",{method:"POST",token,body:{question:q}});
+      setAssistantHistory(items=>[...items,{question:q,...result}].slice(-8));
+    }catch(e){
+      setAssistantHistory(items=>[...items,{question:q,answered:false,answer:e.message||"উত্তর পাওয়া যায়নি।"}].slice(-8));
+    }finally{setAssistantBusy(false);}
+  }
   const products=data?.products||[],orders=data?.orders||[],stats=data?.metrics||{};
   const totalProducts=useMemo(()=>products.filter(p=>p.is_listed).length,[products]);
   return <main className="dm-page">
@@ -137,6 +151,19 @@ export default function D1MerchantCenter(){
         <div className="dm-tabs">{[["dashboard","সারসংক্ষেপ"],["products","পণ্য ও মজুত"],["pos",store.is_demo?"ডেমো বিক্রি":"ক্যাশ বিক্রি"],["orders","অর্ডার"],["returns","ফেরত"],["chat","ক্রেতার বার্তা"],["store","দোকানের সেটিংস"]].map(([k,l])=><button key={k} onClick={()=>setView(k)} className={view===k?"dm-active":""}>{l}</button>)}</div>
         {view==="dashboard"&&<div className="dm-stack">
           <div className="dm-stats">{store.is_demo?<><Metric title="ডেমো অর্ডার" value={Number(stats.orders||0).toLocaleString("en-BD")}/><Metric title="বাতিল হয়নি এমন নমুনা বিক্রি" value={fmt(stats.placed_total_bdt)} tip="বাস্তবে কোনো টাকা আদায় হয়নি"/><Metric title="প্রকাশিত পণ্য" value={totalProducts}/><Metric title="মজুতের পরিমাণ" value={Number(stats.inventory_units||0)}/></>:<><Metric title="অর্ডার" value={Number(stats.orders||0).toLocaleString("en-BD")}/><Metric title="COD অর্ডারের মোট মূল্য" value={fmt(stats.placed_total_bdt)} tip="এটি অর্ডারের মূল্য; আদায়কৃত টাকা নয়"/><Metric title="COD আদায় নিশ্চিত" value={fmt(stats.cod_paid_total_bdt)}/><Metric title="COD টাকা বাকি" value={fmt(stats.cod_pending_total_bdt)}/><Metric title="প্রকাশিত পণ্য" value={totalProducts}/><Metric title="মজুতের পরিমাণ" value={Number(stats.inventory_units||0)}/></>}</div>
+
+          <section className="dm-panel dm-assistant-panel">
+            <div className="dm-assistant-heading"><div><h2>Smart Business Assistant</h2><p className="dm-muted">আপনার Cloudflare D1 দোকানের সংরক্ষিত তথ্য থেকে উত্তর</p></div><span className="dm-d1">LIVE DATA</span></div>
+            <div className="dm-assistant-suggestions">
+              {["আজকের বিক্রি কেমন?","কোন পণ্যের স্টক কম?","সবচেয়ে বেশি বিক্রি হওয়া পণ্য কোনগুলো?","কতগুলো অর্ডার পেমেন্টের অপেক্ষায়?"].map(q=><button type="button" className="dm-secondary" key={q} disabled={assistantBusy} onClick={()=>askBusinessAssistant(q)}>{q}</button>)}
+            </div>
+            {assistantHistory.length>0&&<div className="dm-assistant-history" aria-live="polite">{assistantHistory.map((item,i)=><article className="dm-assistant-turn" key={i}><strong>আপনি: {item.question}</strong><p>{item.answer}</p>{item.notice&&<small>{item.notice}</small>}</article>)}</div>}
+            <form className="dm-assistant-form" onSubmit={e=>{e.preventDefault();askBusinessAssistant();}}>
+              <input style={input} value={assistantQuestion} maxLength={300} onChange={e=>setAssistantQuestion(e.target.value)} placeholder="ব্যবসা সম্পর্কে প্রশ্ন লিখুন…" aria-label="ব্যবসা সম্পর্কে প্রশ্ন"/>
+              <button className="dm-btn" type="submit" disabled={assistantBusy||!assistantQuestion.trim()}>{assistantBusy?"উত্তর তৈরি হচ্ছে…":"জিজ্ঞাসা করুন"}</button>
+            </form>
+            <small className="dm-muted">উত্তরগুলো live store data থেকে হিসাব করা হয়; কোনো অনুমানভিত্তিক বিক্রির তথ্য দেখানো হয় না।</small>
+          </section>
           <div className="dm-panel"><h2>{store.name}</h2><p className="dm-muted">{store.area} · {store.category}</p><p>{store.is_demo?"ডেমো দোকান প্রকাশিত":"দোকান প্রকাশিত"}: <strong>{store.is_active?"হ্যাঁ":"না"}</strong></p><p className="dm-muted">দোকানের লিংক: <code>/#/store/{store.slug}</code></p>
           <button className="dm-secondary" onClick={()=>setView("store")}>দোকানের তথ্য সম্পাদনা করুন</button></div>
           <div className="dm-panel"><h2>মজুত সংশোধনের ইতিহাস</h2>{data.stock_adjustments.length===0?<Empty>এখনো মজুত সংশোধন করা হয়নি।</Empty>:
