@@ -537,11 +537,15 @@ async def sslcz_success(
     async with httpx.AsyncClient(timeout=20) as c:
         r = await c.get(val_url, params={"val_id": val_id, "store_id": sid, "store_passwd": spwd, "format": "json"})
     vdata = r.json()
-    order = db.scalar(select(SalesDocument).where(SalesDocument.id == tran_id))
-    if order:
-        order.payment_status = "paid" if vdata.get("status") in ("VALID", "VALIDATED") else "payment_failed"
+    order = db.scalar(select(SalesDocument).where(
+        SalesDocument.id == tran_id, SalesDocument.organization_id == value_b,
+    ))
+    if not order or not value_c or order.access_token != value_c:
+        return RedirectResponse(f"{_base_url(request)}/#/payment-result?status=error&gateway=sslcommerz", status_code=303)
+    if order.payment_status != "paid":
+        order.payment_status = "paid" if _sslcz_payment_verified(vdata, order, store) else "payment_failed"
         db.commit()
-    return _order_redirect(value_b, value_c, "success" if order and order.payment_status == "paid" else "failed", _base_url(request))
+    return _order_redirect(value_b, value_c, "success" if order.payment_status == "paid" else "failed", _base_url(request))
 
 
 @router.post("/fail")
@@ -549,8 +553,14 @@ async def sslcz_fail(
     request: Request, db: Session = Depends(get_db),
     tran_id: str = Form(...), value_b: str = Form(""), value_c: str = Form(""),
 ):
-    order = db.scalar(select(SalesDocument).where(SalesDocument.id == tran_id))
-    if order: order.payment_status = "payment_failed"; db.commit()
+    order = db.scalar(select(SalesDocument).where(
+        SalesDocument.id == tran_id, SalesDocument.organization_id == value_b,
+    ))
+    if not order or not value_c or order.access_token != value_c:
+        return RedirectResponse(f"{_base_url(request)}/#/payment-result?status=error&gateway=sslcommerz", status_code=303)
+    if order.payment_status != "paid":
+        order.payment_status = "payment_failed"
+        db.commit()
     return _order_redirect(value_b, value_c, "fail", _base_url(request))
 
 
@@ -578,11 +588,13 @@ async def sslcz_ipn(
     async with httpx.AsyncClient(timeout=20) as c:
         r = await c.get(val_url, params={"val_id": val_id, "store_id": sid, "store_passwd": spwd, "format": "json"})
     vdata = r.json()
-    order = db.scalar(select(SalesDocument).where(SalesDocument.id == tran_id))
-    if order:
-        order.payment_status = "paid" if vdata.get("status") in ("VALID", "VALIDATED") else "payment_failed"
+    order = db.scalar(select(SalesDocument).where(
+        SalesDocument.id == tran_id, SalesDocument.organization_id == value_b,
+    ))
+    if order and order.payment_status != "paid":
+        order.payment_status = "paid" if _sslcz_payment_verified(vdata, order, store) else "payment_failed"
         db.commit()
-    return {"status": "ok"}
+    return {"status": "ok" if order else "order_not_found"}
 
 
 # ── Query payment status (public) ─────────────────────────────────────────────
