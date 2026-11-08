@@ -1,3 +1,4 @@
+from decimal import Decimal
 from types import SimpleNamespace
 
 import pytest
@@ -9,6 +10,10 @@ from api.payment_routes import (
     _nagad_base,
     _nagad_creds,
     _sslcz_creds,
+    _amount_matches,
+    _bkash_payment_verified,
+    _nagad_payment_verified,
+    _sslcz_payment_verified,
 )
 
 
@@ -95,3 +100,42 @@ def test_payment_gateway_endpoint_helpers_refuse_non_live_mode():
         _bkash_base(False)
     with pytest.raises(HTTPException):
         _nagad_base(False)
+
+
+def test_gateway_amount_comparison_uses_decimal_minor_units():
+    assert _amount_matches("125.00", Decimal("125"))
+    assert _amount_matches("125.0", Decimal("125.00"))
+    assert not _amount_matches("124.99", Decimal("125.00"))
+    assert not _amount_matches("not-a-number", Decimal("125.00"))
+
+
+def test_bkash_callback_requires_matching_payment_id_currency_and_amount():
+    order = SimpleNamespace(total=Decimal("250.00"))
+    valid = {"statusCode": "0000", "paymentID": "pay-123", "currency": "BDT", "amount": "250.00"}
+    assert _bkash_payment_verified(valid, "pay-123", order)
+    assert not _bkash_payment_verified({**valid, "amount": "249.00"}, "pay-123", order)
+    assert not _bkash_payment_verified({**valid, "currency": "USD"}, "pay-123", order)
+    assert not _bkash_payment_verified({**valid, "paymentID": "other"}, "pay-123", order)
+
+
+def test_nagad_callback_requires_matching_amount_and_provider_references():
+    order = SimpleNamespace(total=Decimal("375.00"), document_number="ORD-9")
+    valid = {
+        "status": "Success", "amount": "375.00", "paymentReferenceId": "ref-1",
+        "merchantId": "merchant-1", "orderId": "ORD-9",
+    }
+    assert _nagad_payment_verified(valid, "ref-1", "merchant-1", order)
+    assert not _nagad_payment_verified({**valid, "amount": "370.00"}, "ref-1", "merchant-1", order)
+    assert not _nagad_payment_verified({**valid, "paymentReferenceId": "other"}, "ref-1", "merchant-1", order)
+    assert not _nagad_payment_verified({**valid, "merchantId": "other"}, "ref-1", "merchant-1", order)
+
+
+def test_sslcommerz_callback_requires_matching_store_order_currency_and_amount():
+    order = SimpleNamespace(id="order-1", total=Decimal("500.00"))
+    store = SimpleNamespace(sslcz_store_id="store-1")
+    valid = {"status": "VALID", "tran_id": "order-1", "store_id": "store-1", "currency": "BDT", "amount": "500.00"}
+    assert _sslcz_payment_verified(valid, order, store)
+    assert not _sslcz_payment_verified({**valid, "amount": "499.99"}, order, store)
+    assert not _sslcz_payment_verified({**valid, "tran_id": "other"}, order, store)
+    assert not _sslcz_payment_verified({**valid, "store_id": "other"}, order, store)
+    assert not _sslcz_payment_verified({**valid, "currency": "USD"}, order, store)
