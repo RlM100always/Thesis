@@ -1,0 +1,16 @@
+audit_item,value,unit,interpretation
+sales_orders,365447,rows,source count
+sales_lines,736683,rows,all rows join one-to-one to orders
+sku_daily_observed,699220,rows,all rows reproduced from sales lines
+shop_category_panel,561152,rows,32 shops x 16 categories x 1096 days
+shop_category_zero_rows,210972,rows,37.5962 percent of complete panel
+sku_shop_combinations_with_sales,13271,combinations,positive-sale combinations only
+inventory_movements,994808,rows,opening/purchase/sale/expiry/damage
+sale_inventory_movements,736683,rows,all match sales lines by order/shop/SKU/lot/quantity
+purchase_movement_groups,121107,groups,match received purchase-order/SKU quantities
+unreceived_purchase_lines,1315,rows,no final received quantity
+negative_stock_movement_events,269,events,253 shop-SKU combinations
+positive_sale_days_nonpositive_intraday_stock,330,days,quarantine for SKU availability
+reconstructed_in_stock_days,13781575,shop-SKU-days,derived from inventory movement ledger
+reconstructed_censored_days,764537,shop-SKU-days,non-positive intraday stock
+category_zero_days_with_any_in_stock_sku,210972,rows,all category zero rows had >=1 in-stock SKU
