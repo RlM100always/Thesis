@@ -30,7 +30,7 @@ The D1 commerce platform and legacy FastAPI business application are still separ
 
 | Workstream | Existing foundation | Remaining work / release gate |
 |---|---|---|
-| Store design | Responsive React storefront, store themes, product cards/details, search, category/tag filters, price/name sorting, incremental “load more” | Complete mobile/desktop UX and accessibility review; optimise images/performance; improve facets, empty/error states and test real owner-created stores |
+| Store design | Responsive React storefront, store themes, product cards/details, search, category/tag filters, brand and stock-availability filters, price/name sorting, incremental “load more” | Complete mobile/desktop UX and accessibility review; optimise images/performance; improve empty/error states and test real owner-created stores |
 | Owner panel | Separate D1 owner registration/login, dashboard, store draft, product/stock management, orders, returns, customer inbox, POS/cashbook and coupons | Resend sender is not configured; verify email/password reset end-to-end; add owner/staff role matrix and full settings; test all CRUD after re-login |
 | Customer assistant | Store-scoped assistant uses catalogue and signed-in customer's own order context; fallback answers are available | Improve recommendation ranking, test prompt injection and accuracy, add human-support handoff and monitored rate limits |
 | Owner assistant | D1 tenant-scoped assistant for selected sales, stock, order, COD and product questions; owner dashboard has assistant UI | Expand supported intents, reconcile metrics against D1 queries, add evaluated AI narration only after budget approval |
@@ -55,7 +55,7 @@ The D1 commerce platform and legacy FastAPI business application are still separ
 - [x] Confirm public directory does not expose inactive sample/CI stores.
 
 ### Step 1 — Storefront quality and catalogue journey — IN PROGRESS
-- [ ] Test store home, product detail, search, categories/tags, sort and incremental loading on mobile and desktop.
+- [x] Add accessible brand and stock-availability filters alongside search, categories/tags and price/name sorting; extract filter logic into a pure helper with automated unit tests.\n- [ ] Test store home, product detail, search, categories/tags, brand/stock filters, sort and incremental loading on mobile and desktop.
 - [ ] Test no-results, API-down, empty catalogue, unavailable store and out-of-stock states.
 - [ ] Verify price, stock, image, variant and wishlist display against D1/API responses.
 - [ ] Add automated UI/API regression tests for filtering, sorting, cart and product detail.
