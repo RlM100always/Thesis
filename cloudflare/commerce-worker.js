@@ -7,7 +7,7 @@ import { customerAssistantRouter } from "./assistant-routes.js";
 /*
  B-SMART Cloudflare D1 Commerce API.
  Public storefront catalogues, customer accounts, saved addresses, account-linked
- order history and support chat. Seeded/demo stores accept simulated orders only.
+ order history and support chat. Archived non-operational store records remain private.
  An explicitly admin-approved merchant store may accept cash-on-delivery orders
  with manual fulfilment; no online payment gateway, courier integration or refund
  automation is active. Legacy FastAPI business and historical customer records
@@ -310,7 +310,7 @@ const m=path.match(/^\/api\/public\/orders\/([^/]+)(?:\/(.*))?$/);
      return orderDetails(env,request,id,token);
     }
     if(method==="POST"&&action.startsWith("payment-screenshot/"))
-      return error(request,501,"Demo store does not accept payment evidence.");
+      return error(request,501,"This store is not approved for live payment evidence.");
    }
    return error(request,404,"Route not found");
   }catch(e){
