@@ -15,10 +15,24 @@ for the supervisor's base-data → multi-shop model → shop-constraint → spec
 recommendation → feedback/evaluation flow. Other SME types are future extension,
 not part of the initial effectiveness claim.
 
-**The LaTeX template itself (main.tex, preamble.tex, Chapters/*.tex, etc.)
-is not stored in this software repository** — it lives in a separate
-LaTeX/Overleaf project. This guide only records the requirements so the
-report can be written correctly whenever that's picked up.
+**Repository implementation update — 8 November 2026:** the active report
+is stored in this repository at `thesis_report/main.tex`. That file is
+the single source of truth used by the PDF build workflow; its six core
+chapters and bibliography are currently written inline in that file.
+The separate `thesis_report/Chapters/*.tex` files are not included by
+the active `main.tex` and must not be edited as if they changed the
+published report. The compiled PDF is
+`output/pdf/main-thesis-report.pdf`. This current repository state
+supersedes the older Overleaf-only note below.
+
+The active report currently describes a multi-sector Bangladesh SME
+framework and clearly labels the supplied RQ1 package as
+`provenance_conflict`. The older pharmacy-specific scope note above is
+historical supervisor context; do not use it to overwrite the active
+multi-sector scope without a new supervisor instruction. Preserve the
+existing University of Dhaka LaTeX class, title page, chapter order,
+spacing, margins, headers, bibliography and table conventions.
+
 
 ## Execution order (stated by the user, keep this rule)
 
