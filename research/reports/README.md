@@ -32,3 +32,5 @@ These are development scores, not final holdout results. The training-origin str
 python research/forecasting/run_rq1_experiment.py --input path/to/panel.csv --output artifacts/rq1_development --evidence-status provenance_conflict
 
 See RQ1_Empirical_Development_Report.tex for methods, detailed results, limitations and next research gates.
+
+The earlier 83.98% WAPE figure has not been reproduced. Its exact script, target level, test rows, origin and metric implementation must be matched before comparison. The current 82.73% 1-day score is at shop-category level and is not directly comparable with a previously reported individual-level result.
