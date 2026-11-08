@@ -13,7 +13,7 @@ The existing D1 database has schema version 8 and 22 application tables. Those t
 
 The current D1 dataset contains 10 fictional demo stores / 259 demo products plus one retained CI test fixture and its test product. All 11 store rows are marked demo. The fixture is hidden from customer discovery by the alignment change, but its rows remain in D1.
 
-The Render-hosted FastAPI runtime is **not connected to D1**. Its latest startup diagnostic reports SQLite, one organization, zero stores, four catalogue products and zero listed store products. The existing Render Postgres resource is not configured as the running service's database. The separate Cloudflare D1 database `bcs-written` is another application and is excluded from this migration.
+The Render-hosted FastAPI runtime is **not connected to D1**. Its latest startup diagnostic reports SQLite, one organization, zero stores, four catalogue products and zero listed store products. The existing Render Postgres resource is not configured as the running service's database. That `thesis-db` Free Postgres instance expires on 24 November 2026 and has an empty IP allowlist; its contents remain unverified and must be preserved until inspected. The separate Cloudflare D1 database `bcs-written` is another application and is excluded from this migration.
 
 ## 2. Existing SQLAlchemy schema that must be ported
 
@@ -178,4 +178,4 @@ A module is not marked D1-backed merely because a table exists. Before switching
 - production UI reads and writes only the selected authoritative D1 path;
 - old SQLite data is either imported with provenance or explicitly confirmed as disposable/test-only.
 
-**Current completion:** Phase 0 read-only inventory and integrity checks are complete. Phase 1–7 are not complete. Existing storefront D1 functionality remains live and separate from the legacy FastAPI operational modules.
+**Current completion:** Phase 0 inventory of the live D1 database and Render runtime is complete. The legacy Render SQLite file is ephemeral; the separate Render Postgres resource is unverified and expires on 24 November 2026. Phase 1–7 are not complete. Existing storefront D1 functionality remains live and separate from the legacy FastAPI operational modules.
