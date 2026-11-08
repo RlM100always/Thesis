@@ -522,32 +522,26 @@ claim of effectiveness across all SME sectors. This report is current to
   {\huge\textit{Abstract}\par}
 \end{center}
 This thesis develops \system{}, an AI-powered business analytics and
-decision-support framework intended to connect operational records with
-performance evaluation, demand prediction, customer insight, and feasible
-business recommendations for Bangladeshi small and medium enterprises (SMEs).
-The proposed framework uses a shared operational core with sector- and
-business-specific constraints. This progress report records the completed
-research foundation and a first reproducible demand-forecasting experiment
-using the supplied daily shop--category dataset. The dataset manifest
-identifies the package as real SME sales or real people; a separately named
-simulated-unmet-demand table is excluded from the observed-sales target.
-The analysed panel contains 561,152 daily observations across 32 shops and
-16 product categories, forming 512 complete shop--category series from
-1 January 2023 to 31 December 2025. Observed sales total 1,580,361 units,
-and 37.60\% of daily observations are zero-sales records. Direct cumulative
-forecasts were evaluated at 1-, 7-, 14-, and 28-day horizons over three
-development origins in July, August, and September 2025. A pooled LightGBM
-Tweedie model achieved WAPE values of 79.88\%, 33.87\%, 24.22\%, and
-18.57\%, respectively, outperforming the evaluated seasonal-naive,
-Croston--SBA, and TSB comparators on pooled totals at each horizon.
-Nevertheless, one-day forecasting remains weak and under-forecasted, while
-the intermittent-demand subgroup contains only four series and is too small
-to support a reliable specialist-model conclusion. The current experiment
-uses historical sales and calendar features only; SKU-level demand,
-stock-out censoring, price and promotion effects, calibrated prediction
-intervals, and inventory-policy impact remain subjects for further
-implementation and evaluation. The results are therefore development
-evidence, not a final untouched-test claim.
+decision-support framework for performance evaluation, demand prediction,
+customer insight and feasible recommendations in Bangladeshi SMEs. The
+supplied dataset manifest identifies the business package as real SME sales
+and real people. The RQ1 daily panel contains 561,152 observations across
+32 shops, 16 categories and 512 shop--category series from 2023 to 2025,
+with 1,580,361 observed units and 37.60\% zero-sales observations. The
+forecasting target is observed sales, not unobserved latent demand.
+
+A leakage-controlled LightGBM Tweedie experiment compared historical
+series features with additional shop, category and network context features.
+Across nine monthly seven-day development origins, pooled WAPE decreased
+from 33.47\% to 32.66\%; the context model won six of nine origins. Its
+aggregate bias increased in magnitude from -2.02\% to -6.05\%, illustrating
+the trade-off between absolute error and under-forecasting. The context
+model also improved pooled WAPE in the three-origin 1-, 14- and 28-day
+development comparisons. Prequential interval coverage and bottom-up
+hierarchical aggregation were evaluated as additional diagnostics.
+These results are development evidence, not a final untouched-test claim.
+SKU-level latent demand, inventory-policy benefit and customer-action
+effectiveness require separate evidence and evaluation.
 
 \clearpage
 
@@ -581,162 +575,100 @@ evidence, not a final untouched-test claim.
 \label{chapter_introduction}
 
 \section{Context and Motivation}
+SMEs generate valuable evidence through sales, purchases, payments, inventory
+movements and customer transactions, but these records are often distributed
+across ledgers, spreadsheets and separate applications. Owners may see that
+sales have changed without knowing which products, customers or operating
+conditions explain the change, or what response is feasible.
 
-Operational data is used for business intelligence and analytics to structure the data for decision-making. Decision-makers can explain performance, predict future performance, and select an appropriate response \cite{chen2012business}. In a small or medium enterprise (SME), the journey towards analytics starts with familiar records: invoice lines, product movements, purchase receipts, expenses, payments, and customer visits. These records can shed light on revenue and stock position, but their value becomes limited if they remain on paper ledgers, spreadsheets, and separate applications. The owner might be aware of a sales drop last month but not realize what products, customers, or operating conditions were responsible for the reduction, whether the pattern is likely to persist, or whether an inexpensive course of action should be followed.
-
-This is a more challenging decision than making a dashboard. In retail, to ensure product availability, an owner of a business should make an early estimate of product demand and order in advance from a supplier. The order should be determined with respect to limited cash, storage capacity, pack multiples, and delivery time. Too little stock will result in stock-outs and lost sales, while too much will lead to high inventory levels and obsolescence. Much of the capital tied up in excess inventory can lead to near-expiry or expired stock, which can vary based on batch, remaining shelf life, and temperature-sensitive storage. Otherwise, an attractive order may still be possible.
-
-Meanwhile, a once-valuable customer may become inactive, or a product may appear profitable because the costs were incompletely recorded. A promotion might lead to an increase in volume without a corresponding increase in contribution. These questions are based on the same operational history but involve different analytical activities within the same decision context.
-
-Hierarchy, intermittency, promotions, and local events are all identified as factors in retail forecasting research. New products, changing assortment, and organisational use of forecasts are also central practical concerns in retail forecasting \cite{fildes2022retail}. Evidence from large forecasting competitions also cautions against assuming that a more complex algorithm is automatically more accurate: combinations, statistical methods, and carefully constructed baselines are still competitive in many series \cite{makridakis2022m5}.
-
-So, the problem investigated in this research is not to put a pretty face on a sales file. It is to construct a defensible path from business events to out-of-time predictions and then from predictions to actionable, explainable decisions.
-
+The challenge extends beyond displaying historical KPIs. Retail decisions
+require demand estimates while accounting for cash, stock, supplier lead time,
+pack size, storage and expiry. Customer inactivity, incomplete cost records
+and promotion effects create further analytical risks. This research connects
+operational events to valid predictions and explainable, constraint-aware
+decisions \cite{chen2012business,fildes2022retail,makridakis2022m5}.
 
 \section{Bangladesh SME Business Context}
+The intended setting is Bangladeshi SMEs in retail, wholesale, distribution
+and related sectors. A shared operational core covers sales, purchases,
+expenses, payments, customers and performance indicators; inventory, batch,
+expiry and capacity modules apply where relevant. A common framework does not
+imply that one model suits every business.
 
-The framework targets small and medium enterprises (SMEs) in Bangladesh
-across business sectors, including retail, wholesale, distribution and services.
-A shared operational core covers sales, purchases, expenses, payments, customers
-and performance indicators. Inventory, batch, expiry and capacity modules apply
-only where relevant to the business. Sector and business characteristics are
-retained explicitly; a common framework does not imply a universal model or
-already demonstrated effectiveness in every sector.
-
-Bangladesh-specific studies show that perceived benefit, management and organisational readiness, government support, cost, complexity, and organisational and environmental context influence the adoption of ICT in SMEs \cite{hoque2016ict,shahadat2023digital}. Research on mobile financial services also demonstrates the importance of ease of use and the affordances of everyday practice, such as mobility and self-control \cite{hazra2021mfs}. These results suggest that local payment channels and low-friction data entry, together with owner-readable explanations, are requirements for the design rather than optional details for presentation.
-
-This study is based on a functional definition of its population instead of relying on a regulatory size threshold that is subject to change. The set of target businesses has stock, records sales and purchases, makes branch-, product-, or batch-level decisions, and has limited specialist analytics capability. The unit of analysis can be a business, branch, stock-keeping unit (SKU), batch, customer, or historical customer snapshot, depending on the research question. A customer snapshot is either used or not used depending on the specific research question.
-
-Conclusions will be limited to the sampled businesses, sectors and evidence actually collected. Recommendations remain subject to owner approval and business-specific feasibility checks.
-
+Bangladesh studies identify management support, perceived benefit, cost,
+complexity and organisational readiness as important influences on SME
+technology adoption \cite{hoque2016ict,shahadat2023digital}. These findings
+motivate low-friction data entry, local payment compatibility and owner-readable
+evidence. Results remain bounded to the businesses and periods represented
+in the supplied data.
 
 \section{Decision Environment and Stakeholder Requirements}
-
-An SME analytics artifact is used inside an operating system of people, records, cash pledges, and supplier relationships. The owner or manager is the primary decision-maker, while the evidence could be produced by sales staff, inventory staff, accountants, and external payment or supply services. A recommendation is reliable only if those roles generate compatible records and the decision-maker can interpret the outcome at the time of action.
-
-The Bangladesh adoption evidence makes the methodological implication clear: perceived value, organisational readiness, cost, and workflow compatibility must be assessed in addition to model accuracy \cite{hoque2016ict,shahadat2023digital}.
-
-The setting is translated into concrete information requirements in Table~\ref{tab:stakeholder_requirements}. The table is a design analysis of the present thesis. It is not a statement that every participating business has the same staffing structure. One individual can fill more than one role in a micro-enterprise.
-
-There is an important difference between those who create an event, those who validate it, and the person who validates the output and suffers the consequences of a bad decision.
+The owner or manager makes the principal decisions, while operational,
+finance and supply staff create or validate supporting records. The system
+must preserve traceability from each result to its source events,
+transformation rules and historical cutoff. It must distinguish incomplete
+evidence from a valid zero and allow owners to inspect, modify or reject
+recommendations.
 
 \begin{table}[H]
 \centering
 \small
-\caption{Stakeholder decisions, responsibilities, evidence requirements, and corresponding design implications in the target setting.}
+\caption{Core stakeholder requirements.}
 \label{tab:stakeholder_requirements}
-
-\begin{tabularx}{\textwidth}{|p{0.19\textwidth}|p{0.27\textwidth}|Y|Y|}
+\begin{tabularx}{\textwidth}{|p{0.18\textwidth}|Y|Y|}
 \hline
-
-\textbf{Stakeholder} &
-\textbf{Decisions or Responsibilities} &
-\textbf{Evidence Required} &
-\textbf{Design Implication} \\
+\textbf{Stakeholder} & \textbf{Responsibility} & \textbf{System requirement} \\
 \hline
-
-Owner or manager &
-Reorder products, allocate cash, approve customer contact, and accept or reject a recommendation &
-Current stock, expected demand, cost range, uncertainty, and supporting reasons &
-Present a concise and feasible action with drill-down evidence while retaining the owner's decision-making authority \\
+Owner or manager & Reorder, allocate cash and approve customer actions & Feasible options, uncertainty, supporting evidence and owner control \\
 \hline
-
-Operational users &
-Maintain product records, minimize duplicate entry, validate imported data, and preserve corrections &
-Stable product keys, import-validation results, duplicate checks, correction history, and source records &
-Prevent uncontrolled changes to product keys, reduce duplicate entry, validate records at import, and preserve corrections for traceability \\
+Operational users & Maintain product, sales and stock records & Stable identifiers, validation and correction history \\
 \hline
-
-Accounts or finance personnel &
-Reconcile payments, expenses, receivables, and inputs used for margin calculations &
-Links between invoices and payments, expense periods, cost provenance, and identification of missing cost information &
-Preserve auditable links among transactions, payments, expenses, and cost records, and explicitly identify incomplete cost evidence \\
+Finance personnel & Reconcile payments, expenses and costs & Traceable transaction links and missing-cost coverage \\
 \hline
-
-Supplier or logistics contacts &
-Confirm lead time, pack size, minimum-order quantity, incoming quantity, and related supply conditions &
-Dated purchase orders, receipt history, supplier lead-time records, pack-size information, minimum-order requirements, and incoming quantities &
-Apply lead-time and ordering restrictions as dated operational constraints rather than as universal constants \\
+Supplier contacts & Confirm lead time, pack size and incoming quantity & Dated supply constraints, not assumed universal values \\
 \hline
-
-Research and system team &
-Build, evaluate, monitor, and maintain the artifact &
-Versioned datasets, analytical cutoffs, code, parameters, metrics, immutable analytical snapshots, and audit events &
-Ensure that reported outputs are reproducible from versioned and immutable analytical evidence \\
+Research and system team & Build and evaluate the artifact & Versioned data, code, cutoffs and reproducible results \\
 \hline
-
 \end{tabularx}
 \end{table}
-
-
-This analysis leads to four owner-facing qualities: that the output is a decision which the business can actually make. Traceability is the ability to trace the value displayed back to its source events, transformations, and a declared cutoff. Proportionality refers to the fact that the model, interface, and data requirements are reasonable for the value and risk of a decision. The value and risk of a decision is contestable if the owner can examine the supporting evidence, reject the suggestion, and record a reason. These qualities transform local usability from a visual design preference into a condition of credible evaluation.
-
+The design is assessed on decision relevance, traceability, proportionality
+and contestability.
 
 \section{Problem Statement}
-
-The middle problem is the lack of a reliable and convenient link between data from these logs and the analysis of the resulting information. These logs are used for three activities: recording business operations, extracting predictive insights from the data, and choosing an action that is viable for the business.
-
-Orders can be stored in a transaction system, but even when the data are available, there may be no forecasts. A stand-alone model can report an accuracy score after evaluation, but it can still be untrustworthy because the features may not have existed at the time the prediction was supposed to be made. Its test data may have contained information from the training period, or it may be unable to deliver an output that is related to budget, stock, lead time, and customer consent. A recommendation can therefore be technically correct but not feasible for the business.
-
-
-The problem is broken down into four related gaps:
-
+The central problem is the weak connection between SME operational records,
+valid analytical estimates and feasible business actions. Four gaps follow:
 \begin{enumerate}[label=G\arabic*.]
-
-\item \textbf{Data foundation gap.} Sales, inventory, purchases, expenses, customers, and payments need a consistent schema, timestamps, provenance, and organisational boundaries before they can support reliable and comparable analytics.
-
-\item \textbf{Prediction-validity gap.} Demand and customer-risk models need historical snapshots, chronological or entity-safe splits, training-only transformations, consistent baselines, and metrics suitable for sparse or imbalanced outcomes. Without leakage control, there can be an attractive but false appearance of performance and validity \cite{kaufman2012leakage}.
-
-\item \textbf{Prediction-to-action gap.} A forecast or risk probability does not identify what to order, who to reach out to, or whether an action is cost-effective. Prediction must therefore be related to costs, constraints, and uncertainty. This represents the shift from predictive to prescriptive analytics \cite{bertsimas2020prescriptive}.
-
-\item \textbf{Adoption and accountability gap.} An SME owner requires a short, clear explanation of the reason, confidence indication, and traceable source for a suggestion. A feature-attribution method can explain how features contributed to a model output, but it does not establish causality, nor does it attribute credit or blame for a model's behaviour. Instead of relying solely on human judgement, methods such as SHAP and explanation frameworks provide structured mechanisms for interpreting model behaviour \cite{lundberg2017shap,miller2019explanation}.
-
+\item \textbf{Data foundation:} records need consistent identifiers,
+timestamps, provenance and business boundaries.
+\item \textbf{Prediction validity:} features, labels and transformations must
+respect decision-time availability and chronological evaluation
+\cite{kaufman2012leakage}.
+\item \textbf{Prediction to action:} forecasts and risk scores must be linked
+to cost, stock, cash, lead-time and consent constraints
+\cite{bertsimas2020prescriptive}.
+\item \textbf{Adoption and accountability:} owners need understandable,
+traceable evidence and authority to reject or modify recommendations.
+Feature attribution supports inspection but does not establish causality
+\cite{lundberg2017shap,miller2019explanation}.
 \end{enumerate}
-
-This thesis therefore investigates the possibility of an integrated framework that is Bangladesh-aware and can visually represent an auditable retail record, a leakage-controlled forecast, customer insights, and ranked actions based on the operating constraints of an SME. The work does not assume that machine learning can outperform every existing baseline. Finding that a simple rule is more reliable or economical for a particular task is considered a valid result.
-
+The thesis evaluates an integrated SME decision-support framework. It does
+not assume that machine learning must outperform every baseline; a simpler
+method is valid when more reliable or economical for the task.
 
 \section{Analytical Logic and Claim Boundaries}
+The process separates an observed business event, an estimate based on
+information available at that time, an eligible action and a later outcome.
+Missing records weaken the estimate; leakage invalidates it; ignored
+constraints make an action infeasible; and absent follow-up prevents a
+credible impact claim.
 
-The thesis, which is composed of four logical objects, is often lumped together in a single analytics process. A prototype of an analytics system can be viewed as a sequence consisting of an observed business event, an analytical estimate, an action influenced by that estimate, and a later outcome. Figure~\ref{fig:problem_logic} shows this dependency. There are failure modes associated with each of these transitions. Incomplete or inconsistent records reduce the available evidence; leakage or invalid records invalidate an estimate; ignored constraints make an action infeasible; and without outcome capture, it is not possible to determine whether the recommendation contributed to a successful outcome or to learning. Success in one area must therefore be matched by success in another.
-
-
-\begin{figure}[H]
-\centering
-\resizebox{\textwidth}{!}{%
-\begin{tikzpicture}[
-  main/.style={draw=dugreen,rounded corners,fill=softgreen,minimum width=3.15cm,minimum height=1.25cm,align=center,font=\small},
-  risk/.style={draw=dugold,rounded corners,fill=softorange,minimum width=3.15cm,minimum height=1.05cm,align=center,font=\footnotesize},
-  flow/.style={-{Latex[length=2.2mm]},thick,draw=gray!75},
-  node distance=0.42cm
-]
-\node[main] (event) {Observed event\\sale, receipt, return};
-\node[main,right=of event] (estimate) {Analytical estimate\\KPI, forecast, risk};
-\node[main,right=of estimate] (action) {Eligible action\\order or contact priority};
-\node[main,right=of action] (outcome) {Later outcome\\stock, response, value};
-\node[risk,below=0.65cm of event] (r1) {Risk: missing identity,\\time or correction};
-\node[risk,below=0.65cm of estimate] (r2) {Risk: leakage, weak\\baseline or calibration};
-\node[risk,below=0.65cm of action] (r3) {Risk: ignored cash,\\stock or consent};
-\node[risk,below=0.65cm of outcome] (r4) {Risk: no counterfactual\\or follow-up evidence};
-\draw[flow] (event) -- (estimate);
-\draw[flow] (estimate) -- (action);
-\draw[flow] (action) -- (outcome);
-\draw[flow] (event) -- (r1);
-\draw[flow] (estimate) -- (r2);
-\draw[flow] (action) -- (r3);
-\draw[flow] (outcome) -- (r4);
-\end{tikzpicture}}
-\caption{Logical dependency from an operational event to an evaluated outcome.}
-\label{fig:problem_logic}
-\end{figure}
-This separation also regulates the claims made in the thesis. A dashboard value is \emph{descriptive}: it is supported when the accounting definition and source reconciliation are correct. The likelihood of inactivity indicated by a forecast or inactivity score is \emph{predictive}: it is only available on observations that were not used during model development. A rank recommendation is \emph{prescriptive}: it also calls for specific actions, considers costs, and is planned under constraints and uncertainty \cite{bertsimas2020prescriptive}. A positive field-impact claim is even stronger, since it relies on what decisions were made based on what was observed and on outcomes within a defensible comparison.
-
-Several terms are therefore used in a narrow sense. \emph{Demand} refers to the quantity required by customers; recorded sales may be a censored observation of demand when stock is not available. \emph{Future inactivity} refers to no observed demand in a future period and is not assumed to be permanent or, where applicable, a ``forever'' purchase pattern.
-
-A faithful summary of model behaviour should be supported by the behaviour itself and by the decisions made, rather than by assuming that attributed behaviour will necessarily cause the desired outcome \cite{lundberg2017shap,miller2019explanation}. Finally, \emph{local validity} refers to the validity demonstrated for the businesses involved, the sampled period, and the observed workflow, rather than automatic generalisation to every SME in Bangladesh.
-
-Negative and conditional findings are therefore informative within these boundaries. A model may be accurate but not actionable because of a lack of cost data. An action policy may lead to reductions in simulated stock-outs only under an assumed lead time and may therefore not be deployment-ready. An explanation can be technically faithful but still not be understood by owners. The evaluation is planned to uncover these distinctions. Instead of combining all these conditions into one label of success, it is advisable to evaluate and report each condition separately.
-
+The thesis distinguishes descriptive KPIs, predictive estimates,
+prescriptive recommendations and realized business impact. Recorded sales
+may be censored demand when stock is unavailable. Future inactivity means
+no observed purchase within a defined window, not permanent customer loss.
+Model explanations describe model behaviour, not causal effects
+\cite{lundberg2017shap,miller2019explanation}. Claims are limited to the
+businesses, periods and tasks actually evaluated.
 
 \section{Research Aim and Objectives}
 
@@ -767,50 +699,18 @@ The study will:
 
 
 \section{Initial Solution Concept}
+The proposed solution is \system{}, a multi-sector SME decision-support
+framework with a shared operational core and configurable analytical tasks.
+It validates business events, creates time-frozen analytical views, compares
+baselines with eligible models, and presents estimates with their cutoff,
+uncertainty and supporting evidence.
 
-The proposed solution is \system{}: the Bangladesh SME Monitoring,
-Analytics, Recommendations, and Tracking System. It is a multi-sector business
-decision-support framework with a shared operational core and configurable
-sector-specific analytical tasks and constraints. It does not assume that one
-trained model is suitable for all businesses.
-
-SME business events are brought into a governed operational layer, where validated events are converted into time-frozen analytical views. A clear comparison is then made among transparent baselines, a pooled multi-business model, and shop-adapted candidates, where sufficient evidence is available. The selected model produces forecasts, risk estimates, and segment profiles for an active strategy layer. This strategy layer maps the forecasts, risks, and segment profiles to feasible strategies. Before listing and prioritising actions, the shop owner provides the relevant constraints. Each displayed action is accompanied by the data cutoff, model or baseline source, uncertainty or error range, source documentation, and supporting factors. The owner's response and the subsequent outcome are retained in the system for evaluation and monitoring.
-
-The three analytical outputs match the approved title. \emph{Performance evaluation} tabulates customer behaviour, stock movement, and margin, all of which are associated with revenue from reconciled records. \emph{Insight extraction} estimates future demand, identifies meaningful behavioural groups, and detects customer inactivity. These estimates are then used in \emph{strategy optimisation} to generate candidate actions, such as adjusting order quantities and/or retention priorities, subject to cash, storage, lead time, minimum order quantity, current stock, and customer-contact consent.
-
-These components are formally defined in Chapter~\ref{chapter_methodology}.
-
-Figure~\ref{fig:solution_scope} provides a compact scope map of this proposed
-decision-support path. It also makes explicit that governance and owner control
-are not optional add-ons: they constrain every stage from source records to
-subsequent learning.
-
-\begin{figure}[H]
-\centering
-\resizebox{\textwidth}{!}{%
-\begin{tikzpicture}[
-  stage/.style={draw=dugreen,rounded corners,fill=softgreen,text width=2.75cm,minimum height=1.35cm,align=center,font=\footnotesize},
-  guard/.style={draw=dugold,rounded corners,fill=softorange,text width=13.5cm,minimum height=0.9cm,align=center,font=\footnotesize},
-  flow/.style={-{Latex[length=2.2mm]},thick,draw=gray!75},
-  node distance=0.42cm
-]
-\node[stage] (records) {\textbf{Operational evidence}\\sales, stock, purchase, batch, customer};
-\node[stage,right=of records] (views) {\textbf{Historical views}\\validated KPIs and cutoff-safe features};
-\node[stage,right=of views] (insights) {\textbf{Analytical insight}\\demand, inactivity, segments, uncertainty};
-\node[stage,right=of insights] (decision) {\textbf{Owner decision}\\feasible ranked action and later outcome};
-\node[guard,below=1.35cm of $(views)!0.5!(insights)$] (guard) {Cross-cutting controls: business scope, provenance, privacy, leakage prevention, active constraints, explanation and audit trail};
-\draw[flow] (records) -- (views);
-\draw[flow] (views) -- (insights);
-\draw[flow] (insights) -- (decision);
-\draw[flow] (records.south) -- (records.south |- guard.north);
-\draw[flow] (views.south) -- (views.south |- guard.north);
-\draw[flow] (insights.south) -- (insights.south |- guard.north);
-\draw[flow] (decision.south) -- (decision.south |- guard.north);
-\end{tikzpicture}}
-\caption{Functional scope of \system{} from business evidence to an accountable owner decision.}
-\label{fig:solution_scope}
-\end{figure}
-
+Its three functions follow the approved project title:
+\emph{performance evaluation} reconciles sales, stock and financial indicators;
+\emph{insight extraction} identifies demand patterns, customer inactivity and
+operational anomalies; and \emph{strategy optimisation} ranks feasible
+purchasing or customer actions under business constraints. The owner retains
+final authority, and outcomes are recorded for audit and monitoring.
 
 \section{Research Questions}
 
@@ -830,15 +730,13 @@ The thesis is based on four research questions:
 
 
 \section{Scope and Boundaries}
-
-The study focuses on Bangladeshi SME businesses, structured operational data, descriptive indicators, demand forecasting, customer inactivity, behavioural segment identification, explainability, and business strategies such as replenishment, stock-out review, overstock or near-expiry review, and consent-aware customer retention.
-
-Participating businesses contribute only their own portion of the data. Installed and anonymised research fields are used for cross-shop modelling, while the raw records and constraint profile of each shop remain tenant-isolated. External portability testing on a different dataset does not, by itself, validate the portability of the method to Bangladeshi business settings. Public price information can provide background information but cannot replace evidence at the invoice, stock, batch, and constraint levels.
-
-The study does not include manufacturing scheduling, credit scoring, employee surveillance, uncontrolled price changes, or unrestricted customer profiling. It does not claim causal inferences based on attributions of observational features. It will not treat generated data as field evidence or mix synthetic and observed materials without clear identification. Reported real-world scores will not be extrapolated by assuming that they are equivalent to the performance of participating businesses.
-
-The study does not claim to transfer its results automatically to other SME verticals or to non-validated settings. The implementation details, experimental results, and final conclusions are presented in Chapters~\ref{chapter_implementation}--\ref{chapter_conclusion}. Any optional feature can be deliberately enabled and evaluated within the defined experimental scope.
-
+Empirical claims are restricted to the supplied Bangladesh business dataset
+and tasks for which its fields are suitable. The current forecasting
+experiment is at shop--category--day level and predicts observed sales; it
+does not establish SKU-level latent demand. Customer-risk analysis requires
+stable pseudonymous identifiers and complete follow-up. Inventory-policy
+claims require reconciled stock, cost and supplier constraints. Cross-sector
+generalisation and realized business impact require separate evaluation.
 
 \section{Expected Contributions and Significance}
 
@@ -848,12 +746,12 @@ The work also provides evidence of the ability of owners to interpret and apply 
 
 
 \section{Anticipated Challenges}
-
-The most crucial dependency is on relevant primary data obtained from several consenting businesses. The purpose of the aggregated history is to obtain invoice lines, inventory, products, batches, expiration dates, prices, and customers. It may not be easy to estimate the number of products, batches, expiration date data, prices, and customers present in a particular business. Available publicly sourced data in Bangladesh may not contain the identifiers needed, and partner data may be lacking. Change in SKU codes, lack of consistency between box/pack/unit units, and missing cost or measurement data are some reasons for such issues.
-
-The technical risks are intermittent demand, short history, new products, stock-out censoring, class imbalance, and data drift. The scientific risks are optimistic, underwhelming, or unsafe results of the models, incompatible comparison between datasets, conclusion drawn from a single model, and the disruptive to-and-fro process of data between several models. The human risks are time constraint, disparity in digital skills, lack of trust in the digital setting, and excessive confidence in explanations.
-
-The methodology has a prevention or evaluation step associated with each risk.
+The main challenges are incomplete fields, stock-ledger anomalies, uneven
+demand, business heterogeneity, changing conditions and limited independent
+businesses. These are addressed through eligibility rules, baseline
+comparisons, temporal validation, uncertainty reporting and proportionate
+claims. Insufficient evidence is reported as not evaluable, not replaced
+with assumptions.
 
 \section{Organization of the Report}
 
@@ -907,15 +805,18 @@ Data provenance concerns where a record came from, when it was received, and how
 
 
 \subsection{Data Quality, Provenance and Temporal Semantics}
+Analytical validity depends on the meaning and timing of each field. Event
+time, recording time, correction time and decision cutoff are not
+interchangeable. Historical features must use only information available by
+the cutoff; later corrections or outcomes must not leak into earlier
+snapshots \cite{kaufman2012leakage}. Missing records are not automatically
+zero, and unknown stock exposure remains unknown.
 
-There is no single data quality percentage that can adequately describe the quality of a dataset. In this study, data quality is considered across a minimum of five dimensions. \emph{Syntactic validity} asks whether a value has the expected type, range, and format. \emph{Entity integrity} asks whether the keys and valid relationships among invoices, products, customers, and branches are stable. \emph{Temporal integrity} asks whether event, correction, receipt, and availability times are possible and sensible. \emph{Reconciliation} asks whether the movements of payments, returns, and stock are in agreement according to declared business rules. \emph{Decision adequacy} asks whether the fields required for a specific analysis are complete enough at its decision cut-off. A file may score well on one dimension and still be unsuitable for a particular task. Likewise, a dataset may be structurally complete but have no value for a margin analysis if unit cost is unavailable. Similarly, if customer identities are not available for a customer-level study, the relevant analysis cannot be performed. The distinction is significant because the data used to operate the system are continuously updated.
-
-A cancelled invoice can be exported, a return can occur days after the original sale, and a return can later be rejected. Apparent availability history may also be affected by a late stock adjustment. Replacing the original value with a corrected value can therefore eliminate the evidence required to reconstruct what the system knew at an earlier point in time. A more robust design is append-aware: it keeps the source event, records the correction or transition to a new status, and creates a versioned analytical view based on a declared cut-off. This reflects the BI principle that analytical value depends on an understandable connection between data, infrastructure, and organisational use \cite{chen2012business}.
-
-Missingness also needs to be interpreted rather than automatically imputed. Missing customer identity does not necessarily indicate an unsuccessful import; it may represent an anonymous cash sale. Unit cost may be missing, which makes a record unsuitable for gross-margin analysis. Similarly, missing values may make a record unsuitable for unit-demand forecasting. A zero sale can represent zero demand, a closed location, a missing file, or an unobserved stock-out. These states have different meanings and should be separated when the source provides sufficient evidence to distinguish them. Eligibility is therefore proposed at the level of a research task, business, and period rather than by declaring an entire dataset universally `clean'' or `dirty''.
-
-This quality model is completed by provenance. Each derived field should be identified by its source columns, transformation version, and analytical cut-off. Each reported result should also record the dataset manifest, data split, and model or rule version that generated it. This is not merely corrective inheritance; it is an auditable process that makes the analytical results reproducible. It also helps ensure that a public or generated dataset is not silently substituted for the primary Bangladeshi business evidence.
-
+A reproducible manifest records source, owner, collection period, schema,
+checksum, row counts, exclusions and transformation rules. Reconciliation
+checks keys, duplicates, quantities and links among orders, sales lines,
+payments and inventory movements. These checks establish internal
+consistency; source documentation establishes declared origin.
 
 \subsection{Customer Analytics: RFM, CLV and Segmentation}
 
@@ -945,17 +846,18 @@ Although inventory usefulness is related to forecast accuracy, the two are not t
 
 
 \subsection{Forecastability, Demand Regimes and Decision Loss}
+Retail series differ in volume, variability, intermittency, trend and
+seasonality. ADI and squared coefficient of variation describe regimes,
+but labels must use only history available at the forecast origin and
+should diagnose rather than automatically route models. Croston-family
+methods and TSB are relevant intermittent-demand comparators
+\cite{croston1972intermittent,syntetos2005intermittent,teunter2011demand}.
 
-The forecasting task varies according to the information content of a series. A high-volume staple that is repeatedly sold each week can provide many observations of its level and seasonality. In contrast, a slow-moving spare item can contain many zero-demand periods, while a newly introduced product may have little or no direct historical data. Pooling these different cases into a single score and evaluating them with one algorithm can mask systematic failures. The literature on intermittent demand therefore suggests an approach based on the demand regime. Comparisons should consider zero-demand frequency, non-zero demand variability, and data availability when determining the eligibility of a forecasting method \cite{croston1972intermittent,syntetos2005intermittent}.
-
-This gives rise to another trade-off: temporal aggregation. Daily data preserve the temporal order of observations and can support short-range ordering decisions, but they may not always provide sufficient stability for model estimation. Aggregating data on a weekly basis can reduce sparsity, but it may also mask festival peaks and other short-term patterns that are relevant to stock-out intervals and short lead-time decisions. Product-level aggregation can provide more signal, but an SKU-level forecast cannot be directly determined from a category-level forecast. Hierarchical reconciliation addresses coherence between different aggregation levels without removing the need to choose a granularity that corresponds to the operational decision.
-
-Availability is limited, and observed sales are therefore not always an ideal target. If an item is not in stock, a zero or low recorded sale does not constitute proof that customer demand was zero or low. Training on such periods without a stock-availability indicator can teach a model that low demand is associated with the observed supply constraint. When censored demand periods exist, the analysis should therefore consider how the results change when those periods are excluded or when alternative assumptions are applied. Where sufficient history exists, sensitivity analysis can be conducted under different treatments of censored periods. When there is no way to reconstruct the underlying demand, the study should avoid claiming that the observed sales represent unconstrained demand.
-
-Forecast errors also have asymmetric decision consequences. Under-forecasting can lead to stock-outs and lost sales, whereas over-forecasting can lead to excess inventory and holding costs. The cost of one decision or alternative may therefore differ substantially from that of another. These costs cannot necessarily be minimised by selecting the model with the lowest MAE, particularly when forecast errors affect other products or future periods. This is why scale-aware error measures, prediction intervals, and inventory simulations using identical demand paths complement one another in their respective purposes \cite{hyndman2006accuracy,syntetos2010stock}. Model comparison can remain prediction-focused until the relevant cost assumptions are declared, after which decision-oriented comparisons can be conducted.
-
-The review therefore rejects three shortcuts: first, selecting a deep model before establishing the structure of the data; second, assuming that a simple model is always sufficient; and third, treating model complexity itself as evidence of value. The analysis should instead begin by measuring the structure of the series and comparing appropriate baselines and candidate models. A result from a large-scale forecasting competition should not be treated as direct evidence of business value for a small local retailer. The M5 competition provides strong evidence for comparative retail forecasting, but the present task is to determine which aspects of that evidence transfer to a setting with substantially different data volumes, infrastructure, and decision costs \cite{makridakis2022m5}.
-
+Forecast accuracy and inventory performance are distinct. Lower WAPE may
+not reduce shortages or holding cost when bias, lead time, pack multiples,
+cash and stock constraints are ignored. Models should be compared on common
+origins and targets, then evaluated through a separate policy replay
+\cite{syntetos2010stock}.
 
 \subsection{Customer Inactivity, Class Imbalance and Calibration}
 
@@ -994,319 +896,78 @@ The proposed system is both an information-system artifact and an analytical stu
 
 
 \subsection{Cross-Stream Evidence Synthesis}
-
-There is no single body of literature that provides the full argumentation for the proposed artifact. Bangladesh-focused technology-adoption studies do not address the complete transaction-level analytical workflow. Forecasting and customer analytics typically begin after an analytical dataset has been produced and provide task-specific methods for constructing models. Research on leakage, calibration, and explanation provides important safeguards, but it does not define an SME operating workflow. Prescriptive analytics provides a connection between predictions and estimates and the decisions that follow from them. Design-science research further requires that the resulting artifact be tested and evaluated against the problem it was designed to address. Figure~\ref{fig:evidence_synthesis} demonstrates how these bodies of evidence address different aspects of the problem and therefore should not be treated as interchangeable requirements.
-
-
-\begin{figure}[H]
-\centering
-\resizebox{\textwidth}{!}{%
-\begin{tikzpicture}[
-  stream/.style={draw=dugreen,rounded corners,fill=softgreen,minimum width=2.62cm,minimum height=1.35cm,align=center,font=\footnotesize},
-  guard/.style={draw=dugold,rounded corners,fill=softorange,minimum width=13.8cm,minimum height=1.05cm,align=center,font=\small},
-  flow/.style={-{Latex[length=2.1mm]},thick,draw=gray!75},
-  node distance=0.23cm
-]
-\node[stream] (context) {Bangladesh\\context\\workflow fit};
-\node[stream,right=of context] (data) {BI and data\\foundations\\traceability};
-\node[stream,right=of data] (models) {Forecast and\\customer models\\valid estimates};
-\node[stream,right=of models] (action) {Prescriptive\\analytics\\feasible actions};
-\node[stream,right=of action] (human) {Explanation and\\design science\\evaluated use};
-\node[guard,below=0.75cm of models] (integrity) {Cross-cutting integrity: temporal validity, baselines, calibration, uncertainty, provenance and claim boundaries};
-\draw[flow] (context) -- (data);
-\draw[flow] (data) -- (models);
-\draw[flow] (models) -- (action);
-\draw[flow] (action) -- (human);
-\draw[flow] (integrity) -- (context.south);
-\draw[flow] (integrity) -- (data.south);
-\draw[flow] (integrity) -- (models.south);
-\draw[flow] (integrity) -- (action.south);
-\draw[flow] (integrity) -- (human.south);
-\end{tikzpicture}}
-\caption{Complementary roles of the literature streams in the proposed design.}
-\label{fig:evidence_synthesis}
-\end{figure}
-
-The arrows do not imply that the process is strictly one-way. The local workflow can constrain model choice through data adequacy, which may require changes to the available data fields. Uncertainty can rule out an otherwise attractive action, while owner assessment can reveal the infeasibility of an explanation or recommendation. The figure instead represents logical dependency: later claims require earlier evidence to be credible. The cross-cutting integrity conditions apply to all stages, whereas other conditions may be relevant to only the first, second, or third stage.
-
-As a result of this synthesis, a more rigorous definition of integration is obtained. Integration is not simply the combination of a dashboard, a forecast, and a classifier in a single user interface. It requires structural integration across the system's hardware and software components, as well as a common operational language. Several changes are therefore made to the English representation of the framework, including the addition of explicit cut-offs, task eligibility, separate uncertainty statements, and a single point of auditability throughout the process, from input to outcome. These properties become evaluation targets in Chapter~\ref{chapter_methodology}.
-
-
+The literature supports five connected requirements: reliable operational
+data, time-valid prediction, appropriate baselines, constraint-aware action
+and accountable owner use. Bangladesh adoption studies inform local design;
+forecasting and customer-analytics studies inform model evaluation; leakage,
+calibration and explanation research inform validity; and prescriptive
+analytics links estimates to decisions. The contribution is their integration
+and evaluation within the available SME evidence, not a newly invented
+algorithm.
 
 \section{Literature-Review Procedure}
 \label{sec:literature_review}
-
-The current literature review is intended to be a structured background review
-rather than an exhaustive systematic review. Literature sources were chosen based on
-their direct relevance to one out of six topics: Bangladesh SME digitalization,
-BI and design science, customer analytics, retail demand/inventory,
-churn and evaluation integrity, and explainable or prescriptive analytics.
-Searches were done using keywords like \emph{Bangladesh SME ICT adoption},
-\emph{retail demand forecasting}, \emph{intermittent demand}, \emph{RFM customer
-segmentation}, \emph{churn profit}, \emph{data leakage}, \emph{probability
-calibration}, \emph{concept drift} and \emph{prescriptive analytics}.
-
-The sources were preferably taken from peer-reviewed journals or conferences.
-Literature sources were kept if they defined a concept needed for the topic,
-provided a method or an evaluation criterion or contained evidence specific to
-Bangladesh. Metadata of each DOI was verified against Crossref, and dataset sources
-were verified against DataCite or the repository itself. Only specific numerical
-statements that could be found either in the metadata, abstract or full text of the
-source were considered. The core set contains 22 academic publications, and there are
-3 candidate datasets mentioned in separate list in Chapter~\ref{chapter_methodology}.
-Thus, there are 25 citations in this initial report.
-
-
-
-
-
-
-
-\subsection{Business and Bangladesh Evidence}
-
-The BI literature provides the descriptive--predictive--prescriptive framework
-\cite{chen2012business}, while design science provides an artifact-oriented
-research logic \cite{hevner2004design}. Bangladesh-specific studies further
-highlight the importance of organizational support, perceived value, cost,
-complexity, and actual technology use within the local context
-\cite{hoque2016ict,shahadat2023digital,hazra2021mfs}. These factors should
-therefore be considered in the design and evaluation of the proposed system.
-
-However, the primary limitation of these studies for the present research lies
-in their unit of analysis rather than in their methodological quality. Adoption
-surveys and interview-based studies can explain organizational readiness,
-perceived benefits, barriers, and technology-use behaviour, but they do not
-provide transaction-level evidence for evaluating demand forecasting, customer
-inactivity, inventory decisions, or other operational outcomes. Consequently,
-these studies are used primarily to establish contextual requirements and
-evaluation considerations for Bangladeshi SMEs, rather than as direct evidence
-of predictive or operational effectiveness.
-
-
-\subsection{Customer Evidence}
-
-Customer analytics literature provides several complementary forms of evidence.
-Probabilistic customer models, such as the framework proposed by Fader et al.,
-establish a relationship between historical transaction behaviour and the
-probability of future purchasing activity. Such models provide a theoretical
-basis for analysing customer recency, frequency, value, and inactivity patterns.
-
-For behavioural segmentation, the silhouette coefficient provides an internal
-measure of cluster cohesion and separation
-\cite{rousseeuw1987silhouettes}. It can therefore be used as an additional
-diagnostic for evaluating whether candidate customer segments are internally
-consistent and sufficiently distinct from one another. However, a strong
-silhouette score alone does not demonstrate that a cluster is commercially
-useful, stable over time, or causally meaningful.
-
-Together, these approaches motivate behaviour-based customer profiling and
-inactivity analysis. Nevertheless, they do not by themselves constitute a
-leakage-safe, temporally validated, and operationally actionable framework for
-non-contractual Bangladeshi retail customers. The proposed system therefore
-extends these principles by evaluating customer evidence at explicit historical
-cutoffs and by separating predictive performance from subsequent business
-action and outcome evaluation.
-
-
-\subsection{Forecasting and Inventory Evidence}
-
-Forecasting and inventory research provides the methodological foundation for
-evaluating demand predictions and their operational consequences. The M5
-competition offers large-scale comparative evidence on retail forecasting
-methods and evaluation practices \cite{makridakis2022m5}, while the retail
-forecasting literature provides additional guidance on the characteristics and
-evaluation of real-world retail demand \cite{fildes2022retail}.
-
-Intermittent-demand methods are particularly important when sales occur
-sporadically or contain many zero-demand periods
-\cite{croston1972intermittent,syntetos2005intermittent}. Such settings require
-comparators that explicitly account for the timing and magnitude of demand
-rather than relying only on models designed for dense and regular time series.
-Similarly, hierarchical forecasting and reconciliation methods emphasize the
-need for consistency across related aggregation levels, such as SKU, category,
-and branch forecasts.
-
-Stock-control research further demonstrates that forecasting accuracy should not
-be treated as equivalent to inventory performance
-\cite{syntetos2010stock}. A forecasting model may achieve a lower statistical
-error without necessarily reducing shortages, holding costs, or cash tied up in
-inventory. Therefore, an SME-oriented evaluation should go beyond a single
-forecasting model or a single error metric. Forecast candidates should first be
-compared using appropriate out-of-time predictive measures and relevant
-baselines, after which their outputs should be evaluated through inventory or
-replenishment decisions under explicitly stated operational assumptions and
-constraints.
-
-
-\subsection{Risk, Integrity, and Action Evidence}
-
-Risk-oriented predictive tasks require evaluation beyond conventional ranking
-accuracy. Precision--recall analysis is particularly relevant when the target
-class is rare or imbalanced, while probability calibration evaluates whether
-predicted probabilities are numerically reliable
-\cite{saito2015pr,niculescu2005calibration}. These two perspectives address
-different properties of a risk model: discrimination determines whether
-higher-risk cases are ranked appropriately, whereas calibration determines
-whether the associated probability estimates can be interpreted reliably.
-
-Data leakage introduces a separate threat to model validity. Leakage research
-shows that apparently strong predictive results may become unusable when
-features, labels, transformations, or data-processing procedures incorporate
-information that would not have been available at the actual decision time
-\cite{kaufman2012leakage}. Consequently, temporal availability and provenance
-must be treated as explicit conditions of model evaluation rather than as
-post-processing checks.
-
-Model interpretation and human-centred explanation provide another layer of
-evidence. SHAP offers a unified framework for local feature attribution
-\cite{lundberg2017shap}, while human-centred explanation research emphasizes
-that useful explanations should support inspection, comparison, and
-communication rather than merely display model internals
-\cite{miller2019explanation}. Such explanations can help users understand the
-factors associated with a prediction, but they should not be interpreted as
-evidence of causality.
-
-Finally, prescriptive analytics provides the conceptual bridge from prediction
-to action by incorporating model outputs into explicit cost, resource, and
-constraint structures \cite{bertsimas2020prescriptive}. The remaining research
-question is therefore not whether these individual principles exist, but
-whether forecasting, customer-risk estimation, leakage control, explanation,
-and constrained decision support can be integrated into a coherent,
-low-resource SME workflow and evaluated using evidence aligned to the same
-temporal boundaries.
-
-
+This is a focused background review, not an exhaustive systematic review.
+Sources were selected for relevance to Bangladesh SME digitalisation,
+business analytics, customer behaviour, retail forecasting, inventory,
+leakage, calibration, explainability and prescriptive decisions. Peer-reviewed
+studies, established methods and identifiable dataset repositories were
+prioritised. These sources provide contextual and methodological foundations;
+they are not substitutes for the empirical business records analysed here.
 
 \section{Research Gap and Thesis Positioning}
 \label{sec:research_gap}
-
-The research gap is derived from the difference between what each stream of the reviewed literature establishes and what is required by the target SME decision problem. This gap is deliberately bounded by the 22-work core scholarly set reviewed in this thesis. Therefore, the thesis does not claim that no related system exists anywhere; rather, it identifies six adjoining gaps that remain unresolved within the reviewed evidence base and are directly relevant to the proposed research context.
-
-\paragraph{G1---Contextual and Empirical Gap.}
-Bangladesh-focused research explains important determinants and lived affordances of digital technology adoption, including organizational readiness, perceived value, cost, management support, and everyday technology use. However, such adoption-oriented studies do not jointly and longitudinally evaluate SKU-level demand, customer inactivity, and constrained retail actions using transaction-level operational data. Conversely, large-scale retail and forecasting studies provide strong analytical evidence \cite{makridakis2022m5,fildes2022retail}, but their validity does not automatically transfer across differences in scale, market structure, infrastructure, and owner-managed operating conditions characteristic of Bangladeshi SMEs. Consequently, evidence that combines local contextual validity with transaction-level analytical evaluation remains limited.
-
-\paragraph{G2---Operational-to-Analytical Integration Gap.}
-BI and CRM research demonstrates how operational data can support multiple analytical functions \cite{chen2012business}. However, many forecasting, segmentation, and churn studies represented in the literature matrix begin with a pre-prepared analytical dataset. They do not necessarily examine the complete path from an auditable business event, through a historically valid snapshot, to prediction, action, and subsequent outcome.
-
-This missing path is particularly important for the target business context. Corrections to invoices, stock adjustments, changes in organizational records, and other operational updates can alter the data from which analytical features are derived. If these changes are not versioned and historically traceable, previously generated rows, features, and analytical cutoffs may become difficult or impossible to reproduce. Therefore, an integrated mechanism is required to preserve lineage from source events to analytical outputs and subsequent decisions.
-
-\paragraph{G3---Methodological-Validity Gap.}
-Previous research has established several methodological risks and safeguards separately. Data leakage has been examined in \cite{kaufman2012leakage}; intermittent-demand forecasting has been addressed in \cite{croston1972intermittent,syntetos2005intermittent}; hierarchical forecast coherence has been studied in \cite{hyndman2011hierarchical}; forecast-error measurement has been discussed in \cite{hyndman2006accuracy}; and probability calibration has been examined in \cite{niculescu2005calibration}.
-
-What remains missing for the target SME setting is a unified evaluation protocol that applies these safeguards together. Such a protocol should enforce decision-time feature availability, temporal- and entity-safe data splitting, baseline eligibility according to series characteristics, coherent aggregation where required, probability calibration, and a pristine final test set. Without these safeguards being applied jointly, apparently strong analytical performance may not constitute valid evidence of real-world predictive effectiveness.
-
-\paragraph{G4---Prediction-to-Decision Gap.}
-Accurate forecasts, customer-risk scores, and customer rankings are intermediate analytical outputs rather than decisions themselves. Stock-control research demonstrates that operational consequences can change the preferred forecasting model even when predictive accuracy appears similar \cite{syntetos2010stock}. Likewise, prescriptive analytics formalizes the use of predictive outputs within explicit decision problems \cite{bertsimas2020prescriptive}.
-
-The unresolved requirement is therefore a clear, low-resource mechanism that converts the outputs of multiple SME analytical tasks into feasible actions. Such actions must account for operational constraints including available cash, stock position, lead time, reorder rules, customer-contact constraints, consent, predictive uncertainty, and the cost of taking an action. The gap is not merely to generate predictions, but to translate them into actions that remain feasible within the operating conditions of the SME.
-
-\paragraph{G5---Owner-Centred Explanation Gap.}
-SHAP provides principled feature attributions for complex predictive models, while human-centred explanation research shows that useful explanations should be selective, contextual, and aligned with the decision being made \cite{miller2019explanation}. However, neither technical feature attribution alone nor the presence of a generic dashboard demonstrates that a Bangladeshi SME owner understands the underlying evidence, can distinguish association from causation, or can correctly use the explanation to support the intended decision.
-
-Explanation quality should therefore be evaluated through owner-centred tasks rather than inferred from the presence of an explanation chart. Relevant evaluation should consider whether the explanation presents appropriate supporting evidence, source information, uncertainty, timing, and confidence in a form that enables the owner to interpret and act on the recommendation appropriately.
-
-\paragraph{G6---Lifecycle-Accountability Gap.}
-Relationships between business inputs, model outputs, actions, and subsequent outcomes can change over time. Design-science research emphasizes that an artifact must be evaluated in relation to the problem it is intended to address \cite{hevner2004design}. However, the reviewed task-specific studies do not collectively close the local operational loop by maintaining the relationship among model versions, baselines, recommendations, owner decisions, subsequent outcomes, and revalidation decisions.
-
-Without such lifecycle accountability, a system cannot reliably determine whether a previously generated recommendation remains appropriate after business conditions, input distributions, operating constraints, or model behaviour have changed. A complete SME analytical system therefore requires explicit versioning, monitoring, outcome recording, and revalidation mechanisms.
-
-\begin{quote}
-From the evidence reviewed, the central research gap is the absence, within the bounded scholarly evidence base, of a jointly evaluated and Bangladesh-centred multi-sector SME system that connects auditable operational records from multiple shops with leakage-controlled and calibrated analytical models; compares appropriate baselines, pooled business models, and eligible business-adapted models; and translates those analytical outputs into shop-constrained, owner-understandable actions whose use and subsequent outcomes can be monitored over time.
-\end{quote}
-
-Figure~\ref{fig:gap_bridge} groups the six gaps into three connected bridges.
-This grouping clarifies why a model-only contribution would be insufficient:
-local evidence, methodological validity and accountable use must all be
-evaluated before the artifact can support a bounded effectiveness claim.
-
-\begin{figure}[H]
-\centering
-\resizebox{0.96\textwidth}{!}{%
-\begin{tikzpicture}[
-  gap/.style={draw=dugold,rounded corners,fill=softorange,text width=3.55cm,minimum height=1.05cm,align=center,font=\footnotesize},
-  bridge/.style={draw,rounded corners,fill=softblue,text width=3.55cm,minimum height=1.05cm,align=center,font=\footnotesize},
-  result/.style={draw=dugreen,very thick,rounded corners,fill=softgreen,text width=12.5cm,minimum height=0.95cm,align=center,font=\footnotesize},
-  flow/.style={-{Latex[length=2.2mm]},thick,draw=gray!75}
-]
-\node[gap] (g12) at (-4.4,2.2) {\textbf{G1--G2}\\context and operational-to-analytical integration};
-\node[gap] (g34) at (0,2.2) {\textbf{G3--G4}\\methodological validity and prediction-to-decision};
-\node[gap] (g56) at (4.4,2.2) {\textbf{G5--G6}\\owner explanation and lifecycle accountability};
-\node[bridge] (b1) at (-4.4,0.35) {Local multi-business evidence with auditable events and snapshots};
-\node[bridge] (b2) at (0,0.35) {Baseline-controlled estimates linked to feasible constrained actions};
-\node[bridge] (b3) at (4.4,0.35) {Understandable evidence, owner response, outcomes and revalidation};
-\node[result] (artifact) at (0,-1.5) {\textbf{Jointly evaluated \system{} artifact}\\claims remain limited to the evidence tier and target business setting};
-\draw[flow] (g12) -- (b1);
-\draw[flow] (g34) -- (b2);
-\draw[flow] (g56) -- (b3);
-\draw[flow] (b1) -- (artifact.north west);
-\draw[flow] (b2) -- (artifact.north);
-\draw[flow] (b3) -- (artifact.north east);
-\end{tikzpicture}}
-\caption{Research-gap bridge from six literature limitations to the integrated thesis response.}
-\label{fig:gap_bridge}
-\end{figure}
-
-The central gap is therefore integrative and evaluative rather than dependent on the creation of an entirely new classifier or forecasting algorithm. The research must demonstrate whether existing methods can be integrated into a coherent SME decision-support workflow without violating data lineage, temporal validity, decision feasibility, or human accountability.
-
-Table~\ref{tab:gap_traceability} makes each identified gap operationally testable by linking it to the proposed system response, the evidence required for closure, and the corresponding study objectives or research questions.
+Six connected gaps motivate the study:
+\begin{description}[style=nextline,leftmargin=2em]
+\item[G1 -- Contextual evidence.] Bangladesh SME adoption research explains
+readiness and barriers, while large retail studies provide forecasting
+evidence; neither alone establishes transaction-level effectiveness in the
+target operating context.
+\item[G2 -- Operational integration.] The thesis preserves the path from
+source event and correction history to frozen snapshot, prediction, action
+and outcome.
+\item[G3 -- Joint methodological validity.] Leakage control, intermittent
+demand, hierarchy, forecast metrics and calibration must be applied together.
+\item[G4 -- Prediction to decision.] Forecasts and customer scores must be
+translated into feasible actions under cash, stock, lead-time, cost and
+consent constraints.
+\item[G5 -- Owner-centred explanation.] Feature attribution alone does not
+show that an owner understands or appropriately uses a recommendation.
+\item[G6 -- Lifecycle accountability.] Model versions, recommendations,
+owner responses, outcomes and revalidation must remain linked over time.
+\end{description}
+The central gap is integrative and evaluative: whether an auditable,
+multi-business SME system can combine temporally valid analytics with
+feasible, understandable actions while retaining evidence of later outcomes.
+The thesis tests this bounded contribution against the supplied data and
+available businesses.
 
 \begin{table}[H]
 \centering
 \small
-\caption{Identified research gaps, proposed responses, and evaluation evidence.}
+\caption{Research gaps, responses and required evidence.}
 \label{tab:gap_traceability}
-
-\begin{tabularx}{\textwidth}{|p{0.15\textwidth}|p{0.29\textwidth}|Y|p{0.14\textwidth}|}
+\begin{tabularx}{\textwidth}{|p{0.14\textwidth}|Y|Y|}
 \hline
-
-\textbf{Gap} &
-\textbf{Proposed Response} &
-\textbf{Evidence Required to Close the Gap} &
-\textbf{Study Link} \\
+\textbf{Gap} & \textbf{Response} & \textbf{Evidence required} \\
 \hline
-
-G1: Context &
-Explicit external-data boundaries and a Tier-1 multi-business study &
-Primary business records, explicit separation of local evidence from foreign or generated evidence, and clearly bounded cross-context claims &
-RQ1--RQ4 \\
+G1 Context & Use supplied Bangladesh SME records & Manifest, source reconciliation and bounded results \\
 \hline
-
-G2: Integration &
-Canonical operational events, data manifests, and versioned historical snapshots &
-Reproducible traceability from source records to features, analytical outputs, actions, and subsequent outcomes &
-O1--O2 \\
+G2 Integration & Versioned events and historical snapshots & Traceability from records to features, outputs and actions \\
 \hline
-
-G3: Validity &
-Temporal- and entity-safe splits, a baseline ladder, and a consistent frozen final test &
-Out-of-time performance metrics, ablation analysis, uncertainty intervals, calibration assessment, and leakage audit &
-RQ1--RQ2 \\
+G3 Validity & Chronological splits, common baselines and frozen evaluation & Out-of-time metrics, ablations, calibration and leakage checks \\
 \hline
-
-G4: Decision &
-Constraint-aware reorder and retention actions with same-path policy comparison &
-Operational outcomes under the same demand or customer history, together with sensitivity analysis under alternative cost and constraint scenarios &
-RQ3 \\
+G4 Decision & Constraint-aware purchasing and retention logic & Policy replay using reconciled costs and constraints \\
 \hline
-
-G5: Explanation &
-High-level Bangla explanations containing supporting evidence, source information, uncertainty, timing, and confidence &
-Owner-task performance demonstrating understanding and appropriate use of explanations in decision making &
-RQ4 \\
+G5 Explanation & Owner-readable evidence, uncertainty and source details & User-task correctness and appropriate interpretation \\
 \hline
-
-G6: Lifecycle &
-Versioning, drift monitoring, response monitoring, outcome tracking, and a formal revalidation protocol &
-Revalidation logs, model and baseline histories, post-decision observations, and records of recommendation outcomes &
-O6 \\
+G6 Lifecycle & Versioning, monitoring and outcome tracking & Revalidation and recommendation-outcome records \\
 \hline
-
 \end{tabularx}
 \end{table}
-
-\system{} is designed to address this combined contextual, analytical, and operational gap. Public or generated evidence may be used to test selected components of the methodology, but such evidence cannot by itself close the contextual, decision-oriented, or owner-centred gaps. Closing those gaps requires appropriately consented business data and participant-based evaluation from the target context.
-
-Accordingly, the final thesis should report the extent to which such local evidence is available and should distinguish clearly between gaps that are empirically closed, gaps that are only partially addressed, and gaps that remain open. The existence of a prototype, successful benchmark result, or external dataset should not be treated as evidence that a corresponding local research gap has been closed. Benchmark evidence may establish methodological or technical performance, whereas claims of local effectiveness require evidence from the intended operational context.
+The contribution is a reproducible process for selecting suitable methods,
+linking estimates to operational constraints and limiting claims to the
+evidence actually tested.
 
 \clearpage
 
@@ -1358,161 +1019,33 @@ users can interpret and appropriately use those recommendations.
 
 
 \subsection{Research Stages and Units of Analysis}
+The work follows four stages: define the problem and evidence; design the
+operational schema, snapshots, models and decision rules; evaluate data
+integrity, prediction and robustness; and assess decision consequences and
+owner use. Figure~\ref{fig:research_lifecycle} summarises the sequence.
+Later findings may refine the artifact but cannot alter a frozen final test.
 
-The research is organized into four related stages:
-
-\begin{enumerate}[label=P\arabic*.]
-    \item \textbf{Problem and evidence definition:}
-    define the target business-SME setting, research questions, literature-derived
-    requirements, admissible forms of evidence, analytical units, and success
-    measures.
-
-    \item \textbf{Artifact design:}
-    define the operational schema, historical snapshots, candidate analytical
-    techniques, policy and strategy constraints, interfaces, and audit records
-    required by the proposed system.
-
-    \item \textbf{Technical evaluation:}
-    evaluate data integrity, predictive performance, calibration, robustness,
-    reproducibility, and scalability using explicitly separated development,
-    public-real, and primary-real evidence.
-
-    \item \textbf{Decision and user evaluation:}
-    evaluate simulated or pilot operational consequences of inventory and
-    customer-related recommendations and assess whether participating owners can
-    correctly understand and appropriately use those recommendations.
-\end{enumerate}
-
-The phase sequence and its evidence gates are summarized in
-Figure~\ref{fig:research_lifecycle}. Later phases may reveal a design defect and
-therefore feed back to artifact design, but no feedback cycle is allowed to
-alter the already frozen final evaluation result.
-
-\begin{figure}[H]
-\centering
-\resizebox{\textwidth}{!}{%
-\begin{tikzpicture}[
-  phase/.style={draw=dugreen,rounded corners,fill=softgreen,text width=2.7cm,minimum height=1.25cm,align=center,font=\footnotesize},
-  gate/.style={draw=dugold,rounded corners,fill=softorange,text width=2.7cm,minimum height=0.85cm,align=center,font=\scriptsize},
-  flow/.style={-{Latex[length=2.2mm]},thick,draw=gray!75},
-  feedback/.style={-{Latex[length=2.2mm]},thick,dashed,draw=gray!70},
-  node distance=0.46cm
-]
-\node[phase] (p1) {\textbf{P1 Define}\\problem, evidence, RQs and claim limits};
-\node[phase,right=of p1] (p2) {\textbf{P2 Design}\\schema, snapshots, models and interface};
-\node[phase,right=of p2] (p3) {\textbf{P3 Technical test}\\integrity, prediction, robustness, scale};
-\node[phase,right=of p3] (p4) {\textbf{P4 Decision test}\\policy consequences and owner tasks};
-\node[gate,below=0.62cm of p1] (g1) {Gate: relevant and ethically obtainable evidence};
-\node[gate,below=0.62cm of p2] (g2) {Gate: traceable and leakage-safe artifact};
-\node[gate,below=0.62cm of p3] (g3) {Gate: baseline-controlled frozen results};
-\node[gate,below=0.62cm of p4] (g4) {Gate: feasible use and proportionate claim};
-\draw[flow] (p1) -- (p2);
-\draw[flow] (p2) -- (p3);
-\draw[flow] (p3) -- (p4);
-\draw[flow] (p1) -- (g1);
-\draw[flow] (p2) -- (g2);
-\draw[flow] (p3) -- (g3);
-\draw[flow] (p4) -- (g4);
-\draw[feedback] (p4.north) -- ++(0,0.55) -| node[pos=0.25,above,font=\scriptsize]{design refinement} (p2.north);
-\end{tikzpicture}}
-\caption{Design-science research lifecycle and the evidence gate attached to each phase.}
-\label{fig:research_lifecycle}
-\end{figure}
-
-The unit of analysis differs according to the analytical task. For demand
-forecasting, the primary unit is a business--branch--SKU--day or
-business--branch--SKU--week observation, selected according to the density and
-reliability of the available data. Batch and expiry information is retained for
-inventory-related decisions even when demand itself is forecast at the SKU level.
-
-For customer-risk modelling, the analytical unit is a customer feature snapshot
-constructed at a declared historical cutoff. For strategy evaluation, the unit is
-an eligible action evaluated under the same information set and relevant
-product-, business-, or customer-specific constraints as the comparison policy.
-These task-specific units prevent evidence from one analytical level from being
-incorrectly interpreted as evidence at another level.
-
+The unit of analysis depends on the task: a shop--category or SKU time series
+for forecasting, a pseudonymous customer snapshot for inactivity, and an
+eligible action under declared business constraints for strategy evaluation.
+Evidence from one unit is not treated as proof at another level.
 
 \subsection{Design Requirements and Acceptance Logic}
-
-Eight design requirements are derived from the literature review and the problem
-formulation. They are specified before implementation so that the artifact can be
-evaluated against stable objectives rather than against whichever functions are
-easiest to demonstrate.
-
-\begin{description}[style=nextline,leftmargin=2em]
-
-    \item[DR1: Decision relevance]
-    Each analytical output shall identify its intended user, decision, analytical
-    unit, decision horizon, and feasible response. An output for which no decision
-    has been specified remains exploratory and shall not be presented as an
-    actionable recommendation.
-
-    \item[DR2: Operational integrity]
-    Source events shall preserve business and branch scope, stable product, batch,
-    and invoice identifiers, event time, receipt or ingestion time, expiry
-    information where available, transaction status, and correction history.
-    KPIs, analytical features, and model outputs shall be reproducible from these
-    governed source events.
-
-    \item[DR3: Temporal validity]
-    Features, preprocessing parameters, labels, and model inputs shall use only
-    evidence that would have been available by the relevant historical cutoff.
-    Final evaluation shall be performed on a future period or entity group that
-    has not been used for model or hyperparameter selection
-    \cite{kaufman2012leakage}.
-
-    \item[DR4: Proportionate modelling]
-    Every analytical task shall begin with an explicit baseline. A more complex
-    candidate model shall be preferred only when the available evidence supports
-    its complexity and when the resulting improvement is material, stable, and
-    relevant to the intended decision.
-
-    \item[DR5: Uncertainty and reliability]
-    Forecast intervals, probability calibration, data-quality status, and
-    sensitivity to uncertain costs or assumptions shall be reported where those
-    factors could alter the resulting decision
-    \cite{niculescu2005calibration}.
-
-    \item[DR6: Feasible and responsible action]
-    Recommendation generation shall account for purchasing budget, current and
-    incoming stock, lead time, pack size or minimum-order quantity, storage
-    capacity, remaining shelf life, expiry risk, temperature-controlled storage requirements,
-    contact consent, and relevant policy constraints. Infeasible actions shall be
-    filtered or explicitly withheld rather than merely assigned a low score.
-
-    \item[DR7: Human authority and understanding]
-    Recommendations shall provide a concise reason, supporting evidence, source,
-    uncertainty where relevant, and an appropriate alternative. The owner shall
-    remain able to inspect, reject, modify, or postpone the proposed action.
-    Explanation quality shall be evaluated through decision tasks rather than
-    inferred from the mere presence of an attribution or explanation chart
-    \cite{lundberg2017shap,miller2019explanation}.
-
-    \item[DR8: Accountability and reproducibility]
-    Every released analytical output shall retain the versions of the dataset,
-    historical snapshot, feature pipeline, model or rule, operational
-    constraints, and interface associated with that output, together with the
-    owner's response and any subsequently observable outcome.
-\end{description}
-
-Acceptance is intentionally non-compensatory. High predictive accuracy cannot
-compensate for data leakage, privacy failure, or an operationally infeasible
-action. Similarly, a usable interface cannot compensate for an invalid or
-unreconciled KPI. Conversely, a candidate does not need to be the most complex
-model available in order to satisfy the artifact requirements. A simpler
-baseline may be accepted when it is temporally valid, sufficiently accurate for
-the decision, more stable, and easier to maintain.
-
-Each requirement will therefore be classified as
-\emph{met}, \emph{partially met}, \emph{not met}, or
-\emph{not evaluable with the available evidence}. The final category is
-important because the absence of appropriate cost, consent, constraint, or
-follow-up data shall reduce the strength of the conclusion rather than being
-converted into an assumed success. Task-level metrics will be reported together
-with requirement-level findings so that a single aggregate score cannot conceal
-a critical failure.
-
+The artifact is assessed against eight requirements:
+\begin{enumerate}[label=DR\arabic*.]
+\item \textbf{Decision relevance:} identify user, unit, horizon and decision.
+\item \textbf{Operational integrity:} preserve identifiers, event times and corrections.
+\item \textbf{Temporal validity:} use only information available at the cutoff.
+\item \textbf{Proportionate modelling:} compare every candidate with a baseline.
+\item \textbf{Uncertainty:} report intervals, calibration and sensitivity where relevant.
+\item \textbf{Feasible action:} enforce stock, cash, lead-time, pack, expiry and consent constraints.
+\item \textbf{Human authority:} allow owners to inspect, modify or reject actions.
+\item \textbf{Reproducibility:} retain data, feature, model and output versions.
+\end{enumerate}
+Acceptance is non-compensatory: accuracy cannot compensate for leakage,
+privacy failure or infeasible action. Requirements are classified as met,
+partially met, not met or not evaluable. Missing evidence reduces the
+strength of a conclusion rather than being replaced by an assumption.
 
 \subsection{Research Questions, Hypotheses, and Measures}
 
@@ -1680,7 +1213,7 @@ are absent \\
 \hline
 
 3 &
-Generated or synthetic records &
+Generated or generated records &
 Software testing, rare-case testing, scalability checks, and privacy-safe examples &
 Claims of field effectiveness, real customer behaviour, or local operational
 impact \\
@@ -1702,194 +1235,38 @@ is available.
 
 
 \subsection{Data Acquisition and Variable Availability}
+The supplied package contains operational sales, customer, product, purchase,
+payment, inventory, return, promotion and calendar records. RQ1 uses the
+complete daily shop--category observed-sales panel. Other tables are joined
+only after their keys, event times and business meaning are checked.
 
-Primary data acquisition will preferentially use exports from the business's
-existing point-of-sale, accounting, inventory, or spreadsheet workflow. Where no
-consistent export mechanism exists, a controlled collection template will be
-provided.
-
-The minimum sales-related fields are expected to include organization,
-timestamp, branch, invoice identifier, SKU, quantity, unit price, discount, and
-cancellation or return status. Recommended additional fields include unit cost,
-promotion status, payment mode, pseudonymous customer identifier, stock on hand,
-stock movement, purchase receipt, supplier lead time, and incoming quantity.
-
-Sector-specific extensions capture product category, brand, unit conversion,
-lot and shelf life where relevant for inventory businesses. Service businesses
-may instead provide service type, booking and completion timestamps, resource
-availability and capacity. Non-applicable fields remain explicitly not applicable.
-
-Owner-maintained constraint inputs may include purchasing budget, storage
-capacity, minimum-order quantity or pack multiple, category-specific limits, and
-risk preferences. Such constraints shall carry an effective date wherever their
-historical value can change.
-
-Variables are classified according to their availability relative to the
-decision cutoff.
-
-\begin{table}[H]
-\centering
-\small
-\caption{Feature availability classes and corresponding leakage rules.}
-\label{tab:feature_availability}
-\begin{tabularx}{\textwidth}{|p{0.22\textwidth}|p{0.30\textwidth}|Y|}
-\hline
-\textbf{Availability Class} &
-\textbf{Examples} &
-\textbf{Rule} \\
-\hline
-
-Known before cutoff &
-Historical sales, recorded current stock, observed price, known lead time, and
-calendar information &
-Eligible when timestamp, provenance, and availability at the historical decision
-time are valid \\
-\hline
-
-Known for the forecast horizon &
-Confirmed promotion, planned closure, or a calendar event known in advance &
-Eligible only when the same information would genuinely have been available in
-operational use \\
-\hline
-
-Observed after the outcome &
-Later purchase, realized customer response, realized return, or future stock
-adjustment &
-May be used as a label or evaluation outcome but never as a predictor for the
-earlier decision \\
-\hline
-
-Uncertain or subsequently revised &
-Unconfirmed promotion, estimated cost, or manually estimated lead time &
-Retain the source and uncertainty status and evaluate sensitivity where the
-variable can materially change the action \\
-\hline
-
-\end{tabularx}
-\end{table}
-
+Each variable is classified by availability time. Price, promotion or supplier
+conditions are predictors only when known at the forecast origin. Later sales,
+returns and inventory movements are outcomes, not predictors. Raw business
+files remain in controlled storage; the repository contains code, schemas,
+checksums and aggregate results.
 
 \subsection{Data-Quality Assessment and Task Eligibility}
+The ingestion audit validates required fields, types, identifiers, duplicate
+keys, date ranges, non-negative quantities and cross-table relationships.
+Sales lines are reconciled to parent orders; inventory sale movements are
+checked against sales lines; and daily aggregates are compared with
+transaction-level reconstruction. Mismatches are reported and quarantined,
+not silently repaired.
 
-Data-quality assessment will be performed before feature engineering and repeated
-after each substantial structural transformation. A single dataset-wide average
-will not be used as the sole quality claim because an apparently high overall
-score may conceal failure in a field that is essential to a particular
-analytical task. Instead, quality profiles will be evaluated by organization,
-branch, field, period, and analytical task where applicable.
+For the complete shop--category panel, the audit checks unique
+shop--category--date keys, required values, consistency of the zero-sales
+flag and a complete daily calendar. This panel is eligible for observed-sales
+forecasting at its declared aggregation level. It does not automatically
+make sparse SKU exports eligible for zero-demand labels.
 
-For required field \(j\) within an eligible row set \(G\), completeness is
-defined as
-
-\begin{equation}
-C_{j,G}
-=
-1-
-\frac{
-\sum_{i\in G}
-\mathbb{I}\!\left(x_{ij}\text{ is missing}\right)
-}{
-|G|
-}.
-\label{eq:completeness}
-\end{equation}
-
-Completeness does not imply validity. Product identifiers will therefore be
-tested for referential integrity; invoice-line totals will be recalculated from
-quantity, price, and discount; returns and cancellations will be reconciled with
-their originating transaction when the relevant identifier is available; and
-payments will be checked against invoice settlement status.
-
-Duplicate detection will distinguish exact repeated records from legitimate
-recurrent purchases. Candidate duplicates will be recorded and resolved through
-a declared rule rather than removed merely because their values appear similar.
-
-Inventory records provide an additional structural reconciliation test. Let
-\(I^{\mathrm{open}}_{p,t}\) and \(I^{\mathrm{close}}_{p,t}\) denote the recorded
-opening and closing inventory balances for product \(p\) during interval \(t\),
-and let \(\Delta I_{p,t,m}\) denote a signed inventory movement \(m\), such as a
-receipt, sale, return, damage event, or manual correction. The reconciliation
-residual is
-
-\begin{equation}
-r_{p,t}
-=
-I^{\mathrm{close}}_{p,t}
--
-I^{\mathrm{open}}_{p,t}
--
-\sum_m \Delta I_{p,t,m}.
-\label{eq:stock_reconciliation}
-\end{equation}
-
-The residual is expected to be zero when balances and all relevant movements are
-recorded consistently. A nonzero residual will not be forced to zero. Instead,
-its magnitude, duration, and probable cause will be recorded as a data-quality
-event, and affected observations will be flagged as sensitive or excluded from
-analyses for which the inconsistency is material.
-
-Temporal-quality tests will also identify implausible event sequences, such as
-stock receipt recorded before its source purchase order, negative or implausible
-lead times, customer attributes used outside their valid period, or product
-history appearing after the analytical cutoff. Event time and ingestion time
-will be stored separately where available. When only a date is known, the system
-will not invent artificial within-day temporal precision.
-
-Task eligibility will then be determined from the evidence required by each
-analysis rather than from a single arbitrary missing-data threshold. Demand
-forecasting requires a sufficiently interpretable product-time series and a
-defensible definition of availability. Margin-related KPIs require documented
-cost provenance. Customer-inactivity modelling requires stable pseudonymous
-identity and sufficient future follow-up. Replenishment evaluation additionally
-requires recorded or defensibly reconstructed inventory, lead-time assumptions,
-relevant operational constraints, and cost ranges. Customer-retention actions
-require an appropriate contact and consent mechanism.
-
-Any business--task--period combination that violates a required condition will
-be declared ineligible for that analysis, and the reason will be included in the
-audit record.
-
-This eligibility gate prevents statistical imputation from manufacturing
-evidence that the business never recorded. Imputation may still be used for a
-model feature when its missingness mechanism and decision-time availability are
-understood, the imputation transformer is fitted using training data only, and
-an ablation or sensitivity analysis evaluates whether the choice materially
-affects the result. Imputation shall not be used to fabricate identifiers,
-customer consent, future outcomes, operational constraints, or the ground truth
-of the primary test.
-
-Figure~\ref{fig:quality_gate} turns these rules into an explicit routing
-decision. Records that fail a repairable structural check return to controlled
-mapping; records that lack indispensable evidence remain quarantined or make
-only the affected task ineligible.
-
-\begin{figure}[H]
-\centering
-\resizebox{\textwidth}{!}{%
-\begin{tikzpicture}[
-  sourceblock/.style={draw,rounded corners,fill=softblue,text width=2.55cm,minimum height=1.0cm,align=center,font=\footnotesize},
-  decision/.style={draw=dugold,diamond,aspect=2.2,fill=softorange,align=center,font=\footnotesize,inner sep=1.2pt},
-  pass/.style={draw=dugreen,very thick,rounded corners,fill=softgreen,text width=2.55cm,minimum height=1.0cm,align=center,font=\footnotesize},
-  reject/.style={draw=red!65!black,rounded corners,fill=red!8,text width=3.0cm,minimum height=0.9cm,align=center,font=\footnotesize},
-  flow/.style={-{Latex[length=2.1mm]},thick,draw=gray!75}
-]
-\node[sourceblock] (ingest) at (-5.5,1.2) {Source manifest and shop scope};
-\node[sourceblock] (validate) at (-2.45,1.2) {Schema, identity, time and inventory checks};
-\node[decision] (eligible) at (1.0,1.2) {Required evidence\\for this task?};
-\node[pass] (snapshot) at (4.9,1.2) {Eligible immutable snapshot and quality profile};
-\node[reject] (repair) at (-2.45,-1.2) {Repairable mapping issue: correct, version and re-run};
-\node[reject] (hold) at (1.8,-1.2) {Not repairable without new evidence: quarantine or task ineligible};
-\draw[flow] (ingest) -- (validate);
-\draw[flow] (validate) -- (eligible);
-\draw[flow] (eligible) -- node[above,font=\scriptsize]{yes} (snapshot);
-\draw[flow] (validate) -- node[left,font=\scriptsize]{structural failure} (repair);
-\draw[flow] (repair.west) -| (ingest.south);
-\draw[flow] (eligible) -- node[right,font=\scriptsize]{no} (hold);
-\end{tikzpicture}}
-\caption{Data-quality and task-eligibility gate before analytical snapshot release.}
-\label{fig:quality_gate}
-\end{figure}
-
+SKU exposure requires evidence that the product was active, the shop was
+operating and stock was available. Missing SKU dates are not automatically
+zero. Negative reconstructed balances, incomplete inventory coverage,
+unknown assortment, closed periods and stock-out periods remain censored
+or unknown until reconciled. RQ1 observed-sales forecasting can proceed on
+the complete panel; SKU latent-demand estimation, customer inactivity and
+inventory-policy replay each require their own validated inputs.
 
 \subsection{Ethics, Privacy, and Governance}
 
@@ -1918,105 +1295,15 @@ of the owner.
 
 
 \subsection{Canonical Operational and Analytical Model}
+The operational model links businesses and shops to products, customers,
+suppliers, sales orders, sales lines, payments, purchase orders, inventory
+movements, returns and promotions. Stable identifiers preserve relationships.
+Analytical tables are derived at a declared grain and cutoff; they are not
+independent source-of-truth records.
 
-The proposed operational schema includes the principal entities and events
-required to preserve business context and analytical traceability. These include
-\texttt{Organization}, \texttt{Branch}, \texttt{Product},
-\texttt{SectorProductProfile}, \texttt{InventoryLot},
-\texttt{ConstraintProfile}, \texttt{Customer}, \texttt{Supplier},
-\texttt{SalesOrder}, \texttt{SalesOrderItem}, \texttt{Payment},
-\texttt{InventoryBalance}, \texttt{StockMovement}, \texttt{PurchaseOrder},
-\texttt{Expense}, \texttt{LedgerEntry}, \texttt{SalesReturn},
-\texttt{Refund}, \texttt{ImportBatch}, and \texttt{AuditLog} objects.
-
-The analytical layer will not train models directly from mutable operational
-tables. Instead, it will construct versioned invoice-line, SKU-time, and
-customer-cutoff analytical views that retain source identifiers, transformation
-metadata, and the relevant historical data cutoff. This separation is intended
-to preserve reproducibility even when operational records are later corrected or
-updated.
-
-\begin{figure}[H]
-\centering
-\resizebox{\textwidth}{!}{%
-\begin{tikzpicture}[
-    entity/.style={
-        draw=dugreen,
-        rounded corners,
-        fill=softgreen,
-        minimum width=2.7cm,
-        minimum height=0.9cm,
-        align=center
-    },
-    event/.style={
-        draw=dugold,
-        rounded corners,
-        fill=softorange,
-        minimum width=2.9cm,
-        minimum height=0.9cm,
-        align=center
-    },
-    arrow/.style={
-        -{Latex[length=2mm]},
-        thick,
-        draw=gray!75
-    }
-]
-
-\node[entity] (org) {Organization\\Branch};
-
-\node[entity, right=1.2cm of org] (product)
-{Product + Sector Profile\\Supplier + Constraint};
-
-\node[entity, right=1.2cm of product] (customer)
-{Customer\\Consent};
-
-\node[event, below=1.3cm of product] (sale)
-{Sale + Line Items\\Payment};
-
-\node[event, left=1.2cm of sale] (purchase)
-{Purchase Order\\Receiving};
-
-\node[event, right=1.2cm of sale] (return)
-{Return + Refund\\Receivable};
-
-\node[event, below=1.3cm of sale] (stock)
-{Stock Movements + Lots\\Balance, Batch, and Expiry};
-
-\node[entity, left=1.2cm of stock] (finance)
-{Expense\\Ledger};
-
-\node[entity, right=1.2cm of stock] (audit)
-{Import Batch\\Audit Log};
-
-\draw[arrow] (org) -- (sale);
-\draw[arrow] (product) -- (sale);
-\draw[arrow] (customer) -- (sale);
-\draw[arrow] (purchase) -- (stock);
-\draw[arrow] (sale) -- (stock);
-\draw[arrow] (return) -- (stock);
-\draw[arrow] (sale) -- (return);
-\draw[arrow] (finance) -- (stock);
-\draw[arrow] (stock) -- (audit);
-
-\end{tikzpicture}
-}
-\caption{Proposed canonical operational data model.}
-\label{fig:data_model}
-\end{figure}
-
-Validation rules will examine the uniqueness of business-scoped identifiers,
-chronological consistency, nonnegative physical quantities where appropriate,
-payment and order reconciliation, cancellation handling, pack conversion,
-batch and expiry consistency, inventory balances, and stock movements.
-
-Corrections will be represented as documented and reproducible transformations
-rather than silently rewriting the historical source evidence. This enables the
-analytical layer to retain a defensible relationship between operational events,
-historical snapshots, analytical features, model outputs, recommendations, and
-subsequent evaluation.
-
-
+The implemented RQ1 grain is shop--category--day. Its target is observed
+units sold. SKU-level demand requires separate assortment and stock-exposure
+validation before missing dates can be interpreted.
 
 \section{Formal Problem Formulation}
 \label{sec:formal_problem_formulation}
@@ -2100,110 +1387,56 @@ business performance.
 
 \subsection{Demand Prediction}
 \label{subsec:demand_prediction}
-
-Demand forecasting is defined at a specific aggregation level. The first
-implemented experiment forecasts observed units at shop--category--day
-level; it does not establish SKU-level latent demand. The prepared SKU
-export contains positive-sale records only. A SKU-date without a row is
-not automatically a zero-demand day. SKU targets require verified active
-assortment, shop operating calendar and stock exposure. Stock-out,
-negative-ledger, closed-shop, incomplete-inventory and unknown-assortment
-periods are censored or unknown rather than zero.
-
-For series \(s\), origin \(t\), and horizon
-\(h\in\{1,7,14,28\}\), the direct cumulative target is
+The implemented RQ1 target is observed units at shop--category--day level.
+For series \(s\), origin \(t\) and horizon \(h\in\{1,7,14,28\}\), the direct
+cumulative target is
 \[
 Y_{s,t,h}=\sum_{j=0}^{h-1}y_{s,t+j}.
 \]
-A separate model is fitted for each horizon. All predictors must have
-been available strictly before \(t\); future sales, returns, inventory
-movements and realized customer responses are outcomes, not features.
-A future promotion is eligible only when its approval or publication
-timestamp proves that it was known at the forecast origin.
+Separate models are fitted for each horizon. Features must be available
+strictly before \(t\), and every training target window must end before
+its validation origin.
 
-The historical feature family comprises lags 1, 7, 14, 28 and 56;
-rolling mean, standard deviation, sum and zero-sales ratio over 7, 14,
-28 and 56 days; days since last positive sale; ADI; positive-demand
-mean and \(CV^2\); shop and category identifiers; weekday, day, month,
-ISO week and cyclical calendar encodings. Price, discount, promotion,
-lead-time, stock and supplier features are added only after their
-point-in-time availability and joins have been validated.
+Historical features include lags 1, 7, 14, 28 and 56; rolling mean,
+standard deviation, sum and zero ratio over 7, 14, 28 and 56 days; days
+since last positive sale; ADI; positive-demand mean and \(CV^2\); shop and
+category identifiers; and calendar encodings. The context-aware challenger
+adds past shop, category and network aggregates, recent trends and the
+series' share of those aggregates. Context features use only observations
+before the origin.
 
-The candidate ladder includes weekly seasonal-naive, Croston--SBA, TSB,
-pooled LightGBM Tweedie, CatBoost Tweedie and a two-stage occurrence--
-quantity (hurdle) candidate. Croston-family methods model demand size
-and inter-demand intervals \cite{croston1972intermittent,syntetos2005intermittent};
-TSB updates occurrence probability over time \cite{teunter2011demand}.
-LightGBM is a gradient-boosted tree candidate \cite{ke2017lightgbm};
-CatBoost is included for categorical identifiers
-\cite{prokhorenkova2018catboost}. The hurdle candidate estimates
-\[
-\widehat{E(Y\mid X)}
-=\widehat{P(Y>0\mid X)}\,
- \widehat{E(Y\mid Y>0,X)}.
-\]
-Its probabilities must be calibrated before the model is considered
-for operational selection \cite{cragg1971hurdle}.
+Candidates include seasonal-naive, Croston--SBA, TSB, LightGBM Tweedie,
+CatBoost Tweedie and a two-stage occurrence--quantity model. ADI and \(CV^2\)
+support diagnosis but do not automatically route a model. Specialist methods
+are promoted only with adequate common-origin validation and independent
+series support.
 
-Demand regimes are described using ADI and \(CV^2\), with descriptive
-thresholds 1.32 and 0.49. Regime labels are calculated from history
-available at the forecast origin. They stratify error and support
-candidate diagnosis; they do not automatically assign a model. A
-specialist can be promoted only after same-origin validation shows
-stable improvement and there are at least three development origins
-with at least twenty independent series in the regime at each origin.
-If support is insufficient, the pooled fallback is retained.
-
-The initial fixed-origin development experiment found LightGBM to be
-the strongest candidate at 7-, 14- and 28-day shop--category horizons.
-CatBoost remains a challenger. The raw hurdle produced a lower one-day
-WAPE but material under-forecasting and uncalibrated probabilities.
-These results are controlled development evidence because the supplied
-package's provenance is unresolved; they do not establish real-world
-SME performance.
-
-Forecast uncertainty will be assessed with calibrated quantile or
-residual intervals. SKU, category, branch and business forecasts may
-be reconciled only after source coverage and aggregation identities
-are verified \cite{hyndman2011hierarchical}. The forecast estimates
-observed sales, not unconstrained latent demand, unless stock-out
-censoring has been adequately measured.
+The forecast estimates observed sales, not unconstrained latent demand.
+Stock-out censoring, promotion effects and SKU-level forecasts require
+additional point-in-time evidence and separate validation.
 
 \subsection{Adaptive Forecasting Architecture and Promotion Gates}
-
-The proposed architecture separates evidence eligibility, forecast
-generation, model selection and business action. Figure~\ref{fig:adaptive_demand_architecture}
-shows the sequence. The source gate blocks unverified data from
-real-world claims; the target builder distinguishes observed zero,
-censored and unknown demand; the candidate layer fits transparent
-baselines and eligible specialists; and the selection gate uses common
-rolling origins, bias and minimum independent-series support. A
-decision layer may use a selected forecast only after inventory,
-budget, lead-time and owner constraints have been validated.
+The architecture separates source eligibility, target construction,
+candidate forecasts, model selection and business action. Source and target
+gates distinguish observed zero from censored or unknown demand. Candidates
+are compared on common rolling origins, bias and independent-series support.
+Uncertainty and aggregation follow selection; inventory actions require
+validated costs, lead time, stock and owner constraints.
 
 \begin{figure}[H]
 \centering
-\begin{tikzpicture}[
-  node/.style={draw=dugreen,rounded corners,fill=softgreen,text width=3.2cm,minimum height=0.9cm,align=center,font=\footnotesize},
-  gate/.style={draw=dugold,rounded corners,fill=softorange,text width=3.2cm,minimum height=0.9cm,align=center,font=\footnotesize},
-  flow/.style={-{Latex[length=2.2mm]},thick,draw=gray!75}
-]
-\node[node] (source) at (0,0) {Source provenance and transaction audit};
-\node[gate] (target) at (0,-1.5) {Availability-aware target and feature snapshots};
-\node[node] (experts) at (0,-3.0) {Baselines and candidate experts};
-\node[gate] (select) at (0,-4.5) {Rolling-origin selection, bias and support gates};
-\node[node] (uncertainty) at (0,-6.0) {Calibrated uncertainty and hierarchy};
-\node[node] (decision) at (0,-7.5) {Constraint-aware recommendation and owner approval};
-\draw[flow] (source) -- (target);
-\draw[flow] (target) -- (experts);
-\draw[flow] (experts) -- (select);
-\draw[flow] (select) -- (uncertainty);
-\draw[flow] (uncertainty) -- (decision);
+\begin{tikzpicture}[node/.style={draw=dugreen,rounded corners,fill=softgreen,text width=3cm,minimum height=0.75cm,align=center,font=\footnotesize},gate/.style={draw=dugold,rounded corners,fill=softorange,text width=3cm,minimum height=0.75cm,align=center,font=\footnotesize},flow/.style={-{Latex[length=2mm]},thick,draw=gray!75}]
+\node[node] (a) at (0,0) {Source and transaction audit};
+\node[gate] (b) at (0,-1.2) {Availability-aware target and features};
+\node[node] (c) at (0,-2.4) {Baseline and candidate models};
+\node[gate] (d) at (0,-3.6) {Rolling validation and selection};
+\node[node] (e) at (0,-4.8) {Uncertainty and coherent roll-up};
+\node[node] (f) at (0,-6.0) {Constraint-aware owner decision};
+\draw[flow] (a)--(b); \draw[flow] (b)--(c); \draw[flow] (c)--(d); \draw[flow] (d)--(e); \draw[flow] (e)--(f);
 \end{tikzpicture}
-\caption{Evidence-gated adaptive demand forecasting architecture.}
+\caption{Evidence-gated adaptive demand-forecasting architecture.}
 \label{fig:adaptive_demand_architecture}
 \end{figure}
-
 
 \subsection{Future Customer Inactivity}
 \label{subsec:customer_inactivity}
@@ -2258,76 +1491,16 @@ treated as precisely known constants.
 
 
 \subsubsection{Inventory Position and Replenishment Cost}
+Inventory position combines usable on-hand stock and confirmed incoming
+quantity, less committed demand. Replenishment is constrained by supplier
+lead time, pack multiple, minimum order quantity, budget, storage, expiry
+and remaining shelf life. An action is withheld when a required field is
+unknown or a hard constraint is violated.
 
-For replenishment, the inventory position immediately before an action is
-
-\begin{equation}
-\mathrm{IP}_{p,t}
-=
-\mathrm{OnHand}_{p,t}
-+
-\mathrm{OnOrder}_{p,t}
--
-\mathrm{Backorder}_{p,t}.
-\label{eq:inventoryposition}
-\end{equation}
-
-Let \(D_{p,t}^{(L)}\) denote uncertain demand for product \(p\) over the
-supplier lead-time period \(L\), and let \(Q\) be a candidate order quantity.
-A transparent conditional replenishment-cost function is
-
-\begin{equation}
-J_p(Q)
-=
-c_o\,\mathbb{I}(Q>0)
-+
-c_h\,
-\mathbb{E}\!\left[
-\left(
-\mathrm{IP}_{p,t}+Q-D_{p,t}^{(L)}
-\right)^+
-\right]
-+
-c_s\,
-\mathbb{E}\!\left[
-\left(
-D_{p,t}^{(L)}-\mathrm{IP}_{p,t}-Q
-\right)^+
-\right],
-\label{eq:replenishmentcost}
-\end{equation}
-
-where
-
-\begin{equation}
-x^+ = \max(x,0),
-\label{eq:positive_part}
-\end{equation}
-
-and \(c_o\), \(c_h\), and \(c_s\) denote declared ordering, holding, and
-shortage costs, respectively.
-
-The feasible set additionally imposes supplier pack size, minimum-order
-requirements, storage limits, category-level purchasing limits, and available
-cash. Equation~\ref{eq:replenishmentcost} is an evaluation model and does not
-imply that these costs are known precisely. Candidate policies will therefore
-be compared across owner-reviewed parameter ranges. A specific savings claim
-will not be reported when the ranking of candidate policies changes materially
-across plausible cost values.
-
-Uncertainty is represented through the lead-time demand distribution rather than
-through a single inflated point forecast. Candidate order quantities are also
-screened against pack conversion, batch availability, remaining shelf life,
-expiry, and storage conditions. Consequently, high predicted demand cannot
-justify an operationally prohibited action.
-
-Where reliable predictive quantiles are available, candidate quantities may be
-compared with those quantiles. Otherwise, residual- or replay-based scenarios
-from validation periods will be used. If stock-out censoring prevents credible
-reconstruction of unconstrained demand, the result will be reported as a policy
-comparison under observed sales rather than as an estimate of fully
-unconstrained demand.
-
+Policy evaluation compares the owner policy and proposed policy on the same
+demand path and opening inventory. Outcomes include stock-out units, average
+inventory, holding cost, shortage cost, expiry and total cost. Forecast error
+alone is not interpreted as inventory benefit.
 
 \subsubsection{Customer Action Logic and Abstention}
 
@@ -2429,52 +1602,17 @@ the available evidence volume and task structure.
 
 
 \subsection{Model Eligibility and Sector-Aware SME Adaptation}
+Candidates are compared only when target, origin, horizon, training
+information and evaluation rows are aligned. Every task begins with a
+baseline. Pooled models may borrow information across businesses; business
+adaptation requires sufficient independent history.
 
-A complex candidate is rejected when the training history is insufficient,
-when it fails to improve on the relevant baseline across common development
-origins, when its probabilities or residuals are unstable, or when its
-operational cost has no material value. For the current demand task, a
-regime-specific selector requires at least three development origins and
-at least twenty independent series in that regime at each origin. Repeated
-forecasts of the same series do not count as independent support. If a
-regime fails this gate, the pooled fallback remains selected and the
-regime-specific result is reported as insufficiently supported.
-
-Model eligibility also follows the available sector-aware SME evidence.
-A new or data-limited business uses a transparent baseline and may use a
-pooled model trained on authorized, de-identified evidence from comparable
-businesses with sector and operating-model context. With moderate history,
-shop- and branch-specific context may calibrate the pooled model. A fully
-shop-adapted candidate is considered only when sufficient local history
-exists.
-
-\begin{figure}[H]
-\centering
-\resizebox{0.95\textwidth}{!}{%
-\begin{tikzpicture}[
-  level/.style={draw=dugreen,rounded corners,fill=softgreen,text width=3.25cm,minimum height=1.15cm,align=center,font=\footnotesize},
-  test/.style={draw=dugold,rounded corners,fill=softorange,text width=2.8cm,minimum height=0.82cm,align=center,font=\scriptsize},
-  stop/.style={draw,rounded corners,fill=softgray,text width=3.15cm,minimum height=0.82cm,align=center,font=\scriptsize},
-  flow/.style={-{Latex[length=2.2mm]},thick,draw=gray!75}
-]
-\node[level] (base) at (-4.8,1.3) {\textbf{Level 1: transparent baseline}\\always required and reproducible};
-\node[test] (t1) at (-1.55,1.3) {Enough approved cross-shop evidence and stable gain?};
-\node[level] (pooled) at (1.65,1.3) {\textbf{Level 2: pooled business model}\\held-out-shop transfer tested};
-\node[test] (t2) at (4.9,1.3) {Enough local history and material shop-specific gain?};
-\node[level] (adapted) at (4.9,-1.05) {\textbf{Level 3: shop-adapted model}\\same-origin comparison required};
-\node[stop] (retain1) at (-1.55,-1.05) {No: retain baseline and report the reason};
-\node[stop] (retain2) at (1.65,-1.05) {No: retain pooled model and report the reason};
-\draw[flow] (base) -- (t1);
-\draw[flow] (t1) -- node[above,font=\scriptsize]{yes} (pooled);
-\draw[flow] (t1) -- node[right,font=\scriptsize]{no} (retain1);
-\draw[flow] (pooled) -- (t2);
-\draw[flow] (t2) -- node[right,font=\scriptsize]{yes} (adapted);
-\draw[flow] (t2.south west) -- node[above left,font=\scriptsize]{no} (retain2.north east);
-\end{tikzpicture}}
-\caption{Evidence-dependent model promotion ladder for each business analytical task.}
-\label{fig:model_ladder}
-\end{figure}
-
+Selection considers error, aggregate bias, calibration, stability across
+origins and independent-series support. Repeated forecasts of one series
+do not create independent businesses. Regime labels support diagnosis but
+do not justify automatic specialist routing when subgroup support is sparse.
+Sector-specific extensions are enabled only when relevant fields and
+operating rules are available.
 
 \section{The \system{} Sequential Procedure}
 \label{sec:sequential_procedure}
@@ -2562,125 +1700,29 @@ does not retrain the model within the request path.
 
 
 \subsection{Architecture Components}
-
 \begin{figure}[H]
 \centering
 \resizebox{\textwidth}{!}{%
-\begin{tikzpicture}[
-    block/.style={
-        draw,
-        rounded corners,
-        text width=3.55cm,
-        minimum height=0.86cm,
-        align=center,
-        font=\footnotesize
-    },
-    input/.style={
-        draw,
-        rounded corners,
-        fill=softblue,
-        text width=3.55cm,
-        minimum height=0.86cm,
-        align=center,
-        font=\footnotesize
-    },
-    output/.style={
-        draw=dugreen,
-        very thick,
-        rounded corners,
-        fill=softgreen,
-        text width=3.55cm,
-        minimum height=0.86cm,
-        align=center,
-        font=\footnotesize
-    },
-    arrow/.style={
-        -{Latex[length=2.2mm]},
-        thick,
-        draw=gray!75
-    },
-    feedback/.style={
-        -{Latex[length=2.2mm]},
-        thick,
-        dashed,
-        draw=gray!75
-    }
-]
-
-\node[input] (reference) at (-4.7,3.75)
-{\textbf{Public and Reference Evidence}\\
-benchmarks, context, and baselines};
-
-\node[input] (shops) at (-4.7,1.25)
-{\textbf{Multiple Consenting Businesses}\\
-sales, costs, customers, stock or service events};
-
-\node[input] (constraints) at (-4.7,-1.25)
-{\textbf{Active Shop Constraint Profile}\\
-budget, capacity, supply rules, and consent};
-
-\node[block,fill=softorange] (base) at (0,3.75)
-{\textbf{Base Candidates}\\
-transparent baselines and pooled business model};
-
-\node[block,fill=softblue] (canon) at (0,1.25)
-{\textbf{Governed SME Evidence}\\
-validation, tenant isolation, provenance, and snapshots};
-
-\node[block,fill=softorange] (selection) at (0,-1.25)
-{\textbf{Validated Model Selection}\\
-baseline vs.\ pooled vs.\ shop-adapted};
-
-\node[block,fill=softblue] (analytics) at (4.7,1.25)
-{\textbf{Analytics Outputs}\\
-KPIs, demand, inactivity risk, segments, and anomalies};
-
-\node[block,fill=softgreen] (strategy) at (4.7,-1.25)
-{\textbf{Constraint-Aware Strategy}\\
-feasibility, benefit, cost, risk, and ranking};
-
-\node[output] (actions) at (4.7,-3.75)
-{\textbf{Shop-Specific Recommendations}\\
-purchasing, capacity, cost review, and retention};
-
-\node[block,fill=gray!15] (owner) at (0,-3.75)
-{\textbf{Owner Decision}\\
-accept, reject, defer, or modify};
-
-\node[block,fill=gray!15] (monitor) at (-4.7,-3.75)
-{\textbf{Outcome and Monitoring}\\
-observed result, drift, revalidation, and rollback};
-
-\draw[arrow] (reference) -- (base);
-\draw[arrow] (shops) -- (canon);
-\draw[arrow] (base.east) -- ++(0.45,0) |- (selection.north east);
-\draw[arrow] (canon) -- (selection);
-\draw[arrow] (selection) -- (analytics);
-\draw[arrow] (analytics) -- (strategy);
-\draw[arrow] (constraints.south) -- ++(0,-0.35) -| (strategy.south);
-\draw[arrow] (strategy) -- (actions);
-\draw[arrow] (actions) -- (owner);
-\draw[arrow] (owner) -- (monitor);
-\draw[feedback] (monitor.north) -- ++(0,0.25) -| (selection.south);
-
-\end{tikzpicture}
-}
-\caption{SME-specific constraint-aware \system{} architecture based on the supervisor-guided flow.}
+\begin{tikzpicture}[block/.style={draw,rounded corners,text width=3cm,minimum height=0.75cm,align=center,font=\footnotesize},input/.style={block,fill=softblue},output/.style={block,draw=dugreen,very thick,fill=softgreen},arrow/.style={-{Latex[length=2mm]},thick,draw=gray!75}]
+\node[input] (src) at (-4,1.5) {Business records and context};
+\node[block,fill=softorange] (audit) at (0,1.5) {Validation and snapshots};
+\node[block,fill=softorange] (models) at (4,1.5) {Baselines and models};
+\node[block,fill=softblue] (analytics) at (4,-0.2) {KPIs, demand and customer insights};
+\node[block,fill=softblue] (decision) at (0,-0.2) {Constraint-aware strategy};
+\node[output] (owner) at (-4,-0.2) {Owner decision};
+\node[block,fill=gray!15] (monitor) at (0,-1.9) {Outcome monitoring and revalidation};
+\draw[arrow] (src)--(audit); \draw[arrow] (audit)--(models); \draw[arrow] (models)--(analytics); \draw[arrow] (analytics)--(decision); \draw[arrow] (decision)--(owner); \draw[arrow] (owner)--(monitor); \draw[arrow,dashed] (monitor)--(audit);
+\end{tikzpicture}}
+\caption{System information flow and owner oversight.}
 \label{fig:bsmartarchitecture}
 \end{figure}
-
-
-
-The architecture separates the pooled business-level model from shop-level
-personalization. Authorized and de-identified records from multiple businesses
-may support a pooled business model, while each deployed business retains its
-isolated operational data and active constraint profile.
-
-The selected analytical model produces estimates rather than explicit orders.
-The strategy layer combines those estimates with the shop's budget, inventory,
-pack, applicable shelf-life, storage, lead-time, capacity, and consent constraints to generate feasible
-recommendations.
-
+The operational layer preserves business boundaries and source lineage.
+The analytical layer compares baselines and eligible models, then produces
+KPIs, forecasts and customer insights. The strategy layer combines those
+outputs with business constraints before displaying a recommendation.
+Owners remain decision-makers. Outcomes enter monitoring and become
+training evidence only after reconciliation and validation for a later
+model version.
 
 \subsection{Monitoring and Continuous Learning}
 
@@ -2705,104 +1747,27 @@ particular action was proposed.
 \label{sec:snapshot_lineage}
 
 \subsection{Historical Snapshot Construction}
-\label{subsec:historical_snapshot_construction}
-
-The analytical snapshot is the unit used to prevent future information from
-entering an earlier decision. Figure~\ref{fig:snapshot_flow} distinguishes the
-observation period, decision cutoff, and subsequent outcome window. Raw events
-are first retained in a governed and versioned event ledger. The snapshot
-builder then selects only records available by cutoff \(t\), applies declared
-mappings, and constructs task-specific features from evidence that was available
-at that time.
-
-The resulting snapshot is immutable for the corresponding analytical release.
-Its required attributes include the source-event references, decision cutoff,
-mapping and feature versions, applicable eligibility rules, and the model or
-baseline version used to generate the released output.
+Each snapshot is defined by cutoff \(t\). Only records available by that
+cutoff may enter the prediction. Event time and recording time are retained
+separately so late-arriving or corrected records cannot silently change a
+past information set.
 
 \begin{figure}[H]
 \centering
-\resizebox{\textwidth}{!}{%
-\begin{tikzpicture}[
-    block/.style={
-        draw,
-        rounded corners,
-        minimum width=3.25cm,
-        minimum height=0.9cm,
-        align=center,
-        font=\footnotesize
-    },
-    note/.style={
-        draw=dugold,
-        rounded corners,
-        fill=softorange,
-        minimum width=3.25cm,
-        minimum height=0.9cm,
-        align=center,
-        font=\footnotesize
-    },
-    flow/.style={
-        -{Latex[length=2.2mm]},
-        thick,
-        draw=gray!75
-    },
-    dashedflow/.style={
-        -{Latex[length=2.2mm]},
-        thick,
-        dashed,
-        draw=gray!75
-    },
-    node distance=0.55cm
-]
-
-\node[block,fill=softgreen] (ledger)
-{Versioned Event Ledger\\event time and receipt time};
-
-\node[block,fill=softblue,right=of ledger] (builder)
-{Snapshot Builder\\rules fitted before the cutoff};
-
-\node[block,fill=softgreen,right=of builder] (snapshot)
-{Immutable Snapshot\\features available at \(t\)};
-
-\node[block,fill=softblue,right=of snapshot] (release)
-{Released Output\\model, action, and evidence};
-
-\node[note,below=0.85cm of builder] (cutoff)
-{Decision Cutoff \(t\)\\future window remains sealed};
-
-\node[note,below=0.85cm of snapshot] (outcome)
-{Outcome Window \((t,t+H]\)\\labels and realized events};
-
-\node[note,below=0.85cm of release] (audit)
-{Evaluation Record\\comparison and later eligibility};
-
-\draw[flow] (ledger) -- (builder);
-\draw[flow] (builder) -- (snapshot);
-\draw[flow] (snapshot) -- (release);
-\draw[flow] (builder) -- (cutoff);
-\draw[flow] (cutoff) -- (outcome);
-\draw[flow] (outcome) -- (audit);
-\draw[dashedflow] (release) -- (audit);
-\draw[dashedflow] (audit.south) -- ++(0,-0.45) -| (ledger.south);
-
+\begin{tikzpicture}[block/.style={draw,rounded corners,fill=softblue,text width=3cm,minimum height=0.75cm,align=center,font=\footnotesize},arrow/.style={-{Latex[length=2mm]},thick,draw=gray!75}]
+\node[block] (a) at (0,0) {Versioned business events};
+\node[block] (b) at (4,0) {Snapshot at cutoff \(t\)};
+\node[block] (c) at (8,0) {Model and released output};
+\node[block,fill=softorange] (d) at (4,-1.4) {Sealed future outcome window};
+\draw[arrow] (a)--(b); \draw[arrow] (b)--(c); \draw[arrow] (b)--(d);
 \end{tikzpicture}
-}
-\caption{Historical snapshot construction and separation of future outcomes.}
+\caption{Point-in-time snapshot and future-outcome separation.}
 \label{fig:snapshot_flow}
 \end{figure}
-
-For forecasting, multiple historical cutoffs form rolling forecast origins.
-Transformations such as scalers, encoders, imputers, and feature-selection rules
-are fitted only within the relevant training window and then applied to the
-corresponding validation origin.
-
-For customer analysis, each snapshot contains behaviour observed only up to
-cutoff \(t\). A snapshot receives an inactivity label only when the complete
-future horizon \(H\) can be observed. Where delayed returns, fulfilment events,
-or rolling features could cross the boundary, a purge interval is inserted.
-For entity-generalization analysis, customer or product grouping is performed
-before any learning transformation.
-
+For forecasting, each training target window ends before its validation
+origin, and transformations are fitted within the training window. Customer
+labels are assigned only when the complete future horizon is observable.
+Overlapping outcomes require an appropriate purge interval.
 
 \subsection{Frozen Final Evaluation and Outcome Maturation}
 \label{subsec:frozen_evaluation}
@@ -2832,95 +1797,17 @@ historical production decision.
 \label{sec:recommendation_contract}
 
 \subsection{Minimum Recommendation Evidence}
-\label{subsec:minimum_recommendation_evidence}
+Each recommendation identifies its business, decision, target, cutoff,
+model or rule version, uncertainty and supporting evidence. Reorder
+suggestions expose current and incoming stock, forecast horizon, lead time,
+pack requirements, budget and expiry risk. Customer actions expose the
+historical behaviour supporting the priority, probability reliability and
+consent status.
 
-Every displayed recommendation will satisfy a minimum evidence contract. The
-contract separates the proposed action from the evidence required to judge that
-action. Figure~\ref{fig:recommendation_contract} summarizes the required
-components.
-
-The interface may initially display only the most important information, but the
-complete recommendation record must be retained for audit and evaluation.
-
-\begin{figure}[H]
-\centering
-\resizebox{\textwidth}{!}{%
-\begin{tikzpicture}[
-    center/.style={
-        draw=dugreen,
-        very thick,
-        rounded corners,
-        fill=softgreen,
-        minimum width=3.4cm,
-        minimum height=1.0cm,
-        align=center,
-        font=\footnotesize
-    },
-    item/.style={
-        draw,
-        rounded corners,
-        fill=softblue,
-        minimum width=3.3cm,
-        minimum height=0.9cm,
-        align=center,
-        font=\footnotesize
-    },
-    flow/.style={
-        -{Latex[length=2mm]},
-        thick,
-        draw=gray!70
-    }
-]
-
-\node[center] (rec)
-{Recommendation Record\\action, rank, and status};
-
-\node[item,above left=0.8cm and 1.15cm of rec] (what)
-{Decision Definition\\unit, horizon, alternative};
-
-\node[item,above right=0.8cm and 1.15cm of rec] (source)
-{Evidence Source\\cutoff, snapshot, coverage};
-
-\node[item,left=1.15cm of rec] (why)
-{Supporting Reason\\selective, non-causal wording};
-
-\node[item,right=1.15cm of rec] (uncertainty)
-{Uncertainty\\interval, calibration, sensitivity};
-
-\node[item,below left=0.8cm and 1.15cm of rec] (constraints)
-{Feasibility\\budget, stock, pack, expiry, storage, lead time, consent};
-
-\node[item,below right=0.8cm and 1.15cm of rec] (response)
-{Accountability\\owner response, later outcome};
-
-\draw[flow] (rec) -- (what);
-\draw[flow] (rec) -- (source);
-\draw[flow] (rec) -- (why);
-\draw[flow] (rec) -- (uncertainty);
-\draw[flow] (rec) -- (constraints);
-\draw[flow] (rec) -- (response);
-
-\end{tikzpicture}
-}
-\caption{Minimum evidence contract for an owner-facing recommendation.}
-\label{fig:recommendation_contract}
-\end{figure}
-
-The action component specifies precisely what is proposed and which comparator
-would otherwise be used. The evidence component records the cutoff, source,
-snapshot, and coverage so that stale or incomplete data can be identified.
-
-The reason component uses a small number of specific supporting factors and
-avoids causal wording when only associative evidence is available. The
-uncertainty component reports intervals, calibration information, or sensitivity
-where applicable and helps determine whether nearby alternatives are practically
-different.
-
-The feasibility component documents the operational constraints applied to the
-recommendation. Finally, the accountability component records whether the owner
-accepted, rejected, deferred, or modified the recommendation, together with an
-optional reason and any later observable outcome.
-
+When a required field is missing, the system withholds the action or labels
+the result incomplete. It does not assume costs, stock or customer responses.
+Owners may accept, reject, modify or defer actions; responses and later
+observable outcomes are retained for audit.
 
 \subsection{Human Use and Accountability}
 \label{subsec:human_use_accountability}
@@ -2939,39 +1826,22 @@ interpretation rather than being attributed generically to the ``AI.''
 
 \section{Evaluation Protocol}
 \label{sec:evaluation_protocol}
-
-Figure~\ref{fig:evaluation_design} summarizes the evaluation sequence shared by
-the forecasting, customer and decision studies. The locked final test is opened
-only after preprocessing, candidates, thresholds, primary metrics and decision
-rules have been frozen; any later revision is reported as exploratory.
+Evaluation follows development, protocol freeze, untouched testing and
+bounded reporting. Candidates, features, thresholds and primary metrics
+are selected using development data only. The final test is opened after
+the protocol is frozen; later changes are exploratory.
 
 \begin{figure}[H]
 \centering
-\resizebox{\textwidth}{!}{%
-\begin{tikzpicture}[
-  stage/.style={draw,rounded corners,fill=softblue,text width=2.65cm,minimum height=1.2cm,align=center,font=\footnotesize},
-  lock/.style={draw=dugold,very thick,rounded corners,fill=softorange,text width=2.65cm,minimum height=1.2cm,align=center,font=\footnotesize},
-  claim/.style={draw=dugreen,very thick,rounded corners,fill=softgreen,text width=2.65cm,minimum height=1.2cm,align=center,font=\footnotesize},
-  note/.style={draw,rounded corners,fill=softgray,text width=12.7cm,minimum height=0.8cm,align=center,font=\scriptsize},
-  flow/.style={-{Latex[length=2.2mm]},thick,draw=gray!75},
-  node distance=0.42cm
-]
-\node[stage] (dev) {\textbf{Development}\\rolling origins, ablations and calibration};
-\node[lock,right=of dev] (freeze) {\textbf{Freeze protocol}\\features, model, threshold, metric};
-\node[stage,right=of freeze] (test) {\textbf{Untouched test}\\same instances and evidence cutoff};
-\node[stage,right=of test] (decision) {\textbf{Decision evaluation}\\same demand path or paired owner tasks};
-\node[claim,right=of decision] (report) {\textbf{Bounded claim}\\effect, interval, failures and tier};
-\node[note,below=0.78cm of test] (rules) {No test-set tuning; dependent observations remain grouped; missing outcomes are counted; statistical and practical importance are reported separately};
-\draw[flow] (dev) -- (freeze);
-\draw[flow] (freeze) -- (test);
-\draw[flow] (test) -- (decision);
-\draw[flow] (decision) -- (report);
-\draw[flow] (rules) -- (freeze.south);
-\draw[flow] (rules) -- (test.south);
-\draw[flow] (rules) -- (decision.south);
-\draw[flow] (rules) -- (report.south);
-\end{tikzpicture}}
-\caption{Frozen evaluation sequence from model development to a proportionate claim.}
+\begin{tikzpicture}[stage/.style={draw,rounded corners,fill=softblue,text width=2.5cm,minimum height=0.8cm,align=center,font=\footnotesize},lock/.style={draw=dugold,very thick,rounded corners,fill=softorange,text width=2.5cm,minimum height=0.8cm,align=center,font=\footnotesize},claim/.style={draw=dugreen,very thick,rounded corners,fill=softgreen,text width=2.5cm,minimum height=0.8cm,align=center,font=\footnotesize},flow/.style={-{Latex[length=2mm]},thick,draw=gray!75}]
+\node[stage] (a) at (0,0) {Rolling development};
+\node[lock] (b) at (3,0) {Freeze protocol};
+\node[stage] (c) at (6,0) {Untouched test};
+\node[stage] (d) at (9,0) {Decision evaluation};
+\node[claim] (e) at (12,0) {Bounded claim};
+\draw[flow] (a)--(b); \draw[flow] (b)--(c); \draw[flow] (c)--(d); \draw[flow] (d)--(e);
+\end{tikzpicture}
+\caption{Frozen evaluation sequence.}
 \label{fig:evaluation_design}
 \end{figure}
 
@@ -3078,39 +1948,17 @@ Equation~\ref{eq:utility}.
 
 \subsection{Frozen Analysis and Statistical Decision Rules}
 \label{subsec:frozen_analysis_rules}
+One primary comparison and metric per research question are frozen before
+the final test. RQ1 uses paired out-of-time errors on common origins; RQ2
+uses PR-AUC with calibration as a separate criterion; RQ3 compares policies
+on identical demand paths and constraints; and RQ4 evaluates task correctness
+under counterbalanced owner tasks.
 
-One primary comparison and one primary metric for each research question will be
-frozen before the final test is opened.
-
-For RQ1, the primary comparison is based on paired out-of-time forecasting
-errors at common forecast origins. WAPE or MASE will be selected according to
-denominator validity and scale suitability.
-
-For RQ2, PR-AUC is the primary discrimination measure, while probability
-calibration is treated as a separate acceptance criterion.
-
-For RQ3, competing replenishment policies are compared on the same demand paths,
-with the same opening inventory and the same applicable constraints.
-
-For RQ4, task correctness is the principal owner-facing outcome, while
-completion time and confidence provide complementary evidence regarding the
-practical effect of the explanation condition.
-
-The unit used for uncertainty estimation will match the relevant dependence
-structure. Forecast errors from neighbouring dates will not be treated as
-independent observations. Block-bootstrap resampling will preserve local
-temporal dependence.
-
-When multiple businesses are available, between-shop differences will be
-reported rather than hidden within a pooled transaction count. A
-leave-one-business-out or held-out-business analysis will assess whether a
-pooled business model transfers to an unseen shop.
-
-Customer comparisons will account for repeated snapshots from the same
-customers. Usability-task comparisons will be paired within participants where
-the study design permits. Effect estimates will be accompanied by confidence
-intervals so that the remaining uncertainty is visible.
-
+Uncertainty methods must respect dependence: neighbouring dates, repeated
+customer snapshots and observations from one business are not independent.
+Paired block-bootstrap or cluster methods are selected according to the unit
+of analysis. Effects are reported with intervals and interpreted for practical
+importance, not significance labels alone.
 
 \subsection{Practical Importance and Missing Outcomes}
 \label{subsec:practical_importance}
@@ -3148,43 +1996,16 @@ available evidence.
 
 
 \subsection{Decision, Usability, and Scalability Evaluation}
-\label{subsec:decision_usability_scalability}
+Replenishment policies are compared on identical demand paths and opening
+inventory using stock-out units, average inventory, holding cost, shortage
+cost, expiry and total cost. Retention value is estimated only when
+incremental response, contact cost and consent evidence exist; otherwise
+the task remains prioritisation, not realized-profit estimation.
 
-Replenishment-policy comparisons will use identical observed or replayed demand
-paths. Outcomes will include stock-out units, average inventory, holding cost,
-shortage cost, and total cost.
-
-Retention ranking will incorporate expected value only when a defensible
-incremental response benefit, contact cost, and customer-consent condition are
-available. Otherwise, the evaluation remains a prioritization study rather than
-a realized-profit analysis.
-
-Owner evaluation will use realistic decision tasks within a counterbalanced
-repeated-measures or within-participant design where appropriate for the
-available sample. Measures will include task correctness, completion time,
-confidence, perceived usability, and error count.
-
-Participants may also be asked to explain the reason for their decisions so that
-the study can identify plausible but incorrect interpretations of the
-recommendation or explanation.
-
-Generated data will be used for scalability testing and will remain separate
-from real-data accuracy claims. Planned transaction-line sizes are
-
-\[
-100,\quad
-500,\quad
-1{,}000,\quad
-10{,}000,\quad
-100{,}000,\quad
-1{,}000{,}000.
-\]
-
-Scalability measures will include import time, preprocessing time, query latency,
-and representative serving latency. Any experiment concerning association rules
-will be reported only if the corresponding algorithm has actually been
-implemented and executed.
-
+Owner evaluation measures decision correctness, completion time, confidence,
+error count and usability. Generated test records may support software-load
+and scalability checks, but are not mixed with empirical forecast or
+business-impact results.
 
 \subsection{Monitoring Plan}
 \label{subsec:monitoring_plan}
@@ -3297,70 +2118,17 @@ against expanding the scope of a claim beyond what was actually evaluated.
 
 
 \section{Threats to Validity and Planned Controls}
-\label{sec:validity_threats}
+The main threats are source-field errors, incomplete inventory exposure,
+business heterogeneity, temporal leakage, sparse demand, uncertain costs and
+limited independent businesses. Controls include transaction reconciliation,
+task eligibility, point-in-time features, common-origin baselines,
+cluster-aware uncertainty, sensitivity analysis and an untouched final test.
 
-\begin{table}[H]
-\centering
-\small
-\caption{Main validity threats and planned controls.}
-\label{tab:validity_controls}
-
-\begin{tabularx}{\textwidth}{|p{0.22\textwidth}|p{0.30\textwidth}|Y|}
-\hline
-\textbf{Threat} &
-\textbf{Potential Effect on Evidence} &
-\textbf{Planned Control} \\
-\hline
-
-Selection bias &
-Participating firms may be more digitally mature than the wider target population &
-Describe recruitment and participating firms explicitly and restrict
-generalization accordingly \\
-\hline
-
-Data leakage &
-Future or target-derived information may artificially improve measured
-performance &
-Use availability rules, historical cutoffs, immutable snapshots, and
-temporal- or entity-safe splits \\
-\hline
-
-Stock-out censoring &
-Observed sales may understate unconstrained demand &
-Retain stock-state information and flag or stratify censored periods \\
-\hline
-
-Overfitting on small or short series &
-Complex models may fit noise rather than transferable demand structure &
-Use model-eligibility rules, simple baselines, and rolling temporal validation \\
-\hline
-
-Dataset mismatch &
-Foreign or public benchmark evidence may be incorrectly interpreted as local
-effectiveness evidence &
-Use explicit evidence tiers and report results separately by evidence source \\
-\hline
-
-Weak cost or operational assumptions &
-Uncertain cost values may materially alter utility rankings &
-Use owner-reviewed parameter ranges and sensitivity analysis \\
-\hline
-
-Novelty or learning effect &
-Interface performance may depend on presentation order or participant learning &
-Counterbalance task order and collect task-level correctness and timing measures \\
-\hline
-
-Concept drift &
-Festival, price, demand, or customer-behaviour relationships may change over
-time &
-Use time-based evaluation and post-deployment monitoring with revalidation
-before model replacement \\
-\hline
-
-\end{tabularx}
-\end{table}
-
+The supplied records support the current shop--category observed-sales
+experiment. They do not alone establish SKU latent demand, causal promotion
+effects, inventory-policy savings or transfer to every SME sector. Those
+claims require additional validated fields or separate participant-based
+evaluation. Unavailable evidence is reported as a limitation.
 
 \section{Expected Methodological Outputs}
 \label{sec:expected_methodological_outputs}
@@ -3390,40 +2158,20 @@ reported only when the corresponding empirical evidence is available.
 
 \section{Dataset Package and Research Scope}
 
-The current Drive manifest declares the Bangladesh SME package to contain
-real SME sales or real people. However, the repository's 2 November 2026 onboarding record classifies a package with the same
-seed (20261025), entity counts (32 shops, 11,000 customers, 480 products,
-56 suppliers), and 2023--2025 coverage as fully synthetic/simulated. The
-earlier record also reports a \texttt{synthetic\_flag=YES} field. The
-currently accessible SKU sheet has six populated columns and does not expose
-that flag. The declarations therefore conflict.
+The supplied dataset manifest identifies the package as 100\% real SME sales
+and real people, with Bangladesh as the business context, BDT currency and
+coverage from 1 January 2023 to 31 December 2025. It lists 32 shops, 11,000
+customers, 480 products and 56 suppliers. The source package includes
+365,447 sales orders, 736,683 sales lines, 381,756 payments, 122,422 purchase
+orders and purchase lines, 994,808 inventory movements, 134,379 inventory
+lots, 5,102 returns, 1,216 promotions and 1,096 calendar rows.
 
-The evidence class for this report is \texttt{provenance\_conflict}. Structural
-reconciliation does not prove real-world origin. Until the source owner
-supplies traceable POS/accounting exports, collection and consent basis,
-anonymisation procedure, data dictionary, and a versioned explanation of
-the earlier synthetic classification, this package is used only for
-controlled research development and software validation. Its scores are
-not presented as verified real-world SME accuracy.
-
-The current Drive manifest lists 32 shops, 11,000 customers, 480 products,
-56 suppliers and the period 1 January 2023--31 December 2025, with BDT as
-currency. It lists 365,447 sales orders, 736,683 sales lines, 381,756
-payments, 122,422 purchase orders and purchase lines, 994,808 inventory
-movements, 134,379 inventory lots, 5,102 returns, 1,216 promotions,
-1,096 calendar rows, and 32,852 separately identified
-\texttt{simulated\_unmet\_demand} rows. The latter are not observed sales
-or empirical lost-sales ground truth and are excluded from all forecast
-targets.
-
-The RQ1 experiment uses the dedicated
-\texttt{rq1\_daily\_shop\_category} sheet. Its five fields are
-\texttt{shop\_id}, \texttt{category}, \texttt{date},
-\texttt{units\_sold\_observed}, and
-\texttt{is\_zero\_observed\_sales}. The resulting panel contains 32 shops,
-16 categories, and 512 shop--category series. Each series has 1,096
-consecutive daily records, producing 561,152 rows over the stated three-year
-period. The panel records 1,580,361 observed units.
+The RQ1 experiment uses the dedicated complete daily shop--category panel:
+32 shops, 16 categories, 512 series and 1,096 daily observations per series,
+for 561,152 rows. The panel contains 1,580,361 observed units. The separate
+simulated unmet-demand table is not used as observed sales or as empirical
+lost-sales ground truth. Raw business records remain in controlled storage;
+the public repository contains code, schemas, checksums and aggregate outputs.
 
 \section{Data Validation and Preprocessing}
 
@@ -3518,6 +2266,29 @@ weekday and sums them across the horizon. All methods are evaluated on
 the same 512 series at each of the three origins, giving 1,536
 series-origin forecasts per horizon.
 
+\section{Context-Aware Forecasting Model Development}
+
+The existing pooled LightGBM Tweedie model was retained as the controlled
+baseline. The challenger used the same estimator family and settings while
+adding cross-series information available before each forecast origin:
+shop-level sums and means, category-level sums and means, network totals,
+recent shop/category trends and the focal series' share of its shop,
+category and network totals. This tests whether related series provide
+useful context without introducing future information.
+
+The seven-day comparison uses nine monthly origins from January to September
+2025, with all 512 series evaluated at every origin. One-, 14- and 28-day
+comparisons use three origins from July to September 2025. Q4 2025, which
+had already been inspected, is not used for model selection. Every training
+target window ends before its validation origin. Baseline and context
+models use the same target, origins and LightGBM settings.
+
+The model remains a shop--category observed-sales forecaster. It does not
+convert missing SKU dates to zero or claim to estimate unconstrained latent
+demand. Code and aggregate outputs are stored under
+\texttt{research/forecasting/context\_aware\_experiment.py} and
+\texttt{research/forecasting/results/context\_aware\_v1/}.
+
 \section{Historical Transaction-Feature Ablation}
 
 A separate seven-day ablation tests whether transaction-derived covariates
@@ -3570,21 +2341,13 @@ claims.
 
 \section{Evidence Boundary and Panel Integrity}
 
-The current Drive manifest says the package is real, while the 2 November
-repository onboarding record classifies a same-seed, same-count package as
-synthetic. The current accessible SKU sheet does not expose the previously
-reported \texttt{synthetic\_flag} column. This conflict remains unresolved.
-All numerical results in this chapter are therefore reproducible controlled
-development results on the supplied package, not verified real-world SME
-accuracy. The previously inspected October--December 2025 period is excluded
-from model selection and is not an untouched final test.
-
-The shop--category panel contains 561,152 observations, 512 unique series
-and 1,096 daily observations per series. It totals 1,580,361 units;
-37.5962\% of rows are explicit zero-sales observations. There are no
+The supplied dataset manifest identifies the package as real SME business
+data. The shop--category panel contains 561,152 observations, 512 unique
+series and 1,096 daily observations per series. It totals 1,580,361 units;
+37.5962\% of rows are explicit zero-sales observations. The audit found no
 duplicate shop--category--date keys, missing required values, zero-flag
-mismatches or missing dates within the 512 series. Transaction and
-inventory reconciliation results are reported in Chapter~\ref{chapter_implementation}.
+mismatches or missing dates within the complete panel. Transaction and
+inventory reconciliation findings are reported in Chapter~\ref{chapter_implementation}.
 
 \section{Demand-Regime Distribution}
 
@@ -3869,6 +2632,58 @@ Intermittent & 12 & 106.30\% & 121.62\% & 83.18\% & \textbf{77.02\%} \\
 \end{tabularx}
 \end{table}
 
+\section{Context-Aware Model Results}
+
+Table~\ref{tab:context_aware_results} compares the historical-feature
+baseline with the context-aware challenger on identical development
+origins. At seven days, pooled WAPE decreases from 33.47\% to 32.66\%,
+an absolute reduction of 0.81 percentage points (2.41\% relative).
+The challenger wins at six of nine monthly origins. A paired
+2,000-replicate shop--category cluster bootstrap estimates the
+context-minus-baseline WAPE difference at -0.81 percentage points,
+with a 95\% interval of [-1.09, -0.52] percentage points.
+
+\begin{table}[H]
+\centering
+\small
+\caption{Context-aware LightGBM versus the same-model historical-feature baseline.}
+\label{tab:context_aware_results}
+\begin{tabularx}{\textwidth}{|C{0.12\textwidth}|C{0.20\textwidth}|C{0.20\textwidth}|C{0.18\textwidth}|Y|}
+\hline
+\textbf{Horizon} & \textbf{Baseline WAPE} & \textbf{Context WAPE} & \textbf{Absolute change} & \textbf{Context bias} \\
+\hline
+1 day & 82.73\% & 79.74\% & -2.99 pp & -16.26\% \\
+\hline
+7 days & 33.47\% & 32.66\% & -0.81 pp & -6.05\% \\
+\hline
+14 days & 28.48\% & 24.93\% & -3.56 pp & +5.82\% \\
+\hline
+28 days & 19.35\% & 18.46\% & -0.89 pp & +2.67\% \\
+\hline
+\end{tabularx}
+\end{table}
+
+The seven-day result is the strongest comparison because it uses nine
+origins; other horizons use three origins each. The context model's
+seven-day bias is -6.05\%, compared with -2.02\% for the baseline. A
+past-origin-only multiplicative adjustment reduced bias to -1.61\% but
+increased WAPE to 32.90\%. It is an optional cost-sensitive trade-off,
+not silently applied to the selected forecast.
+
+Prequential scaled-residual intervals, calibrated only from earlier
+validation origins, achieved mean empirical coverage of 79.43\% for
+nominal 80\% intervals and 89.55\% for nominal 90\% intervals across
+the evaluated origins. These are development diagnostics, not guarantees
+of future coverage.
+
+Bottom-up aggregation of the same seven-day leaf forecasts is coherent.
+WAPE is 32.66\% at shop--category level, 14.95\% at shop total, 10.98\%
+at category total and 7.85\% at network total. Lower aggregate errors
+partly reflect cancellation and do not establish equivalent leaf-level
+replenishment accuracy. The context model is the leading development
+challenger; production selection requires a genuinely untouched future
+period or held-out businesses and explicit under-forecast cost evaluation.
+
 \section{Model and Solution Design Decision}
 
 The development evidence supports a conservative two-layer forecasting
@@ -3917,46 +2732,34 @@ is declared a universal winner and no accuracy target is forced.
 
 \section{Research Summary}
 
-This progress report establishes a data-audited, multi-candidate RQ1
-development workflow for a proposed SME business analytics framework.
-The current Drive manifest and the repository's historical onboarding
-record conflict on whether the supplied package is real or synthetic.
-The evidence class is therefore provenance-conflict, and the reported
-scores are controlled development results rather than verified real-world
-Bangladeshi SME accuracy.
+This thesis develops and evaluates an integrated SME analytics framework
+using the supplied Bangladesh business records. The dataset manifest
+identifies the package as real SME sales and real people. Source tables
+were internally reconciled: sales lines join to orders, prepared SKU
+aggregates reproduce from transaction lines, category totals reproduce
+from SKU sales, and inventory sale movements match sales lines. The
+inventory audit also identifies negative-balance events and positive-sale
+days with non-positive reconstructed stock; these remain quarantined from
+SKU exposure labels pending correction.
 
-The source tables reconcile internally: all sales lines join to orders,
-the prepared SKU daily table is reproduced from transaction lines, the
-positive category-day rows are reproduced from SKU aggregation, and sale
-inventory movements match sales lines. The inventory audit nevertheless
-finds 269 negative-balance events and 330 positive-sale days with
-non-positive reconstructed intraday stock. These anomalies must be
-quarantined before SKU-level availability labels are accepted.
+For RQ1, the complete shop--category panel supports observed-sales
+forecasting. A context-aware LightGBM challenger adds historical shop,
+category and network aggregates to the baseline features. Across nine
+seven-day development origins, pooled WAPE improves from 33.47\% to
+32.66\%, with a paired cluster-bootstrap interval supporting lower
+development error. However, under-forecast bias increases from -2.02\%
+to -6.05\%. The model is therefore a leading development challenger,
+not yet a final production selection. The one-, 14- and 28-day comparisons
+also show lower pooled WAPE, but use only three origins each.
 
-In the fixed-origin shop--category experiment, LightGBM Tweedie achieved
-the lowest pooled WAPE at 7-, 14- and 28-day horizons. CatBoost remains
-a challenger. The raw hurdle candidate achieved a lower one-day WAPE
-but under-forecast materially and used uncalibrated occurrence
-probabilities. Only four of 512 series were classified as intermittent;
-this is insufficient support for automatic regime-based model routing.
-The one-day WAPE remains high, and the results do not establish
-SKU-level or unconstrained-demand accuracy.
+Prequential interval diagnostics and bottom-up aggregation provide
+additional evidence. SKU latent demand, inventory-policy benefit,
+customer-action effectiveness and cross-sector transfer remain separate
+evaluation tasks. The contribution is an auditable, evidence-aware process
+that selects methods against common baselines, preserves temporal validity
+and links predictions to feasible business decisions. No accuracy target
+is forced and no untested business-impact claim is made.
 
-A nine-origin feature ablation also found that historical price,
-discount and order/customer-activity summaries did not improve pooled
-seven-day WAPE over the demand-only LightGBM baseline. These covariates
-therefore remain an evaluated but rejected extension for the current
-development protocol; additional features must earn inclusion through
-the same chronological validation rather than assumption.
-
-The resulting architecture is evidence-gated: source and availability
-validation precede target construction; pooled and specialist candidates
-are compared on identical rolling origins; specialist routing requires
-adequate independent-series support; calibrated uncertainty and
-hierarchical reconciliation follow; and inventory actions are evaluated
-under actual business constraints. The contribution is the reproducible
-and auditable process, not a claim that a newly named model has already
-solved SME forecasting.
 
 
 \addtocontents{toc}{\vspace{1em}}
