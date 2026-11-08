@@ -15,7 +15,7 @@ test("platform admin order endpoint supplies all payment audit fields used by it
 });
 
 test("platform admin does not describe every order amount as a demo amount", () => {
-  assert.match(route, /Demo order values are not revenue/);
+  assert.match(route, /Archived non-operational order values are not revenue/);
   assert.match(route, /COD collection is merchant-confirmed/);
   assert.doesNotMatch(route, /Amounts are demo order values, not money received/);
 });
