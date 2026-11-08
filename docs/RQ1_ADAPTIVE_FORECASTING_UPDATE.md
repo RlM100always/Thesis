@@ -1,125 +1,70 @@
 # RQ1 research update — adaptive demand forecasting
 
-**Status:** Drive dataset located; structural audit completed; empirical model rerun pending benchmark reproduction and provenance resolution  
-**Date:** 7 November 2026  
-**Scope:** RQ1 forecasting only; operational application and tenant data are out of scope
+**Date:** 8 November 2026  
+**Scope:** RQ1 forecasting and source-data reconciliation  
+**Status:** transaction/SKU/category reconciliation completed; inventory ledger audited; fixed-origin model challengers tested; provenance remains unresolved; no final holdout evaluated.
 
-## 1. Verified repository and evidence state
+## 1. Evidence classification
 
-The current repository default branch is `main`; the primary files are stored
-in the user's linked Google Drive folder rather than committed to GitHub. The
-Drive package contains raw transactional tables and RQ1 derived panels. The
-current Drive `manifest.json` claims "100% real SME sales or real people", but
-the associated `rq1_daily_sku_sales_observed` sheet has 699,220 data rows and
-every row has `synthetic_flag=YES`. The repository's 2 November onboarding
-document records an earlier manifest that explicitly said 100% synthetic.
-The current manifest, older manifest description and row-level flag are
-inconsistent. The dataset is therefore classified as
-`provenance_conflict` until the source owner provides the original source
-system/export, collection statement and field-level data dictionary.
+The current Drive manifest claims that the package contains real SME sales or real people. The repository's 2 November onboarding record classifies a package with the same seed, entity counts and coverage as fully synthetic. It also records a `synthetic_flag=YES` field; the current accessible SKU sheet no longer exposes that field. The mismatch is unresolved.
 
-The RQ1 `rq1_daily_shop_category` panel has been fully enumerated: 561,152
-data rows, 32 shops, 16 categories, 512 shop-category series and 1,096
-consecutive dates from 2023-01-01 through 2025-12-31. Each series has exactly
-1,096 dates and there are no duplicate date × shop × category keys. Total
-observed quantity in the panel is 1,580,361 units. There are 210,972 zero-sales
-rows (37.5962%) overall. The 2025-10-01 to 2025-12-31 window contains exactly
-47,104 rows, of which 18,757 are zero-sales rows (39.8204%); this matches the
-previously reported test-set size and zero-sales rate.
+**Evidence class: `provenance_conflict`.** Results are reproducible controlled development evidence only. They must not be called verified real-world Bangladeshi SME accuracy until the source owner supplies traceable origin, consent/collection, anonymisation, data dictionary and explanation of the previous synthetic classification.
 
-The 83.98%, 84.04% and 84.56% WAPE values remain unverified until the original
-LightGBM, two-stage and XGBoost scripts, exact forecast horizon, test
-aggregation and WAPE denominator are reproduced.
+## 2. Source reconciliation results
 
-The 2025-10 to 2025-12 legacy test period has already been inspected. The
-updated engine now uses an exclusive development cutoff of 2025-10-01 and
-selects three monthly spaced rolling origins strictly before that date. The
-legacy Q4 period is excluded from model selection and is not described as an
-untouched final test.
+- 365,447 sales orders; 736,683 sales lines.
+- Every sales line joins one order; no missing order references or shop mismatches.
+- Sales lines aggregated by shop × SKU × date reproduce all 699,220 prepared SKU observed-sales rows exactly, including 1,580,361 units and sales value to floating-point precision.
+- SKU-to-category aggregation reproduces all 350,180 positive shop-category-date rows exactly.
+- The complete shop-category panel has 561,152 rows, 512 series, 1,096 days, 1,580,361 units and 210,972 zero-sales rows (37.5962%).
+- The already inspected 2025-Q4 period has 47,104 rows, 18,757 zero rows (39.8204%), and 121,157 units; it is not used for model selection or represented as an untouched test.
+- 736,683 SALE inventory movements match sales lines one-to-one. 121,107 PURCHASE movement groups match received purchase-order/SKU quantities.
+- The reconstructed inventory ledger has 269 negative-balance events in 253 shop-SKU combinations and 330 positive-sale days with non-positive intraday balance. These are quarantined for SKU availability analysis.
+- Every zero-sales shop-category day has at least one SKU with positive reconstructed stock during that day. This supports category-level zero observations as observed category sales, but does not rule out item-level stockouts.
 
-## 2. Research design
+## 3. Development experiment
 
-The new implementation introduces a separate adaptive daily-demand pipeline.
-Its input unit is shop × category × date, with non-negative quantity demand.
-It rejects duplicate daily keys, invalid values and missing dates by default.
-Zero-filling missing dates is an explicit user-selected assumption, not a
-silent cleaning step.
+The fixed-origin benchmark used 1 July, 1 August and 1 September 2025, with 512 shop-category series and 1,536 series-origin forecasts per horizon. Q4-2025 was excluded. Each model used the same target definition and historical-only feature snapshot.
 
-The pipeline calculates average demand interval (ADI), squared coefficient of
-variation (CV²), zero-sales ratio and descriptive smooth/intermittent/erratic/
-lumpy regimes. These diagnostics are used to stratify analysis; they do not
-automatically establish that a particular algorithm is superior.
+Feature set: lags 1/7/14/28/56; rolling mean, standard deviation, sum and zero ratio over 7/14/28/56 days; days since last sale; ADI; positive-demand mean/CV²; shop/category identifiers; weekday, day, month, ISO week and cyclical encodings.
 
-## 3. Candidate methods
+Candidates: LightGBM Tweedie (100 trees, learning rate 0.035, 31 leaves, minimum child samples 80, row/column subsampling 0.85, L2 2.0, seed 42); CatBoost Tweedie (120 iterations, depth 6, learning rate 0.04, L2 5, seed 42); raw two-stage CatBoost occurrence and positive-quantity model (100 iterations each, depth 5, learning rate 0.04, balanced classifier weights); weekly seasonal-naive based on up to four prior matching weekdays; Croston-SBA and TSB (alpha/beta 0.1).
 
-The v0.1.0 implementation accepts the Drive RQ1 aliases `category` and
-`units_sold_observed`, validates `is_zero_observed_sales`, and handles Excel
-serial dates. Feature/target construction is vectorised for the 512-series
-panel. The v0.1.0 implementation compares a weekly seasonal-naive reference,
-Croston, SBA, TSB, a two-stage hurdle model, scikit-learn HistGradientBoosting,
-and optional LightGBM and CatBoost. A validation-only selector chooses a
-candidate by demand regime when at least two origins and ten series forecasts
-are available; unsupported groups remain unselected. Direct cumulative targets
-are built for 1, 7, 14 and 28 days.
-Features include lagged demand, rolling level/dispersion/zero ratios, time
-since last positive sale, ADI/CV² and calendar encodings. Every feature row is
-constructed from dates strictly before its forecast origin.
+| Horizon | LightGBM | CatBoost | Hurdle (raw) | Croston-SBA | TSB | Weekly seasonal-naive |
+|---:|---:|---:|---:|---:|---:|---:|
+| 1 day | 79.80% | 79.98% | **79.23%** | 84.01% | 84.78% | 92.21% |
+| 7 days | **33.74%** | 34.20% | 35.26% | 37.74% | 38.62% | 40.77% |
+| 14 days | **24.11%** | 24.78% | 24.54% | 30.27% | 32.10% | 33.97% |
+| 28 days | **18.57%** | 19.28% | 18.84% | 25.62% | 27.38% | 29.16% |
 
-Model fitting uses only training examples whose full target horizon ends before
-the validation origin. The development evaluation uses rolling origins. WAPE,
-MAE, RMSE, per-series scaled MASE and forecast bias are recorded; zero-total WAPE is null.
-Metrics are retained at pooled, per-shop, per-category and demand-regime levels.
+The hurdle model's one-day WAPE is lower, but its aggregate bias is -28.18%; its occurrence probabilities are uncalibrated. LightGBM bias is -21.69%, -6.59%, -2.42% and -2.10% across 1/7/14/28 days respectively. LightGBM is therefore the current fallback for 7/14/28-day category forecasting; CatBoost remains a challenger. No model is declared a real-world winner.
 
-## 4. Reproducibility outputs
+At seven days, LightGBM WAPE across the three origins is 32.52%, 33.86% and 34.92%. A 2,000-replicate shop-category cluster bootstrap estimates the WAPE difference (LightGBM minus CatBoost) at -0.45 percentage points, 95% interval [-0.85, -0.08] points. This is development-fold variation, not final-test uncertainty.
 
-Each run writes:
-- `demand_diagnostics.csv`
-- `rolling_origin_metrics.csv`
-- `rolling_origin_predictions.csv`
-- `selected_model_by_regime.csv`
-- `run_manifest.json` including input SHA-256, schema-level counts, date
-  coverage, assumptions, horizons, candidate list, environment and limitations.
+The 512 historical regimes are 342 lumpy, 153 erratic, 13 smooth and 4 intermittent. Four intermittent series are inadequate for automatic specialist routing. Regime labels are descriptive and cannot substitute for independent-series support.
 
-The isolated research test suite checks panel integrity, duplicate rejection, missing-date
-handling, no-demand classification, Croston-family non-negativity, zero-total
-WAPE handling, series-specific MASE, direct-horizon target creation, chronological
-origins, tree/hurdle model fitting, regime selection and figure generation.
-A dedicated GitHub Actions workflow runs these tests without loading the
-application-wide FastAPI test fixtures. The hurdle classifier probability is
-not calibrated in v0.1.0 and must not be presented as a calibrated probability.
+## 4. Model architecture decision
 
-## 5. Limitations and deferred work
+The current evidence supports a conservative two-layer design:
 
-The first implementation does not yet provide calibrated occurrence probabilities or prediction intervals,
-stockout-censoring correction, promotion/price/market-context covariates,
-hierarchical reconciliation or inventory-policy backtesting. These must not be
-claimed as implemented. They require verified fields and separate validation.
+1. **Forecast layer:** pooled LightGBM Tweedie fallback; CatBoost Tweedie challenger; raw hurdle remains experimental until probability calibration and bias correction pass; Croston-SBA/TSB remain intermittent challengers.
+2. **Selection layer:** compare all candidates on identical rolling origins, horizon, targets and available rows. Require at least 3 development origins and at least 20 independent series per regime per origin before enabling a regime-specific selector. Otherwise retain the pooled fallback.
+3. **SKU layer:** build only from verified assortment and inventory exposure. A missing SKU date is zero only when active assortment and positive stock throughout the day are established; stockout, negative-ledger, closed-shop and unknown-coverage periods are censored/unknown.
+4. **Uncertainty and hierarchy:** next stage is calibrated intervals and reconciliation after source and target eligibility are frozen.
+5. **Decision layer:** RQ3 inventory replay is separate from forecast accuracy and requires validated costs, lead times, pack/MOQ, budgets and stock state. RQ4 requires actual SME owners using B-SMART; generated explanation cases do not qualify.
 
-A daily sales panel alone cannot distinguish low demand from stockout-censored
-sales. Where inventory availability is absent, the model estimates observed
-sales, not latent unconstrained demand. This distinction is mandatory in the
-report.
+## 5. Reproducibility and remaining gates
 
-## 6. Acceptance criteria before thesis results are updated
+The generic adaptive engine includes explicit missing-date policy, direct horizons, baseline and tree/hurdle candidates, per-shop/category/regime metrics, horizon-scaled weekly MASE, run manifest, figures and tests. Its weekly seasonal-naive baseline now uses matching weekdays; LightGBM uses native categorical IDs; regime selection checks independent series support rather than counting repeated forecasts.
 
-1. Receive the exact dataset used for the reported WAPE comparison and its
-   provenance manifest.
-2. Reproduce the existing LightGBM, two-stage and XGBoost results under an
-   identical cutoff, forecast horizon, aggregation and WAPE definition.
-3. Inspect the 39.82% zero-sales share by shop/category and verify whether zeros
-   are observed zero-sales days rather than missing/closed/stockout days.
-4. Run rolling-origin development validation and publish per-shop, per-category
-   and per-regime results, not only pooled WAPE.
-5. Freeze model selection before a genuinely new untouched test or held-out
-   business evaluation.
-6. Update empirical thesis tables only from the immutable run manifest and
-   generated artifacts.
+Remaining gates:
+1. Resolve the provenance conflict.
+2. Reconcile the 269 negative stock events and 330 affected positive-sale days.
+3. Build and validate an exposure-aware SKU panel.
+4. Reproduce prior WAPE claims from their original scripts and exact protocol.
+5. Calibrate occurrence probabilities and prediction intervals.
+6. Add point-in-time price/promotion features and hierarchical reconciliation.
+7. Freeze selection before a new untouched future period or held-out businesses.
+8. Evaluate RQ3 and RQ4 only with their own required evidence.
 
-## 7. Current conclusion
-
-No new forecasting accuracy claim is made in this update. The repository now
-has a reproducible, leakage-aware experiment entry point and tests, but the
-research dataset is not present in the checkout. The next blocking input is the
-frozen dataset plus its data dictionary/provenance. Until that arrives, a
-world-class researcher should report the model design and verification status,
-not invent a winning score.
+No final holdout has been evaluated. The 2025-Q4 legacy period is excluded from model selection and cannot be relabelled as untouched.
