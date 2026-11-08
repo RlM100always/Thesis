@@ -8,11 +8,12 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
-import { api } from "../api";
+import { api, isD1Store } from "../api";
 import { customerFetch, getCustomerToken } from "../storeCustomerApi";
 import { explain } from "../errors";
 import { productImage, storeCoverImage } from "../storeImages";
 import StoreCustomerPortal from "./StoreCustomerPortal";
+import StoreAssistant from "../components/StoreAssistant";
 import { useUi } from "../UiContext";
 import { displayStoreCategory, displayProductUnit, displayStoreTagline, displayStoreDelivery, displayStoreArea, isSyntheticDemoArea } from "../storeDisplayText";
 import {contrastColor,readableAccent} from "../storeContrast";
@@ -1045,7 +1046,7 @@ function CheckoutView({ store, cart, products, onBack, onDone, scCustomer, varia
     if (!couponCode.trim()) return;
     setCouponBusy(true); setCouponErr("");
     try {
-      const res = await api.validateCoupon(orgId, couponCode.trim(), subtotal);
+      const res = await api.validateCoupon(orgId, couponCode.trim(), subtotal, getCustomerToken(store.slug));
       setCouponResult(res);
       setCouponErr("");
     } catch (e) {
@@ -2312,6 +2313,14 @@ export default function StorePage() {
           </a>
         </div>
       </footer>
+
+      {isD1Store(store.organization_id) && view!=="checkout" && view!=="done" && (
+        <StoreAssistant
+          store={store}
+          onOpenAccount={()=>setPortalOpen(true)}
+          onSelectProduct={id=>{const product=productMap[id];if(product){setModalProduct(product);setView("home");}}}
+        />
+      )}
     </div>
   );
 }

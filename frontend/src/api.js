@@ -773,7 +773,7 @@ export const api = {
         body: JSON.stringify(body),
       }).then(r => r.ok ? r.json() : r.json().then(e => Promise.reject(new Error(e.detail || "Review failed")))),
 
-  validateCoupon: (orgId, code, orderSubtotal) => isD1Store(orgId) ? Promise.reject(new Error("ডেমো দোকানে কুপন প্রযোজ্য নয়")) : post(`/api/public/store/${encodeURIComponent(orgId)}/coupon/validate`, {code, order_subtotal:orderSubtotal}),
+  validateCoupon: (orgId, code, orderSubtotal, customerToken) => isD1Store(orgId) ? d1Commerce(`/api/public/coupons/${encodeURIComponent(orgId)}/validate`, {method:"POST",body:{code,order_subtotal:orderSubtotal},headers:customerToken?{Authorization:"Bearer "+customerToken}:{}}) : post(`/api/public/store/${encodeURIComponent(orgId)}/coupon/validate`, {code, order_subtotal:orderSubtotal}),
 
   getRevenueChart: (days = 30) => appRequest(`/api/app/store/revenue-chart?days=${days}`),
 
