@@ -305,7 +305,7 @@ export async function customerRouter(request, env, path, output, error) {
           await env.DB.prepare(
             "UPDATE commerce_customer_accounts SET password_reset_token_hash=NULL,password_reset_expires_at=NULL WHERE id=? AND password_reset_token_hash=?"
           ).bind(account.id, tokenHash).run();
-          return error(request, 503, "রিসেট ইমেইল পাঠানো যায়নি। কিছুক্ষণ পরে আবার চেষ্টা করুন");
+          console.error("customer password reset email was not delivered; response remains generic");
         }
       }
       return output(request, { sent: true, message: "অ্যাকাউন্ট থাকলে পাসওয়ার্ড রিসেটের নির্দেশনা ইমেইলে পাঠানো হয়েছে।" }, 202);
