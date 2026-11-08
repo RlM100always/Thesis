@@ -75,7 +75,7 @@ export function customerFallback(question, products, orders, store, signedIn) {
   }
   if (contains(q, ["ডেলিভারি", "delivery", "পেমেন্ট", "payment", "ক্যাশ", "cod", "চার্জ"])) {
     const policy = clean(store.delivery_note, 400) || "ডেলিভারি সম্পর্কে দোকানের সঙ্গে যোগাযোগ করুন।";
-    return policy + (store.is_demo ? " এটি নমুনা স্টোর; বাস্তব পেমেন্ট করবেন না।" : (store.payment_cod ? " এই দোকানে Cash on Delivery পাওয়া যায়।" : " এই দোকানে COD চালু নেই।"));
+    return policy + (store.is_demo ? " এটি একটি পরীক্ষামূলক তালিকা; এখানে বাস্তব পেমেন্ট করবেন না।" : " এই দোকানে Cash on Delivery পাওয়া যায়।");
   }
   if (products.length) {
     return "আপনার প্রশ্নের সঙ্গে মেলে এমন পণ্য:\n" + products.slice(0, 5).map(p =>
