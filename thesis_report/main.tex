@@ -419,7 +419,7 @@
 }
 
 \newcommand{\system}{B-SMART}
-\newcommand{\reportdate}{2 November 2026}
+\newcommand{\reportdate}{8 November 2026}
 \newcommand{\projectperiod}{February 2026 - February 2027}
 \newcommand{\cmark}{\cellcolor{softgreen}\textbf{C}}
 \newcommand{\amark}{\cellcolor{softorange}\textbf{A}}
@@ -491,16 +491,17 @@
 \rhead{\thepage}
 
 \Declaration{
-  This initial report presents the foundation of the thesis project entitled
+  This progress report presents the research foundation, current implementation,
+and development-stage experimental evidence for the thesis project entitled
 \emph{AI-Powered Business Analytics System for Performance Evaluation,
-Insight Extraction, and Strategy Optimization}. We declare that the background
-study, problem formulation and proposed methodology presented here are the work
-of the authors under the supervision of Dr. Saifuddin Md. Tareeq. Ideas,
-methods, datasets and findings originating from prior work are cited. The
-implementation and experimental results are intentionally reserved for later
-stages of the thesis. The present conclusion is limited to the background study
-and proposed methodology. This report is current to \reportdate; the project
-remains in progress until February 2027.
+Insight Extraction, and Strategy Optimization}. The work is conducted by the
+authors under the supervision of Dr. Saifuddin Md. Tareeq. Ideas, methods,
+datasets, software libraries, and findings originating from prior work are
+acknowledged and cited. The numerical forecasting results are restricted to
+the supplied daily shop--category panel and the development protocol described
+in this report. They do not represent a final untouched-test evaluation or a
+claim of effectiveness across all SME sectors. This report is current to
+\reportdate; the project remains in progress until February 2027.
 
 \vspace{1.2cm}
 \begin{tabularx}{\textwidth}{X X}
@@ -520,8 +521,33 @@ remains in progress until February 2027.
 \begin{center}
   {\huge\textit{Abstract}\par}
 \end{center}
-% Intentionally left blank for the initial progress submission.
-% The abstract will be completed in the final thesis.
+This thesis develops \system{}, an AI-powered business analytics and
+decision-support framework intended to connect operational records with
+performance evaluation, demand prediction, customer insight, and feasible
+business recommendations for Bangladeshi small and medium enterprises (SMEs).
+The proposed framework uses a shared operational core with sector- and
+business-specific constraints. This progress report records the completed
+research foundation and a first reproducible demand-forecasting experiment
+using the supplied daily shop--category dataset. The dataset manifest
+identifies the package as real SME sales or real people; a separately named
+simulated-unmet-demand table is excluded from the observed-sales target.
+The analysed panel contains 561,152 daily observations across 32 shops and
+16 product categories, forming 512 complete shop--category series from
+1 January 2023 to 31 December 2025. Observed sales total 1,580,361 units,
+and 37.60\% of daily observations are zero-sales records. Direct cumulative
+forecasts were evaluated at 1-, 7-, 14-, and 28-day horizons over three
+development origins in July, August, and September 2025. A pooled LightGBM
+Tweedie model achieved WAPE values of 79.88\%, 33.87\%, 24.22\%, and
+18.57\%, respectively, outperforming the evaluated seasonal-naive,
+Croston--SBA, and TSB comparators on pooled totals at each horizon.
+Nevertheless, one-day forecasting remains weak and under-forecasted, while
+the intermittent-demand subgroup contains only four series and is too small
+to support a reliable specialist-model conclusion. The current experiment
+uses historical sales and calendar features only; SKU-level demand,
+stock-out censoring, price and promotion effects, calibrated prediction
+intervals, and inventory-policy impact remain subjects for further
+implementation and evaluation. The results are therefore development
+evidence, not a final untouched-test claim.
 
 \clearpage
 
@@ -2077,28 +2103,82 @@ business performance.
 
 Demand for business \(b\), branch \(l\), product \(p\), and forecast horizon
 \(h\) is represented as
-
-\begin{equation}
-\hat{y}_{b,l,p,t+h}
+\[
+\hat{y}_{b,l,p,t,h}
 =
-f\!\left(
-X^{\mathrm{history}}_{t},
-X^{\mathrm{price}}_{t},
-X^{\mathrm{promotion}}_{t},
+f_h\!\left(
+X^{\mathrm{history}}_{b,l,p,\leq t},
+X^{\mathrm{price}}_{\leq t},
+X^{\mathrm{promotion}}_{\leq t},
 X^{\mathrm{calendar}}_{t:t+h},
-X^{\mathrm{market}}_{t}
+X^{\mathrm{market}}_{\leq t}
 \right),
-\label{eq:demand}
-\end{equation}
+\]
+where all predictors must have been available at the forecast origin \(t\).
+A future promotion or calendar event is eligible only when it was genuinely
+known at that origin. Realized future sales, stock movements, returns, or
+customer responses are outcomes and must not enter the corresponding feature
+snapshot.
 
-where \(\hat{y}_{b,l,p,t+h}\) is the forecast demand at horizon \(h\).
-Forecast uncertainty will be represented using quantile forecasts or calibrated
-residual intervals.
+For a direct cumulative-horizon experiment, the target is
+\[
+Y_{s,t,h}=\sum_{j=0}^{h-1}y_{s,t+j},
+\qquad h\in\{1,7,14,28\},
+\]
+where \(s\) denotes a shop--category series and \(y\) denotes observed units
+sold. A separate model is fitted for each horizon so that the model learns
+the distribution of the cumulative target rather than repeatedly applying
+a one-day point forecast. This is an initial implementation choice for the
+available panel, not a claim that direct forecasting is universally optimal.
 
-Where forecasts are produced at multiple aggregation levels, reconciliation
-will be considered so that SKU-, category-, branch-, and business-level totals
-remain mutually consistent \cite{hyndman2011hierarchical}.
+The first empirical panel aggregates sales by shop, product category, and
+calendar day. It therefore supports shop--category forecasting, but it does
+not by itself establish SKU-level forecast accuracy. The separate SKU sales
+export is an observed-positive-sales table; a missing SKU-date row cannot be
+treated as zero demand until the source export, product assortment, shop
+opening, and stock-availability semantics have been verified. The final
+SKU-level experiment must construct its time index from those source rules
+rather than from an assumed complete Cartesian product.
 
+Demand intermittency and variability are described using the average demand
+interval (ADI) and the squared coefficient of variation of positive demand
+(\(CV^2\)). The conventional descriptive thresholds \(ADI=1.32\) and
+\(CV^2=0.49\) distinguish smooth, erratic, intermittent, and lumpy patterns.
+These labels are calculated using historical observations available at the
+forecast origin. They are used to stratify errors and propose candidate
+specialist methods; they do not automatically determine which model is
+selected.
+
+The current candidate set includes a transparent weekly seasonal-naive
+baseline, Croston--SBA and Teunter--Syntetos--Babai (TSB) intermittent-demand
+methods, and a pooled LightGBM Tweedie model. LightGBM is included as a
+gradient-boosted tree method with support for categorical business and
+category identifiers \cite{ke2017lightgbm}. Croston-family methods are
+included because they estimate demand size and inter-demand intervals for
+intermittent series \cite{croston1972intermittent,syntetos2005intermittent};
+TSB updates the probability of demand occurrence over time
+\cite{teunter2011demand}. Candidate selection is based on common
+rolling-origin observations and the same target definition.
+
+The proposed adaptive architecture is a validation-selected mixture of
+experts rather than a fixed rule that assigns one model to each label.
+The pooled model is the default candidate for series with sufficient
+cross-shop evidence. Croston--SBA or TSB may be promoted for a genuinely
+intermittent series only when that series has adequate positive-demand
+history and the specialist method demonstrates a stable improvement on
+the same development origins. A two-stage occurrence--quantity model,
+CatBoost, calibrated bias correction, and hierarchical reconciliation are
+additional candidates for subsequent ablation. They are not reported as
+implemented or successful in the current experiment.
+
+Forecast uncertainty will be represented using quantile forecasts or
+calibrated residual intervals. Forecasts at SKU, category, branch, and
+business levels may be reconciled only after the corresponding aggregation
+identities and source records have been verified
+\cite{hyndman2011hierarchical}. The forecast is an estimate of observed sales
+unless stock availability and stock-out censoring are adequately measured;
+it must not be described as unconstrained latent demand when those conditions
+are unknown.
 
 \subsection{Future Customer Inactivity}
 \label{subsec:customer_inactivity}
@@ -2293,12 +2373,15 @@ the available evidence volume and task structure.
     descriptive baseline.
 
     \item \textbf{Demand:}
-    Last-value, seasonal-naive, moving-average, and exponential-smoothing
-    baselines are evaluated before more complex candidates such as ARIMA/SARIMA,
-    Croston-family methods, gradient-boosted lag models, and, where sufficiently
-    long sequences exist, LSTM models. Croston and the Syntetos--Boylan
-    correction specifically address intermittent demand
-    \cite{croston1972intermittent,syntetos2005intermittent}.
+    Last-value, weekly seasonal-naive, moving-average, and exponential-smoothing
+    baselines are evaluated before ARIMA/SARIMA, Croston--SBA, TSB, and
+    gradient-boosted lag models. LightGBM and CatBoost are candidates for pooled
+    shop/category or SKU features when the sample and categorical structure
+    support them. LSTM models are considered only when sequence volume and
+    history justify their additional complexity. Intermittent-demand methods
+    are promoted only after same-origin validation
+    \cite{croston1972intermittent,syntetos2005intermittent,teunter2011demand,
+    ke2017lightgbm}.
 
     \item \textbf{Inactivity:}
     A recency or base-rate rule is compared with Logistic Regression,
@@ -3287,38 +3370,426 @@ reported only when the corresponding empirical evidence is available.
 \chapter{Implementation}
 \label{chapter_implementation}
 
-% This chapter is intentionally reserved for the second-semester report.
+\section{Dataset Package and Research Scope}
+
+The current implementation uses the supplied Bangladesh SME data package
+identified in its manifest as real SME sales or real people. The manifest
+records 32 shops, 11,000 customers, 480 products, and 56 suppliers over
+1 January 2023--31 December 2025, with BDT as the currency. It lists
+365,447 sales orders, 736,683 sales lines, 381,756 payments, 122,422
+purchase orders, 122,422 purchase lines, 994,808 inventory movements,
+134,379 inventory lots, 5,102 returns, 1,216 promotions, and 1,096
+calendar records. It also lists 32,852 rows in a separately named
+\texttt{simulated\_unmet\_demand} table. Those rows are not treated as
+observed sales and are excluded from the forecasting target in this chapter.
+The manifest's source declaration is recorded as supplied; it is not
+represented here as an independent third-party audit of every source
+transaction.
+
+The RQ1 experiment uses the dedicated
+\texttt{rq1\_daily\_shop\_category} sheet. Its five fields are
+\texttt{shop\_id}, \texttt{category}, \texttt{date},
+\texttt{units\_sold\_observed}, and
+\texttt{is\_zero\_observed\_sales}. The resulting panel contains 32 shops,
+16 categories, and 512 shop--category series. Each series has 1,096
+consecutive daily records, producing 561,152 rows over the stated three-year
+period. The panel records 1,580,361 observed units.
+
+\section{Data Validation and Preprocessing}
+
+The ingestion procedure parses the date field, checks required columns and
+missing values, rejects duplicate shop--category--date keys, verifies that
+units sold are finite and non-negative, and checks that the zero-sales flag
+agrees with the observed quantity. It then verifies that every shop--category
+series contains the same complete daily calendar. No missing dates are filled
+by assumption. The audit found zero duplicate keys, zero missing required
+values, zero zero-flag mismatches, and zero missing dates in the supplied
+panel. The zero-sales share is 37.5962\\%.
+
+The dedicated SKU-level export is not substituted for this complete
+shop--category panel. Its absent SKU-date rows require a separate source-aware
+decision about assortment, shop opening, product activation, stock-outs, and
+export completeness before zero demand can be assigned. This distinction
+prevents the conversion of unobserved records into artificial zero labels.
+
+\section{RQ1 Forecasting Pipeline}
+
+For each shop--category series, the feature builder uses only information
+strictly before the forecast origin. Features include lags of 1, 7, 14, 28,
+and 56 days; rolling mean, standard deviation, sum, and zero-sales ratio
+over 7, 14, 28, and 56 days; days since the last positive sale; ADI; positive
+demand mean and \(CV^2\); shop and category identifiers; weekday, day,
+month, ISO week, and cyclical calendar encodings. No future observed sales
+are used as predictors.
+
+Four direct cumulative targets are evaluated: 1, 7, 14, and 28 days.
+Development forecast origins are 1 July, 1 August, and 1 September 2025.
+The previously inspected fourth-quarter 2025 period is not used for model
+selection. Historical training examples are sampled every 28 days; each
+training label window must finish before the corresponding validation origin.
+A 56-day history is required before a feature row is admitted.
+
+The pooled LightGBM model uses a Tweedie objective with variance power 1.3,
+100 boosting iterations, learning rate 0.035, 31 leaves, minimum child
+samples 80, row and column subsampling of 0.85, L2 regularization of 2.0,
+and random seed 42. Shop and category are treated as categorical features.
+The comparison methods are a weekly seasonal-naive forecast, Croston--SBA,
+and TSB. All methods are evaluated on the same 512 series at each of the
+three origins, giving 1,536 series-origin forecasts per horizon.
+
+\section{Software Environment and Reproducibility}
+
+The experiment was executed with Python 3.13.5, pandas 2.2.3, NumPy 2.3.5,
+scikit-learn 1.8.0, and LightGBM 4.6.0. The source panel's SHA-256 checksum
+is recorded in the accompanying experiment manifest. The implementation
+writes the per-origin metrics, aggregate metrics, forecast-level predictions,
+demand-regime assignments, and regime-stratified metrics as machine-readable
+CSV files. The raw business dataset is retained in its controlled data
+location and is not copied into the public source repository.
+
+\section{Current Implementation Boundaries}
+
+The current executable experiment is a shop--category quantity forecast.
+It does not yet establish SKU-level forecasting performance, unconstrained
+demand under stock-outs, price or promotion uplift, or inventory-policy
+benefit. Although the wider data package contains sales, purchase, inventory,
+promotion, and return records, those tables have not yet been joined into
+point-in-time-valid forecasting features in this experiment. CatBoost,
+the calibrated two-stage occurrence--quantity model, prediction intervals,
+hierarchical reconciliation, and inventory replay remain subsequent
+implementation tasks. These boundaries are retained explicitly so that the
+report does not describe planned modules as completed software.
 
 \cleardoublepage
 \chapter{Experimental Results}
 \label{chapter_experimentalResults}
 
-% This chapter is intentionally reserved until the proposed experiments are run.
+\section{Results Analysis}
+
+\subsection{Daily Panel Integrity}
+
+The shop--category panel passed the structural checks described in
+Chapter~\ref{chapter_implementation}. The panel has 561,152 observations,
+512 unique shop--category series, and 1,096 days per series. The observed
+quantity totals 1,580,361 units, and 37.5962\\% of daily rows have zero
+observed sales. These checks establish internal consistency of the exported
+panel; they do not independently verify every underlying transaction or
+resolve whether a zero-sales day was affected by a stock-out.
+
+\begin{table}[H]
+\centering
+\small
+\caption{Structural audit of the RQ1 daily shop--category panel.}
+\label{tab:rq1_panel_audit}
+\begin{tabularx}{\textwidth}{|p{0.57\textwidth}|Y|}
+\hline
+\textbf{Audit item} & \textbf{Observed result} \\
+\hline
+Shops and categories & 32 shops; 16 categories \\
+\hline
+Unique shop--category series & 512 \\
+\hline
+Date coverage & 1 January 2023--31 December 2025 \\
+\hline
+Rows and expected balanced rows & 561,152 and 561,152 \\
+\hline
+Observed units sold & 1,580,361 \\
+\hline
+Zero-sales observations & 37.5962\\% \\
+\hline
+Duplicate shop--category--date keys & 0 \\
+\hline
+Missing required values & 0 \\
+\hline
+Zero-flag mismatches & 0 \\
+\hline
+Missing dates within series & 0 \\
+\hline
+\end{tabularx}
+\end{table}
+
+\subsection{Demand-Regime Distribution}
+
+Demand regimes were calculated from the history available up to 30 June
+2025, before the first development forecast origin. The descriptive
+classification used ADI and \(CV^2\) thresholds of 1.32 and 0.49,
+respectively. Of the 512 series, 342 were classified as lumpy, 153 as
+erratic, 13 as smooth, and 4 as intermittent. The intermittent group is
+therefore a very small part of this aggregated panel.
+
+\begin{table}[H]
+\centering
+\small
+\caption{Historical demand-regime distribution across 512 series.}
+\label{tab:rq1_regime_distribution}
+\begin{tabularx}{\textwidth}{|p{0.25\textwidth}|C{0.16\textwidth}|C{0.22\textwidth}|Y|}
+\hline
+\textbf{Regime} & \textbf{Series} & \textbf{Share} & \textbf{Mean zero-sales ratio} \\
+\hline
+Lumpy & 342 & 66.80\\% & 47.62\\% \\
+\hline
+Erratic & 153 & 29.88\\% & 15.65\\% \\
+\hline
+Smooth & 13 & 2.54\\% & 3.64\\% \\
+\hline
+Intermittent & 4 & 0.78\\% & 83.94\\% \\
+\hline
+Total & 512 & 100.00\\% & 37.60\\% \\
+\hline
+\end{tabularx}
+\end{table}
+
+\subsection{Forecasting Performance Across Horizons}
+
+The three development origins were 1 July, 1 August, and 1 September
+2025. At each origin, every one of the 512 shop--category series was
+forecast at the selected horizon. The evaluation therefore contains
+1,536 series-origin observations per horizon. WAPE is calculated over
+the pooled actual and forecast quantities at the corresponding horizon.
+MAE and RMSE are reported in units per series-origin forecast. Signed
+bias is defined as total forecast minus total actual, divided by total
+actual; a negative value indicates under-forecasting.
+
+\begin{table}[H]
+\centering
+\small
+\caption{Pooled development performance by forecast horizon.}
+\label{tab:rq1_horizon_performance}
+\begin{tabularx}{\textwidth}{|C{0.10\textwidth}|C{0.17\textwidth}|C{0.17\textwidth}|C{0.17\textwidth}|C{0.17\textwidth}|Y|}
+\hline
+\textbf{Horizon} & \textbf{LightGBM WAPE} & \textbf{Seasonal WAPE} & \textbf{Croston--SBA WAPE} & \textbf{TSB WAPE} & \textbf{LightGBM bias} \\
+\hline
+1 day & 79.88\\% & 92.21\\% & 84.01\\% & 84.78\\% & -21.51\\% \\
+\hline
+7 days & 33.87\\% & 40.77\\% & 37.74\\% & 38.62\\% & -7.04\\% \\
+\hline
+14 days & 24.22\\% & 33.97\\% & 30.27\\% & 32.10\\% & -2.50\\% \\
+\hline
+28 days & 18.57\\% & 29.16\\% & 25.62\\% & 27.38\\% & -1.99\\% \\
+\hline
+\end{tabularx}
+\end{table}
+
+The LightGBM Tweedie model achieved the lowest pooled WAPE among the
+four evaluated methods at all four horizons. Relative to the weekly
+seasonal-naive baseline, its WAPE reduction was 13.37\\% at one day,
+16.91\\% at seven days, 28.72\\% at fourteen days, and 36.33\\% at
+twenty-eight days. These percentages are relative reductions in WAPE,
+not percentage-point differences. The horizon values should not be
+compared as if they represented the same target scale: cumulative
+quantities and the degree of temporal aggregation increase with horizon.
+
+\begin{table}[H]
+\centering
+\small
+\caption{LightGBM error and bias measures by forecast horizon.}
+\label{tab:rq1_lightgbm_error}
+\begin{tabularx}{\textwidth}{|C{0.18\textwidth}|C{0.22\textwidth}|C{0.22\textwidth}|Y|}
+\hline
+\textbf{Horizon} & \textbf{MAE} & \textbf{RMSE} & \textbf{Signed bias} \\
+\hline
+1 day & 2.351 & 3.635 & -21.51\\% \\
+\hline
+7 days & 6.444 & 8.771 & -7.04\\% \\
+\hline
+14 days & 8.945 & 12.069 & -2.50\\% \\
+\hline
+28 days & 13.827 & 18.729 & -1.99\\% \\
+\hline
+\end{tabularx}
+\end{table}
+
+The one-day result remains weak: WAPE is 79.88\\%, and the model
+under-forecasts total units by 21.51\\%. The lower WAPE at longer
+horizons is consistent with aggregation smoothing some daily variation;
+it does not mean that the model is equally accurate for individual
+daily replenishment decisions. The bias also shows that improving
+absolute error alone is insufficient; calibration and the operational
+cost of under-forecasting require further examination.
+
+\subsection{Performance Stability Across Development Origins}
+
+The pooled LightGBM WAPE was also examined separately at each origin.
+The model ranked ahead of the three comparators on pooled WAPE at all
+three origins for the seven-, fourteen-, and twenty-eight-day horizons.
+At the one-day horizon, the model also ranked first at all three origins,
+although the absolute error remained high.
+
+\begin{table}[H]
+\centering
+\small
+\caption{LightGBM WAPE by development origin.}
+\label{tab:rq1_origin_stability}
+\begin{tabularx}{\textwidth}{|C{0.17\textwidth}|C{0.20\textwidth}|C{0.20\textwidth}|C{0.20\textwidth}|Y|}
+\hline
+\textbf{Horizon} & \textbf{1 July 2025} & \textbf{1 August 2025} & \textbf{1 September 2025} & \textbf{Across-origin range} \\
+\hline
+1 day & 88.05\\% & 71.12\\% & 85.09\\% & 71.12--88.05\\% \\
+\hline
+7 days & 32.82\\% & 33.90\\% & 34.96\\% & 32.82--34.96\\% \\
+\hline
+14 days & 24.45\\% & 23.50\\% & 24.70\\% & 23.50--24.70\\% \\
+\hline
+28 days & 19.41\\% & 18.10\\% & 18.19\\% & 18.10--19.41\\% \\
+\hline
+\end{tabularx}
+\end{table}
+
+The three origins provide an initial check against dependence on a single
+forecast date, but they do not establish long-run temporal generalization.
+They are development origins rather than a final untouched test set.
+
+\subsection{Seven-Day Performance by Demand Regime}
+
+The seven-day results were stratified using regime labels derived from
+history available before the first development origin. LightGBM had lower
+WAPE than Croston--SBA for erratic, lumpy, and smooth series. Croston--SBA
+had lower WAPE for the intermittent subset: 77.02\\% compared with
+106.25\\% for LightGBM. However, that subset contains only four series,
+twelve series-origin forecasts, and 25 actual units. The comparison is
+too small to justify automatic model routing or a claim of specialist
+model superiority.
+
+\begin{table}[H]
+\centering
+\small
+\caption{Seven-day WAPE by historical demand regime.}
+\label{tab:rq1_regime_performance}
+\begin{tabularx}{\textwidth}{|p{0.22\textwidth}|C{0.18\textwidth}|C{0.18\textwidth}|C{0.18\textwidth}|Y|}
+\hline
+\textbf{Regime} & \textbf{Forecast cases} & \textbf{LightGBM WAPE} & \textbf{Croston--SBA WAPE} & \textbf{Observed units} \\
+\hline
+Erratic & 459 & 28.74\\% & 32.38\\% & 14,035 \\
+\hline
+Lumpy & 1,026 & 42.17\\% & 47.09\\% & 12,600 \\
+\hline
+Smooth & 39 & 20.51\\% & 20.69\\% & 2,560 \\
+\hline
+Intermittent & 12 & 106.25\\% & 77.02\\% & 25 \\
+\hline
+\end{tabularx}
+\end{table}
+
+The regime results support retaining the pooled model as the current
+shop--category candidate while investigating specialist intermittent
+methods on a larger and correctly constructed SKU-level panel. The
+intermittent result also demonstrates why regime counts and support
+must accompany aggregate error metrics.
+
+\subsection{Interpretation and Threats to Validity}
+
+The experiment supports a bounded finding: on this supplied balanced
+shop--category panel and these three development origins, LightGBM
+Tweedie achieved lower pooled WAPE than the tested seasonal-naive,
+Croston--SBA, and TSB comparators. It does not establish that LightGBM
+is the best model for every shop, category, SKU, sector, or future period.
+
+The previously discussed 83.98\\% individual-level WAPE is not directly
+compared with the current 79.88\\% one-day shop--category WAPE. The
+forecasting unit and aggregation level differ, and the legacy evaluation
+must be reconstructed on identical rows, origins, targets, and metric
+code before a valid improvement claim can be made.
+
+The current panel contains no explicit stock-on-hand or stock-out flag.
+Observed sales can therefore be censored demand. Price and promotion
+tables exist in the wider package but have not yet been joined using
+point-in-time availability rules. No calibrated prediction intervals,
+CatBoost comparison, calibrated two-stage model, hierarchical
+reconciliation, or inventory-policy backtest is included in these
+results. The 2025 fourth quarter is not used for selection because it
+was previously inspected. A new untouched period or held-out businesses
+are required for final evaluation.
+
+\section{Summary of the Experimental Results}
+
+The first RQ1 experiment confirms that the supplied shop--category panel
+is structurally complete and supports a reproducible multi-horizon
+development comparison. Across three development origins and four
+forecast horizons, the pooled LightGBM Tweedie model produced the lowest
+aggregate WAPE among the four implemented candidates. The strongest
+relative advantage over the seasonal-naive baseline appeared at the
+twenty-eight-day horizon, while the one-day horizon remained difficult
+and showed material under-forecasting.
+
+The demand-regime analysis found that most shop--category series were
+classified as lumpy or erratic. Only four series met the intermittent
+threshold, so the apparent Croston--SBA advantage within that subgroup
+must be treated as preliminary. The appropriate next architecture is
+therefore not a hard-coded model switch. It is a validation-selected
+mixture-of-experts design in which the pooled model remains the fallback,
+and specialist methods are enabled only when minimum support and
+same-origin validation demonstrate a stable improvement.
+
+The next implementation stage will add CatBoost and a calibrated
+occurrence--quantity model, examine residual bias and prediction
+intervals, join verified price, promotion, stock, and purchase information,
+and extend validation to additional chronological origins. SKU-level
+experiments will first resolve the meaning of absent SKU-date rows and
+the effect of assortment and stock-outs. Only after those checks will
+the selected forecast be used in the RQ3 inventory-policy replay and
+the RQ4 explanation and owner-facing recommendation evaluation.
+
 
 \cleardoublepage
 \chapter{Conclusions}
 \label{chapter_conclusion}
-This progress report establishes a research foundation for an AI-powered business analytics framework for Bangladeshi SMEs across sectors. A shared operational core supports performance evaluation, insight extraction and strategy recommendations, with sector-specific extensions and business-specific constraints. Implementation and empirical evaluation remain future work; broad intended coverage is not evidence of effectiveness in every sector.
 
-The central issue is not simply the absence of a prediction model. Rather, the critical gap is the lack of a trustworthy link between operational records, temporally valid analytics, and feasible owner decisions. The value of a forecast is seriously reduced when its data source is unclear, future information is included in the test data, or the resulting recommendation fails to account for practical factors such as cash availability, stock levels, supplier lead time, or purchasing constraints. Similarly, a probability of customer risk is incomplete as a decision-support output if it is uncalibrated or if the proposed customer contact does not consider consent.
+\section{Research Summary}
 
-Four main conclusions can be drawn from the existing evidence. First, Bangladesh-specific studies highlight design considerations that are essential for workflow fit, perceived value, cost, and local technology adoption \cite{hoque2016ict,shahadat2023digital,hazra2021mfs}. Second, retail inventory research identifies several characteristics that need to be explicitly addressed, including intermittency, hierarchy, causality, and interactions between different inventory items \cite{fildes2022retail,syntetos2005intermittent,hyndman2011hierarchical,syntetos2010stock}. Third, leakage control, imbalance-aware evaluation, probability calibration, and understandable evidence represent important scientific and disciplinary safeguards \cite{kaufman2012leakage,saito2015pr,niculescu2005calibration,lundberg2017shap}. Fourth, these principles have not yet been integrated and evaluated together within a bounded, Bangladesh-oriented SME workflow. This constitutes the central research gap addressed by this study.
+This progress report establishes the research foundation and records the
+first implemented RQ1 demand-forecasting experiment for an AI-powered
+business analytics framework for Bangladeshi SMEs across sectors. The
+framework connects operational records to performance evaluation,
+temporally valid prediction, explanation, and feasible owner decisions.
+The present empirical result is deliberately narrower than the intended
+framework: it concerns 512 daily shop--category series from the supplied
+dataset and does not establish SKU-level or cross-sector effectiveness.
 
-The proposed framework, \system{}, responds to this gap through a traceable sequence that connects multi-business operational evidence, historical data snapshots, model comparison, uncertainty estimation, explanation, shop-specific constraint-aware action ranking, owner response, and subsequent outcome monitoring. The baseline, eligible sector-aware pooled model and business-adapted model are compared on common chronological evaluation periods; the deployed choice may remain the baseline when additional complexity provides no stable improvement.
+The current development comparison found that a pooled LightGBM Tweedie
+model achieved lower pooled WAPE than weekly seasonal-naive, Croston--SBA,
+and TSB comparators at the 1-, 7-, 14-, and 28-day cumulative horizons.
+However, the one-day WAPE remained 79.88\\%, with a 21.51\\% aggregate
+under-forecast. The longer-horizon results are more favourable but must
+not be interpreted as evidence that individual daily demand is accurately
+predicted. Four series were classified as intermittent, which is
+insufficient support for a reliable specialist-model conclusion.
 
-The framework incorporates practical constraints that can affect whether an inventory action is feasible, including purchasing budget, available stock, pack-size or minimum-order requirements, supplier lead time, product expiry, storage conditions, and customer consent. The intended contribution is therefore a governed decision-support sequence and its empirical assessment, rather than the introduction of a new classification algorithm or the assumption that a more complex model will always produce better business outcomes.
+The results therefore support a conservative model-selection strategy.
+A pooled model remains the default candidate, while specialist methods
+are considered only when historical support is adequate and same-origin
+validation demonstrates a stable gain. The research contribution is not
+a claim that a newly named model has already solved SME forecasting.
+It is the evidence-governed process linking data eligibility, demand
+diagnosis, model comparison, uncertainty, business constraints, and
+owner oversight.
 
-The framework is also designed to support continuous operation. Current data and recommendations can be refreshed as the software is used in the business, while model drift and decision outcomes are monitored over time. Continuous operation does not mean uncontrolled retraining after every transaction. Any replacement model should be versioned and evaluated chronologically against both the currently deployed model and the established baseline before it is promoted to production.
+\section{Future Work Plan}
 
-The artifact supports business performance evaluation, insight extraction
-and feasible strategy recommendations. Owners retain authority over actions.
-Sector-specific requirements and owner constraints are assessed before an
-analytical task is enabled; unsupported tasks return an explicit evidence gap.
+The next stage will expand the RQ1 experiment through CatBoost,
+calibrated occurrence--quantity modelling, residual-bias correction,
+prediction intervals, and additional rolling origins. The SKU-level
+sales export will be reconciled with product activation, shop opening,
+stock availability, returns, and source-export rules before missing
+SKU dates are interpreted. Point-in-time-valid price, promotion,
+purchase, and inventory features will be joined only after their event
+and availability timestamps are verified.
 
-The study provides a testable step toward the next stage of research, particularly in relation to ethics and multi-business partner-data readiness. The next stage should address sector-specific schema and constraint inputs, model transparency and monitoring, model freezing, held-out-business evaluation, untouched-period evaluation, usability tasks, and decision-impact analysis. These areas are necessary for determining whether the system provides measurable practical value in real business workflows.
+After the forecasting design is frozen, the selected forecast candidates
+will be evaluated through RQ3 inventory-policy replay using verified
+stock, purchase receipts, lead times, and owner-reviewed cost assumptions.
+RQ4 will examine explanation quality and whether owners can correctly
+interpret and use the resulting recommendations. Each research question
+will retain its own unit of analysis, validation design, and evidence
+boundary.
 
-At this stage, however, the study does not yet establish overall system effectiveness. Final claims should therefore remain proportional to the observed evidence. For example, when the evaluation shows no meaningful difference between models or decision-support conditions, it would be inappropriate to claim that the additional complexity or explanations improved decision-making. Such findings should instead be reported as evidence about the limits of the proposed approach and used to refine the corresponding research questions.
-
+A final untouched time period or held-out businesses must be reserved
+before final claims are made. Model changes made after examining that
+test evidence will be labelled exploratory and evaluated on a new
+untouched period. The final thesis will report both improvements and
+failures, including cases where a transparent baseline is preferable.
+The framework will remain a decision-support system under owner
+authority; unsupported recommendations will be withheld with an
+explicit reason.
 
 \cleardoublepage
 
@@ -3471,6 +3942,18 @@ At this stage, however, the study does not yet establish overall system effectiv
 \newblock {WFP} food prices database -- bangladesh.
 \newblock Humanitarian Data Exchange, 2026.
 \newblock CC BY-IGO.
+
+\bibitem{ke2017lightgbm}
+{\sc Ke, G., Meng, Q., Finley, T., Wang, T., Chen, W., Ma, W., Ye, Q., and Liu, T.-Y.}
+\newblock {LightGBM}: A highly efficient gradient boosting decision tree.
+\newblock In {\em Advances in Neural Information Processing Systems 30\/}
+  (2017), pp.~3146--3154.
+
+\bibitem{teunter2011demand}
+{\sc Teunter, R.~H., Syntetos, A.~A., and Babai, M.~Z.}
+\newblock Intermittent demand: Linking forecasting to inventory obsolescence.
+\newblock {\em European Journal of Operational Research 214}, 3 (2011),
+  606--615.
 
 \end{thebibliography}
 
