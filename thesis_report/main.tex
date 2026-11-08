@@ -2173,6 +2173,51 @@ simulated unmet-demand table is not used as observed sales or as empirical
 lost-sales ground truth. Raw business records remain in controlled storage;
 the public repository contains code, schemas, checksums and aggregate outputs.
 
+\begin{table}[H]
+\centering
+\small
+\caption{Source-table coverage declared in the supplied real-business dataset manifest.}
+\label{tab:source_table_coverage}
+\begin{tabularx}{\textwidth}{|X|r|X|X|}
+\hline
+\textbf{Source table} & \textbf{Rows} & \textbf{Analytical role} & \textbf{Use in current RQ1} \\
+\hline
+Shops & 32 & Business and shop identifiers & Series grouping \\
+\hline
+Customers & 11,000 & Customer-level operational history & Not used as a forecast target \\
+\hline
+Products & 480 & SKU and category master & Category mapping and reconciliation \\
+\hline
+Suppliers & 56 & Supplier and procurement context & Not yet used as a predictor \\
+\hline
+Sales orders & 365,447 & Order headers and shop/customer links & Parent transaction validation \\
+\hline
+Sales lines & 736,683 & SKU-level quantities and values & Source reconciliation and aggregation \\
+\hline
+Payments & 381,756 & Payment events and settlement evidence & Not used as a forecast predictor \\
+\hline
+Purchase orders / lines & 122,422 / 122,422 & Procurement and received quantities & Inventory reconciliation \\
+\hline
+Inventory movements & 994,808 & Opening, purchase, sale and adjustment events & Stock-exposure diagnostics \\
+\hline
+Inventory lots & 134,379 & Lot and batch traceability & SKU eligibility diagnostics \\
+\hline
+Returns & 5,102 & Reversal and return events & Reconciliation context \\
+\hline
+Promotions & 1,216 & Promotion records & Not used until point-in-time approval is validated \\
+\hline
+Calendar & 1,096 & Daily calendar coverage & Calendar feature validation \\
+\hline
+\end{tabularx}
+\end{table}
+
+The manifest declares the source package to contain real SME sales and real
+people. The table distinguishes source coverage from the fields actually
+used by RQ1: the presence of a source table does not make every field an
+eligible predictor. A variable is admitted only after its join key, business
+meaning and availability time have been checked.
+
+
 \section{Data Validation and Preprocessing}
 
 The ingestion procedure parses the date field, checks required columns and
@@ -2189,6 +2234,40 @@ shop--category panel. Its absent SKU-date rows require a separate source-aware
 decision about assortment, shop opening, product activation, stock-outs, and
 export completeness before zero demand can be assigned. This distinction
 prevents the conversion of unobserved records into artificial zero labels.
+
+\begin{table}[H]
+\centering
+\small
+\caption{Automated integrity checks on the complete shop--category panel.}
+\label{tab:rq1_panel_integrity}
+\begin{tabularx}{\textwidth}{|X|r|X|}
+\hline
+\textbf{Check} & \textbf{Observed result} & \textbf{Interpretation} \\
+\hline
+Panel rows & 561,152 & 512 series multiplied by 1,096 dates \\
+\hline
+Duplicate shop--category--date keys & 0 & Key uniqueness passed \\
+\hline
+Missing required values & 0 & Required panel fields complete \\
+\hline
+Zero-flag / quantity mismatches & 0 & Boolean zero indicator agrees with quantity \\
+\hline
+Missing daily dates within series & 0 & Complete daily panel; no date imputation required \\
+\hline
+Observed units & 1,580,361 & Total target quantity in the panel \\
+\hline
+Explicit zero-sales rows & 210,972 & 37.5962\% of panel observations \\
+\hline
+\end{tabularx}
+\end{table}
+
+The zero-sales flag is checked against the observed quantity rather than
+trusted as an independent label. A row is an observed zero only because
+the complete shop--category panel explicitly contains that date and
+quantity. This rule must not be transferred automatically to the sparse
+SKU export, where an absent row may mean an inactive product, stock-out,
+closed shop, incomplete export or genuinely unobserved period.
+
 
 \section{Transaction and Panel Reconciliation}
 
@@ -2214,6 +2293,31 @@ zero-sales observations. Aggregating SKU sales to shop--category--date
 reproduces all 350,180 positive category-day rows exactly; the remaining
 210,972 category rows are explicit zero-sales rows in the complete panel.
 
+\begin{table}[H]
+\centering
+\small
+\caption{Cross-table reconciliation results and unresolved exceptions.}
+\label{tab:source_reconciliation}
+\begin{tabularx}{\textwidth}{|p{0.28\textwidth}|p{0.23\textwidth}|Y|}
+\hline
+\textbf{Reconciliation} & \textbf{Result} & \textbf{Research implication} \\
+\hline
+Sales lines to order headers & 736,683 lines join to 365,447 orders with no missing order reference or shop mismatch & Parent transaction linkage passed \\
+\hline
+SKU daily aggregation & 699,220 positive-sale rows and 1,580,361 units reproduced from source lines & Prepared SKU aggregate is internally reproducible \\
+\hline
+Shop--category aggregation & 350,180 positive category-days reproduced; remaining 210,972 rows are explicit zero observations & Complete category panel reconciles to SKU sales \\
+\hline
+Sale inventory movements & All 736,683 match sales lines by order, shop, SKU, lot and quantity & Sale ledger linkage passed \\
+\hline
+Purchase movements & 121,107 movement groups match received purchase-order/SKU groups & Received procurement quantities reconcile \\
+\hline
+Pending purchase lines & 1,315 have no final received quantity at cutoff & Remain pending; not counted as available stock \\
+\hline
+\end{tabularx}
+\end{table}
+
+
 \section{Inventory and Procurement Reconciliation}
 
 The inventory ledger contains 13,272 opening movements, 121,107 purchase
@@ -2233,6 +2337,59 @@ non-positive intraday balance. These are derived diagnostics, not an
 independent stock audit. Every zero-sales shop--category day has at least
 one recorded SKU with positive reconstructed stock during that day; this
 does not rule out item-level stock-outs or unrecorded assortment.
+
+\begin{table}[H]
+\centering
+\small
+\caption{Inventory movement composition and reconstructed balance diagnostics.}
+\label{tab:inventory_movement_audit}
+\begin{tabularx}{\textwidth}{|X|r|Y|}
+\hline
+\textbf{Movement type} & \textbf{Rows} & \textbf{Treatment} \\
+\hline
+Opening & 13,272 & Initial recorded stock position \\
+\hline
+Purchase & 121,107 & Reconciled to received purchase-order/SKU groups \\
+\hline
+Sale & 736,683 & Matched to sales lines \\
+\hline
+Expiry disposal & 118,673 & Removed from usable inventory \\
+\hline
+Damage & 5,073 & Removed from usable inventory \\
+\hline
+\textbf{Total} & \textbf{994,808} & Ledger movement count \\
+\hline
+\end{tabularx}
+\end{table}
+
+\begin{table}[H]
+\centering
+\small
+\caption{Stock reconstruction exceptions requiring quarantine before SKU target construction.}
+\label{tab:stock_reconstruction_exceptions}
+\begin{tabularx}{\textwidth}{|X|r|Y|}
+\hline
+\textbf{Diagnostic} & \textbf{Count} & \textbf{Interpretation} \\
+\hline
+Negative-balance movement events & 269 & Across 253 shop--SKU combinations; investigate ledger sequence or opening balance \\
+\hline
+Positive-sale days with non-positive intraday minimum stock & 330 & Cannot be treated as fully in-stock exposure without correction \\
+\hline
+Reconstructed fully in-stock days & 13,781,575 & Derived ledger diagnostic across 13,272 tracked shop--SKU combinations \\
+\hline
+Days with non-positive intraday balance & 764,537 & Exposure is not eligible as a known positive-stock day \\
+\hline
+\end{tabularx}
+\end{table}
+
+The reconstruction is a derived diagnostic, not an independent physical
+stock count. Every zero-sales shop--category day has at least one recorded
+SKU with positive reconstructed stock during that day, but this does not
+rule out item-level stock-outs or unrecorded assortment. The 2,088
+theoretical shop--SKU combinations without an opening movement are not
+assumed to be active series. These limitations justify keeping the current
+RQ1 target at shop--category observed sales until SKU exposure is validated.
+
 
 \section{RQ1 Forecasting Pipeline}
 
@@ -2266,6 +2423,37 @@ weekday and sums them across the horizon. All methods are evaluated on
 the same 512 series at each of the three origins, giving 1,536
 series-origin forecasts per horizon.
 
+\begin{table}[H]
+\centering
+\small
+\caption{Feature groups and point-in-time availability rules for the RQ1 model.}
+\label{tab:rq1_feature_groups}
+\begin{tabularx}{\textwidth}{|p{0.22\textwidth}|Y|Y|}
+\hline
+\textbf{Feature group} & \textbf{Variables} & \textbf{Availability rule} \\
+\hline
+Own-series lags & 1, 7, 14, 28 and 56 days & Observations strictly before forecast origin \\
+\hline
+Rolling demand & Mean, standard deviation, sum and zero ratio over 7, 14, 28 and 56 days & Window ends at origin minus one day \\
+\hline
+Intermittency & Days since last sale, ADI, positive-demand mean and \(CV^2\) & Calculated from pre-origin history only \\
+\hline
+Calendar & Weekday, day, month, ISO week and cyclical encodings & Calendar known at the forecast origin \\
+\hline
+Cross-series context & Shop, category and network totals; trends; series shares & Aggregates use only pre-origin observations \\
+\hline
+Potential business covariates & Price, discount, promotion, supplier and stock context & Excluded unless point-in-time availability and joins are validated \\
+\hline
+\end{tabularx}
+\end{table}
+
+The feature policy prevents target leakage at two levels. First, no
+feature window includes the date being forecast or any later date. Second,
+a historical training example is admitted only when its entire cumulative
+target window ends before the validation origin. The same origin, target
+definition and eligible rows are used for baseline and context comparisons.
+
+
 \section{Context-Aware Forecasting Model Development}
 
 The existing pooled LightGBM Tweedie model was retained as the controlled
@@ -2288,6 +2476,41 @@ convert missing SKU dates to zero or claim to estimate unconstrained latent
 demand. Code and aggregate outputs are stored under
 \texttt{research/forecasting/context\_aware\_experiment.py} and
 \texttt{research/forecasting/results/context\_aware\_v1/}.
+
+\begin{table}[H]
+\centering
+\small
+\caption{LightGBM Tweedie configuration shared by the baseline and context challenger.}
+\label{tab:lightgbm_configuration}
+\begin{tabularx}{\textwidth}{|p{0.33\textwidth}|p{0.22\textwidth}|Y|}
+\hline
+\textbf{Parameter} & \textbf{Value} & \textbf{Purpose} \\
+\hline
+Objective / variance power & Tweedie / 1.3 & Non-negative, right-skewed demand target \\
+\hline
+Boosting iterations & 100 & Fixed candidate complexity \\
+\hline
+Learning rate & 0.035 & Step size for boosting \\
+\hline
+Leaves / minimum child samples & 31 / 80 & Tree complexity and leaf support \\
+\hline
+Row / column subsampling & 0.85 / 0.85 & Stochastic regularisation \\
+\hline
+Subsample frequency & 1 & Apply row subsampling each iteration \\
+\hline
+L2 regularisation & 2.0 & Penalise excessive leaf weights \\
+\hline
+Random seed & 42 & Reproducibility of stochastic steps \\
+\hline
+\end{tabularx}
+\end{table}
+
+The context challenger changes the information set, not the estimator
+family or hyperparameter budget. This controlled design makes the
+feature-group comparison easier to interpret: an observed difference
+is associated with the added historical context rather than a simultaneous
+change to the algorithm and its tuning configuration.
+
 
 \section{Historical Transaction-Feature Ablation}
 
@@ -2332,8 +2555,11 @@ negative-balance events and positive-sale days with non-positive intraday
 stock must be quarantined before SKU exposure labels are used. Calibrated
 prediction intervals, hierarchical reconciliation, point-in-time price
 and promotion features, and inventory replay remain subsequent tasks.
-The package's source declaration also prevents real-world effectiveness
-claims.
+The data are real business records according to the supplied manifest;
+however, real-data origin does not by itself establish generalisation.
+The current results are development estimates from selected periods.
+A final untouched period or held-out businesses are still required before
+claiming future predictive performance outside the development windows.
 
 \cleardoublepage
 \chapter{Experimental Results}
@@ -2632,6 +2858,43 @@ Intermittent & 12 & 106.30\% & 121.62\% & 83.18\% & \textbf{77.02\%} \\
 \end{tabularx}
 \end{table}
 
+\begin{table}[H]
+\centering
+\small
+\caption{Seven-day WAPE for the context challenger and baseline at each of nine monthly origins.}
+\label{tab:context_h7_origin}
+\begin{tabularx}{\textwidth}{|p{0.20\textwidth}|C{0.22\textwidth}|C{0.22\textwidth}|C{0.18\textwidth}|Y|}
+\hline
+\textbf{Origin} & \textbf{Baseline WAPE} & \textbf{Context WAPE} & \textbf{Change (pp)} & \textbf{Lower error} \\
+\hline
+1 January 2025 & 34.34\% & 33.80\% & -0.54 & Context \\
+\hline
+1 February 2025 & 36.06\% & 35.54\% & -0.52 & Context \\
+\hline
+1 March 2025 & 31.07\% & 32.88\% & +1.81 & Baseline \\
+\hline
+1 April 2025 & 29.23\% & 28.36\% & -0.87 & Context \\
+\hline
+1 May 2025 & 31.90\% & 31.50\% & -0.40 & Context \\
+\hline
+1 June 2025 & 32.34\% & 33.50\% & +1.17 & Baseline \\
+\hline
+1 July 2025 & 40.83\% & 32.34\% & -8.48 & Context \\
+\hline
+1 August 2025 & 34.01\% & 33.71\% & -0.29 & Context \\
+\hline
+1 September 2025 & 34.82\% & 34.92\% & +0.09 & Baseline \\
+\hline
+\end{tabularx}
+\end{table}
+
+The context features do not win at every origin. The largest improvement
+occurs in July, while March, June and September favour the baseline.
+This variation is important: a pooled reduction must not be presented as
+uniform improvement across time. It supports retaining the baseline as
+a fallback and monitoring the context model by origin and business.
+
+
 \section{Context-Aware Model Results}
 
 Table~\ref{tab:context_aware_results} compares the historical-feature
@@ -2683,6 +2946,97 @@ partly reflect cancellation and do not establish equivalent leaf-level
 replenishment accuracy. The context model is the leading development
 challenger; production selection requires a genuinely untouched future
 period or held-out businesses and explicit under-forecast cost evaluation.
+
+\begin{table}[H]
+\centering
+\small
+\caption{Seven-day pooled error and bias diagnostics for the paired context experiment.}
+\label{tab:context_h7_error_diagnostics}
+\begin{tabularx}{\textwidth}{|X|C{0.19\textwidth}|C{0.19\textwidth}|}
+\hline
+\textbf{Metric} & \textbf{Baseline} & \textbf{Context model} \\
+\hline
+Pooled WAPE & 33.47\% & 32.66\% \\
+\hline
+Mean origin WAPE & 33.84\% & 32.95\% \\
+\hline
+MAE (units per series-origin) & 7.069 & 6.898 \\
+\hline
+RMSE (units per series-origin) & 10.008 & 9.792 \\
+\hline
+Aggregate signed bias & -2.02\% & -6.05\% \\
+\hline
+\end{tabularx}
+\end{table}
+
+The paired comparison uses the same 512 shop--category series at all
+nine origins. The 2,000-replicate cluster bootstrap resamples complete
+series clusters, retaining each sampled series' repeated-origin structure.
+The median WAPE difference (context minus baseline) is -0.811 percentage
+points, with a 95\% interval from -1.091 to -0.517 percentage points.
+This interval quantifies variation across the development series; it is
+not a prediction interval for a future business or a substitute for the
+untouched final test.
+
+
+\begin{table}[H]
+\centering
+\small
+\caption{Prequential interval coverage for the seven-day context forecast.}
+\label{tab:context_interval_coverage}
+\begin{tabularx}{\textwidth}{|p{0.19\textwidth}|C{0.15\textwidth}|C{0.17\textwidth}|C{0.17\textwidth}|Y|}
+\hline
+\textbf{Origin} & \textbf{Calibration origins} & \textbf{80\% coverage} & \textbf{90\% coverage} & \textbf{Interpretation} \\
+\hline
+1 April 2025 & 3 & 75.78\% & 89.06\% & 80\% under-covered \\
+\hline
+1 May 2025 & 4 & 84.77\% & 92.77\% & Both above nominal \\
+\hline
+1 June 2025 & 5 & 71.29\% & 81.25\% & Both under-covered \\
+\hline
+1 July 2025 & 6 & 82.81\% & 92.58\% & Both above nominal \\
+\hline
+1 August 2025 & 7 & 82.62\% & 91.99\% & Both above nominal \\
+\hline
+1 September 2025 & 8 & 79.30\% & 89.65\% & Close to nominal \\
+\hline
+\end{tabularx}
+\end{table}
+
+The interval method uses scaled absolute residuals from earlier origins
+only. Mean coverage across these six evaluated origins is 79.43\% for
+the nominal 80\% interval and 89.55\% for the nominal 90\% interval.
+Coverage nevertheless varies materially by month. The interval estimates
+are therefore useful diagnostics for uncertainty communication but are
+not yet sufficient to guarantee a fixed coverage level in deployment.
+
+\begin{table}[H]
+\centering
+\small
+\caption{Bottom-up seven-day forecast accuracy at different aggregation levels.}
+\label{tab:context_hierarchy}
+\begin{tabularx}{\textwidth}{|X|C{0.18\textwidth}|C{0.18\textwidth}|C{0.18\textwidth}|}
+\hline
+\textbf{Aggregation level} & \textbf{Forecast cases} & \textbf{WAPE} & \textbf{Signed bias} \\
+\hline
+Shop--category & 4,608 & 32.66\% & -6.05\% \\
+\hline
+Shop total & 288 & 14.95\% & -6.05\% \\
+\hline
+Category total & 144 & 10.98\% & -6.05\% \\
+\hline
+Network total & 9 & 7.85\% & -6.05\% \\
+\hline
+\end{tabularx}
+\end{table}
+
+The hierarchy is coherent because shop, category and network totals are
+sums of the same shop--category leaf forecasts rather than separately
+fitted aggregate models. Error decreases as values are aggregated partly
+because positive and negative series errors can offset one another.
+Consequently, network-level accuracy cannot replace shop--category
+accuracy when the decision is a local reorder.
+
 
 \section{Model and Solution Design Decision}
 
