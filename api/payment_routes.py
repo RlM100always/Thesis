@@ -17,6 +17,7 @@ SSLCommerz flow (all-in-one: bKash + Nagad + cards):
 
 import base64
 import json
+import re
 import uuid
 from decimal import Decimal
 
@@ -400,6 +401,45 @@ def _sslcz_creds(store: Store) -> tuple[str, str, bool]:
     if not sid or not spwd or not bool(store.sslcz_is_live):
         raise HTTPException(409, "SSLCommerz live credentials are not configured for this store.")
     return sid, spwd, True
+
+def _amount_matches(actual: object, expected: object) -> bool:
+    try:
+        return Decimal(str(actual)).quantize(Decimal("0.01")) == Decimal(str(expected)).quantize(Decimal("0.01"))
+    except Exception:
+        return False
+
+
+def _bkash_payment_verified(result: dict, payment_id: str, order: SalesDocument) -> bool:
+    return (
+        result.get("statusCode") == "0000"
+        and str(result.get("paymentID") or "") == payment_id
+        and str(result.get("currency") or "").upper() == "BDT"
+        and _amount_matches(result.get("amount"), order.total)
+    )
+
+
+def _nagad_payment_verified(result: dict, payment_ref: str, merchant_id: str, order: SalesDocument) -> bool:
+    returned_ref = result.get("paymentReferenceId") or result.get("payment_ref_id") or result.get("paymentRefId")
+    returned_merchant = result.get("merchantId") or result.get("merchant_id")
+    returned_order = result.get("orderId") or result.get("order_id")
+    return (
+        result.get("status") == "Success"
+        and _amount_matches(result.get("amount") or result.get("amountBDT"), order.total)
+        and (returned_ref is None or str(returned_ref) == payment_ref)
+        and (returned_merchant is None or str(returned_merchant) == merchant_id)
+        and (returned_order is None or str(returned_order) == order.document_number)
+    )
+
+
+def _sslcz_payment_verified(result: dict, order: SalesDocument, store: Store) -> bool:
+    currency = result.get("currency") or result.get("currency_type")
+    return (
+        result.get("status") in ("VALID", "VALIDATED")
+        and str(result.get("tran_id") or "") == order.id
+        and str(result.get("store_id") or "") == str(store.sslcz_store_id)
+        and str(currency or "").upper() == "BDT"
+        and _amount_matches(result.get("amount"), order.total)
+    )
 
 
 @router.post("/initiate/{org_id}")
