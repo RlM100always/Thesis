@@ -3372,19 +3372,32 @@ reported only when the corresponding empirical evidence is available.
 
 \section{Dataset Package and Research Scope}
 
-The current implementation uses the supplied Bangladesh SME data package
-identified in its manifest as real SME sales or real people. The manifest
-records 32 shops, 11,000 customers, 480 products, and 56 suppliers over
-1 January 2023--31 December 2025, with BDT as the currency. It lists
-365,447 sales orders, 736,683 sales lines, 381,756 payments, 122,422
-purchase orders, 122,422 purchase lines, 994,808 inventory movements,
-134,379 inventory lots, 5,102 returns, 1,216 promotions, and 1,096
-calendar records. It also lists 32,852 rows in a separately named
-\texttt{simulated\_unmet\_demand} table. Those rows are not treated as
-observed sales and are excluded from the forecasting target in this chapter.
-The manifest's source declaration is recorded as supplied; it is not
-represented here as an independent third-party audit of every source
-transaction.
+The current Drive manifest declares the Bangladesh SME package to contain
+real SME sales or real people. However, the repository's 2 November 2026
+\texttt{docs/REAL\_DATA\_ONBOARDING.md} classifies a package with the same
+seed (20261025), entity counts (32 shops, 11,000 customers, 480 products,
+56 suppliers), and 2023--2025 coverage as fully synthetic/simulated. The
+earlier record also reports a \texttt{synthetic\_flag=YES} field. The
+currently accessible SKU sheet has six populated columns and does not expose
+that flag. The declarations therefore conflict.
+
+The evidence class for this report is \texttt{provenance\_conflict}. Structural
+reconciliation does not prove real-world origin. Until the source owner
+supplies traceable POS/accounting exports, collection and consent basis,
+anonymisation procedure, data dictionary, and a versioned explanation of
+the earlier synthetic classification, this package is used only for
+controlled research development and software validation. Its scores are
+not presented as verified real-world SME accuracy.
+
+The current Drive manifest lists 32 shops, 11,000 customers, 480 products,
+56 suppliers and the period 1 January 2023--31 December 2025, with BDT as
+currency. It lists 365,447 sales orders, 736,683 sales lines, 381,756
+payments, 122,422 purchase orders and purchase lines, 994,808 inventory
+movements, 134,379 inventory lots, 5,102 returns, 1,216 promotions,
+1,096 calendar rows, and 32,852 separately identified
+\texttt{simulated\_unmet\_demand} rows. The latter are not observed sales
+or empirical lost-sales ground truth and are excluded from all forecast
+targets.
 
 The RQ1 experiment uses the dedicated
 \texttt{rq1\_daily\_shop\_category} sheet. Its five fields are
@@ -3412,6 +3425,50 @@ decision about assortment, shop opening, product activation, stock-outs, and
 export completeness before zero demand can be assigned. This distinction
 prevents the conversion of unobserved records into artificial zero labels.
 
+\section{Transaction and Panel Reconciliation}
+
+The 736,683 sales lines join to 365,447 sales orders without missing order
+references or shop mismatches. Aggregating source sales lines by
+\texttt{shop\_id}, \texttt{sku\_id} and calendar date reproduces all 699,220
+rows of the prepared positive-sale SKU table exactly, including 1,580,361
+units and the recorded sales value to floating-point precision. This is an
+internal reconciliation of the supplied files, not an independent audit of
+their real-world origin.
+
+The prepared SKU export contains 32 shops, 480 SKUs and 13,271
+shop--SKU combinations with at least one positive-sale record. It contains
+only positive-sale days; its \texttt{zero\_day\_interpretation} field warns
+that missing SKU dates are not automatically zero demand. The complete
+shop--category panel contains five fields:
+\texttt{shop\_id}, \texttt{category}, \texttt{date},
+\texttt{units\_sold\_observed}, and
+\texttt{is\_zero\_observed\_sales}. It has 561,152 rows, 32 shops, 16
+categories, 512 series and 1,096 consecutive daily observations per
+series. The total is 1,580,361 units and 210,972 rows (37.5962\%) are
+zero-sales observations. Aggregating SKU sales to shop--category--date
+reproduces all 350,180 positive category-day rows exactly; the remaining
+210,972 category rows are explicit zero-sales rows in the complete panel.
+
+\section{Inventory and Procurement Reconciliation}
+
+The inventory ledger contains 13,272 opening movements, 121,107 purchase
+movements, 736,683 sale movements, 118,673 expiry-disposal movements and
+5,073 damage movements. Every sale movement matches a sales line by order,
+shop, SKU, lot and quantity. The 121,107 purchase movement groups match
+received purchase-order/SKU quantities; 1,315 purchase lines have no final
+received quantity and remain pending at cutoff.
+
+A chronological stock reconstruction identifies 269 negative-balance
+movement events across 253 shop--SKU combinations. It also identifies 330
+positive-sale days with non-positive reconstructed intraday stock. These
+records are quarantined from SKU exposure labels pending correction. Across
+the 13,272 inventory-tracked shop--SKU combinations and 1,096 dates, the
+ledger reconstructs 13,781,575 fully in-stock days and 764,537 days with
+non-positive intraday balance. These are derived diagnostics, not an
+independent stock audit. Every zero-sales shop--category day has at least
+one recorded SKU with positive reconstructed stock during that day; this
+does not rule out item-level stock-outs or unrecorded assortment.
+
 \section{RQ1 Forecasting Pipeline}
 
 For each shop--category series, the feature builder uses only information
@@ -3429,13 +3486,20 @@ selection. Historical training examples are sampled every 28 days; each
 training label window must finish before the corresponding validation origin.
 A 56-day history is required before a feature row is admitted.
 
-The pooled LightGBM model uses a Tweedie objective with variance power 1.3,
-100 boosting iterations, learning rate 0.035, 31 leaves, minimum child
-samples 80, row and column subsampling of 0.85, L2 regularization of 2.0,
-and random seed 42. Shop and category are treated as categorical features.
-The comparison methods are a weekly seasonal-naive forecast, Croston--SBA,
-and TSB. All methods are evaluated on the same 512 series at each of the
-three origins, giving 1,536 series-origin forecasts per horizon.
+The LightGBM Tweedie candidate uses variance power 1.3, 100 boosting
+iterations, learning rate 0.035, 31 leaves, minimum child samples 80,
+row and column subsampling 0.85, subsampling frequency 1, L2 regularisation
+2.0 and seed 42. The CatBoost Tweedie challenger uses 120 iterations,
+depth 6, learning rate 0.04 and L2 regularisation 5. The two-stage CatBoost
+hurdle uses a 100-iteration occurrence classifier and a 100-iteration
+positive-quantity regressor, depth 5 and learning rate 0.04; the classifier
+uses balanced class weights. Its probabilities are not calibrated and its
+output is not selected for deployment. Croston--SBA and TSB use
+\(\alpha=0.1\) (and \(\beta=0.1\) for TSB). The weekly seasonal-naive
+baseline averages up to four previous observations for each matching
+weekday and sums them across the horizon. All methods are evaluated on
+the same 512 series at each of the three origins, giving 1,536
+series-origin forecasts per horizon.
 
 \section{Software Environment and Reproducibility}
 
@@ -3449,16 +3513,17 @@ location and is not copied into the public source repository.
 
 \section{Current Implementation Boundaries}
 
-The current executable experiment is a shop--category quantity forecast.
-It does not yet establish SKU-level forecasting performance, unconstrained
-demand under stock-outs, price or promotion uplift, or inventory-policy
-benefit. Although the wider data package contains sales, purchase, inventory,
-promotion, and return records, those tables have not yet been joined into
-point-in-time-valid forecasting features in this experiment. CatBoost,
-the calibrated two-stage occurrence--quantity model, prediction intervals,
-hierarchical reconciliation, and inventory replay remain subsequent
-implementation tasks. These boundaries are retained explicitly so that the
-report does not describe planned modules as completed software.
+The executable experiment remains a shop--category observed-sales forecast.
+It does not establish SKU-level latent demand, price or promotion uplift,
+or inventory-policy benefit. CatBoost Tweedie and a raw two-stage hurdle
+have now been evaluated as challengers; the hurdle probabilities remain
+uncalibrated. The inventory ledger has been reconciled internally, but
+negative-balance events and positive-sale days with non-positive intraday
+stock must be quarantined before SKU exposure labels are used. Calibrated
+prediction intervals, hierarchical reconciliation, point-in-time price
+and promotion features, and inventory replay remain subsequent tasks.
+The package's provenance conflict also prevents real-world effectiveness
+claims.
 
 \cleardoublepage
 \chapter{Experimental Results}
