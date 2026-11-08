@@ -7,7 +7,7 @@
 - Cloudflare account: user-confirmed Cloudflare Primary account.
 - Cloudflare Worker: `bsmart-commerce-api`, URL https://bsmart-commerce-api.bcs-written-rakib.workers.dev.
 - Cloudflare D1 database: `bsmart-commerce`, ID `887fa347-9c22-46b1-a7cf-91a7dbdfc311`.
-- D1 schema version: **12** (migrations 0009–0012 applied).
+- D1 schema version: **13** (migrations 0009–0013 applied).
 - Frontend/legacy FastAPI source: `frontend/` and `api/`.
 - Worker source/config: `cloudflare/commerce-worker.js`, `cloudflare/*.js`, `cloudflare/wrangler.toml`.
 
@@ -17,7 +17,7 @@
 - GitHub storefront recovery/build workflow: [run 42444053016](https://github.com/RlM100always/Thesis/actions/runs/42444053016) — success.
 - Cloudflare D1 read-only smoke: [run 42444052960](https://github.com/RlM100always/Thesis/actions/runs/42444052960) — success.
 - The smoke checks validate D1 health, owner auth health, CORS, public-store visibility, diagnostics, inactive sample-store 404 and unauthenticated owner-assistant rejection.
-- D1 export job completed before schema migrations; the export bookmark is recorded in the Cloudflare technical notes. A full restore drill is still required.
+- A fresh D1 export completed immediately before migration 0013 (schema-12 snapshot); bookmark: `00000057-00000000-0000511d-8fc19d9c4140d189405c4fbac8e5fc48`. The SQL export is stored in Cloudflare's temporary export storage; a full restore drill is still required.
 
 ## Before deployment
 
@@ -25,7 +25,7 @@
 2. Inspect Render environment variable names only; do not print secret values.
 3. Confirm GitHub repository secrets `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` exist.
 4. Confirm Cloudflare Worker secret `PLATFORM_ADMIN_KEY` exists; never read or print its value.
-5. For owner email verification/reset, configure Worker secret `RESEND_API_KEY`, verified sender variable `AUTH_EMAIL_FROM`, and `PUBLIC_APP_URL=https://thesis-j0n8.onrender.com`. Current live health check reports email verification not configured.
+5. For owner and customer email verification/reset, configure Worker secret `RESEND_API_KEY`, verified sender variable `AUTH_EMAIL_FROM`, and `PUBLIC_APP_URL=https://thesis-j0n8.onrender.com`. Email delivery is currently not configured; password recovery endpoints fail closed until setup is complete.
 6. Workers AI binding exists, but inference is disabled by default. Review model, pricing and budget before enabling `AI_ENABLED=true`.
 7. Back up D1 and verify export/restore procedure before every schema/data migration.
 8. Confirm selected branch and commit have passing CI.
@@ -72,8 +72,8 @@ node --check --input-type=module < cloudflare/platform-admin-routes.js
 ## Database safety and migration rules
 
 - Keep the existing D1 database ID and Worker `DB` binding.
-- Live D1 schema version is **12**; migrations 0009–0012 have already been applied.
-- The D1 export job completed before those migrations; the export has not yet been restored into a separate recovery database. Do not claim a tested restore.
+- Live D1 schema version is **13**; migrations 0009–0013 have been applied.
+- A fresh export was completed immediately before migration 0013; it has not yet been restored into a separate recovery database. Do not claim a tested restore.
 - Historical migrations were applied manually and may not be registered in Wrangler's `d1_migrations` ledger. Never blindly run `wrangler d1 migrations apply --remote`.
 - Before future migration: export/backup, inspect live schema, compare with migration, apply only missing reviewed additive SQL, verify columns/indexes/triggers and record counts.
 - Never point SQLAlchemy `DATABASE_URL` at a D1 database ID. D1 access is through a Worker binding and D1-native queries/batches.
@@ -94,7 +94,7 @@ node --check --input-type=module < cloudflare/platform-admin-routes.js
 2. Add `RESEND_API_KEY` as a Cloudflare Worker secret.
 3. Set `AUTH_EMAIL_FROM` to the exact verified sender identity.
 4. Set `PUBLIC_APP_URL` to the production Render URL.
-5. Confirm migration 0009 columns exist (already included in schema version 12).
+5. Confirm migrations 0009–0013 columns/tables exist (already included in schema version 13).
 6. Test registration, verification, expired/reused token rejection, resend, password reset and old-session revocation in staging.
 7. Re-run the owner auth health check; it must report both email settings as configured before opening registration.
 
