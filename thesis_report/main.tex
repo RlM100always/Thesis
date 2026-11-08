@@ -3518,6 +3518,28 @@ weekday and sums them across the horizon. All methods are evaluated on
 the same 512 series at each of the three origins, giving 1,536
 series-origin forecasts per horizon.
 
+\section{Historical Transaction-Feature Ablation}
+
+A separate seven-day ablation tests whether transaction-derived covariates
+reduce error beyond the historical demand features. Sales lines are joined
+to parent orders and the product master, then aggregated to shop--category--day
+for gross value, discount, order count, customer-days and quantity-weighted
+unit price. The aggregated quantity reproduces the complete observed
+shop--category panel exactly. The extended feature set uses only historical
+price, discount, order and customer-activity summaries from the 7-, 28- and
+56-day windows before each forecast origin. It does not use future prices,
+promotion schedules, inventory outcomes or customer responses.
+
+The ablation compares baseline LightGBM Tweedie with the same model plus
+these transaction-derived features at nine monthly origins from January
+through September 2025. Each origin covers all 512 series. Training windows
+use a 28-day stride and a minimum 56-day history; every training target
+window ends before its validation origin. The script and aggregate outputs
+are stored in
+\texttt{research/forecasting/ablation\_transaction\_features.py} and
+\texttt{research/forecasting/results/transaction\_feature\_ablation\_v1/}.
+The ablation is development evidence, not an untouched final test.
+
 \section{Software Environment and Reproducibility}
 
 The experiment was executed with Python 3.13.5, pandas 2.2.3, NumPy 2.3.5,
@@ -3779,6 +3801,42 @@ replicates. They quantify variation across the development series under
 the fixed-origin protocol; they are not uncertainty intervals for
 future real-world SME performance and do not replace an untouched test.
 
+\section{Historical Transaction-Feature Ablation}
+
+The transaction-derived feature experiment evaluates nine monthly
+development origins from January to September 2025, with 512 series at
+each origin and 4,608 series-origin forecasts per model. The baseline
+uses the historical demand features only. The extended candidate adds
+historical price, discount, order and customer-day summaries, all
+computed strictly before the forecast origin.
+
+\begin{table}[H]
+\centering
+\footnotesize
+\setlength{\tabcolsep}{3pt}
+\caption{Nine-origin seven-day LightGBM transaction-feature ablation.}
+\label{tab:rq1_transaction_feature_ablation}
+\begin{tabularx}{\textwidth}{|p{0.25\textwidth}|C{0.14\textwidth}|C{0.14\textwidth}|C{0.13\textwidth}|C{0.13\textwidth}|Y|}
+\hline
+\textbf{Feature set} & \textbf{Pooled WAPE} & \textbf{Mean origin WAPE} & \textbf{Bias} & \textbf{MAE} & \textbf{RMSE} \\
+\hline
+Historical demand only & \textbf{33.7313\%} & \textbf{34.1557\%} & -1.35\% & \textbf{7.124} & \textbf{9.824} \\
+\hline
+Historical price/activity & 33.8358\% & 34.2685\% & -1.28\% & 7.146 & 9.866 \\
+\hline
+\end{tabularx}
+\end{table}
+
+The extended features improve WAPE at five origins and worsen it at four,
+but the pooled WAPE is 0.1045 percentage points higher and mean origin
+MAE is also higher. Aggregate under-forecast is marginally smaller
+(-1.28\% versus -1.35\%), showing that bias and absolute error do not
+always move together. The evidence does not support adding these
+transaction features to the current selected model. They are retained
+as a reproducible ablation, not adopted as a performance improvement.
+Future covariates should be added only when point-in-time availability
+is established and they improve pooled and origin-stability metrics.
+
 \section{Performance by Demand Regime}
 
 At seven days, CatBoost has slightly lower WAPE than LightGBM in the
@@ -3883,6 +3941,13 @@ probabilities. Only four of 512 series were classified as intermittent;
 this is insufficient support for automatic regime-based model routing.
 The one-day WAPE remains high, and the results do not establish
 SKU-level or unconstrained-demand accuracy.
+
+A nine-origin feature ablation also found that historical price,
+discount and order/customer-activity summaries did not improve pooled
+seven-day WAPE over the demand-only LightGBM baseline. These covariates
+therefore remain an evaluated but rejected extension for the current
+development protocol; additional features must earn inclusion through
+the same chronological validation rather than assumption.
 
 The resulting architecture is evidence-gated: source and availability
 validation precede target construction; pooled and specialist candidates
