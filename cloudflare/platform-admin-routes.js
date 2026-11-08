@@ -125,9 +125,9 @@ export async function platformAdminRouter(req,env,path,output,error) {
       if(!store)return error(req,404,"Store not found");
       const nextActive=body.is_active===undefined?!!store.is_active:body.is_active;
       const nextDemo=body.is_demo===undefined?!!store.is_demo:body.is_demo;
-      if(body.is_demo===false && !store.owner_id)return error(req,409,"Seeded demo stores cannot be promoted to operational checkout");
+      if(body.is_demo===false && !store.owner_id)return error(req,409,"Archived store records without a merchant owner cannot be approved for live checkout");
       if(body.is_demo===false && body.confirm_production!=="ENABLE COD CHECKOUT")return error(req,422,"Explicit COD checkout confirmation required");
-      const deliveryNote=nextDemo?"Demo orders only":"Cash on delivery; delivery managed by the store.";
+      const deliveryNote=nextDemo?"Store not approved for live orders":"Cash on delivery; delivery managed by the store.";
       const result=await env.DB.prepare("UPDATE commerce_stores SET is_active=?,is_demo=?,delivery_note=? WHERE id=? AND is_active=? AND is_demo=?")
         .bind(nextActive?1:0,nextDemo?1:0,deliveryNote,id,store.is_active,store.is_demo).run();
       const action=body.is_demo===false?"store_promoted_to_cod":body.is_demo===true?"store_moved_to_non_operational":nextActive?"store_activated":"store_suspended";
@@ -145,7 +145,7 @@ export async function platformAdminRouter(req,env,path,output,error) {
         .bind(status,status==="cancelled"?reason||"Platform admin cancellation":null,statusNote,id,order.status).run();
       if(!result.meta?.changes)return error(req,409,"Order status changed; reload before retrying");
       await audit(env,"order_status_changed","order",id,{order_number:order.order_number,from:order.status,to:status,reason});
-      return output(req,{updated:true,status,status_note:statusNote,inventory_restored:status==="cancelled",note:"D1 inventory cancellation trigger handles demo stock; no real payment was reversed."});
+      return output(req,{updated:true,status,status_note:statusNote,inventory_restored:status==="cancelled",note:"D1 inventory cancellation trigger restores stock; payment reversal is handled separately."});
     }
     return error(req,404,"Platform admin route not found");
   } catch(e) {
