@@ -2,7 +2,7 @@ import { canTransitionOrderStatus, defaultOrderStatusNote } from "./order-workfl
 import { ownerAssistantAnswer } from "./assistant-routes.js";
 
 /* Authenticated Cloudflare D1 merchant console (separate from legacy FastAPI).
-   Public demo checkout does not accept any real payment or delivery.
+   Public storefront access is restricted to approved operational stores.
    IMPORTANT: This owner identity is not imported from ephemeral SQLite.
 */
 const encoder=new TextEncoder();
@@ -393,7 +393,7 @@ export async function merchantRouter(req,env,path,output,error){
     env.DB.prepare("INSERT INTO commerce_cashbook(id,store_id,kind,amount_bdt,description,related_order_id) VALUES(?,?,?,?,?,?)").bind(crypto.randomUUID(),store.id,"receipt",total,demo?"Archived POS record":"POS cash sale",oid)
    ];
    try{await env.DB.batch(statements);}catch(e){return bad(req,error,409,"Stock or product data changed; refresh and retry");}
-   return output(req,{created:true,order_number:number,total_bdt:total,payment_status:demo?"demo_no_payment":"paid",note:demo?"Demo sale recorded":"Cash sale, payment and stock movement recorded"},201);
+   return output(req,{created:true,order_number:number,total_bdt:total,payment_status:demo?"demo_no_payment":"paid",note:demo?"Archived sale record saved":"Cash sale, payment and stock movement recorded"},201);
   }
   if(method==="POST"&&path==="/api/merchant/products"){
    const store=await storeOnly(env,owner),b=await json(req,error);
