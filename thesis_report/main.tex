@@ -2101,84 +2101,109 @@ business performance.
 \subsection{Demand Prediction}
 \label{subsec:demand_prediction}
 
-Demand for business \(b\), branch \(l\), product \(p\), and forecast horizon
-\(h\) is represented as
+Demand forecasting is defined at a specific aggregation level. The first
+implemented experiment forecasts observed units at shop--category--day
+level; it does not establish SKU-level latent demand. The prepared SKU
+export contains positive-sale records only. A SKU-date without a row is
+not automatically a zero-demand day. SKU targets require verified active
+assortment, shop operating calendar and stock exposure. Stock-out,
+negative-ledger, closed-shop, incomplete-inventory and unknown-assortment
+periods are censored or unknown rather than zero.
+
+For series \(s\), origin \(t\), and horizon
+\(h\in\{1,7,14,28\}\), the direct cumulative target is
 \[
-\hat{y}_{b,l,p,t,h}
-=
-f_h\!\left(
-X^{\mathrm{history}}_{b,l,p,\leq t},
-X^{\mathrm{price}}_{\leq t},
-X^{\mathrm{promotion}}_{\leq t},
-X^{\mathrm{calendar}}_{t:t+h},
-X^{\mathrm{market}}_{\leq t}
-\right),
+Y_{s,t,h}=\sum_{j=0}^{h-1}y_{s,t+j}.
 \]
-where all predictors must have been available at the forecast origin \(t\).
-A future promotion or calendar event is eligible only when it was genuinely
-known at that origin. Realized future sales, stock movements, returns, or
-customer responses are outcomes and must not enter the corresponding feature
-snapshot.
+A separate model is fitted for each horizon. All predictors must have
+been available strictly before \(t\); future sales, returns, inventory
+movements and realized customer responses are outcomes, not features.
+A future promotion is eligible only when its approval or publication
+timestamp proves that it was known at the forecast origin.
 
-For a direct cumulative-horizon experiment, the target is
+The historical feature family comprises lags 1, 7, 14, 28 and 56;
+rolling mean, standard deviation, sum and zero-sales ratio over 7, 14,
+28 and 56 days; days since last positive sale; ADI; positive-demand
+mean and \(CV^2\); shop and category identifiers; weekday, day, month,
+ISO week and cyclical calendar encodings. Price, discount, promotion,
+lead-time, stock and supplier features are added only after their
+point-in-time availability and joins have been validated.
+
+The candidate ladder includes weekly seasonal-naive, Croston--SBA, TSB,
+pooled LightGBM Tweedie, CatBoost Tweedie and a two-stage occurrence--
+quantity (hurdle) candidate. Croston-family methods model demand size
+and inter-demand intervals \cite{croston1972intermittent,syntetos2005intermittent};
+TSB updates occurrence probability over time \cite{teunter2011demand}.
+LightGBM is a gradient-boosted tree candidate \cite{ke2017lightgbm};
+CatBoost is included for categorical identifiers
+\cite{prokhorenkova2018catboost}. The hurdle candidate estimates
 \[
-Y_{s,t,h}=\sum_{j=0}^{h-1}y_{s,t+j},
-\qquad h\in\{1,7,14,28\},
+\widehat{E(Y\mid X)}
+=\widehat{P(Y>0\mid X)}\,
+ \widehat{E(Y\mid Y>0,X)}.
 \]
-where \(s\) denotes a shop--category series and \(y\) denotes observed units
-sold. A separate model is fitted for each horizon so that the model learns
-the distribution of the cumulative target rather than repeatedly applying
-a one-day point forecast. This is an initial implementation choice for the
-available panel, not a claim that direct forecasting is universally optimal.
+Its probabilities must be calibrated before the model is considered
+for operational selection \cite{cragg1971hurdle}.
 
-The first empirical panel aggregates sales by shop, product category, and
-calendar day. It therefore supports shop--category forecasting, but it does
-not by itself establish SKU-level forecast accuracy. The separate SKU sales
-export is an observed-positive-sales table; a missing SKU-date row cannot be
-treated as zero demand until the source export, product assortment, shop
-opening, and stock-availability semantics have been verified. The final
-SKU-level experiment must construct its time index from those source rules
-rather than from an assumed complete Cartesian product.
+Demand regimes are described using ADI and \(CV^2\), with descriptive
+thresholds 1.32 and 0.49. Regime labels are calculated from history
+available at the forecast origin. They stratify error and support
+candidate diagnosis; they do not automatically assign a model. A
+specialist can be promoted only after same-origin validation shows
+stable improvement and there are at least three development origins
+with at least twenty independent series in the regime at each origin.
+If support is insufficient, the pooled fallback is retained.
 
-Demand intermittency and variability are described using the average demand
-interval (ADI) and the squared coefficient of variation of positive demand
-(\(CV^2\)). The conventional descriptive thresholds \(ADI=1.32\) and
-\(CV^2=0.49\) distinguish smooth, erratic, intermittent, and lumpy patterns.
-These labels are calculated using historical observations available at the
-forecast origin. They are used to stratify errors and propose candidate
-specialist methods; they do not automatically determine which model is
-selected.
+The initial fixed-origin development experiment found LightGBM to be
+the strongest candidate at 7-, 14- and 28-day shop--category horizons.
+CatBoost remains a challenger. The raw hurdle produced a lower one-day
+WAPE but material under-forecasting and uncalibrated probabilities.
+These results are controlled development evidence because the supplied
+package's provenance is unresolved; they do not establish real-world
+SME performance.
 
-The current candidate set includes a transparent weekly seasonal-naive
-baseline, Croston--SBA and Teunter--Syntetos--Babai (TSB) intermittent-demand
-methods, and a pooled LightGBM Tweedie model. LightGBM is included as a
-gradient-boosted tree method with support for categorical business and
-category identifiers \cite{ke2017lightgbm}. Croston-family methods are
-included because they estimate demand size and inter-demand intervals for
-intermittent series \cite{croston1972intermittent,syntetos2005intermittent};
-TSB updates the probability of demand occurrence over time
-\cite{teunter2011demand}. Candidate selection is based on common
-rolling-origin observations and the same target definition.
+Forecast uncertainty will be assessed with calibrated quantile or
+residual intervals. SKU, category, branch and business forecasts may
+be reconciled only after source coverage and aggregation identities
+are verified \cite{hyndman2011hierarchical}. The forecast estimates
+observed sales, not unconstrained latent demand, unless stock-out
+censoring has been adequately measured.
 
-The proposed adaptive architecture is a validation-selected mixture of
-experts rather than a fixed rule that assigns one model to each label.
-The pooled model is the default candidate for series with sufficient
-cross-shop evidence. Croston--SBA or TSB may be promoted for a genuinely
-intermittent series only when that series has adequate positive-demand
-history and the specialist method demonstrates a stable improvement on
-the same development origins. A two-stage occurrence--quantity model,
-CatBoost, calibrated bias correction, and hierarchical reconciliation are
-additional candidates for subsequent ablation. They are not reported as
-implemented or successful in the current experiment.
+\subsection{Adaptive Forecasting Architecture and Promotion Gates}
 
-Forecast uncertainty will be represented using quantile forecasts or
-calibrated residual intervals. Forecasts at SKU, category, branch, and
-business levels may be reconciled only after the corresponding aggregation
-identities and source records have been verified
-\cite{hyndman2011hierarchical}. The forecast is an estimate of observed sales
-unless stock availability and stock-out censoring are adequately measured;
-it must not be described as unconstrained latent demand when those conditions
-are unknown.
+The proposed architecture separates evidence eligibility, forecast
+generation, model selection and business action. Figure~\ref{fig:adaptive_demand_architecture}
+shows the sequence. The source gate blocks unverified data from
+real-world claims; the target builder distinguishes observed zero,
+censored and unknown demand; the candidate layer fits transparent
+baselines and eligible specialists; and the selection gate uses common
+rolling origins, bias and minimum independent-series support. A
+decision layer may use a selected forecast only after inventory,
+budget, lead-time and owner constraints have been validated.
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[
+  node/.style={draw=dugreen,rounded corners,fill=softgreen,text width=3.2cm,minimum height=0.9cm,align=center,font=\footnotesize},
+  gate/.style={draw=dugold,rounded corners,fill=softorange,text width=3.2cm,minimum height=0.9cm,align=center,font=\footnotesize},
+  flow/.style={-{Latex[length=2.2mm]},thick,draw=gray!75}
+]
+\node[node] (source) at (0,0) {Source provenance and transaction audit};
+\node[gate] (target) at (0,-1.5) {Availability-aware target and feature snapshots};
+\node[node] (experts) at (0,-3.0) {Baselines and candidate experts};
+\node[gate] (select) at (0,-4.5) {Rolling-origin selection, bias and support gates};
+\node[node] (uncertainty) at (0,-6.0) {Calibrated uncertainty and hierarchy};
+\node[node] (decision) at (0,-7.5) {Constraint-aware recommendation and owner approval};
+\draw[flow] (source) -- (target);
+\draw[flow] (target) -- (experts);
+\draw[flow] (experts) -- (select);
+\draw[flow] (select) -- (uncertainty);
+\draw[flow] (uncertainty) -- (decision);
+\end{tikzpicture}
+\caption{Evidence-gated adaptive demand forecasting architecture.}
+\label{fig:adaptive_demand_architecture}
+\end{figure}
+
 
 \subsection{Future Customer Inactivity}
 \label{subsec:customer_inactivity}
@@ -2405,34 +2430,23 @@ the available evidence volume and task structure.
 
 \subsection{Model Eligibility and Sector-Aware SME Adaptation}
 
-A complex candidate will be rejected when insufficient training history is
-available, when it fails to outperform the relevant baseline on development
-data, when it generates unstable probabilities, or when its additional
-operational cost provides no material value. This rule keeps the proposed system
-useful when the scientifically appropriate solution is a simple forecast or
-business rule.
+A complex candidate is rejected when the training history is insufficient,
+when it fails to improve on the relevant baseline across common development
+origins, when its probabilities or residuals are unstable, or when its
+operational cost has no material value. For the current demand task, a
+regime-specific selector requires at least three development origins and
+at least twenty independent series in that regime at each origin. Repeated
+forecasts of the same series do not count as independent support. If a
+regime fails this gate, the pooled fallback remains selected and the
+regime-specific result is reported as insufficiently supported.
 
-Model eligibility also follows the available sector-aware SME evidence. A new or
-data-limited business uses a transparent baseline and may use a pooled model
-trained on authorized, de-identified evidence from comparable businesses
-with sector and operating-model context.
-
-With moderate history, shop- and branch-specific context may be used to
-calibrate the pooled model. A fully shop-adapted candidate is considered only
-when sufficient local history exists.
-
-Baseline, pooled, and shop-adapted candidates are compared from common
-chronological origins wherever possible. Additional complexity is accepted only
-after a material and stable improvement has been demonstrated.
-
-Held-out-business evaluation tests transfer to a business excluded from training
-and prevents high pooled transaction volume from concealing weak cross-business
-generalization.
-
-Figure~\ref{fig:model_ladder} visualizes this conservative promotion rule. The
-ladder is not an assumption that a shop-adapted model is best; the deployed
-choice is the highest eligible level that passes every gate, and it may remain
-the transparent baseline.
+Model eligibility also follows the available sector-aware SME evidence.
+A new or data-limited business uses a transparent baseline and may use a
+pooled model trained on authorized, de-identified evidence from comparable
+businesses with sector and operating-model context. With moderate history,
+shop- and branch-specific context may calibrate the pooled model. A fully
+shop-adapted candidate is considered only when sufficient local history
+exists.
 
 \begin{figure}[H]
 \centering
@@ -3001,8 +3015,12 @@ measures include
 
 MASE will additionally support scale-independent comparison and avoids several
 limitations of conventional percentage errors
-\cite{hyndman2006accuracy}. Prediction-interval coverage and interval width will
-be used to evaluate uncertainty.
+\cite{hyndman2006accuracy}. For the current cumulative-horizon benchmark, the
+reported horizon-scaled weekly MASE uses the per-series mean absolute lag-7
+difference multiplied by the forecast horizon. Cluster bootstrap resampling
+is performed at the shop--category-series level to preserve repeated-origin
+structure. Prediction-interval coverage and interval width will be used to
+evaluate uncertainty.
 
 Results will be stratified by demand volume and intermittency so that poor
 performance on low-volume or sparse products is not hidden inside an aggregate
@@ -3783,62 +3801,40 @@ is declared a universal winner and no accuracy target is forced.
 
 \section{Research Summary}
 
-This progress report establishes the research foundation and records the
-first implemented RQ1 demand-forecasting experiment for an AI-powered
-business analytics framework for Bangladeshi SMEs across sectors. The
-framework connects operational records to performance evaluation,
-temporally valid prediction, explanation, and feasible owner decisions.
-The present empirical result is deliberately narrower than the intended
-framework: it concerns 512 daily shop--category series from the supplied
-dataset and does not establish SKU-level or cross-sector effectiveness.
+This progress report establishes a data-audited, multi-candidate RQ1
+development workflow for a proposed SME business analytics framework.
+The current Drive manifest and the repository's historical onboarding
+record conflict on whether the supplied package is real or synthetic.
+The evidence class is therefore provenance-conflict, and the reported
+scores are controlled development results rather than verified real-world
+Bangladeshi SME accuracy.
 
-The current development comparison found that a pooled LightGBM Tweedie
-model achieved lower pooled WAPE than weekly seasonal-naive, Croston--SBA,
-and TSB comparators at the 1-, 7-, 14-, and 28-day cumulative horizons.
-However, the one-day WAPE remained 79.88\%, with a 21.51\% aggregate
-under-forecast. The longer-horizon results are more favourable but must
-not be interpreted as evidence that individual daily demand is accurately
-predicted. Four series were classified as intermittent, which is
-insufficient support for a reliable specialist-model conclusion.
+The source tables reconcile internally: all sales lines join to orders,
+the prepared SKU daily table is reproduced from transaction lines, the
+positive category-day rows are reproduced from SKU aggregation, and sale
+inventory movements match sales lines. The inventory audit nevertheless
+finds 269 negative-balance events and 330 positive-sale days with
+non-positive reconstructed intraday stock. These anomalies must be
+quarantined before SKU-level availability labels are accepted.
 
-The results therefore support a conservative model-selection strategy.
-A pooled model remains the default candidate, while specialist methods
-are considered only when historical support is adequate and same-origin
-validation demonstrates a stable gain. The research contribution is not
-a claim that a newly named model has already solved SME forecasting.
-It is the evidence-governed process linking data eligibility, demand
-diagnosis, model comparison, uncertainty, business constraints, and
-owner oversight.
+In the fixed-origin shop--category experiment, LightGBM Tweedie achieved
+the lowest pooled WAPE at 7-, 14- and 28-day horizons. CatBoost remains
+a challenger. The raw hurdle candidate achieved a lower one-day WAPE
+but under-forecast materially and used uncalibrated occurrence
+probabilities. Only four of 512 series were classified as intermittent;
+this is insufficient support for automatic regime-based model routing.
+The one-day WAPE remains high, and the results do not establish
+SKU-level or unconstrained-demand accuracy.
 
-\section{Future Work Plan}
+The resulting architecture is evidence-gated: source and availability
+validation precede target construction; pooled and specialist candidates
+are compared on identical rolling origins; specialist routing requires
+adequate independent-series support; calibrated uncertainty and
+hierarchical reconciliation follow; and inventory actions are evaluated
+under actual business constraints. The contribution is the reproducible
+and auditable process, not a claim that a newly named model has already
+solved SME forecasting.
 
-The next stage will expand the RQ1 experiment through CatBoost,
-calibrated occurrence--quantity modelling, residual-bias correction,
-prediction intervals, and additional rolling origins. The SKU-level
-sales export will be reconciled with product activation, shop opening,
-stock availability, returns, and source-export rules before missing
-SKU dates are interpreted. Point-in-time-valid price, promotion,
-purchase, and inventory features will be joined only after their event
-and availability timestamps are verified.
-
-After the forecasting design is frozen, the selected forecast candidates
-will be evaluated through RQ3 inventory-policy replay using verified
-stock, purchase receipts, lead times, and owner-reviewed cost assumptions.
-RQ4 will examine explanation quality and whether owners can correctly
-interpret and use the resulting recommendations. Each research question
-will retain its own unit of analysis, validation design, and evidence
-boundary.
-
-A final untouched time period or held-out businesses must be reserved
-before final claims are made. Model changes made after examining that
-test evidence will be labelled exploratory and evaluated on a new
-untouched period. The final thesis will report both improvements and
-failures, including cases where a transparent baseline is preferable.
-The framework will remain a decision-support system under owner
-authority; unsupported recommendations will be withheld with an
-explicit reason.
-
-\cleardoublepage
 
 \addtocontents{toc}{\vspace{1em}}
 \backmatter
@@ -4001,6 +3997,18 @@ explicit reason.
 \newblock Intermittent demand: Linking forecasting to inventory obsolescence.
 \newblock {\em European Journal of Operational Research 214}, 3 (2011),
   606--615.
+
+\bibitem{cragg1971hurdle}
+{\sc Cragg, J.~G.}
+\newblock Some statistical models for limited dependent variables with
+  application to the demand for durable goods.
+\newblock {\em Econometrica 39}, 5 (1971), 829--844.
+
+\bibitem{prokhorenkova2018catboost}
+{\sc Prokhorenkova, L., Gusev, G., Vorobev, A., Dorogush, A.~V., and Gulin, A.}
+\newblock {CatBoost}: Unbiased boosting with categorical features.
+\newblock In {\em Advances in Neural Information Processing Systems 31\/}
+  (2018), pp.~6638--6648.
 
 \end{thebibliography}
 
