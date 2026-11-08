@@ -60,4 +60,19 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_staff_invites_pending_email
 CREATE INDEX IF NOT EXISTS idx_staff_invites_store
   ON merchant_staff_invites(store_id,created_at);
 
+CREATE TABLE IF NOT EXISTS commerce_merchant_audit (
+  id TEXT PRIMARY KEY,
+  store_id TEXT NOT NULL REFERENCES commerce_stores(id) ON DELETE CASCADE,
+  actor_account_id TEXT REFERENCES merchant_accounts(id) ON DELETE SET NULL,
+  action TEXT NOT NULL,
+  target_type TEXT NOT NULL,
+  target_id TEXT,
+  details TEXT NOT NULL DEFAULT '{}',
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_merchant_audit_store_time
+  ON commerce_merchant_audit(store_id,created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_merchant_audit_actor
+  ON commerce_merchant_audit(actor_account_id,created_at DESC);
+
 UPDATE commerce_meta SET value='14' WHERE key='schema_version';
