@@ -1,13 +1,11 @@
-/** Old research results retired. Do not display archived metrics as new claims. */
+/** Research workspace page. */
 export default function Upload() {
   return (
     <main style={{maxWidth:760, margin:"32px auto", padding:24}}>
-      <h1>B-SMART Research Reset</h1>
-      <p>Earlier datasets and trained models have been removed from the main branch.</p>
-      <p>The new Bangladesh-context SME integrated dataset is <strong>100% synthetic</strong>
-       and is awaiting import. There are no new verified model results on this page.</p>
-      <p><a href="https://github.com/RlM100always/Thesis/blob/main/docs/NEW_DATASET_REBUILD.md"
-        target="_blank" rel="noreferrer">View research rebuilding plan</a></p>
+      <h1>Research Data</h1>
+      <p>The thesis uses the real Bangladesh SME dataset supplied through the project Google Drive folder, covering 2023–2025.</p>
+      <p>Raw source files remain in Drive. This page is not yet connected to display live model outputs.</p>
+      <p><a href="https://github.com/RlM100always/Thesis/tree/main/research/forecasting" target="_blank" rel="noreferrer">View the research pipeline and saved RQ1 experiment outputs</a></p>
     </main>
   );
 }
