@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import "./D1MerchantCenter.css";
 import { useUi } from "../UiContext";
+import D1MerchantInsights from "./D1MerchantInsights";
+import D1StaffManagement from "./D1StaffManagement";
 
 const BASE=(import.meta.env.VITE_D1_COMMERCE_URL || "https://bsmart-commerce-api.bcs-written-rakib.workers.dev").replace(/\/$/,"");
 const fmt=n=>"৳"+Number(n||0).toLocaleString("bn-BD");
@@ -41,6 +43,8 @@ export default function D1MerchantCenter(){
   const [token,setToken]=useState(()=>sessionStorage.getItem("bsmart_d1_merchant")||"");
   const [form,setForm]=useState(empty),[mode,setMode]=useState("login"),[view,setView]=useState("dashboard");
   const [recoveryToken,setRecoveryToken]=useState("");
+  const [inviteToken,setInviteToken]=useState("");
+  const [inviteName,setInviteName]=useState("");
   const [data,setData]=useState(null),[busy,setBusy]=useState(false),[error,setError]=useState(""),[note,setNote]=useState("");
   const [storeForm,setStoreForm]=useState({name:"",category:"মুদি",area:"",tagline:""});
   const [newProduct,setNewProduct]=useState({sku:"",name:"",category:"",description:"",brand:"",tags:"",compare_at_price_bdt:"",unit_label:"pcs",price_bdt:"",stock_qty:"",reorder_level:"5",is_listed:true});
@@ -68,6 +72,13 @@ export default function D1MerchantCenter(){
     const query=hash.includes("?")?hash.slice(hash.indexOf("?")+1):"";
     const params=new URLSearchParams(query);
     const verify=params.get("verify"),reset=params.get("reset");
+    const ownerInvite=params.get("owner_invite"),staffInvite=params.get("staff_invite");
+    if(ownerInvite||staffInvite){
+      sessionStorage.removeItem("bsmart_d1_merchant");
+      setToken("");setData(null);
+      setInviteToken(ownerInvite||staffInvite);
+      setMode(ownerInvite?"owner_invite":"staff_invite");
+    }
     if(verify){
       call("/api/merchant/verify-email",{method:"POST",body:{token:verify}})
         .then(()=>{setNote("ইমেইল যাচাই সম্পন্ন হয়েছে। এখন লগইন করুন।");setError("");window.history.replaceState(null,"",window.location.pathname+"#/d1-owner");})
@@ -76,6 +87,7 @@ export default function D1MerchantCenter(){
     if(reset){setRecoveryToken(reset);setMode("reset");}
   },[]);
   const store=data?.store;
+  const inventoryOnly=data?.account?.is_staff&&data?.account?.staff_role==="inventory";
   const load=useCallback(async tk=>{
     const latest=await call("/api/merchant/dashboard",{token:tk});
     setData(latest);
@@ -115,6 +127,19 @@ export default function D1MerchantCenter(){
   }
   async function authenticate(e){
     e.preventDefault();
+    if(mode==="owner_invite"||mode==="staff_invite"){
+      setBusy(true);setError("");setNote("");
+      try{
+        const endpoint=mode==="owner_invite"?"/api/merchant/accept-owner-invite":"/api/merchant/staff/accept-invite";
+        const result=await call(endpoint,{method:"POST",body:{token:inviteToken,display_name:inviteName,password:form.password}});
+        sessionStorage.setItem("bsmart_d1_merchant",result.token);
+        setToken(result.token);setForm(empty);setInviteToken("");setInviteName("");setMode("login");
+        window.history.replaceState(null,"",window.location.pathname+"#/d1-owner");
+        setNote(mode==="owner_invite"?"মালিকের অ্যাকাউন্ট তৈরি হয়েছে। দোকানটি Platform Admin অনুমোদন না দেওয়া পর্যন্ত ব্যক্তিগত থাকবে।":"কর্মী অ্যাকাউন্ট তৈরি হয়েছে। আপনার নির্ধারিত ভূমিকা অনুযায়ী প্রবেশাধিকার চালু হয়েছে।");
+      }catch(e){setError(e.message||"আমন্ত্রণ গ্রহণ করা যায়নি।");}
+      finally{setBusy(false);}
+      return;
+    }
     await run(async()=>{
       if(mode==="register"){
         await call("/api/merchant/register",{method:"POST",body:{email:form.email,password:form.password}});
@@ -204,15 +229,16 @@ export default function D1MerchantCenter(){
       {store&&<a className="dm-visit" href={"#/store/"+store.slug}>দোকানের প্রিভিউ দেখুন ↗</a>}</section>
       {store&&<div className="dm-warning" role="note">{store.is_demo ? "এটি একটি পরীক্ষামূলক দোকান। এখানে বাস্তব অর্ডার বা টাকা গ্রহণ করা হয় না।" : !store.is_active ? "আপনার দোকানটি যাচাইয়ের অপেক্ষায় আছে। পণ্য ও মজুত প্রস্তুত করুন; অনুমোদনের পর দোকানটি প্রকাশিত হবে।" : "আপনার দোকানে Cash on Delivery চালু। অর্ডার, মজুত ও পেমেন্টের অবস্থা Cloudflare D1-তে সংরক্ষিত হয়।"}</div>}
       {error&&<p className="dm-error" role="alert">{error}</p>}{note&&<p className="dm-success" role="status">{note}</p>}
-      {!token?<div className="dm-auth"><h2>{mode==="login"?"দোকান মালিকের লগইন":mode==="register"?"নতুন দোকান মালিকের অ্যাকাউন্ট":mode==="forgot"?"পাসওয়ার্ড পুনরুদ্ধার":"নতুন পাসওয়ার্ড সেট করুন"}</h2>
-        <p>{mode==="register"?"ইমেইল যাচাইয়ের পর দোকান পরিচালনার অ্যাকাউন্ট চালু হবে।":mode==="forgot"?"আপনার অ্যাকাউন্টের ইমেইল লিখুন। রিসেট লিংক পাঠানো হবে।":mode==="reset"?"নতুন শক্তিশালী পাসওয়ার্ড লিখুন। লিংকটি ৬০ মিনিটের মধ্যে ব্যবহার করতে হবে।":"আপনার যাচাইকৃত ইমেইল ও পাসওয়ার্ড দিয়ে দোকান পরিচালনা করুন।"}</p>
+      {!token?<div className="dm-auth"><h2>{mode==="login"?"দোকান মালিক / কর্মীর লগইন":mode==="register"?"নতুন দোকান মালিকের অ্যাকাউন্ট":mode==="forgot"?"পাসওয়ার্ড পুনরুদ্ধার":mode==="owner_invite"?"দোকান মালিকের অ্যাকাউন্ট চালু করুন":mode==="staff_invite"?"কর্মী অ্যাকাউন্ট চালু করুন":"নতুন পাসওয়ার্ড সেট করুন"}</h2>
+        <p>{mode==="register"?"ইমেইল যাচাইয়ের পর দোকান পরিচালনার অ্যাকাউন্ট চালু হবে।":mode==="forgot"?"আপনার অ্যাকাউন্টের ইমেইল লিখুন। রিসেট লিংক পাঠানো হবে।":mode==="reset"?"নতুন শক্তিশালী পাসওয়ার্ড লিখুন। লিংকটি ৬০ মিনিটের মধ্যে ব্যবহার করতে হবে।":mode==="owner_invite"?"আপনার নাম ও নতুন পাসওয়ার্ড সেট করুন। এই লিংকটি একবার ব্যবহার করা যাবে।":mode==="staff_invite"?"আপনার নাম ও নতুন পাসওয়ার্ড সেট করুন। আপনার স্টোর মালিক নির্ধারিত ভূমিকা অনুযায়ী অনুমতি পাবেন।":"যাচাইকৃত ইমেইল ও পাসওয়ার্ড দিয়ে Cloudflare Primary স্টোর পরিচালনা করুন।"}</p>
         <form onSubmit={authenticate} className="dm-fields">
-          {mode!=="reset"&&<Field label="ইমেইল"><input style={input} type="email" autoComplete="email" required value={form.email} onChange={e=>setForm(v=>({...v,email:e.target.value}))}/></Field>}
-          {(mode==="login"||mode==="register"||mode==="reset")&&<Field label={mode==="login"?"পাসওয়ার্ড":"নতুন পাসওয়ার্ড (কমপক্ষে ১২ অক্ষর)"}><input style={input} type="password" autoComplete={mode==="login"?"current-password":"new-password"} minLength={12} maxLength={128} required value={form.password} onChange={e=>setForm(v=>({...v,password:e.target.value}))}/></Field>}
-          <button className="dm-btn" disabled={busy} type="submit">{busy?"প্রক্রিয়াকরণ চলছে…":mode==="login"?"লগইন করুন":mode==="register"?"অ্যাকাউন্ট তৈরি করুন":mode==="forgot"?"রিসেট লিংক পাঠান":"পাসওয়ার্ড পরিবর্তন করুন"}</button>
+          {mode!=="reset"&&mode!=="owner_invite"&&mode!=="staff_invite"&&<Field label="ইমেইল"><input style={input} type="email" autoComplete="email" required value={form.email} onChange={e=>setForm(v=>({...v,email:e.target.value}))}/></Field>}
+          {(mode==="owner_invite"||mode==="staff_invite")&&<Field label="আপনার নাম"><input style={input} required minLength={2} maxLength={120} value={inviteName} onChange={e=>setInviteName(e.target.value)}/></Field>}
+          {(mode==="login"||mode==="register"||mode==="reset"||mode==="owner_invite"||mode==="staff_invite")&&<Field label={mode==="login"?"পাসওয়ার্ড":"নতুন পাসওয়ার্ড (কমপক্ষে ১২ অক্ষর)"}><input style={input} type="password" autoComplete={mode==="login"?"current-password":"new-password"} minLength={12} maxLength={128} required value={form.password} onChange={e=>setForm(v=>({...v,password:e.target.value}))}/></Field>}
+          <button className="dm-btn" disabled={busy} type="submit">{busy?"প্রক্রিয়াকরণ চলছে…":mode==="login"?"লগইন করুন":mode==="register"?"অ্যাকাউন্ট তৈরি করুন":mode==="forgot"?"রিসেট লিংক পাঠান":mode==="owner_invite"||mode==="staff_invite"?"অ্যাকাউন্ট চালু করুন":"পাসওয়ার্ড পরিবর্তন করুন"}</button>
         </form>
-        {mode==="login"&&<><button className="dm-text-btn" onClick={()=>{setMode("register");setError("");setNote("");setForm(empty);}}>নতুন দোকান মালিকের অ্যাকাউন্ট খুলুন</button><button className="dm-text-btn" onClick={()=>{setMode("forgot");setError("");setNote("");}}>পাসওয়ার্ড ভুলে গেছেন?</button><button className="dm-text-btn" onClick={resendVerification}>যাচাই ইমেইল আবার পাঠান</button></>}
-        {mode!=="login"&&<button className="dm-text-btn" onClick={()=>{setMode("login");setRecoveryToken("");setError("");setNote("");setForm(empty);}}>লগইনে ফিরে যান</button>}
+        {mode==="login"&&<><p className="dm-muted">নতুন দোকান খুলতে Platform Admin-এর যাচাইকৃত আমন্ত্রণ লিংক প্রয়োজন।</p><button className="dm-text-btn" onClick={()=>{setMode("forgot");setError("");setNote("");}}>পাসওয়ার্ড ভুলে গেছেন?</button><button className="dm-text-btn" onClick={resendVerification}>যাচাই ইমেইল আবার পাঠান</button></>}
+        {mode!=="login"&&mode!=="owner_invite"&&mode!=="staff_invite"&&<button className="dm-text-btn" onClick={()=>{setMode("login");setRecoveryToken("");setError("");setNote("");setForm(empty);}}>লগইনে ফিরে যান</button>}
       </div>:data===null?<p>Cloudflare D1 থেকে দোকানের তথ্য আনা হচ্ছে…</p>:!store?
       <section className="dm-panel"><h2>আপনার প্রথম দোকান তৈরি করুন</h2><p className="dm-muted">দোকানটি প্রথমে ব্যক্তিগত থাকবে। পণ্য ও মজুত যোগ করে যাচাইয়ের জন্য জমা দিন। অনুমোদনের পর গ্রাহকরা অর্ডার করতে পারবেন।</p>
         <form className="dm-fields" onSubmit={e=>{e.preventDefault();run(async()=>{await call("/api/merchant/store",{method:"POST",token,body:storeForm});},"দোকানের তথ্য সংরক্ষিত হয়েছে।");}}>
@@ -223,7 +249,18 @@ export default function D1MerchantCenter(){
         <button disabled={busy} type="submit" className="dm-btn">দোকান তৈরি করুন</button></form>
       </section>:
       <>
-        <div className="dm-tabs">{[["dashboard","সারসংক্ষেপ"],["assistant","AI সহকারী"],["products","পণ্য ও মজুত"],["coupons","কুপন"],["pos",store.is_demo?"ডেমো বিক্রি":"ক্যাশ বিক্রি"],["orders","অর্ডার"],["returns","ফেরত"],["chat","ক্রেতার বার্তা"],["store","দোকানের সেটিংস"]].map(([k,l])=><button key={k} onClick={()=>setView(k)} className={view===k?"dm-active":""}>{l}</button>)}</div>
+        <div className="dm-tabs">{[
+          ["dashboard","সারসংক্ষেপ"],
+          ...(!data.account?.is_staff||["manager","analyst"].includes(data.account?.staff_role)?[["assistant","AI সহকারী"],["analytics","বিক্রয় বিশ্লেষণ"]]:[]),
+          ...(!data.account?.is_staff||["manager","sales","inventory","analyst"].includes(data.account?.staff_role)?[["alerts","মজুত সতর্কতা"]]:[]),
+          ...(!data.account?.is_staff||["manager","sales","inventory","analyst"].includes(data.account?.staff_role)?[["products","পণ্য ও মজুত"]]:[]),
+          ...(!data.account?.is_staff||data.account?.staff_role==="manager"?[["coupons","কুপন"]]:[]),
+          ...(!data.account?.is_staff||["manager","sales"].includes(data.account?.staff_role)?[["pos",store.is_demo?"পরীক্ষামূলক বিক্রি":"ক্যাশ বিক্রি"]]:[]),
+          ...(!data.account?.is_staff||["manager","sales","support","analyst"].includes(data.account?.staff_role)?[["orders","অর্ডার"]]:[]),
+          ...(!data.account?.is_staff||["manager","support"].includes(data.account?.staff_role)?[["returns","ফেরত"],["chat","ক্রেতার বার্তা"]]:[]),
+          ...(!data.account?.is_staff?[["staff","কর্মী ও অনুমতি"]]:[]),
+          ...(!data.account?.is_staff||data.account?.staff_role==="manager"?[["store","দোকানের সেটিংস"]]:[])
+        ].map(([k,l])=><button key={k} onClick={()=>setView(k)} className={view===k?"dm-active":""}>{l}</button>)}</div>
         {view==="dashboard"&&<div className="dm-stack">
           <div className="dm-stats">{store.is_demo?<><Metric title="ডেমো অর্ডার" value={Number(stats.orders||0).toLocaleString("en-BD")}/><Metric title="বাতিল হয়নি এমন নমুনা বিক্রি" value={fmt(stats.placed_total_bdt)} tip="বাস্তবে কোনো টাকা আদায় হয়নি"/><Metric title="প্রকাশিত পণ্য" value={totalProducts}/><Metric title="মজুতের পরিমাণ" value={Number(stats.inventory_units||0)}/><Metric title="কম স্টক" value={Number(stats.low_stock_count||0)+"টি"}/></>:<><Metric title="অর্ডার" value={Number(stats.orders||0).toLocaleString("en-BD")}/><Metric title="COD অর্ডারের মোট মূল্য" value={fmt(stats.placed_total_bdt)} tip="এটি অর্ডারের মূল্য; আদায়কৃত টাকা নয়"/><Metric title="COD আদায় নিশ্চিত" value={fmt(stats.cod_paid_total_bdt)}/><Metric title="COD টাকা বাকি" value={fmt(stats.cod_pending_total_bdt)}/><Metric title="প্রকাশিত পণ্য" value={totalProducts}/><Metric title="মজুতের পরিমাণ" value={Number(stats.inventory_units||0)}/><Metric title="কম স্টক" value={Number(stats.low_stock_count||0)+"টি"}/></>}</div>
           {lowStockProducts.length>0&&<div className="dm-panel" style={{borderColor:"#e5a23b"}}><h2>কম স্টকের সতর্কতা ({lowStockProducts.length})</h2><p className="dm-muted">নির্ধারিত reorder level-এ বা তার নিচে থাকা পণ্যগুলো দ্রুত পুনরায় সংগ্রহ করুন।</p><div className="dm-scroll"><table><thead><tr><th>পণ্য</th><th>বর্তমান মজুত</th><th>সতর্কতার সীমা</th></tr></thead><tbody>{lowStockProducts.map(p=><tr key={p.id}><td>{p.name}</td><td>{p.stock_qty}</td><td>{p.reorder_level??5}</td></tr>)}</tbody></table></div><button className="dm-secondary" onClick={()=>setView("products")}>মজুত পরিচালনা করুন</button></div>}<div className="dm-panel"><h2>{store.name}</h2><p className="dm-muted">{store.area} · {store.category}</p><p>{store.is_demo?"ডেমো দোকান প্রকাশিত":"দোকান প্রকাশিত"}: <strong>{store.is_active?"হ্যাঁ":"না"}</strong></p><p className="dm-muted">দোকানের লিংক: <code>/#/store/{store.slug}</code></p>
@@ -254,6 +291,9 @@ export default function D1MerchantCenter(){
             </tbody></table></div>}
           </section>
         </div>}
+        {view==="analytics"&&<D1MerchantInsights token={token} mode="analytics"/>}
+        {view==="alerts"&&<D1MerchantInsights token={token} mode="alerts"/>}
+        {view==="staff"&&!data.account?.is_staff&&<D1StaffManagement token={token} call={call}/>}
         {view==="assistant"&&<div className="dm-stack">
           <section className="dm-panel">
             <h2>ব্যবসার AI সহকারী</h2>
@@ -285,14 +325,14 @@ export default function D1MerchantCenter(){
           </section>
         </div>}
         {view==="products"&&<div className="dm-stack">
-          <section className="dm-panel"><h2>নতুন পণ্য যোগ করুন</h2><form className="dm-product-form" onSubmit={e=>{e.preventDefault();run(async()=>{await call("/api/merchant/products",{method:"POST",token,body:{...newProduct,tags:newProduct.tags.split(",").map(x=>x.trim()).filter(Boolean),price_bdt:Number(newProduct.price_bdt),stock_qty:Number(newProduct.stock_qty),reorder_level:Number(newProduct.reorder_level),compare_at_price_bdt:newProduct.compare_at_price_bdt===""?null:Number(newProduct.compare_at_price_bdt)}});setNewProduct({sku:"",name:"",category:"",description:"",brand:"",tags:"",compare_at_price_bdt:"",unit_label:"pcs",price_bdt:"",stock_qty:"",reorder_level:"5",is_listed:true});},"নতুন পণ্য সংরক্ষিত হয়েছে।");}}>
+          {!inventoryOnly&&<section className="dm-panel"><h2>নতুন পণ্য যোগ করুন</h2><form className="dm-product-form" onSubmit={e=>{e.preventDefault();run(async()=>{await call("/api/merchant/products",{method:"POST",token,body:{...newProduct,tags:newProduct.tags.split(",").map(x=>x.trim()).filter(Boolean),price_bdt:Number(newProduct.price_bdt),stock_qty:Number(newProduct.stock_qty),reorder_level:Number(newProduct.reorder_level),compare_at_price_bdt:newProduct.compare_at_price_bdt===""?null:Number(newProduct.compare_at_price_bdt)}});setNewProduct({sku:"",name:"",category:"",description:"",brand:"",tags:"",compare_at_price_bdt:"",unit_label:"pcs",price_bdt:"",stock_qty:"",reorder_level:"5",is_listed:true});},"নতুন পণ্য সংরক্ষিত হয়েছে।");}}>
           {["sku","name","category","brand","unit_label","price_bdt","compare_at_price_bdt","stock_qty","reorder_level","tags"].map(k=><Field key={k} label={{sku:"পণ্য কোড (SKU)",name:"পণ্যের নাম",category:"বিভাগ",brand:"ব্র্যান্ড (ঐচ্ছিক)",unit_label:"একক",price_bdt:"বিক্রয়মূল্য (টাকা)",compare_at_price_bdt:"আগের/তুলনামূলক দাম (ঐচ্ছিক)",stock_qty:"মজুতের পরিমাণ",reorder_level:"কম স্টকের সতর্কতা (পরিমাণ)",tags:"ট্যাগ (কমা দিয়ে লিখুন)"}[k]}><input style={input} value={newProduct[k]} required={["sku","name","category","price_bdt","stock_qty"].includes(k)} type={["price_bdt","stock_qty","compare_at_price_bdt","reorder_level"].includes(k)?"number":"text"} min={["price_bdt","stock_qty","compare_at_price_bdt","reorder_level"].includes(k)?0:undefined} onChange={e=>setNewProduct(v=>({...v,[k]:e.target.value}))}/></Field>)}
           <Field label="পণ্যের বিস্তারিত বিবরণ"><textarea style={{...input,minHeight:90}} maxLength={3000} value={newProduct.description} onChange={e=>setNewProduct(v=>({...v,description:e.target.value}))}/></Field>
-          <label className="dm-check"><input type="checkbox" checked={newProduct.is_listed} onChange={e=>setNewProduct(v=>({...v,is_listed:e.target.checked}))}/>{store.is_demo?"পণ্যটি পরীক্ষামূলক দোকানে দেখান":"পণ্যটি দোকানে প্রকাশ করুন"}</label><button disabled={busy} type="submit" className="dm-btn">পণ্য যোগ করুন</button></form></section>
+          <label className="dm-check"><input type="checkbox" checked={newProduct.is_listed} onChange={e=>setNewProduct(v=>({...v,is_listed:e.target.checked}))}/>{store.is_demo?"পণ্যটি পরীক্ষামূলক দোকানে দেখান":"পণ্যটি দোকানে প্রকাশ করুন"}</label><button disabled={busy} type="submit" className="dm-btn">পণ্য যোগ করুন</button></form></section>}
           <section className="dm-panel"><h2>আপনার পণ্য ({products.length})</h2>
           {products.length===0?<Empty>এখনো কোনো পণ্য যোগ করা হয়নি।</Empty>:<div className="dm-product-list">{products.map(p=><article key={p.id} className="dm-product">
             <div><strong>{p.name}</strong><p className="dm-muted">{p.sku} · {p.category||"বিভাগ দেওয়া নেই"}</p><p><b>{fmt(p.price_bdt)}</b> · মজুত <b>{p.stock_qty}</b> · সতর্কতা {p.reorder_level??5} · {p.is_listed?"প্রকাশিত":"লুকানো"}</p></div>
-            <button className="dm-secondary" onClick={()=>setEdit({...p})}>সম্পাদনা</button></article>)}</div>}</section>
+            <button className="dm-secondary" onClick={()=>setEdit({...p})}>{inventoryOnly?"মজুত সংশোধন":"সম্পাদনা"}</button></article>)}</div>}</section>
         </div>}
         {view==="pos"&&<div className="dm-stack">
           <section className="dm-panel"><h2>{store.is_demo?"পরীক্ষামূলক কাউন্টার বিক্রি":"কাউন্টার বিক্রি"}</h2><p className="dm-muted">{store.is_demo?"নমুনা বিক্রি ও মজুতের পরিবর্তন D1-তে সংরক্ষিত হবে।":"নগদ বিক্রি, পেমেন্ট এবং মজুতের পরিবর্তন একসঙ্গে D1-তে সংরক্ষিত হবে।"}</p>
@@ -301,17 +341,18 @@ export default function D1MerchantCenter(){
               <Field label="পরিমাণ"><input style={input} type="number" min={1} max={30} value={posQty} onChange={e=>setPosQty(e.target.value)}/></Field>
               <button type="submit" className="dm-btn" disabled={busy||!products.some(p=>p.is_listed&&p.stock_qty>0)}>{store.is_demo?"নমুনা বিক্রি সংরক্ষণ করুন":"নগদ বিক্রি সংরক্ষণ করুন"}</button>
             </form></section>
-          <section className="dm-panel"><h2>নগদ হিসাব</h2><p className="dm-muted">{store.is_demo?"এটি পরীক্ষামূলক নগদ হিসাব।":"দৈনন্দিন নগদ গ্রহণ ও খরচের এন্ট্রি এখানে রাখুন।"}</p>
+          {(!data.account?.is_staff||data.account?.staff_role==="manager")&&<section className="dm-panel"><h2>নগদ হিসাব</h2><p className="dm-muted">{store.is_demo?"এটি পরীক্ষামূলক নগদ হিসাব।":"দৈনন্দিন নগদ গ্রহণ ও খরচের এন্ট্রি এখানে রাখুন।"}</p>
             <form className="dm-product-form" onSubmit={e=>{e.preventDefault();run(async()=>{await call("/api/merchant/cashbook",{method:"POST",token,body:{...cashForm,amount_bdt:Number(cashForm.amount_bdt)}});setCashForm({kind:"expense",amount_bdt:"",description:""});},store.is_demo?"নমুনা নগদ হিসাব সংরক্ষিত হয়েছে।":"নগদ হিসাব সংরক্ষিত হয়েছে।");}}>
               <Field label="ধরন"><select style={input} value={cashForm.kind} onChange={e=>setCashForm(v=>({...v,kind:e.target.value}))}><option value="expense">খরচ</option><option value="receipt">টাকা গ্রহণ</option></select></Field>
               <Field label="পরিমাণ (টাকা)"><input style={input} type="number" min={1} max={500000} required value={cashForm.amount_bdt} onChange={e=>setCashForm(v=>({...v,amount_bdt:e.target.value}))}/></Field>
               <Field label="বিবরণ"><input style={input} minLength={3} required value={cashForm.description} onChange={e=>setCashForm(v=>({...v,description:e.target.value}))}/></Field>
               <button className="dm-btn" disabled={busy} type="submit">হিসাব সংরক্ষণ করুন</button></form>
           </section>
-          <section className="dm-panel"><h2>সাম্প্রতিক নগদ হিসাব</h2>
+          </section>}
+          {(!data.account?.is_staff||data.account?.staff_role==="manager")&&<section className="dm-panel"><h2>সাম্প্রতিক নগদ হিসাব</h2>
             {!(data.cashbook||[]).length?<Empty>এখনো কোনো হিসাব যোগ করা হয়নি।</Empty>:<div className="dm-scroll"><table><thead><tr><th>তারিখ</th><th>ধরন</th><th>পরিমাণ</th><th>বিবরণ</th></tr></thead>
             <tbody>{data.cashbook.map(row=><tr key={row.id}><td>{row.created_at}</td><td>{CASH_KIND_BN[row.kind]||row.kind}</td><td>{fmt(row.amount_bdt)}</td><td>{row.description}</td></tr>)}</tbody></table></div>}
-          </section>
+          </section>}
         </div>}
         {view==="orders"&&<div className="dm-panel"><h2>{store.is_demo?"পরীক্ষামূলক অর্ডার":"দোকানের অর্ডার"} ({orders.length})</h2><p className="dm-muted">{store.is_demo?"অর্ডারের তথ্য Cloudflare D1-তে সংরক্ষিত থাকে। বাস্তব ক্রেতার পরিচয় ব্যবহার করবেন না।":"অর্ডার ও COD payment status D1-তে সংরক্ষিত থাকে। ডেলিভারি সম্পন্ন হওয়ার পর হাতে পাওয়া টাকা এখানে নিশ্চিত করুন।"}</p>
           {orders.length===0?<Empty>অর্ডার আসলে এখানে দেখা যাবে।</Empty>:<div className="dm-scroll"><table><thead><tr><th>অর্ডার ও ক্রেতা</th><th>তারিখ</th><th>মোট</th><th>অবস্থা</th><th>পেমেন্ট</th><th>করণীয়</th></tr></thead><tbody>{orders.map(o=><tr key={o.id}><td><strong>{o.order_number}</strong>{o.shipping_name&&<><br/><small>{o.shipping_name}</small></>}{o.shipping_phone&&<><br/><small>{o.shipping_phone}</small></>}{o.shipping_address&&<><br/><small>{o.shipping_address}</small></>}</td><td>{o.placed_at}</td><td>{fmt(o.total_bdt)}</td><td>{ORDER_STATUS_BN[o.status]||o.status}{o.status_note&&<><br/><small>{o.status_note}</small></>}{o.cancellation_reason&&o.status==="cancelled"&&<><br/><small>বাতিলের কারণ: {o.cancellation_reason}</small></>}</td><td>{PAYMENT_STATUS_BN[o.payment_status]||o.payment_status||"—"}{o.payment_received_at&&<><br/><small>{o.payment_received_at}</small></>}</td><td>{(ORDER_ACTIONS[o.status]||[]).map(action=><button key={action.status} className={action.danger?"dm-danger":"dm-secondary"} style={{marginRight:6,marginBottom:4}} disabled={busy} onClick={()=>run(()=>call("/api/merchant/orders/"+o.id+"/status",{method:"PATCH",token,body:{status:action.status}}),ORDER_ACTION_SUCCESS[action.status])}>{action.label}</button>)}{!store.is_demo&&o.payment_status==="pending_cod"&&["delivered","fulfilled"].includes(o.status)&&<button className="dm-secondary" style={{marginRight:6,marginBottom:4}} disabled={busy} onClick={()=>{if(!window.confirm("ক্রেতার কাছ থেকে COD টাকা সত্যিই গ্রহণ করেছেন?"))return;run(()=>call("/api/merchant/orders/"+o.id+"/payment",{method:"PATCH",token,body:{payment_note:"COD collected at delivery"}}),"COD payment received and recorded.");}}>COD টাকা গ্রহণ নিশ্চিত করুন</button>}{!(ORDER_ACTIONS[o.status]||[]).length&&(store.is_demo||o.payment_status!=="pending_cod"||!["delivered","fulfilled"].includes(o.status))?<span>—</span>:null}</td></tr>)}</tbody></table></div>}
@@ -345,12 +386,28 @@ export default function D1MerchantCenter(){
           {!store.is_active&&<p className="dm-muted">প্রকাশনার জন্য Platform Admin-এর অনুমোদন প্রয়োজন।</p>}
           <button className="dm-btn" disabled={busy} type="submit">সেটিংস সংরক্ষণ করুন</button>
         </form></section>}
-        {edit&&<div className="dm-modal-bg" onClick={()=>setEdit(null)}><section role="dialog" aria-modal="true" aria-label="পণ্য সম্পাদনা" className="dm-panel dm-dialog" onClick={e=>e.stopPropagation()}><h2>পণ্য সম্পাদনা: {edit.name}</h2>
-          <form className="dm-fields" onSubmit={e=>{e.preventDefault();run(async()=>{await call("/api/merchant/products/"+edit.id,{method:"PATCH",token,body:{name:edit.name,category:edit.category,description:edit.description||"",brand:edit.brand||"",tags:Array.isArray(edit.tags)?edit.tags:(()=>{try{return JSON.parse(edit.tags||"[]")}catch{return []}})(),unit_label:edit.unit_label||"pcs",compare_at_price_bdt:edit.compare_at_price_bdt===""||edit.compare_at_price_bdt==null?null:Number(edit.compare_at_price_bdt),price_bdt:Number(edit.price_bdt),stock_qty:Number(edit.stock_qty),reorder_level:Number(edit.reorder_level??5),is_listed:edit.is_listed}});setEdit(null);},"পণ্যের তথ্য সংশোধন করা হয়েছে।");}}>
-          {["name","category","brand","unit_label","price_bdt","compare_at_price_bdt","stock_qty","reorder_level"].map(k=><Field key={k} label={{name:"পণ্যের নাম",category:"বিভাগ",brand:"ব্র্যান্ড",unit_label:"একক",price_bdt:"বিক্রয়মূল্য",compare_at_price_bdt:"তুলনামূলক দাম",stock_qty:"মজুত",reorder_level:"কম স্টকের সতর্কতা"}[k]||k}><input style={input} type={["price_bdt","stock_qty","compare_at_price_bdt","reorder_level"].includes(k)?"number":"text"} min={["price_bdt","stock_qty","compare_at_price_bdt","reorder_level"].includes(k)?0:undefined} required={["name","price_bdt","stock_qty"].includes(k)} value={edit[k]??""} onChange={e=>setEdit(v=>({...v,[k]:e.target.value}))}/></Field>)}<Field label="পণ্যের বিবরণ"><textarea style={{...input,minHeight:90}} maxLength={3000} value={edit.description||""} onChange={e=>setEdit(v=>({...v,description:e.target.value}))}/></Field><Field label="ট্যাগ (কমা দিয়ে লিখুন)"><input style={input} value={Array.isArray(edit.tags)?edit.tags.join(", "):(()=>{try{return JSON.parse(edit.tags||"[]").join(", ")}catch{return ""}})()} onChange={e=>setEdit(v=>({...v,tags:e.target.value.split(",").map(x=>x.trim()).filter(Boolean)}))}/></Field>
-          <label className="dm-check"><input type="checkbox" checked={!!edit.is_listed} onChange={e=>setEdit(v=>({...v,is_listed:e.target.checked}))}/>প্রকাশিত</label><div className="dm-actions"><button className="dm-btn" disabled={busy} type="submit">পরিবর্তন সংরক্ষণ করুন</button><button type="button" onClick={()=>setEdit(null)} className="dm-secondary">বন্ধ করুন</button></div></form></section></div>}
+        {edit&&<div className="dm-modal-bg" onClick={()=>setEdit(null)}><section role="dialog" aria-modal="true" aria-label={inventoryOnly?"মজুত সংশোধন":"পণ্য সম্পাদনা"} className="dm-panel dm-dialog" onClick={e=>e.stopPropagation()}><h2>{inventoryOnly?"মজুত সংশোধন":"পণ্য সম্পাদনা"}: {edit.name}</h2>
+          <form className="dm-fields" onSubmit={e=>{e.preventDefault();run(async()=>{
+            if(inventoryOnly){
+              await call("/api/merchant/inventory/"+edit.id,{method:"PATCH",token,body:{stock_qty:Number(edit.stock_qty),reorder_level:Number(edit.reorder_level??5),reason:"Manual inventory correction"}});
+            }else{
+              await call("/api/merchant/products/"+edit.id,{method:"PATCH",token,body:{name:edit.name,category:edit.category,description:edit.description||"",brand:edit.brand||"",tags:Array.isArray(edit.tags)?edit.tags:(()=>{try{return JSON.parse(edit.tags||"[]")}catch{return []}})(),unit_label:edit.unit_label||"pcs",compare_at_price_bdt:edit.compare_at_price_bdt===""||edit.compare_at_price_bdt==null?null:Number(edit.compare_at_price_bdt),price_bdt:Number(edit.price_bdt),stock_qty:Number(edit.stock_qty),reorder_level:Number(edit.reorder_level??5),is_listed:edit.is_listed}});
+            }
+            setEdit(null);
+          },inventoryOnly?"মজুত সংশোধন সংরক্ষিত হয়েছে।":"পণ্যের তথ্য সংশোধন করা হয়েছে।");}}>
+          {(inventoryOnly?["stock_qty","reorder_level"]:["name","category","brand","unit_label","price_bdt","compare_at_price_bdt","stock_qty","reorder_level"]).map(k=><Field key={k} label={{name:"পণ্যের নাম",category:"বিভাগ",brand:"ব্র্যান্ড",unit_label:"একক",price_bdt:"বিক্রয়মূল্য",compare_at_price_bdt:"তুলনামূলক দাম",stock_qty:"মজুত",reorder_level:"কম স্টকের সতর্কতা"}[k]||k}><input style={input} type={["price_bdt","stock_qty","compare_at_price_bdt","reorder_level"].includes(k)?"number":"text"} min={["price_bdt","stock_qty","compare_at_price_bdt","reorder_level"].includes(k)?0:undefined} required={["name","price_bdt","stock_qty"].includes(k)} value={edit[k]??""} onChange={e=>setEdit(v=>({...v,[k]:e.target.value}))}/></Field>)}
+          {!inventoryOnly&&<><Field label="পণ্যের বিবরণ"><textarea style={{...input,minHeight:90}} maxLength={3000} value={edit.description||""} onChange={e=>setEdit(v=>({...v,description:e.target.value}))}/></Field><Field label="ট্যাগ (কমা দিয়ে লিখুন)"><input style={input} value={Array.isArray(edit.tags)?edit.tags.join(", "):(()=>{try{return JSON.parse(edit.tags||"[]").join(", ")}catch{return ""}})()} onChange={e=>setEdit(v=>({...v,tags:e.target.value.split(",").map(x=>x.trim()).filter(Boolean)}))}/></Field><label className="dm-check"><input type="checkbox" checked={!!edit.is_listed} onChange={e=>setEdit(v=>({...v,is_listed:e.target.checked}))}/>প্রকাশিত</label></>}
+          <div className="dm-actions"><button className="dm-btn" disabled={busy} type="submit">{inventoryOnly?"মজুত সংরক্ষণ করুন":"পরিবর্তন সংরক্ষণ করুন"}</button><button type="button" onClick={()=>setEdit(null)} className="dm-secondary">বন্ধ করুন</button></div></form></section></div>}
       </>}
     </div>
-    {token&&store&&<nav className="dm-bottom" aria-label="Owner mobile app navigation">{[["dashboard","হোম","⌂"],["products","পণ্য","▣"],["pos","বিক্রি","⊞"],["orders","অর্ডার","≡"],["returns","ফেরত","↩"],["store","সেটিংস","⚙"]].map(([k,t,icon])=><button key={k} className={view===k?"selected":""} onClick={()=>{setView(k);window.scrollTo({top:0,behavior:"smooth"});}}><span>{icon}</span>{t}</button>)}</nav>}
+    {token&&store&&<nav className="dm-bottom" aria-label="Store mobile navigation">{[
+      ["dashboard","হোম","⌂"],
+      ...(!data?.account?.is_staff||["manager","sales","inventory","analyst"].includes(data.account?.staff_role)?[["products","পণ্য","▣"]]:[]),
+      ...(!data?.account?.is_staff||["manager","sales"].includes(data.account?.staff_role)?[["pos","বিক্রি","⊞"]]:[]),
+      ...(!data?.account?.is_staff||["manager","sales","support","analyst"].includes(data.account?.staff_role)?[["orders","অর্ডার","≡"]]:[]),
+      ...(!data?.account?.is_staff||["manager","support"].includes(data.account?.staff_role)?[["returns","ফেরত","↩"]]:[]),
+      ...(!data?.account?.is_staff?[["staff","কর্মী","♙"]]:[]),
+      ...(!data?.account?.is_staff||data.account?.staff_role==="manager"?[["store","সেটিংস","⚙"]]:[])
+    ].map(([k,t,icon])=><button key={k} className={view===k?"selected":""} onClick={()=>{setView(k);window.scrollTo({top:0,behavior:"smooth"});}}><span>{icon}</span>{t}</button>)}</nav>}
   </main>;
 }
