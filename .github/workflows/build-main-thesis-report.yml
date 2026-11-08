@@ -36,13 +36,17 @@ jobs:
       - name: Install TeX Live
         run: |
           sudo apt-get update
-          sudo apt-get install -y texlive-latex-extra texlive-fonts-recommended texlive-pictures texlive-science
+          sudo apt-get install -y texlive-latex-extra texlive-fonts-recommended texlive-pictures texlive-science poppler-utils
 
       - name: Compile the existing main report
         working-directory: thesis_report
         run: |
           pdflatex -interaction=nonstopmode -halt-on-error main.tex
           pdflatex -interaction=nonstopmode -halt-on-error main.tex
+          echo '--- PDF page count ---'
+          pdfinfo main.pdf | grep -E '^(Pages|Page size|File size):'
+          echo '--- LaTeX warnings ---'
+          grep -n 'LaTeX Warning' main.log || true
 
       - name: Publish the compiled main report PDF
         run: |
