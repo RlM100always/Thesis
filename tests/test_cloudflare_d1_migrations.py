@@ -46,7 +46,28 @@ def test_all_d1_migrations_apply_in_order_and_create_commerce_tables():
         "email_verification_expires_at", "password_reset_token_hash",
         "password_reset_expires_at",
     } <= merchant_columns
-    assert {"is_active", "role"} <= merchant_columns
+    assert {"is_active", "role", "display_name", "email_verification_method"} <= merchant_columns
+    owner_staff_tables = {
+        row["name"] for row in db.execute("SELECT name FROM sqlite_master WHERE type='table'")
+    }
+    assert {
+        "merchant_owner_invites",
+        "merchant_staff_store_access",
+        "merchant_staff_invites",
+        "commerce_merchant_audit",
+    } <= owner_staff_tables
+    assert {
+        "idx_owner_invites_pending_email",
+        "idx_staff_invites_pending_email",
+        "idx_merchant_staff_store_role",
+        "idx_merchant_audit_store_time",
+    } <= {
+        row["name"] for row in db.execute("SELECT name FROM sqlite_master WHERE type='index'")
+    }
+    staff_columns = {
+        row["name"] for row in db.execute("PRAGMA table_info(merchant_staff_store_access)")
+    }
+    assert {"account_id", "owner_id", "store_id", "role", "is_active", "last_login_at"} <= staff_columns
     product_columns = {
         row["name"] for row in db.execute("PRAGMA table_info(commerce_products)")
     }
@@ -210,4 +231,52 @@ def test_cod_payment_state_is_persisted_and_cancellation_is_not_marked_paid():
     assert row["payment_received_at"]
     assert row["payment_received_by"] == "owner@example.invalid"
     assert row["payment_note"] == "Collected at delivery"
+    db.close()
+
+
+def test_owner_and_staff_access_records_are_unique_and_role_scoped():
+    db = _migrated_db()
+    db.execute(
+        "INSERT INTO merchant_accounts(id,email,password_hash,password_salt,role,is_active) VALUES(?,?,?,?,?,1)",
+        ("owner-1", "owner@example.invalid", "hash", "salt", "owner"),
+    )
+    db.execute(
+        "INSERT INTO commerce_stores(id,slug,name,is_demo,is_active,owner_id) VALUES(?,?,?,?,?,?)",
+        ("store-1", "owner-shop", "Owner Shop", 0, 0, "owner-1"),
+    )
+    db.execute(
+        "INSERT INTO merchant_owner_invites(id,email,owner_name,store_name,category,area,token_hash,expires_at,identity_confirmed) VALUES(?,?,?,?,?,?,?,?,1)",
+        ("owner-invite-1", "new-owner@example.invalid", "New Owner", "New Shop", "retail", "Dhaka", "a" * 64, "2099-01-01T00:00:00Z"),
+    )
+    try:
+        db.execute(
+            "INSERT INTO merchant_owner_invites(id,email,owner_name,store_name,category,area,token_hash,expires_at,identity_confirmed) VALUES(?,?,?,?,?,?,?,?,1)",
+            ("owner-invite-2", "new-owner@example.invalid", "New Owner", "New Shop", "retail", "Dhaka", "b" * 64, "2099-01-01T00:00:00Z"),
+        )
+        assert False, "a second pending owner invitation for the same email must be rejected"
+    except sqlite3.IntegrityError:
+        pass
+
+    db.execute(
+        "INSERT INTO merchant_accounts(id,email,password_hash,password_salt,role,is_active) VALUES(?,?,?,?,?,1)",
+        ("staff-1", "staff@example.invalid", "hash", "salt", "staff"),
+    )
+    db.execute(
+        "INSERT INTO merchant_staff_store_access(account_id,owner_id,store_id,role,is_active) VALUES(?,?,?,?,1)",
+        ("staff-1", "owner-1", "store-1", "inventory"),
+    )
+    row = db.execute(
+        "SELECT x.role,s.owner_id FROM merchant_staff_store_access x JOIN commerce_stores s ON s.id=x.store_id WHERE x.account_id=?",
+        ("staff-1",),
+    ).fetchone()
+    assert row["role"] == "inventory"
+    assert row["owner_id"] == "owner-1"
+    try:
+        db.execute(
+            "INSERT INTO merchant_staff_store_access(account_id,owner_id,store_id,role,is_active) VALUES(?,?,?,?,1)",
+            ("staff-1", "owner-1", "store-1", "superadmin"),
+        )
+        assert False, "unknown staff roles must be rejected"
+    except sqlite3.IntegrityError:
+        pass
     db.close()
