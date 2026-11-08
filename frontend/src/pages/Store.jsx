@@ -1098,7 +1098,7 @@ function CheckoutView({ store, cart, products, onBack, onDone, scCustomer, varia
       return;
     }
     if (form.payment === "sslcommerz") {
-      if (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(form.email.trim())) {
+      if (!/^[^\s@]+@[^\\s@]+\.[^\\s@]+$/.test(form.email.trim())) {
         setError("অনলাইন পেমেন্টের জন্য সঠিক ইমেইল ঠিকানা দিতে হবে।");
         return;
       }
