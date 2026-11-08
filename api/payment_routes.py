@@ -470,7 +470,7 @@ async def sslcz_initiate(
     order = _get_order(order_id or "", org_id, db)
     customer_email = customer_email.strip().lower()
     customer_city = customer_city.strip()[:80]
-    if not re.fullmatch(r"[^\\s@]+@[^\\s@]+\\.[^\\s@]+", customer_email):
+    if not re.fullmatch(r"[^\s@]+@[^\s@]+\.[^\s@]+", customer_email):
         raise HTTPException(422, "A valid customer email is required for SSLCommerz checkout.")
     if not customer_city or not order.shipping_name or not order.shipping_phone or not order.shipping_address:
         raise HTTPException(422, "Complete customer name, phone, address and division are required for SSLCommerz checkout.")
@@ -498,20 +498,20 @@ async def sslcz_initiate(
         "fail_url":    f"{base}/api/public/payment/fail",
         "cancel_url":  f"{base}/api/public/payment/cancel",
         "ipn_url":     f"{base}/api/public/payment/ipn",
-        "cus_name":    order.shipping_name or "Customer",
-        "cus_email":   "customer@bsmart.local",
-        "cus_phone":   order.shipping_phone or "01700000000",
-        "cus_add1":    order.shipping_address or "Bangladesh",
-        "cus_city":    "Dhaka", "cus_country": "Bangladesh",
-        "ship_name":   order.shipping_name or "Customer",
-        "ship_add1":   order.shipping_address or "Bangladesh",
-        "ship_city":   "Dhaka", "ship_postcode": "1000", "ship_country": "Bangladesh",
+        "cus_name":    order.shipping_name,
+        "cus_email":   customer_email,
+        "cus_phone":   order.shipping_phone,
+        "cus_add1":    order.shipping_address,
+        "cus_city":    customer_city, "cus_country": "Bangladesh",
+        "ship_name":   order.shipping_name,
+        "ship_add1":   order.shipping_address,
+        "ship_city":   customer_city, "ship_postcode": "1000", "ship_country": "Bangladesh",
         "shipping_method": "Courier",
         "product_name": f"Order #{order.document_number}",
         "product_category": "general", "product_profile": "general",
         "num_of_item": "1",
         "multi_card_name": "mastercard,visacard,amexcard,bKash,nagad",
-        "value_a": order.id, "value_b": org_id, "value_c": order.access_token or "",
+        "value_a": order.id, "value_b": org_id, "value_c": order.access_token,
     }
     async with httpx.AsyncClient(timeout=30) as c:
         resp = await c.post(init_url, data=payload)
