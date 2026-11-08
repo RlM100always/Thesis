@@ -1,5 +1,6 @@
 import { canTransitionOrderStatus, defaultOrderStatusNote } from "./order-workflow.js";
 import { hasMerchantPermission, merchantPermissionFor } from "./merchant-permissions.mjs";
+import { isLoginLocked, nextLoginFailure } from "./login-lockout.mjs";
 import { ownerAssistantAnswer } from "./assistant-routes.js";
 
 /* Authenticated Cloudflare Primary merchant console.
@@ -31,6 +32,20 @@ async function json(request,error,max=10000){
 const short=(value,n=120)=>String(value??"").trim().slice(0,n);
 const validEmail=email=>/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)&&email.length<=180;
 const authMailConfigured=env=>Boolean(env.RESEND_API_KEY&&env.AUTH_EMAIL_FROM);
+async function allowMerchantAuthRequest(env,request,scope,limit=10) {
+ const ip=short(request.headers.get("CF-Connecting-IP")||"unknown",80);
+ const key=await sha256("merchant-auth:"+scope+":"+ip);
+ const windowId=Math.floor(Date.now()/60000);
+ await env.DB.prepare(
+  "INSERT INTO commerce_ai_rate_limits(key_hash,window_id,request_count) VALUES(?,?,1) " +
+  "ON CONFLICT(key_hash) DO UPDATE SET " +
+  "request_count=CASE WHEN commerce_ai_rate_limits.window_id=excluded.window_id THEN commerce_ai_rate_limits.request_count+1 ELSE 1 END," +
+  "window_id=excluded.window_id,updated_at=CURRENT_TIMESTAMP"
+ ).bind(key,windowId).run();
+ const row=await env.DB.prepare("SELECT request_count FROM commerce_ai_rate_limits WHERE key_hash=?").bind(key).first();
+ return Number(row?.request_count||0)<=limit;
+}
+
 function dhakaDate(value=Date.now()) {
  return new Date(value+6*60*60*1000).toISOString().slice(0,10);
 }
@@ -209,6 +224,7 @@ export async function merchantRouter(req,env,path,output,error){
    if(!validEmail(email))return bad(req,error,422,"Valid email required");
    if(password.length<12||password.length>128)return bad(req,error,422,"Password must contain 12-128 characters");
    if(!authMailConfigured(env))return bad(req,error,503,"Owner email verification is not configured yet");
+   if(!await allowMerchantAuthRequest(env,req,"register",5))return bad(req,error,429,"Too many registration requests; try again later.");
    const today=await env.DB.prepare("SELECT COUNT(*) AS n FROM merchant_accounts WHERE created_at >= datetime('now','start of day')").first();
    if(Number(today?.n||0)>=20)return bad(req,error,429,"Daily account registration limit reached");
    if(await env.DB.prepare("SELECT id FROM merchant_accounts WHERE email=?").bind(email).first())
@@ -238,6 +254,7 @@ export async function merchantRouter(req,env,path,output,error){
   if(method==="POST"&&path==="/api/merchant/resend-verification"){
    if(!authMailConfigured(env))return bad(req,error,503,"Owner email verification is not configured yet");
    const b=await json(req,error),email=short(b.email,200).toLowerCase();
+   if(validEmail(email)&&!await allowMerchantAuthRequest(env,req,"resend:"+email,3))return bad(req,error,429,"Too many verification requests; try again later.");
    if(validEmail(email)){
     const row=await env.DB.prepare("SELECT id,email,email_verified_at FROM merchant_accounts WHERE email=?").bind(email).first();
     if(row&&!row.email_verified_at){
@@ -250,6 +267,7 @@ export async function merchantRouter(req,env,path,output,error){
   if(method==="POST"&&path==="/api/merchant/forgot-password"){
    if(!authMailConfigured(env))return bad(req,error,503,"Password recovery email is not configured yet");
    const b=await json(req,error),email=short(b.email,200).toLowerCase();
+   if(validEmail(email)&&!await allowMerchantAuthRequest(env,req,"forgot:"+email,3))return bad(req,error,429,"Too many password reset requests; try again later.");
    if(validEmail(email)){
     const row=await env.DB.prepare("SELECT id,email FROM merchant_accounts WHERE email=?").bind(email).first();
     if(row){
@@ -263,6 +281,7 @@ export async function merchantRouter(req,env,path,output,error){
    const b=await json(req,error),token=String(b.token||"").trim(),password=String(b.password||"");
    if(!/^[a-f0-9]{64}$/i.test(token))return bad(req,error,400,"Invalid or expired password reset link");
    if(password.length<12||password.length>128)return bad(req,error,422,"Password must contain 12-128 characters");
+   if(!await allowMerchantAuthRequest(env,req,"reset",8))return bad(req,error,429,"Too many password reset attempts; try again later.");
    const row=await env.DB.prepare("SELECT id FROM merchant_accounts WHERE password_reset_token_hash=? AND password_reset_expires_at>?").bind(await sha256(token.toLowerCase()),new Date().toISOString()).first();
    if(!row)return bad(req,error,400,"Invalid or expired password reset link");
    const salt=randomHex(16),hash=await passwordDigest(password,salt);
@@ -279,8 +298,9 @@ export async function merchantRouter(req,env,path,output,error){
    const legacyKey=String(b.access_key||(/^[0-9a-f]{64}$/i.test(password)?password:"")).trim().toLowerCase();
    if(!validEmail(email)||(!password&&!legacyKey))return bad(req,error,401,"Invalid email or password");
    const now=new Date().toISOString();
+   if(!await allowMerchantAuthRequest(env,req,"login:"+email,12))return bad(req,error,429,"Too many login requests; try again later.");
    const lock=await env.DB.prepare("SELECT failures,lock_until FROM merchant_login_attempts WHERE email=?").bind(email).first();
-   if(lock?.lock_until&&lock.lock_until>now)return bad(req,error,429,"Too many attempts; try again later");
+   if(isLoginLocked(lock,Date.now()))return bad(req,error,429,"Too many attempts; try again later");
    const acc=await env.DB.prepare("SELECT id,email,display_name,password_hash,password_salt,access_key_digest,email_verified_at,is_active,role FROM merchant_accounts WHERE email=?").bind(email).first();
    let valid=false;
    if(acc&&password.length>=12&&acc.password_salt&&acc.password_salt!=="DISABLED"&&acc.password_hash!=="ACCESS_KEY_ONLY"){
@@ -303,8 +323,8 @@ export async function merchantRouter(req,env,path,output,error){
    if(valid&&acc.password_hash!=="ACCESS_KEY_ONLY"&&!acc.email_verified_at)
     return bad(req,error,403,"Please verify your email before signing in. Use the verification link sent to your inbox.");
    if(!valid){
-    const failures=(lock?.failures||0)+1,until=failures>=6?new Date(Date.now()+15*60*1000).toISOString():null;
-    await env.DB.prepare("INSERT INTO merchant_login_attempts(email,failures,lock_until) VALUES(?,?,?) ON CONFLICT(email) DO UPDATE SET failures=excluded.failures,lock_until=excluded.lock_until").bind(email,failures,until).run();
+    const attempt=nextLoginFailure(lock,Date.now());
+    await env.DB.prepare("INSERT INTO merchant_login_attempts(email,failures,lock_until) VALUES(?,?,?) ON CONFLICT(email) DO UPDATE SET failures=excluded.failures,lock_until=excluded.lock_until").bind(email,attempt.failures,attempt.lock_until).run();
     return bad(req,error,401,"Invalid email or password");
    }
    await env.DB.prepare("DELETE FROM merchant_login_attempts WHERE email=?").bind(email).run();
