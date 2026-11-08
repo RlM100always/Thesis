@@ -196,24 +196,26 @@ async def bkash_callback(
 
     try:
         meta = json.loads(order.notes or "{}")
-        token   = meta.get("_bkash_token", "")
-        ak      = meta.get("_bkash_ak")
-        is_live = meta.get("_bkash_live", False)
-
-        result = await _bkash_execute_payment(ak, token, paymentID, is_live)
-
-        if result.get("statusCode") == "0000":
-            order.payment_status = "paid"
-            # Store bKash transaction ID
-            meta["_bkash_trx_id"] = result.get("trxID", "")
-            order.notes = json.dumps(meta)
-        else:
-            order.payment_status = "payment_failed"
-
-        db.commit()
+        if str(meta.get("_bkash_payment_id") or "") != paymentID:
+            raise ValueError("bKash payment reference mismatch")
+        token = meta.get("_bkash_token")
+        ak = meta.get("_bkash_ak")
+        is_live = bool(meta.get("_bkash_live"))
+        if not token or not ak or not is_live:
+            raise ValueError("bKash live callback metadata is incomplete")
+        if order.payment_status != "paid":
+            result = await _bkash_execute_payment(ak, token, paymentID, is_live)
+            if _bkash_payment_verified(result, paymentID, order):
+                order.payment_status = "paid"
+                meta["_bkash_trx_id"] = result.get("trxID", "")
+                order.notes = json.dumps(meta)
+            else:
+                order.payment_status = "payment_failed"
+            db.commit()
     except Exception:
-        order.payment_status = "payment_failed"
-        db.commit()
+        if order.payment_status != "paid":
+            order.payment_status = "payment_failed"
+            db.commit()
 
     payment_result = "success" if order.payment_status == "paid" else "failed"
     return _order_redirect(order.organization_id, order.access_token, payment_result, base)
