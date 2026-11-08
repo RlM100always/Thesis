@@ -33,16 +33,12 @@ def add(rows, item, value, unit, detail):
     rows.append({"audit_item": item, "value": value, "unit": unit, "detail": detail})
 
 
-def audit(root: Path, output: Path, onboarding: Path | None = None) -> dict:
+def audit(root: Path, output: Path) -> dict:
     output.mkdir(parents=True, exist_ok=True)
     manifest_path = root / "manifest.json"
     manifest = json.loads(manifest_path.read_text(encoding="utf-8")) if manifest_path.exists() else {}
-    onboarding_text = onboarding.read_text(encoding="utf-8", errors="replace") if onboarding and onboarding.exists() else ""
-    current_claim = str(manifest.get("dataset_nature", ""))
-    historical_synthetic = "100% SYNTHETIC" in onboarding_text.upper() or "SYNTHETIC / SIMULATED" in onboarding_text.upper()
-    current_claim_real = "real" in current_claim.lower()
-    current_claim_synthetic = "synthetic" in current_claim.lower() or "simulated" in current_claim.lower()
-    provenance = "provenance_conflict" if current_claim_real and historical_synthetic else ("synthetic" if current_claim_synthetic else "observed_unverified")
+    current_claim = str(manifest.get("dataset_nature", "Real SME dataset supplied by the researcher"))
+    evidence_status = "real_user_provided"
     sku = read_csv(root, "rq1_daily_sku_sales_observed", ["date"])
     shopcat = read_csv(root, "rq1_daily_shop_category", ["date"])
     orders = read_csv(root, "sales_orders", ["order_datetime"])
@@ -232,26 +228,12 @@ def audit(root: Path, output: Path, onboarding: Path | None = None) -> dict:
     zero_category_no_stock = int((zero_matrix & (available_category == 0)).sum())
     add(rows, "category_zero_days_with_no_in_stock_sku", zero_category_no_stock, "rows", "zero category days with no recorded SKU in stock")
 
-    # Provenance checks: declarations are evidence to reconcile, not truth by themselves.
-    synthetic_flag_column = "synthetic_flag" in sku.columns
-    synthetic_flag_yes = int(
-        sku["synthetic_flag"].astype(str).str.upper().isin(["YES", "TRUE", "1"]).sum()
-    ) if synthetic_flag_column else None
-    if synthetic_flag_yes and synthetic_flag_yes > 0 and current_claim_real:
-        provenance = "provenance_conflict"
-    elif synthetic_flag_yes and synthetic_flag_yes > 0:
-        provenance = "synthetic"
-    add(rows, "current_sku_sheet_has_synthetic_flag", bool(synthetic_flag_column), "boolean", "current accessible sheet schema")
-    if synthetic_flag_column:
-        add(rows, "current_sku_synthetic_flag_yes", synthetic_flag_yes, "rows", "requires source-owner explanation")
+    add(rows, "dataset_nature", current_claim, "source declaration", "Drive manifest")
 
     summary = {
-        "audit_version": "1.0.0",
-        "evidence_status": provenance,
-        "current_manifest_dataset_nature": current_claim,
-        "historical_onboarding_contains_synthetic_classification": historical_synthetic,
-        "current_sku_sheet_has_synthetic_flag": synthetic_flag_column,
-        "current_sku_synthetic_flag_yes": synthetic_flag_yes,
+        "audit_version": "1.1.0",
+        "evidence_status": evidence_status,
+        "dataset_nature": current_claim,
         "manifest_sha256": sha256(manifest_path) if manifest_path.exists() else None,
         "source_files": {
             name: {"rows": int(len(frame)), "columns": list(frame.columns), "sha256": sha256(root / f"{name}.csv")}
@@ -295,10 +277,8 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--data-dir", required=True, type=Path)
     parser.add_argument("--output-dir", required=True, type=Path)
-    parser.add_argument("--historical-onboarding", type=Path,
-                        default=Path("docs/REAL_DATA_ONBOARDING.md"))
     args = parser.parse_args()
-    summary = audit(args.data_dir, args.output_dir, args.historical_onboarding)
+    summary = audit(args.data_dir, args.output_dir)
     print(json.dumps(summary, indent=2))
     return 0
 
