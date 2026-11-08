@@ -87,8 +87,9 @@ constraint lifecycle remain planned. See
   `confidence: model` and say so in their Bangla explanation.
 - Real model evaluation is chronological and future-repeat labels are horizon-purged.
 - Synthetic scalability rows are labelled `synthetic_scalability_only`.
-- Existing synthetic research results remain demonstration/preliminary evidence,
-  not the primary thesis result.
+- Existing RQ1 fixed-origin model outputs are development results on the real
+  SME dataset; they are preliminary until SKU-level evaluation and the final
+  untouched evaluation are completed.
 
 ## Intentionally deferred
 
