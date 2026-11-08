@@ -19,6 +19,16 @@ See `docs/DRIVE_DATASET_AUDIT_2026-11-07.md` for the full 8 November source, tra
 - The inventory ledger reproduces all sale quantities, but 269 negative-balance events across 253 shop-SKU combinations and 330 positive-sale days with non-positive reconstructed intraday stock require quarantine/reconciliation.
 - Every zero-sales category-day has at least one recorded SKU in positive reconstructed stock. This does not rule out item-level stockouts or unrecorded assortment.
 
+## Transaction-feature ablation
+
+The nine-origin, seven-day LightGBM ablation tests whether lagged transaction-derived price, discount, order and customer-day summaries improve the historical-demand baseline. The exact source checksums, per-origin metrics and pooled comparison are under `results/transaction_feature_ablation_v1/`. The extended feature set did not improve pooled WAPE (33.84% versus 33.73%) and is therefore not adopted in the current model.
+
+Run it with the controlled Drive CSV exports:
+
+```bash
+python research/forecasting/ablation_transaction_features.py --data-dir /path/to/source_csvs --output-dir /path/to/ablation_results
+```
+
 ## Reproducible source and model experiments
 
 A run may be labelled `verified_observed` only when a source-owner provenance JSON is supplied. The experiment runner checks the required source-system, owner, collection-period, collection-method, consent/licence, anonymisation, data-dictionary, prior synthetic-flag explanation, and exact input SHA-256 fields. A manifest label alone cannot promote a dataset to verified-observed status.
