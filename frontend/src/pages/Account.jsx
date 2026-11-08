@@ -350,7 +350,7 @@ export default function AccountPage() {
         <div className="ui-person" style={{ marginBottom: role ? 12 : 0 }}>
           <Avatar name={user?.display_name || "মালিক"} src={user?.avatar_data_url} size={48} />
           <div>
-            <strong>{user?.display_name || "লোকাল ডেমো মালিক"}</strong>
+            <strong>{user?.display_name || "ব্যবহারকারী"}</strong>
             <small>{user?.email || "লগইন ছাড়া ব্যবহার করছেন"}</small>
           </div>
           {role && <Badge tone="info">{ROLE_LABELS[role] || role}</Badge>}
@@ -386,7 +386,7 @@ export default function AccountPage() {
           </form>
         </Card>
       ) : (
-        <Notice tone="info" title="আপনি লগইন ছাড়া লোকাল ডেমো মালিক হিসেবে আছেন">
+        <Notice tone="info" title="আপনি এখনো লগইন করেননি">
           নিজের অ্যাকাউন্ট খুলে লগইন করলে এখানে পাসওয়ার্ড বদলাতে পারবেন।
         </Notice>
       )}
