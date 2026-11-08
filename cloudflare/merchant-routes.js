@@ -75,7 +75,7 @@ async function viewer(req,env){
 async function myStore(env,owner){
  return env.DB.prepare("SELECT * FROM commerce_stores WHERE owner_id=? ORDER BY created_at LIMIT 1").bind(owner.id).first();
 }
-async function storeOnly(env,owner){const row=await myStore(env,owner);if(!row)throw new Error("Create a store first");return row;}
+async function storeOnly(env,owner){const row=await myStore(env,owner);if(!row)throw new Error("Create a store first");if(Number(row.is_demo)!==0)throw new Error("Store is not approved for operational management");return row;}
 function stripStore(s){return {id:s.id,slug:s.slug,name:s.name,tagline:s.tagline||"",category:s.category||"",area:s.area||"",is_active:!!s.is_active,is_demo:!!s.is_demo,created_at:s.created_at};}
 async function dashboard(env,owner){
  const store=await myStore(env,owner);
@@ -471,6 +471,6 @@ export async function merchantRouter(req,env,path,output,error){
   return bad(req,error,404,"Merchant route not found");
  }catch(e){
   console.error("merchant route failure",path,e?.message||e);
-  return bad(req,error,/Create a store first/.test(e.message)?409:400,e.message==="Payload too large"?"Payload too large":"Merchant request failed");
+  return bad(req,error,(/Create a store first|not approved for operational management/.test(e.message))?409:400,e.message==="Payload too large"?"Payload too large":"Merchant request failed");
  }
 }
