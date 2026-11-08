@@ -1,0 +1,105 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{booktabs,longtable,tabularx,array,graphicx,float,amsmath,hyperref,xcolor,enumitem}
+\hypersetup{colorlinks=true,linkcolor=blue,urlcolor=blue}
+\title{B-SMART RQ1: Empirical Dataset Audit and Development-Stage Forecasting Evaluation}
+\author{Research and Reproducibility Report}
+\date{8 November 2026}
+\begin{document}\maketitle
+\begin{center}\fbox{\parbox{.92\textwidth}{\centering\textbf{EVIDENCE STATUS: EXPLORATORY — PROVENANCE NOT VERIFIED.}\\
+The Drive manifest claims real SME data but also records a fixed seed and a simulated-unmet-demand table. An earlier repository audit records a conflicting synthetic flag for a related SKU export. The current CSV export has no row-level flag. These conflicts must be resolved before claiming verified real-world evidence.}}\end{center}
+\tableofcontents\newpage
+\section{Executive summary}
+This report documents a direct audit of the supplied RQ1 shop--category panel and a reproducible development experiment. The panel contains 561,152 rows, 32 shops, 16 categories and 512 shop--category series over 1 January 2023--31 December 2025. It contains 1,580,361 observed units and a 37.5962\% zero-sales share. No duplicate series-date keys, missing required values, zero-flag mismatches or missing dates were found.
+
+A pooled LightGBM Tweedie model was compared with a weekly seasonal-naive baseline and a classic Croston average-rate diagnostic at 1-, 7-, 14- and 28-day cumulative-demand horizons. Three development origins (1 July, 1 August and 1 September 2025) produced 1,536 series-origin forecasts per horizon. Q4 2025 was excluded because it had already been inspected. LightGBM achieved lower pooled WAPE than the seasonal baseline at all four horizons. This is a development signal, not proof of generalisation: only three origins were used, training origins were sampled every 90 days, no hyperparameter search or calibrated intervals were used, and no untouched final holdout exists.
+
+\section{Data sources and audit}
+The Drive folder contained an RQ1 SKU-level observed-sales export and a complete shop--category daily panel. The latter was used for this experiment. The SKU file has 699,220 rows, 32 shops and 480 SKUs, and its data dictionary warns that missing rows are not automatically zero demand. It is an event/positive-observation table, not a complete daily panel; absent SKU dates must not be converted to zero without source-system evidence.
+
+\begin{table}[H]\centering\caption{Shop--category panel audit}\begin{tabular}{lr}\toprule
+Rows & 561,152\\Shops & 32\\Categories & 16\\Unique series & 512\\Date coverage & 2023-01-01 to 2025-12-31\\Expected rows (32$\times$16$\times$1,096) & 561,152\\Observed units & 1,580,361\\Zero-sales share & 37.5962\%\\Duplicate series-date keys & 0\\Missing required values & 0\\Zero-flag mismatches & 0\\Missing dates & 0\\\bottomrule\end{tabular}\end{table}
+The panel is internally balanced and its zero flag matches units sold. This validates file structure, not the truth of underlying transactions, store opening status, stock availability or source provenance.
+
+\subsection{Provenance conflict}
+The Drive manifest describes the package as real SME sales/people, but records a fixed seed (20261025) and a \texttt{simulated\_unmet\_demand} table. A previous research-branch audit reports that a related SKU export had \texttt{synthetic\_flag=YES}; the CSV downloaded for this run has no such column. These sources cannot be reconciled from the current export. Required evidence includes source-system extracts, data-owner confirmation, row-level generation/augmentation flags, consent/legal basis and an immutable checksummed manifest. Evidence status therefore remains \texttt{provenance\_conflict}.
+
+\section{Demand-pattern diagnosis}
+Series were classified using average demand interval (ADI) and squared coefficient of variation of positive demand (CV$^2$), with descriptive cut-points ADI=1.32 and CV$^2$=0.49. Labels are descriptive, not proof that one model family is optimal.
+\begin{table}[H]\centering\caption{Full-period regime counts}\begin{tabular}{lrrrr}\toprule
+Regime & Series & Mean zero share & Median ADI & Median CV$^2$\\\midrule
+Lumpy & 352 & 47.5\% & 1.821 & 0.644\\
+Erratic & 142 & 15.6\% & 1.196 & 0.590\\
+Smooth & 15 & 3.8\% & 1.036 & 0.462\\
+Intermittent & 3 & 83.1\% & 5.768 & 0.463\\\bottomrule\end{tabular}\end{table}
+Only three series meet the intermittent threshold, so conclusions for that segment are highly uncertain. Test-series regime labels are calculated from the history available at each forecast origin, not from future observations.
+
+\section{Forecasting design}
+The target is observed sales quantity, not revenue or unconstrained latent demand. For series $s$, origin $t$ and horizon $h$, the direct target is
+\[
+Y_{s,t,h}=\sum_{j=0}^{h-1}y_{s,t+j},\quad h\in\{1,7,14,28\}.
+\]
+Development origins are 1 July, 1 August and 1 September 2025. Features use only observations strictly before each origin: lags 1, 7, 14, 28 and 56; rolling mean, sum, standard deviation and zero share over 7, 14, 28 and 56 days; days since last sale; ADI; positive-demand mean and CV$^2$; shop/category identifiers; weekday, day, month, ISO week and cyclical calendar encodings. Training origins are sampled every 90 days to control runtime. LightGBM Tweedie uses fixed parameters (80 boosting iterations, learning rate 0.035, 31 leaves, variance power 1.3, seed 42). No hyperparameter search was performed.
+
+Candidates are: (i) pooled LightGBM Tweedie, (ii) a weekly seasonal-naive comparator using recent matching weekdays, and (iii) a classic Croston average-rate diagnostic multiplied by the horizon. The Croston implementation is not labelled SBA or TSB.
+
+\section{Development results}
+\begin{table}[H]\centering\small\caption{Pooled WAPE and point-error metrics across three origins}\begin{tabular}{rlrrrr}\toprule
+Horizon & Model & Forecasts & WAPE & MAE & RMSE\\\midrule
+1 & LightGBM Tweedie & 1,536 & 82.73\% & 2.435 & 3.504\\
+1 & Croston classic & 1,536 & 85.16\% & 2.506 & 3.639\\
+1 & Seasonal naive & 1,536 & 91.65\% & 2.697 & 3.981\\\midrule
+7 & LightGBM Tweedie & 1,536 & 33.84\% & 6.437 & 8.764\\
+7 & Croston classic & 1,536 & 38.62\% & 7.347 & 9.845\\
+7 & Seasonal naive & 1,536 & 40.88\% & 7.777 & 10.774\\\midrule
+14 & LightGBM Tweedie & 1,536 & 24.66\% & 9.108 & 12.206\\
+14 & Croston classic & 1,536 & 31.89\% & 11.779 & 16.062\\
+14 & Seasonal naive & 1,536 & 32.31\% & 11.934 & 16.804\\\midrule
+28 & LightGBM Tweedie & 1,536 & 18.84\% & 14.031 & 19.034\\
+28 & Croston classic & 1,536 & 27.06\% & 20.149 & 28.214\\
+28 & Seasonal naive & 1,536 & 25.57\% & 19.038 & 26.813\\\bottomrule
+\end{tabular}\end{table}
+Relative WAPE reduction against the seasonal baseline was 9.7\%, 17.2\%, 23.7\% and 26.3\% at 1-, 7-, 14- and 28-day horizons respectively. These are relative reductions, not percentage-point changes. Horizon-specific WAPE values are not directly comparable because target totals differ.
+
+At 7 days, LightGBM WAPE was 28.62\% for erratic, 41.89\% for lumpy, 21.82\% for smooth and 90.01\% for intermittent series. The intermittent result has only ten forecast cases and 24 actual units; it is too small for a firm conclusion. Croston classic was better on this tiny subset, while LightGBM was better on the other three regimes.
+
+\section{Architecture decision}
+Retain LightGBM Tweedie as a strong pooled candidate for the balanced shop--category panel, but do not declare it the final model. The next candidate architecture is a validation-selected mixture of experts:
+\begin{enumerate}
+\item pooled LightGBM Tweedie for regular, erratic and lumpy shop--category panels;
+\item separately unit-tested Croston, SBA and TSB for verified intermittent SKU series;
+\item a two-stage occurrence/positive-size model only if its probabilities are calibrated and it improves the same validation origins;
+\item validation-only regime selection/blending with minimum-support rules; otherwise fall back to the pooled model or transparent baseline;
+\item quantile/conformal intervals with empirical coverage and interval width;
+\item shop/category/network reconciliation only after hierarchy identities are reconciled to source data.
+\end{enumerate}
+Price, promotion, stock-on-hand, stockout, opening-hours and lead-time variables are not used because timestamp-valid availability has not yet been verified. Observed sales may be stockout-censored and must not be called unconstrained demand. Inventory policy backtesting is a separate experiment requiring verified stock, receipts, lead times and cost assumptions.
+
+\section{Limitations}
+\begin{enumerate}
+\item Data provenance is unresolved; real-world status is not independently established.
+\item Only three development origins were evaluated; more origins and block-bootstrap uncertainty are required.
+\item Q4 2025 is previously inspected and is not an untouched final holdout.
+\item Sales are not latent demand when inventory availability is unknown.
+\item The 90-day training-origin stride may miss short-term dynamics.
+\item CatBoost, calibrated hurdle models, true SBA/TSB, quantile models and reconciliation were not run.
+\item No hyperparameter search, prediction intervals or final model selection was performed.
+\item Pooled metrics can hide weak shop/category performance; retain per-series outputs.
+\end{enumerate}
+
+\section{Reproducibility}
+Install \texttt{requirements-research.txt} and run from the repository root:
+\begin{verbatim}
+python research/forecasting/run_rq1_experiment.py --input path/to/panel.csv --output artifacts/rq1_development --evidence-status provenance_conflict
+\end{verbatim}
+The run writes input SHA-256, demand diagnostics, per-origin predictions, per-origin metrics, horizon comparisons, regime metrics and a run manifest. Restricted source data are not copied into the public repository.
+
+\section{Next actions before thesis-final claims}
+Resolve provenance; reconcile SKU sales with source transactions, returns, closures and stockouts; extend validation to at least 6--12 origins where history permits; add a new untouched future period or held-out shops; implement and test SBA/TSB/CatBoost/calibrated hurdle candidates; add uncertainty calibration; join only point-in-time-valid price/promotion/stock features; and backtest inventory policies on identical demand, stock and receipt paths. Until these gates are passed, report this work as development evidence only.
+
+\section*{References}
+Croston, J.D. (1972). Forecasting and stock control for intermittent demands. \emph{Operational Research Quarterly}, 23(3), 289--303.\\
+Syntetos, A.A. and Boylan, J.E. (2005). The accuracy of intermittent demand estimates. \emph{International Journal of Forecasting}, 21(2), 303--314.\\
+Ke, G. et al. (2017). LightGBM: A highly efficient gradient boosting decision tree. \emph{NeurIPS}, 30.\\
+Hyndman, R.J. and Koehler, A.B. (2006). Another look at measures of forecast accuracy. \emph{International Journal of Forecasting}, 22(4), 679--688.
+\end{document}
