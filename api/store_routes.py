@@ -111,7 +111,7 @@ def _store_public_view(store: Store, org: Organization) -> dict:
     return {
         "organization_id": store.organization_id,
         "slug": store.slug,
-        "is_demo": store.slug.startswith("demo-bsmart-"),
+        "is_demo": False,
         "is_active": store.is_active,
         "display_name": store.display_name,
         "tagline": store.tagline,
@@ -141,12 +141,10 @@ def _store_public_view(store: Store, org: Organization) -> dict:
         "delivery_free_above": float(store.delivery_free_above) if store.delivery_free_above else None,
         "allow_zone_restriction": store.allow_zone_restriction,
         "allowed_divisions": store.allowed_divisions,
-        # Expose only the store_id (not password) to public — needed for frontend to show SSLCommerz option
-        "sslcz_store_id": store.sslcz_store_id or None,
-        "sslcz_is_live": store.sslcz_is_live,
-        # Expose presence (not secrets) so frontend knows direct API mode is available
-        "bkash_app_key": store.bkash_app_key or None,
-        "nagad_merchant_id": store.nagad_merchant_id or None,
+        # Public storefront receives readiness booleans only, never gateway identifiers or secrets.
+        "sslcz_live_enabled": bool(store.sslcz_store_id and store.sslcz_store_passwd and store.sslcz_is_live),
+        "bkash_direct_enabled": bool(store.bkash_app_key and store.bkash_app_secret and store.bkash_username and store.bkash_password and store.bkash_is_live),
+        "nagad_direct_enabled": bool(store.nagad_merchant_id and store.nagad_merchant_number and store.nagad_pub_key and store.nagad_priv_key and store.nagad_is_live),
     }
 
 
@@ -203,7 +201,10 @@ def list_public_stores(
     """Return all active stores for the public directory page."""
     q = select(Store, Organization).join(
         Organization, Organization.id == Store.organization_id
-    ).where(Store.is_active.is_(True)).order_by(Store.display_name)
+    ).where(
+        Store.is_active.is_(True),
+        ~Store.slug.like("demo-bsmart-%"),
+    ).order_by(Store.display_name)
     rows = db.execute(q).all()
     result = []
     for store, org in rows:
@@ -234,10 +235,12 @@ def list_public_stores(
 def public_store_diagnostics(db: Db):
     """Aggregate public catalog availability; no tenant/customer identifiers."""
     from sqlalchemy import func
-    active = db.scalar(select(func.count(Store.id)).where(Store.is_active.is_(True))) or 0
+    active = db.scalar(select(func.count(Store.id)).where(
+        Store.is_active.is_(True), ~Store.slug.like("demo-bsmart-%")
+    )) or 0
     listed = db.scalar(select(func.count(StoreProduct.id)).join(
         Store, Store.id == StoreProduct.store_id
-    ).where(Store.is_active.is_(True), StoreProduct.is_listed.is_(True))) or 0
+    ).where(Store.is_active.is_(True), ~Store.slug.like("demo-bsmart-%"), StoreProduct.is_listed.is_(True))) or 0
     return {
         "active_stores": int(active),
         "listed_products": int(listed),
@@ -254,7 +257,7 @@ def public_store_diagnostics(db: Db):
 def get_public_store_by_slug(slug: str, db: Db):
     """Lookup a store by its slug instead of org UUID."""
     store = db.scalar(select(Store).where(
-        Store.slug == slug, Store.is_active.is_(True)
+        Store.slug == slug, Store.is_active.is_(True), ~Store.slug.like("demo-bsmart-%")
     ))
     if store is None:
         raise HTTPException(status_code=404, detail="Store not found or not active")
@@ -296,7 +299,7 @@ def get_public_store(organization_id: str, db: Db):
     are genuinely invisible to the public.
     """
     store = db.scalar(select(Store).where(
-        Store.organization_id == organization_id, Store.is_active.is_(True)
+        Store.organization_id == organization_id, Store.is_active.is_(True), ~Store.slug.like("demo-bsmart-%")
     ))
     if store is None:
         raise HTTPException(status_code=404, detail="Store not found or not active")
@@ -323,6 +326,8 @@ class StoreCreate(BaseModel):
     @classmethod
     def validate_slug(cls, v: str) -> str:
         v = v.lower().strip()
+        if v.startswith("demo-bsmart-"):
+            raise ValueError("This store URL prefix is reserved")
         if not SLUG_RE.match(v):
             raise ValueError("Slug must be 3-80 lowercase letters, digits, or hyphens")
         return v
