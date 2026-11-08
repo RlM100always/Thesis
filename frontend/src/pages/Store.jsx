@@ -1648,7 +1648,11 @@ export default function StorePage() {
   const [cart, setCart] = useState({});
   const [variantSelections, setVariantSelections] = useState({});  // productId → label
   const [cartOpen, setCartOpen] = useState(false);
-  const [portalOpen, setPortalOpen] = useState(false);
+  const [portalOpen, setPortalOpen] = useState(() => {
+    const hash = window.location.hash || "";
+    const query = hash.includes("?") ? hash.slice(hash.indexOf("?") + 1) : "";
+    return new URLSearchParams(query).has("customer_reset");
+  });
   const [scCustomer, setScCustomer] = useState(null); // logged-in store customer
   const [chatUnread, setChatUnread] = useState(0);
   const [wishlistIds, setWishlistIds] = useState({});
