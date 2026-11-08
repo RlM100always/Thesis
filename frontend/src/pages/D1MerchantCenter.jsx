@@ -347,7 +347,6 @@ export default function D1MerchantCenter(){
               <Field label="পরিমাণ (টাকা)"><input style={input} type="number" min={1} max={500000} required value={cashForm.amount_bdt} onChange={e=>setCashForm(v=>({...v,amount_bdt:e.target.value}))}/></Field>
               <Field label="বিবরণ"><input style={input} minLength={3} required value={cashForm.description} onChange={e=>setCashForm(v=>({...v,description:e.target.value}))}/></Field>
               <button className="dm-btn" disabled={busy} type="submit">হিসাব সংরক্ষণ করুন</button></form>
-          </section>
           </section>}
           {(!data.account?.is_staff||data.account?.staff_role==="manager")&&<section className="dm-panel"><h2>সাম্প্রতিক নগদ হিসাব</h2>
             {!(data.cashbook||[]).length?<Empty>এখনো কোনো হিসাব যোগ করা হয়নি।</Empty>:<div className="dm-scroll"><table><thead><tr><th>তারিখ</th><th>ধরন</th><th>পরিমাণ</th><th>বিবরণ</th></tr></thead>
