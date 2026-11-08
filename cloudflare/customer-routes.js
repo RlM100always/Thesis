@@ -68,7 +68,7 @@ async function storeBySlug(env, slug) {
   return isPublicStore(row)?row:null;
 }
 function customerResetLink(env, storeSlug, token) {
-  const base = String(env.PUBLIC_APP_URL || "https://thesis-j0n8.onrender.com").replace(/\\/$/, "");
+  const base = String(env.PUBLIC_APP_URL || "https://thesis-j0n8.onrender.com").replace(/\/$/, "");
   return base + "/#/store/" + encodeURIComponent(storeSlug) + "?customer_reset=" + encodeURIComponent(token);
 }
 async function sendCustomerPasswordReset(env, email, storeSlug, token) {
