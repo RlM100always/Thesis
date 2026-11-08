@@ -28,3 +28,4 @@ jobs:
         run: |
           python research/forecasting/rq1_shop_category_experiment.py --help
           python research/forecasting/audit_rq1_sources.py --help
+          python research/forecasting/ablation_transaction_features.py --help
