@@ -162,8 +162,7 @@ async function merchantAudit(env,storeId,actorId,action,targetType,targetId,deta
  ).bind(crypto.randomUUID(),storeId,actorId||null,action,targetType,targetId||null,JSON.stringify(details)).run();
 }
 function storeSlug(name) {
- const base=String(name||"").normalize("NFKD").replace(/[\\u0300-\\u036f]/g,"").toLowerCase()
-  .replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"").slice(0,42)||"store";
+ const base=String(name||"").toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"").slice(0,42)||"store";
  return base+"-"+randomHex(3);
 }
 async function createMerchantSession(env,accountId) {
@@ -407,6 +406,7 @@ export async function merchantRouter(req,env,path,output,error){
   if(method==="POST"&&path==="/api/merchant/staff"){
    if(owner.role!=="owner")return bad(req,error,403,"Only the store owner can invite staff.");
    const store=await storeOnly(env,owner),b=await json(req,error);
+   if(store.is_demo)return bad(req,error,409,"Staff access is available only for a verified operational store.");
    const email=short(b.email,180).toLowerCase(),displayName=short(b.display_name,120),role=short(b.role,24);
    if(!validEmail(email)||displayName.length<2||!["manager","sales","inventory","support","analyst"].includes(role))
     return bad(req,error,422,"Provide a valid staff name, email and role.");
@@ -660,7 +660,7 @@ export async function merchantRouter(req,env,path,output,error){
    if(name.length<3||!area||!category)return bad(req,error,422,"Invalid store profile");
    if(b.is_active===true&&!store.is_active)return bad(req,error,403,"A platform administrator must approve and publish this store");
    const active=b.is_active===false?0:Number(store.is_active);
-   await env.DB.prepare("UPDATE commerce_stores SET name=?,tagline=?,category=?,area=?,is_active=? WHERE id=? AND owner_id=?").bind(name,tagline,category,area,active,store.id,owner.id).run();
+   await env.DB.prepare("UPDATE commerce_stores SET name=?,tagline=?,category=?,area=?,is_active=? WHERE id=? AND owner_id=?").bind(name,tagline,category,area,active,store.id,store.owner_id).run();
    return output(req,{store:stripStore(await myStore(env,owner))});
   }
   if(method==="POST"&&path==="/api/merchant/cashbook"){
