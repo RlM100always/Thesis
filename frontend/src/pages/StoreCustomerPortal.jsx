@@ -735,8 +735,7 @@ export default function StoreCustomerPortal({ storeSlug, storeName, onClose, onA
               {tab === "orders" && <OrdersView storeSlug={storeSlug} token={token} onReorder={onReorder ? (items) => { onReorder(items); onClose(); } : null} />}
               {tab === "wishlist" && <WishlistView token={token} storeSlug={storeSlug} onAddToCart={onAddToCart ? (productId) => { onAddToCart(productId); onClose(); } : null} />}
               {tab === "security" && <SecurityView token={token} storeSlug={storeSlug} onTokenChange={handleTokenChange} />}
-              {tab === "chat" && !isD1Store(storeSlug) && <ChatView storeSlug={storeSlug} token={token} storeName={storeName} />}
-              {tab === "chat" && isD1Store(storeSlug) && <div style={{padding:20,textAlign:"center",color:"var(--text-muted)",fontSize:13}}>এই পরীক্ষামূলক দোকানে লাইভ চ্যাট এখনো চালু হয়নি। অর্ডার ও ঠিকানা ব্যবস্থাপনা ব্যবহার করতে পারবেন।</div>}
+              {tab === "chat" && <ChatView storeSlug={storeSlug} token={token} storeName={storeName} />}
             </>
           )}
         </div>
