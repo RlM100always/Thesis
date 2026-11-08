@@ -1,9 +1,9 @@
 import { canTransitionOrderStatus, defaultOrderStatusNote } from "./order-workflow.js";
 import { ownerAssistantAnswer } from "./assistant-routes.js";
 
-/* Authenticated Cloudflare D1 merchant console (separate from legacy FastAPI).
-   Public demo checkout does not accept any real payment or delivery.
-   IMPORTANT: This owner identity is not imported from ephemeral SQLite.
+/* Authenticated Cloudflare Primary merchant console.
+   Owner and staff identities are stored in this D1 database. Legacy FastAPI
+   identities are not imported without a verified source export.
 */
 const encoder=new TextEncoder();
 const hex=arr=>Array.from(new Uint8Array(arr),b=>b.toString(16).padStart(2,"0")).join("");
