@@ -17,7 +17,6 @@ SSLCommerz flow (all-in-one: bKash + Nagad + cards):
 
 import base64
 import json
-import os
 import uuid
 from decimal import Decimal
 
@@ -197,7 +196,7 @@ async def bkash_callback(
     try:
         meta = json.loads(order.notes or "{}")
         token   = meta.get("_bkash_token", "")
-        ak      = meta.get("_bkash_ak", BKASH_DEMO_APP_KEY)
+        ak      = meta.get("_bkash_ak")
         is_live = meta.get("_bkash_live", False)
 
         result = await _bkash_execute_payment(ak, token, paymentID, is_live)
@@ -301,7 +300,9 @@ async def nagad_initiate(
 
     try:
         encrypted_sensitive = _nagad_encrypt(sensitive, pub_key)
-        signature = _nagad_sign(sensitive, priv_key) if priv_key else "sandbox_sig"
+        if not priv_key:
+            raise HTTPException(409, "Nagad live signing key is not configured for this store.")
+        signature = _nagad_sign(sensitive, priv_key)
     except Exception as e:
         raise HTTPException(502, f"Nagad encryption error: {e}")
 
@@ -366,7 +367,7 @@ async def nagad_callback(
     # Verify payment via Nagad
     try:
         meta = json.loads(order.notes or "{}")
-        mid     = meta.get("_nagad_mid", NAGAD_DEMO_MERCHANT_ID)
+        mid     = meta.get("_nagad_mid")
         is_live = meta.get("_nagad_live", False)
         base_url = _nagad_base(is_live)
 
@@ -508,7 +509,9 @@ async def sslcz_ipn(
     store = db.scalar(select(Store).where(Store.organization_id == value_b))
     if not store: return {"status": "store_not_found"}
     sid, spwd, is_live = _sslcz_creds(store)
-    val_url = SSLCZ_LIVE_VAL if is_live else SSLCZ_SANDBOX_VAL
+    if not is_live:
+        raise HTTPException(409, "SSLCommerz live payment validation is not enabled for this store.")
+    val_url = SSLCZ_LIVE_VAL
     async with httpx.AsyncClient(timeout=20) as c:
         r = await c.get(val_url, params={"val_id": val_id, "store_id": sid, "store_passwd": spwd, "format": "json"})
     vdata = r.json()
