@@ -156,7 +156,8 @@ def cluster_bootstrap_h7(predictions, n_bootstrap=2000, seed=20261108):
         ])
     rng = np.random.default_rng(seed)
     rows = []
-    for challenger in sorted(set(forecasts) - {"LightGBM_Tweedie"}):
+    challenger_order = ["CatBoost_Tweedie", "CatBoost_Hurdle_raw", "Seasonal_Naive_7", "Croston_SBA", "TSB"]
+    for challenger in [name for name in challenger_order if name in forecasts]:
         differences = []
         for _ in range(n_bootstrap):
             sample = rng.integers(0, len(keys), size=len(keys))
@@ -271,7 +272,7 @@ def run(input_path: Path, output_path: Path, evidence_status="provenance_conflic
                 forecast = np.asarray(forecast, dtype=float)
                 origin_metrics.append({
                     "horizon": horizon, "origin": str(origin.date()), "model": name,
-                    "train_rows": len(x_train), "fit_seconds_all_candidates": elapsed,
+                    "train_rows": len(x_train), "candidate_fit_block_seconds": elapsed,
                     **metric_row(y_test, forecast, mase_scale)
                 })
                 for i, (shop, category) in enumerate(meta):
@@ -351,9 +352,9 @@ def run(input_path: Path, output_path: Path, evidence_status="provenance_conflic
         },
         "python": sys.version, "platform": platform.platform(),
         "pandas": pd.__version__, "numpy": np.__version__, "lightgbm": lgb.__version__,
+        "catboost": __import__("catboost").__version__,
         "sklearn": __import__("sklearn").__version__,
         "final_holdout_evaluated": False, "fourth_quarter_2025_used_for_selection": False,
-        "feature_history_days": 56, "training_origin_stride_days": 28,
         "catboost_parameters": {"loss_function": "Tweedie:variance_power=1.3", "iterations": 120, "learning_rate": 0.04, "depth": 6, "l2_leaf_reg": 5, "random_seed": 42},
         "hurdle_parameters": {"classifier_iterations": 100, "regressor_iterations": 100, "depth": 5, "learning_rate": 0.04, "classifier_auto_class_weights": "Balanced", "probability_calibrated": False},
         "elapsed_seconds": round(time.time()-started, 2)
