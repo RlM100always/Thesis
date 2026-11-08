@@ -17,6 +17,7 @@ import StoreAssistant from "../components/StoreAssistant";
 import { useUi } from "../UiContext";
 import { displayStoreCategory, displayProductUnit, displayStoreTagline, displayStoreDelivery, displayStoreArea, isSyntheticDemoArea } from "../storeDisplayText";
 import {contrastColor,readableAccent} from "../storeContrast";
+import { filterAndSortProducts } from "../storefrontCatalogue";
 
 // ─── Utility ─────────────────────────────────────────────────────────────────
 const money = (v) => `৳${Number(v).toLocaleString("bn-BD", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
@@ -141,6 +142,10 @@ const STORE_CSS = `
 .s-filter-btn { padding: 9px 16px; border: 1.5px solid #d8e8e0; border-radius: 12px; font-size: 13px; font-weight: 500; font-family: inherit; background: #fff; cursor: pointer; white-space: nowrap; transition: all .12s; color: #4a6358; }
 .s-filter-btn:hover { border-color: var(--sa); color: var(--sa); }
 .s-filter-btn.active { background: var(--sa); border-color: var(--sa); color: #fff; font-weight: 700; box-shadow: 0 4px 10px rgba(var(--sa-rgb)/.3); }
+.s-filter-select { min-height: 42px; max-width: 210px; padding: 9px 34px 9px 12px; border: 1.5px solid #d8e8e0; border-radius: 12px; background: #fff; color: #365247; font: inherit; font-size: 13px; cursor: pointer; }
+.s-filter-select:focus-visible, .s-search:focus-visible, .s-filter-btn:focus-visible { outline: 3px solid var(--sa); outline-offset: 2px; }
+@media (max-width: 640px) { .s-filter-bar { display: grid; grid-template-columns: 1fr 1fr; } .s-search-wrap-inner { grid-column: 1 / -1; min-width: 0; } .s-filter-select { max-width: none; width: 100%; min-width: 0; } .s-filter-bar > .s-filter-btn { grid-column: 1 / -1; } }
+
 
 /* ── Product detail page ── */
 .s-detail { max-width: 900px; margin: 0 auto; padding: 28px 20px 64px; }
@@ -1653,6 +1658,8 @@ export default function StorePage() {
   const [search, setSearch] = useState("");
   const [activeCat, setActiveCat] = useState(null);
   const [sortOrder, setSortOrder] = useState("recommended");
+  const [brandFilter, setBrandFilter] = useState("");
+  const [stockFilter, setStockFilter] = useState("all");
   const [visibleCount, setVisibleCount] = useState(20);
   const [modalProduct, setModalProduct] = useState(null);
   const [confirmedOrder, setConfirmedOrder] = useState(null);
@@ -1796,27 +1803,17 @@ export default function StorePage() {
     return [...cats].sort((a, b) => a.localeCompare(b, "bn"));
   }, [products]);
 
-  const filtered = useMemo(() => {
-    let list = [...products];
-    if (search) {
-      const q = search.toLowerCase();
-      list = list.filter(p => `${p.name} ${p.sku || ""} ${p.category || ""} ${p.brand || ""} ${(p.tags || []).join(" ")} ${p.description || ""}`.toLowerCase().includes(q));
-    }
-    if (activeCat) list = list.filter(p => p.category === activeCat || p.tags?.includes(activeCat));
-    return list;
-  }, [products, search, activeCat]);
+  const allBrands = useMemo(() => [...new Set(products.map(p => String(p.brand || "").trim()).filter(Boolean))]
+    .sort((a, b) => a.localeCompare(b, "bn")), [products]);
+
+  const filtered = useMemo(() => filterAndSortProducts(products, {
+    search, category: activeCat, brand: brandFilter, stock: stockFilter, sort: "recommended",
+  }), [products, search, activeCat, brandFilter, stockFilter]);
 
   const featured = useMemo(() => products.filter(p => p.is_featured), [products]);
-  const sortedProducts = useMemo(() => {
-    const list = [...filtered];
-    if (sortOrder === "price-low" || sortOrder === "price-high") list.sort((a, b) => {
-      if (a.price == null) return b.price == null ? 0 : 1;
-      if (b.price == null) return -1;
-      return sortOrder === "price-low" ? a.price - b.price : b.price - a.price;
-    });
-    if (sortOrder === "name") list.sort((a, b) => a.name.localeCompare(b.name, "bn"));
-    return list;
-  }, [filtered, sortOrder]);
+  const sortedProducts = useMemo(() => filterAndSortProducts(filtered, { sort: sortOrder }), [filtered, sortOrder]);
+
+  useEffect(() => { setVisibleCount(20); }, [search, activeCat, brandFilter, stockFilter, sortOrder]);
 
   const orgId = store?.organization_id;
 
@@ -2132,11 +2129,29 @@ export default function StorePage() {
                 <span className="s-search-icon-inner">🔍</span>
                 <input
                   className="s-search"
-                  placeholder="পণ্য খুঁজুন…"
+                  type="search"
+                  aria-label="পণ্যের নাম, ব্র্যান্ড বা বিবরণ দিয়ে খুঁজুন"
+                  placeholder="পণ্যের নাম, ব্র্যান্ড বা বিবরণ খুঁজুন…"
                   value={search}
                   onChange={e => setSearch(e.target.value)}
                 />
               </div>
+              {allBrands.length > 0 && (
+                <select className="s-filter-select" aria-label="ব্র্যান্ড অনুযায়ী ফিল্টার" value={brandFilter} onChange={e => setBrandFilter(e.target.value)}>
+                  <option value="">সব ব্র্যান্ড</option>
+                  {allBrands.map(brand => <option key={brand} value={brand}>{brand}</option>)}
+                </select>
+              )}
+              <select className="s-filter-select" aria-label="স্টক অনুযায়ী ফিল্টার" value={stockFilter} onChange={e => setStockFilter(e.target.value)}>
+                <option value="all">সব পণ্য</option>
+                <option value="available">শুধু স্টকে আছে</option>
+                <option value="unavailable">স্টকে নেই</option>
+              </select>
+              {(search || activeCat || brandFilter || stockFilter !== "all") && (
+                <button type="button" className="s-filter-btn" onClick={() => {setSearch("");setActiveCat(null);setBrandFilter("");setStockFilter("all");}}>
+                  ফিল্টার মুছুন
+                </button>
+              )}
             </div>
             <div className="s-store-toolbar">
               <span className="s-result-count">{sortedProducts.length}টি পণ্য</span>
