@@ -20,11 +20,11 @@ jobs:
       - name: Check Worker and public D1 catalogue counts
         run: |
           curl -fLsS --retry 4 --retry-delay 2 --max-time 18 "$D1_API/health" > health.json
-          node -e 'const h=require("./health.json");if(h.database!=="Cloudflare D1"||h.scope!=="public_storefronts"||h.stores!==10||h.products!==259)process.exit(1);console.log("Public D1 catalogue: "+h.stores+" stores / "+h.products+" products")'
+          node -e 'const h=require("./health.json");if(h.status!=="ok"||h.database!=="Cloudflare D1"||h.scope!=="public_storefronts"||h.stores!==0||h.products!==0||h.assistant_enabled!==false)process.exit(1);console.log("D1 healthy; no unverified/sample stores are public; AI inference remains disabled")'
       - name: Check password authentication capability
         run: |
           curl -fLsS --max-time 25 "$D1_API/api/merchant/health" > merchant-health.json
-          node -e 'const x=require("./merchant-health.json");if(!x.password_auth_ready||x.password_hash!=="PBKDF2-HMAC-SHA-256"||x.password_iterations!==100000||!x.legacy_access_key_support)process.exit(1);console.log("PBKDF2 merchant password authentication is ready")'
+          node -e 'const x=require("./merchant-health.json");if(x.status!=="ok"||!x.password_auth_ready||x.password_hash!=="PBKDF2-HMAC-SHA-256"||x.password_iterations!==100000||!x.legacy_access_key_support||typeof x.email_verification_configured!=="boolean"||typeof x.password_reset_configured!=="boolean")process.exit(1);console.log("PBKDF2 auth ready; email verification configured: "+x.email_verification_configured)'
       - name: Verify Cloudflare CORS for B-SMART website
         run: |
           curl -fsSI --max-time 18 -X OPTIONS \
@@ -36,15 +36,21 @@ jobs:
       - name: Check public store directory excludes retained CI fixture
         run: |
           curl -fLsS --retry 3 --max-time 18 "$D1_API/api/public/store/" > stores.json
-          node -e 'const s=require("./stores.json");if(!Array.isArray(s)||s.length!==10||s.some(x=>!x.is_demo||!x.is_active||!x.slug)||s.some(x=>x.slug==="shop-752c1d2b-b92"))process.exit(1);console.log("Verified "+s.length+" public demo stores; retained CI data is hidden, not deleted")'
+          node -e 'const s=require("./stores.json");if(!Array.isArray(s)||s.length!==0)process.exit(1);console.log("Verified public directory contains no inactive sample or CI stores")'
       - name: Check public D1 diagnostics
         run: |
           curl -fLsS --retry 3 --max-time 18 "$D1_API/api/public/store/diagnostics" > diagnostics.json
-          node -e 'const x=require("./diagnostics.json");if(x.active_stores!==10||x.listed_products!==259||!x.catalog_ready)process.exit(1);console.log("D1 diagnostics match the public catalogue")'
+          node -e 'const x=require("./diagnostics.json");if(x.active_stores!==0||x.listed_products!==0||x.catalog_ready!==false)process.exit(1);console.log("D1 diagnostics confirm no unverified stores are publicly listed")'
       - name: Check individual catalogue and stock
         run: |
-          curl -fLsS --retry 3 --max-time 18 "$D1_API/api/public/store/slug/demo-bsmart-grocery" > shop.json
-          node -e 'const s=require("./shop.json");if(s.slug!=="demo-bsmart-grocery"||s.products.length<20||s.products.some(p=>typeof p.price!=="number"||typeof p.in_stock!=="boolean"))process.exit(1);console.log("Verified "+s.products.length+" grocery catalogue entries")'
+          status=$(curl -sS --max-time 18 -o shop.json -w "%{http_code}" "$D1_API/api/public/store/slug/demo-bsmart-grocery")
+          test "$status" = "404"
+          node -e 'const x=require("./shop.json");if(!x.detail||!String(x.detail).includes("Store"))process.exit(1);console.log("Inactive sample store is correctly unavailable to the public")'
+      - name: Check owner assistant requires an authenticated owner
+        run: |
+          status=$(curl -sS --max-time 18 -o assistant.json -w "%{http_code}" -X POST -H "Content-Type: application/json" -d '{"question":"আজকের বিক্রি"}' "$D1_API/api/merchant/assistant")
+          test "$status" = "401"
+          node -e 'const x=require("./assistant.json");if(!x.detail)process.exit(1);console.log("Owner assistant correctly rejects unauthenticated requests")'
 
 # This workflow intentionally performs read-only checks against production D1.
 # Write/checkout/POS scenarios belong in local D1 mocks or an isolated staging DB;
