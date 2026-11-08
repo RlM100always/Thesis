@@ -34,11 +34,11 @@ jobs:
       - name: Validate Cloudflare Worker module syntax
         run: |
           set -euo pipefail
-          for file in cloudflare/commerce-worker.js cloudflare/customer-routes.js cloudflare/merchant-routes.js cloudflare/platform-admin-routes.js cloudflare/assistant-routes.js cloudflare/order-workflow.js cloudflare/store-visibility.js cloudflare/merchant-permissions.mjs; do
+          for file in cloudflare/commerce-worker.js cloudflare/customer-routes.js cloudflare/merchant-routes.js cloudflare/platform-admin-routes.js cloudflare/assistant-routes.js cloudflare/order-workflow.js cloudflare/store-visibility.js cloudflare/merchant-permissions.mjs cloudflare/login-lockout.mjs; do
             node --check --input-type=module < "$file"
           done
       - name: Test least-privilege merchant permissions
-        run: node --test tests/merchant-permissions.test.mjs
+        run: node --test tests/merchant-permissions.test.mjs tests/login-lockout.test.mjs
 
   backend-compile:
     runs-on: ubuntu-latest
