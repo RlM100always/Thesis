@@ -17,11 +17,14 @@ async function equalSecret(candidate, expected) {
   return diff === 0;
 }
 function short(value,n=250){return String(value??"").trim().slice(0,n);}
-const validEmail=email=>/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)&&email.length<=180;
+const validEmail=email=>/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)&&email.length<=180;
 function newInviteToken(){const bytes=new Uint8Array(32);crypto.getRandomValues(bytes);return Array.from(bytes,b=>b.toString(16).padStart(2,"0")).join("");}
+function appBase(env){
+ return String(env.PUBLIC_APP_URL||"https://thesis-j0n8.onrender.com").replace(/\/$/,"");
+}
 function ownerPortalLink(env,parameter,token){
- const base=String(env.PUBLIC_APP_URL||"https://thesis-j0n8.onrender.com").replace(/\\/$/,"");
- return base+"/#/d1-owner?"+parameter+"="+encodeURIComponent(token);
+ const base=appBase(env);
+ return parameter?base+"/#/d1-owner?"+parameter+"="+encodeURIComponent(token):base+"/#/d1-owner";
 }
 async function readBody(req) {
   const text=await req.text();
@@ -90,7 +93,7 @@ export async function platformAdminRouter(req,env,path,output,error) {
       await audit(env,"owner_invite_created","owner_invite",id,{email,owner_name:ownerName,store_name:storeName,category,area,identity_confirmed:true,expires_at:expires});
       return output(req,{created:true,id,email,store_name:storeName,expires_at:expires,invite_url:ownerPortalLink(env,"owner_invite",token),share_once:true},201);
     }
-    const ownerInviteMatch=path.match(/^\\/api\\/platform-admin\\/owner-invites\\/([^/]+)$/);
+    const ownerInviteMatch=path.match(/^\/api\/platform-admin\/owner-invites\/([^/]+)$/);
     if(method==="PATCH"&&ownerInviteMatch) {
       const id=decodeURIComponent(ownerInviteMatch[1]),body=await readBody(req);
       if(body.revoke!==true)return error(req,422,"Set revoke=true to revoke this pending invitation.");
@@ -119,9 +122,9 @@ export async function platformAdminRouter(req,env,path,output,error) {
         if(!byStore.has(member.store_id))byStore.set(member.store_id,[]);
         byStore.get(member.store_id).push(member);
       }
-      const loginUrl=ownerPortalLink(env,"", "").replace(/[?&]$/,"");
-      return output(req,{generated_at:new Date().toISOString(),owner_login_url:loginUrl,stores:(stores.results||[]).map(s=>({
-        store_id:s.id,store_name:s.name,slug:s.slug,public_store_url:ownerPortalLink(env,"", "").replace(/\\/#\\/d1-owner.*/,"")+"/#/store/"+s.slug,
+      const base=appBase(env);
+      return output(req,{generated_at:new Date().toISOString(),owner_login_url:base+"/#/d1-owner",stores:(stores.results||[]).map(s=>({
+        store_id:s.id,store_name:s.name,slug:s.slug,public_store_url:base+"/#/store/"+s.slug,
         category:s.category,area:s.area,store_status:s.is_demo?"legacy_test_record":s.is_active?"published":"awaiting_approval",
         owner:{id:s.owner_id,email:s.owner_email,name:s.owner_name,is_active:!!s.owner_active,email_verified:!!s.email_verified_at},
         staff:byStore.get(s.id)||[]
