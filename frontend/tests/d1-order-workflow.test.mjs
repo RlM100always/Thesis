@@ -36,9 +36,9 @@ test("cancellation is unavailable after dispatch and terminal states cannot adva
   assert.deepEqual(ORDER_STATUS_TRANSITIONS.delivered, []);
 });
 
-test("status notes are accurate for demo and non-demo orders", () => {
-  assert.match(defaultOrderStatusNote("processing", true), /পরীক্ষামূলক অর্ডার/);
+test("status notes distinguish archived and operational orders", () => {
+  assert.match(defaultOrderStatusNote("processing", true), /আর্কাইভ করা অর্ডার/);
   assert.match(defaultOrderStatusNote("processing", true), /পণ্য প্রস্তুত করা হচ্ছে/);
-  assert.doesNotMatch(defaultOrderStatusNote("processing", false), /পরীক্ষামূলক/);
+  assert.doesNotMatch(defaultOrderStatusNote("processing", false), /আর্কাইভ করা/);
   assert.match(defaultOrderStatusNote("delivered", false), /ডেলিভারি সম্পন্ন/);
 });
