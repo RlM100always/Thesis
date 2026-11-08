@@ -3391,8 +3391,7 @@ reported only when the corresponding empirical evidence is available.
 \section{Dataset Package and Research Scope}
 
 The current Drive manifest declares the Bangladesh SME package to contain
-real SME sales or real people. However, the repository's 2 November 2026
-\texttt{docs/REAL\_DATA\_ONBOARDING.md} classifies a package with the same
+real SME sales or real people. However, the repository's 2 November 2026 onboarding record classifies a package with the same
 seed (20261025), entity counts (32 shops, 11,000 customers, 480 products,
 56 suppliers), and 2023--2025 coverage as fully synthetic/simulated. The
 earlier record also reports a \texttt{synthetic\_flag=YES} field. The
@@ -3613,6 +3612,7 @@ definition and historical information at each origin.
 \setlength{\tabcolsep}{3pt}
 \caption{Pooled development WAPE by forecast horizon and candidate model.}
 \label{tab:rq1_horizon_performance_v2}
+\setlength{\tabcolsep}{1.5pt}
 \begin{tabularx}{\textwidth}{|C{0.09\textwidth}|C{0.13\textwidth}|C{0.13\textwidth}|C{0.13\textwidth}|C{0.13\textwidth}|C{0.13\textwidth}|Y|}
 \hline
 \makecell{\textbf{Horizon}} & \makecell{\textbf{LightGBM}\\\textbf{WAPE}} & \makecell{\textbf{CatBoost}\\\textbf{WAPE}} & \makecell{\textbf{Hurdle}\\\textbf{WAPE}} & \makecell{\textbf{Croston--SBA}\\\textbf{WAPE}} & \makecell{\textbf{TSB}\\\textbf{WAPE}} & \makecell{\textbf{Seasonal}\\\textbf{naive}} \\
