@@ -1,148 +1,158 @@
-# Production implementation plan
+# B-SMART — Step-by-step production delivery plan
 
-**Project:** B-SMART multi-store commerce and business management platform  
+**Project:** B-SMART multi-store commerce and business-management platform  
+**Production website:** https://thesis-j0n8.onrender.com  
+**Primary commerce database:** Cloudflare D1 `bsmart-commerce`  
+**API:** Cloudflare Worker `bsmart-commerce-api`  
+**Hosting:** Existing Render service `thesis`  
 **Repository:** https://github.com/RlM100always/Thesis  
-**Baseline audited:** 8 November 2026  
-**Working branch:** `production/business-platform-upgrade`
+**Baseline verified:** 8 November 2026
 
-This plan is the release checklist for the requested business-level upgrade. It separates existing working functionality from missing functionality. A feature is not marked complete until its backend, tenant isolation, UI, tests and production deployment have all been verified.
+This plan is the active delivery checklist. A feature is not called complete merely because code exists: its UI, API, database persistence, tenant isolation, tests and production deployment must all be verified.
 
-## 1. Verified baseline
+## 1. Current production baseline
 
-The repository currently contains two separate business data systems:
+### Confirmed infrastructure
+- Render service `thesis` deploys the React website and legacy FastAPI application from `main`.
+- Cloudflare Worker `bsmart-commerce-api` is deployed and its `DB` binding points to the existing D1 database `bsmart-commerce`.
+- D1 schema version is **12**. Migrations 0009–0012 have been applied.
+- Render's latest confirmed application deployment is commit `a81b998ac7f267d2217a37d33aedd083d23a13be`.
+- GitHub Actions production storefront checks and D1 read-only smoke checks passed for that commit.
+- The latest D1 smoke test confirms CORS, D1 health, authentication health, public-store visibility, diagnostics and unauthenticated owner-assistant rejection.
 
-1. **Cloudflare D1 commerce Worker** (`bsmart-commerce`): public store catalogue, D1 customer accounts, owner registration/login, merchant-owned draft stores, product/stock management, COD order workflow, customer wishlist/reviews/returns/messages, merchant inbox, POS/cashbook and a secret-protected platform-admin console.
-2. **Legacy FastAPI application**: the wider business-management modules, including the existing owner-facing Business Assistant and POS, accounting, purchasing, CRM, workforce and reporting features. The frontend still uses the FastAPI path for these legacy modules.
+### Existing D1 data — preserve it
+The live database contains 11 store rows (10 seeded sample stores and one retained CI/POS fixture), 260 products, 3 test orders, 3 order lines, 3 inventory movements, 1 cashbook receipt and 1 legacy CI merchant account. All 11 stores remain inactive and marked as sample/demo data. There are currently **zero verified active real merchant stores** and no verified real owner accounts. Public discovery correctly returns zero stores and zero products. Do not activate sample stores or represent test records as real business activity.
 
-They are not one integrated database today. The repository's own live-audit notes state that the latest legacy Render runtime used ephemeral SQLite, while D1 holds a separate commerce dataset. The D1 database currently contains 10 seeded sample stores and 259 sample products, plus a retained CI fixture; it has no verified real merchant-owned operational store. Existing D1 records must be preserved.
+### Important database boundary
+The D1 commerce platform and legacy FastAPI business application are still separate systems. D1 is authoritative for the D1 storefront/customer/merchant/order workflows. The legacy FastAPI POS, accounting, procurement, CRM, workforce and other operational modules still use a separate SQLAlchemy database; the last recorded Render runtime used ephemeral SQLite. The repository contains no verified `bsmart.db` backup. Do not point SQLAlchemy at a D1 database ID, do not switch to the unused Render Postgres resource without a verified data audit, and do not claim the legacy modules have been migrated. Full migration requires the actual source database or an explicitly approved clean-start decision.
 
-## 2. Requested feature delivery
+## 2. Feature-by-feature status
 
-| Workstream | Existing foundation | Remaining work before production sign-off |
+| Workstream | Existing foundation | Remaining work / release gate |
 |---|---|---|
-| Premium storefront | Responsive storefront, store themes, catalogue, search and category/area filters | UX review on mobile/desktop, pagination/performance, image optimisation, product detail and empty/error states, accessibility |
-| Owner panel | Separate D1 owner registration/login and dashboard; product, stock, order, POS, cashbook, returns and customer-message views | Verified email, password recovery, owner/staff roles, session controls, complete settings, audit coverage and end-to-end CRUD |
-| Customer AI assistant | Product catalogue, order status, customer accounts and support messaging APIs | Grounded shopping assistant, product recommendations, safe order lookup, escalation to human support, rate limiting and privacy controls |
-| Owner AI assistant | FastAPI Business Assistant answers selected real-data questions; optional Anthropic narration | Extend verified intents and analytics; add equivalent D1-owner assistant; ensure all answers are tenant-scoped and numbers are grounded in database results |
-| Business intelligence | Existing FastAPI reports/insights; basic D1 owner metrics | Sales trends, top products, stock warnings, customer insights, date filters, export and tested calculations |
-| E-commerce | D1 catalogue, checkout, stock checks, COD/manual fulfilment, customer accounts, wishlist, reviews, returns and order tracking | Server-persisted cart consistency, coupons/promotions, shipping rules, order notifications, idempotency and real payment integration only after provider approval |
-| Inventory | D1 stock quantity, stock adjustments and order-related stock movement | Reorder thresholds, low-stock alerts, inventory reconciliation, purchase/receiving workflows and concurrency tests |
-| Customer experience | Registration/login, profile, addresses, order history, wishlist, reviews, returns and store messaging | Password recovery, email verification, clearer support escalation, privacy/export/deletion workflow |
-| Security | Password hashes, hashed bearer sessions, login throttling, tenant-scoped owner routes, platform-admin secret | Email verification, password reset, role matrix for D1, stronger abuse protection, security headers, secret rotation, audit review and backup/restore drill |
-| Platform admin | Store approval/activation, order oversight, customer/return views and audit log | Least-privilege admin roles, owner verification queue, safer bulk operations, export and operational monitoring |
-| Deployment | Render frontend/API and Cloudflare Worker exist; GitHub Actions workflows exist | Confirm correct Render workspace and Cloudflare account, verify required secrets, run CI, deploy Worker and Render, then run production smoke tests |
-| Documentation | Root README and Cloudflare technical notes | Per-store access register, operator runbook, owner onboarding, recovery instructions and release evidence |
+| Store design | Responsive React storefront, store themes, product cards/details, search, category/tag filters, brand and stock-availability filters, price/name sorting, incremental “load more” | Complete mobile/desktop UX and accessibility review; optimise images/performance; improve empty/error states and test real owner-created stores |
+| Owner panel | Separate D1 owner registration/login, dashboard, store draft, product/stock management, orders, returns, customer inbox, POS/cashbook and coupons | Resend sender is not configured; verify email/password reset end-to-end; add owner/staff role matrix and full settings; test all CRUD after re-login |
+| Customer assistant | Store-scoped assistant uses catalogue and signed-in customer's own order context; fallback answers are available | Improve recommendation ranking, test prompt injection and accuracy, add human-support handoff and monitored rate limits |
+| Owner assistant | D1 tenant-scoped assistant for selected sales, stock, order, COD and product questions; owner dashboard has assistant UI | Expand supported intents, reconcile metrics against D1 queries, add evaluated AI narration only after budget approval |
+| Business AI | Live D1 metrics, top-product and low-stock query foundations; reorder levels exist | Add date-range sales trends, customer cohorts/insights, inventory forecast, exports and calculation tests |
+| E-commerce | Store catalogue, guest/account cart paths, checkout, COD/manual fulfilment, order lifecycle, server-side customer cart, coupons with checkout revalidation and usage limits | End-to-end cart/checkout tests on approved merchant store; delivery fee/rules and notifications; idempotency and concurrency tests; payment gateway only after provider/webhook approval |
+| Inventory | D1 stock quantity, stock movements, owner stock adjustments, reorder thresholds and low-stock indicators | Verify every stock mutation and rollback; add alert delivery, reconciliation, receiving/purchasing and race-condition tests |
+| Customer | Customer registration/login, profile, addresses, account order history, wishlist, product reviews, returns and store messaging | Customer email verification/password recovery, privacy export/deletion, support escalation and complete account lifecycle tests |
+| Security | PBKDF2-HMAC-SHA-256 password hashes (100,000 iterations), hashed bearer sessions, owner route scoping, rate controls, email verification/reset code, platform-admin secret | Resend currently not configured (live health check: false); staff roles not implemented; improve abuse controls, session management, security headers, secret rotation and restore drill |
+| Admin | Platform-admin overview, store/owner/customer/order/return/audit views, owner activation/suspension and store approval controls | Add least-privilege admin roles, owner identity review, safe exports, monitoring and auditable bulk actions |
+| Deployment | Render auto-deploy from main; Cloudflare Worker deployment via GitHub Actions; production D1 smoke workflow | Keep CI green, verify each deployment ID and run post-deploy checks; create staging D1 for write tests |
+| Documentation | Deployment runbook, D1 migration map, store access register and onboarding/recovery notes | Keep status aligned with live settings; add per-store login rows only for verified stores; document operator, owner and recovery procedures |
 
-## 3. Delivery sequence and release gates
+## 3. Delivery sequence
 
-### Phase 0 — Baseline and safe working branch
-- [x] Inspect repository architecture, routes, current database boundaries and deployment workflows.
-- [x] Create the isolated working branch `production/business-platform-upgrade`.
-- [x] Record verified gaps and access-documentation rules.
-- [ ] Run the full current CI suite on the working branch and retain its results.
+### Step 0 — Baseline and data protection — VERIFIED
+- [x] Confirm Render workspace/service and Cloudflare Primary account/database.
+- [x] Inspect current repository, deployment workflows and D1 schema.
+- [x] Export D1 before migrations and apply only missing additive migrations 0009–0012.
+- [x] Verify existing D1 record counts and preserve all existing records.
+- [x] Deploy Worker and Render application updates.
+- [x] Pass frontend build, backend compile/integration and production D1 read-only smoke tests.
+- [x] Confirm public directory does not expose inactive sample/CI stores.
 
-**Gate:** no production database writes or destructive migrations during the audit.
+### Step 1 — Storefront quality and catalogue journey — IN PROGRESS
+- [x] Add accessible brand and stock-availability filters alongside search, categories/tags and price/name sorting; extract filter logic into a pure helper with automated unit tests.\n- [ ] Test store home, product detail, search, categories/tags, brand/stock filters, sort and incremental loading on mobile and desktop.
+- [ ] Test no-results, API-down, empty catalogue, unavailable store and out-of-stock states.
+- [ ] Verify price, stock, image, variant and wishlist display against D1/API responses.
+- [ ] Add automated UI/API regression tests for filtering, sorting, cart and product detail.
+- [ ] Confirm each real merchant-created store receives its own public slug and URL.
 
-### Phase 1 — Identity, roles and owner access
-- [x] Add platform-admin owner account directory with role, verification, activation status and session count.
-- [x] Add account suspension/reactivation and revoke sessions on suspension.
-- [x] Add branch-level owner email verification and single-use password-reset endpoints, hashed tokens, expiry checks and session revocation.
-- [x] Add owner-panel verification, resend-verification, forgot-password and reset-password screens.
-- [x] Add migration 0009 and automated schema/auth-flow tests (pending CI result).
-- [ ] Configure Resend and apply migration 0009 safely to the existing D1 database.
-- [ ] Decide the authoritative identity system for each store and expand the role matrix beyond the initial owner role.
-- [ ] Verify the email-provider delivery path end to end in staging and production.
-- [ ] Add owner/staff roles and permissions with store-level tenant isolation.
-- [ ] Add D1 owner/staff roles, session controls and security-event audit.
-- [ ] Test cross-store access denial, lockout, reset-token expiry and account lifecycle.
+**Acceptance:** all storefront interactions work with actual API data and do not expose inactive sample stores.
 
-**Gate:** a user from Store A must never read or change Store B data.
+### Step 2 — Owner identity and separate dashboard
+- [x] D1 owner account/password authentication and private store drafts.
+- [x] Email verification and password-reset endpoints/UI code deployed.
+- [x] Password hashes and hashed session tokens.
+- [x] Owner dashboard for catalogue, stock, orders, returns, messages, POS/cashbook and coupons.
+- [ ] Configure Resend secret `RESEND_API_KEY` and verified `AUTH_EMAIL_FROM` sender.
+- [ ] Test registration → email verification → login → forgot password → reset → old-session revocation.
+- [ ] Add staff accounts/roles and permission matrix (current D1 schema only permits the `owner` role).
+- [ ] Test cross-store access denial for every owner endpoint.
 
-### Phase 2 — Storefront and commerce
-- [x] Add store-scoped coupon CRUD, public coupon validation and checkout-time revalidation with atomic total/per-customer redemption limits.
-- [ ] Review the full customer journey on mobile and desktop.
-- [ ] Complete delivery-fee persistence, order notifications and order confirmation edge cases.
-- [ ] Make all stock changes atomic and idempotent, including cancellation and returns.
-- [ ] Test cancellation, return, stock restoration and order-state transitions.
-- [ ] Keep COD clearly distinct from online payment; enable a gateway only after credentials, webhook verification and reconciliation tests are supplied.
+**Acceptance:** only verified account holders can access their own store; no owner can read another store's records.
 
-**Gate:** catalogue, cart, checkout, order and stock totals reconcile in automated tests.
+### Step 3 — Customer shopping assistant and owner assistant
+- [x] Storefront customer assistant endpoint and UI.
+- [x] Owner assistant endpoint and UI with tenant-scoped D1 queries.
+- [x] Workers AI binding deployed; inference remains disabled by default.
+- [ ] Add recommendation ranking from category/brand/price/availability and explain why a product is suggested.
+- [ ] Add order lookup only for the authenticated customer's own orders.
+- [ ] Add human support handoff and clear escalation state.
+- [ ] Evaluate hallucination, prompt injection, privacy and cross-tenant leakage.
+- [ ] Enable AI model calls only after selecting a model, reviewing current pricing and setting a budget.
 
-### Phase 3 — Owner operations and inventory
-- [x] Add per-product reorder threshold (default 5) and low-stock query support in the D1 owner panel.
-- [ ] Complete product, category, pricing, variant, stock and store-settings CRUD.
-- [ ] Add reorder thresholds and low-stock notifications.
-- [ ] Complete order, return, customer inbox, POS and cashbook workflows.
-- [ ] Add audit records for privileged actions.
-- [ ] Test every create/read/update/delete operation and role boundary.
+**Acceptance:** prices, stock, orders and business metrics must come from authoritative database queries; model failure must not break shopping or owner operations.
 
-**Gate:** every owner action persists to the correct store and is visible after re-login.
+### Step 4 — Business intelligence
+- [ ] Sales totals and trends by day/week/month with clear order-value vs collected-cash distinction.
+- [ ] Top products, category mix and repeat-customer insights.
+- [ ] Low-stock alerts based on each product's reorder level.
+- [ ] Customer insights with consent and privacy safeguards.
+- [ ] Exportable reports and reconciliation tests against source rows.
 
-### Phase 4 — Customer and owner AI assistants
-- [x] Add a D1 storefront customer assistant grounded in the current store catalogue, delivery rules and the signed-in customer's own orders.
-- [x] Add a tenant-scoped D1 owner assistant for sales, COD collection, low stock, top products and customer insights.
-- [x] Add privacy-preserving per-minute request limits and a feature-flagged Workers AI binding; deterministic data-grounded fallback remains active when AI is disabled.
-- [ ] Customer assistant: complete legacy FastAPI storefront integration as a separate backend path.
-- [ ] Owner assistant: complete additional business intents, evaluations and long-term analytics.
-- [ ] Add product recommendations based on catalogue attributes and availability.
-- [ ] Add explicit human-support handoff.
-- [ ] Complete prompt-injection evaluations, abuse protection, privacy review and AI usage-budget controls.
-- [ ] Verify that AI cannot expose another store's records or invent prices, stock, delivery promises or financial totals.
+### Step 5 — E-commerce and inventory hardening
+- [x] Store-specific coupons, checkout revalidation and atomic usage-limit triggers.
+- [x] Stock and order workflow foundations.
+- [ ] Test cart persistence across sign-in and devices.
+- [ ] Test coupon expiry, limits, minimum order, concurrent redemption and cancelled orders.
+- [ ] Test duplicate checkout requests, stock races, cancellation and returns.
+- [ ] Add shipping rules/fees and transactional notifications.
+- [ ] Add real payment gateway only after merchant credentials, verified webhooks, refunds and reconciliation are supplied and tested.
 
-**Gate:** every numeric/business claim is grounded in a database query; AI failure must not break checkout or owner operations.
+### Step 6 — Customer account and support
+- [x] Customer accounts, profile, addresses, order history, wishlist, reviews, returns and store messaging.
+- [ ] Complete customer recovery and verified contact flow.
+- [ ] Test data export/deletion and retention rules.
+- [ ] Verify customer support threads cannot cross store/customer boundaries.
 
-### Phase 5 — Analytics and platform administration
-- [ ] Add sales, inventory and customer insight dashboards.
-- [ ] Validate calculations against source orders and stock movements.
-- [ ] Add store-owner approval and operational review queues.
-- [ ] Harden platform-admin access and audit exports.
+### Step 7 — Central admin
+- [x] Admin views for stores, owners, orders, customers, returns and audit history.
+- [x] Store activation/approval and owner suspension/session revocation.
+- [ ] Add admin role separation and re-authentication for sensitive actions.
+- [ ] Add owner identity/document review workflow and approval evidence.
+- [ ] Test every admin action and immutable audit trail.
 
-**Gate:** dashboard totals reconcile with source records and privileged actions are auditable.
+### Step 8 — Legacy operational migration to Cloudflare Primary
+- [ ] Obtain and verify the actual legacy source database backup (the repository has no `bsmart.db` file).
+- [ ] Inventory all SQLAlchemy models, tables, row counts, foreign keys, tenant ownership and balances.
+- [ ] Design D1-native tables and Worker APIs; do not treat D1 as a direct SQLAlchemy connection string.
+- [ ] Migrate one bounded module at a time: identity/tenant → products/inventory → POS/sales → purchasing → finance → CRM/workforce → platform controls.
+- [ ] Reconcile counts, stock, receivables, cash, journals and audit history.
+- [ ] Run tenant-isolation, concurrency, rollback and restore tests before switching each frontend route.
+- [ ] Retire ephemeral SQLite only after verified cutover and backup.
 
-### Phase 6 — Production deployment and recovery
-- [ ] Confirm Render workspace and Cloudflare account before account-level changes.
-- [ ] Confirm GitHub Actions secrets exist without printing their values.
-- [ ] Back up D1 and verify the backup before every schema/data migration.
-- [ ] Apply only reviewed additive migrations; do not blindly replay historical migrations.
-- [ ] Deploy Worker and Render from the approved branch/commit.
-- [ ] Run read-only production smoke tests, then isolated staging write tests.
-- [ ] Test restore/recovery before enabling real customer traffic or payments.
+**Acceptance:** no data loss, no double-writing and one authoritative writer per business event.
 
-**Gate:** production health, database readiness, CORS, authentication, storefront, owner dashboard and smoke tests all pass.
+### Step 9 — Production release
+- [ ] Maintain green CI and confirmed Render/Cloudflare deployments.
+- [ ] Run staging write tests and production read-only smoke tests.
+- [ ] Verify D1 backup can be restored in an isolated recovery environment.
+- [ ] Configure email delivery, monitoring, alerts, rate limits and operational support.
+- [ ] Only then onboard verified real businesses and enable live trading/payment features.
 
-## 4. Deployment configuration required
+## 4. Required production configuration
 
-The existing Worker deployment workflow expects these GitHub repository secrets:
-- `CLOUDFLARE_API_TOKEN`
-- `CLOUDFLARE_ACCOUNT_ID`
+- Cloudflare Worker secret: `PLATFORM_ADMIN_KEY` (already present; never read into logs or source).
+- Email: secret `RESEND_API_KEY`; variable `AUTH_EMAIL_FROM` set to a verified sender; `PUBLIC_APP_URL=https://thesis-j0n8.onrender.com`.
+- AI: Worker AI binding exists; `AI_ENABLED` is intentionally not enabled. Set it only after model/budget review.
+- GitHub Actions: Cloudflare deployment credentials remain in repository secrets; do not print their values.
+- D1: preserve existing database ID `887fa347-9c22-46b1-a7cf-91a7dbdfc311`.
 
-The Worker also uses the Cloudflare secret:
-- `PLATFORM_ADMIN_KEY` (must remain in Worker secret storage; never commit it)
+## 5. Definition of done
 
-The legacy FastAPI production configuration requires a persistent database and secure environment variables. Do not point SQLAlchemy at a D1 database ID or assume an existing Render PostgreSQL resource is the active database. Confirm the live Render service's actual environment and database before changing it.
-
-Owner email verification/password reset code is in the upgrade branch and requires the Worker secret `RESEND_API_KEY` plus the `AUTH_EMAIL_FROM` sender variable and migration 0009. Workers AI binding is configured in the branch but model inference remains disabled unless `AI_ENABLED=true` is deliberately set. Model calls are usage-metered; review current pricing and set a usage budget before enabling. Neither mail nor AI provider should be represented as live until end-to-end tests pass.
-
-## 5. Credential and store-register policy
-
-- Public README files may contain store names, public URLs, login URLs, account roles and account status.
-- Public README files must **never** contain passwords, API tokens, reset tokens, private keys, payment secrets or platform-admin keys.
-- Each owner should set a unique password and use the password-reset flow. Until recovery is implemented, do not publish or distribute temporary credentials in Git.
-- Store credentials belong in a password manager or approved secret manager. The access register records only the location/reference, never the secret itself.
-- Do not create fictional owner accounts or claim sample catalogue stores are real businesses.
-
-See [Store Access Register](STORE_ACCESS_REGISTER.md) and [Deployment Runbook](DEPLOYMENT_RUNBOOK.md).
-
-## 6. Definition of done
-
-A workstream is complete only when:
-1. UI works at mobile and desktop sizes.
-2. API validates inputs and returns useful errors.
-3. Database writes persist and are tenant-scoped.
-4. Automated tests cover success, failure and permission boundaries.
-5. Existing data is preserved and migration is reversible/recoverable.
+A feature is complete only when:
+1. UI works on mobile and desktop.
+2. API validates input and returns useful errors.
+3. Data persists in the correct Cloudflare D1 tenant/store.
+4. Success, failure, concurrency and permission tests pass.
+5. Existing data is preserved and backup/recovery is documented.
 6. CI passes.
-7. Production deployment is confirmed and smoke tests pass.
-8. Documentation reflects the actual deployed state.
+7. Render and Worker deployment are confirmed.
+8. Production smoke checks pass.
+9. Documentation reflects the actual deployed state.
 
-No item should be marked complete based only on a screenshot, successful build, or code being present.
+No sample store, test order, simulated payment or unverified account may be described as a real business record.
