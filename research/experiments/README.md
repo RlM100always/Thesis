@@ -76,11 +76,56 @@ The source has YES in `human_rating` for all rows, but provides no participant i
 
 **Remaining:** conduct a consented participant study with recorded tasks and measured accuracy, completion time, confidence, and usability. Do not treat the prefilled rating column as participant evidence.
 
+## Multi-date validation and SME owner-impact analysis
+
+The supplemental runner `run_multidate_business_impact.py` was executed against the same researcher-provided data export. It uses several dates so that one favourable or unfavourable cutoff does not decide the conclusion:
+
+```bash
+python research/experiments/run_multidate_business_impact.py \
+  --data-dir /path/to/private/drive-export \
+  --output-dir research/experiments/results/multidate_business_impact \
+  --figures-dir thesis_report/Figures
+```
+
+### RQ1 — six-date actual-versus-predicted demand
+
+Cutoffs: 30 April, 31 May, 30 June, 31 July, 31 August and 30 September 2025. At each cutoff, the model predicts the following seven days for all 512 shop--category series. Training origins are earlier than the cutoff and use a trailing 365-day window. The HistGradientBoosting model uses lag 1/7/14/28 demand, 7- and 28-day means and dispersion, series history and calendar encodings; the Poisson loss keeps the count target non-negative.
+
+The six-date mean WAPE is **32.40%** for HistGradientBoosting, **39.33%** for the previous-28-day mean and **46.06%** for the weekly naive rule. Actual total demand over the six horizons is 60,982 units; the model predicts 59,204.65 (aggregate signed bias -2.91%). The per-date values and WAPE are in `rq1_multidate_metrics.csv`; the actual-versus-predicted graph is `thesis_report/Figures/rq1_multidate_actual_vs_predicted.png`.
+
+This is a seven-day shop--category validation. It must not be merged with the separate one-day SKU exposure diagnostic, where the target grain and stock-eligibility rule differ and the 28-day mean remains the strongest WAPE baseline.
+
+### RQ2 — six-date customer-inactivity stability and targeting lift
+
+Snapshot dates: 31 March and 30 June and 30 September 2024, then 31 December 2024, 31 March 2025 and 30 June 2025. Each date is scored using only earlier snapshots for fitting. The mean predicted probability is compared with the observed inactivity rate, average precision and Brier score. The highest-risk 10% is also measured against all customers.
+
+The observed inactivity rate is 32.15--43.34% across dates, while the highest-risk 10% contains 69.91--86.06% inactive customers. That is approximately a **1.99--2.17x targeting lift**. The mean probability is below the observed rate on every date, so the model is suitable for ranking and campaign prioritisation but needs probability calibration before a literal probability threshold is used. This does not prove that a retention message or discount causes a later purchase. Outputs: `rq2_multidate_metrics.csv` and `thesis_report/Figures/rq2_multidate_inactivity.png`.
+
+### RQ3 — eight-date observed-sales replenishment backtest
+
+Cutoffs: month-end dates from 28 February through 30 September 2025. For each shop--SKU pair, the next 30 days of observed sales are the outcome. The baseline forecast is `30 * (D90 / 90)`. The trend forecast is `30 * (0.6 * D30 / 30 + 0.4 * D90 / 90)`. Orders are rounded up to the product case pack after covering the reorder point. The declared decision cost is:
+
+```text
+cost = order_quantity * purchase_cost
+       + 0.02 * average_stock * purchase_cost
+       + lost_units * max(retail_price - purchase_cost, 0)
+```
+
+The 2% holding factor is an assumption-based comparison term, not audited accounting profit. Across all eight dates, baseline cost is BDT 61.341m and trend-policy cost is BDT 61.675m: a weighted **+0.54%** change. Trend is cheaper at 3 dates and more expensive at 5. Both policies have zero lost units because reconstructed stock is high relative to observed demand in this sample; this is not evidence of universal stockout prevention. Outputs: `rq3_multidate_business_impact.csv` and `thesis_report/Figures/rq3_multidate_strategy_impact.png`.
+
+### What this means for an SME owner
+
+- RQ1 gives a date-specific planning signal: the owner can see the actual units, forecast units and WAPE for each cutoff, then review months with larger error rather than trusting one average score.
+- RQ2 gives a manageable retention list: a small owner team can focus on the highest-risk decile, which contains about twice the inactivity rate of the full population in these snapshots.
+- RQ3 exposes the cash/service trade-off: the trend rule is not automatically cheaper, and the historical backtest shows exactly which dates increase the decision-analysis cost.
+
+These are decision-support findings, not audited profit or causal intervention results. The owner-policy replay still needs documented reorder rules, validated purchase/holding/lost-sales costs and realised outcomes from participating businesses.
+
 ## Cross-RQ limits and saved outputs
 
 - Source provenance is unverified; structural reconciliation does not establish origin.
 - RQ1 lacks a blind final test and independent physical-stock validation.
-- RQ3 uses generated future-demand scenario inputs; owner-policy and realized outcome evidence remain missing.
+- RQ3 includes an observed-sales backtest, but its cost terms are assumptions and owner-policy and audited realised-cost evidence remain missing; the separate 2,500-row scenario file uses generated future-demand values.
 - RQ4 is a rules audit, not a participant study.
 
 Aggregate result folders:
@@ -90,3 +135,4 @@ Aggregate result folders:
 - `research/experiments/results/rq2_customer_prediction/`
 - `research/experiments/results/rq3_scenario_comparison/`
 - `research/experiments/results/rq4_explanation_case_audit/`
+- `research/experiments/results/multidate_business_impact/`

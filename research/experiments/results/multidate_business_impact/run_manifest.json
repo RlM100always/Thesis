@@ -1,0 +1,50 @@
+{
+  "experiment": "multi-date business impact validation",
+  "rq1_cutoffs": [
+    "2025-04-30",
+    "2025-05-31",
+    "2025-06-30",
+    "2025-07-31",
+    "2025-08-31",
+    "2025-09-30"
+  ],
+  "rq2_snapshot_dates": [
+    "2024-03-31",
+    "2024-06-30",
+    "2024-09-30",
+    "2024-12-31",
+    "2025-03-31",
+    "2025-06-30"
+  ],
+  "rq3_cutoffs": [
+    "2025-02-28",
+    "2025-03-31",
+    "2025-04-30",
+    "2025-05-31",
+    "2025-06-30",
+    "2025-07-31",
+    "2025-08-31",
+    "2025-09-30"
+  ],
+  "rq3_cost_function": "purchase_cost + 0.02 * purchase_cost * average_stock + lost_units * max(retail_price - purchase_cost, 0)",
+  "rq3_assumption_note": "Historical backtest uses observed sales after each cutoff; it is a decision-analysis estimate, not audited accounting profit or causal business impact.",
+  "outputs": [
+    "rq1_multidate_metrics.csv",
+    "rq2_multidate_metrics.csv",
+    "rq3_multidate_business_impact.csv",
+    "rq1_multidate_actual_vs_predicted.png",
+    "rq2_multidate_inactivity.png",
+    "rq3_multidate_strategy_impact.png"
+  ],
+  "input_files": {
+    "rq1_daily_shop_category.csv": "ab741f4d72c49706ba2abc8f096659324d862f758c4f171b84dd55a3ab6cbcbd",
+    "rq2_customer_snapshots_90d.csv": "19477afee416a8ea87b1cb36006785b0efd6469425f4e4a6318a56dd2799710c",
+    "rq1_daily_sku_sales_observed.csv": "9611e489bba1074ce7c498fc5015fd3d3955dbdddda84928bac4a044d121401d",
+    "inventory_movements.csv": "23b58051e5c74bff62c9e1914023760c64d27cd30a121a72f3ae46981041fc58",
+    "products.csv": "ab96545725e7ff96120da8f151b79419ec8bdf255a333edd97e097346a0efe4e"
+  },
+  "seed": 20261109,
+  "python": "3.12.14",
+  "pandas": "2.2.3",
+  "numpy": "2.3.5"
+}

@@ -538,8 +538,10 @@ labels. HistGradientBoosting achieved test PR-AUC 0.746 and ROC-AUC 0.830
 on the supplied temporal split. In 2,500 RQ3 scenarios, the trend policy
 reduced scenario cost by 0.87\% but increased scenario lost units from 45
 to 100; future oracle-demand values are generated scenario assumptions, not
-realized sales. A mechanical audit of 1,800 RQ4 cases found complete rule,
-pack-size and budget consistency,
+realized sales. A separate eight-cutoff observed-sales backtest is also
+reported: the trend rule increased weighted assumption-based cost by 0.54\%
+and both policies had zero lost units in the stock-rich sample. A mechanical
+audit of 1,800 RQ4 cases found complete rule, pack-size and budget consistency,
 but those cases and their unverified \texttt{human\_rating} field are not a
 participant study. The report therefore makes no claim of real-world cost
 savings, owner-policy benefit or measured usability.
@@ -756,7 +758,7 @@ with assumptions.
 
 \section{Organization of the Report}
 
-Chapter~\ref{chapter_backStudy} builds up the technical and contextual background, reviews the relevant literature, and identifies the research gap. Chapter~\ref{chapter_methodology} introduces the research design, data protocol, formal tasks, proposed framework, and evaluation plan. The Implementation and Experimental Results chapters are kept as placeholders in this preliminary report. The Conclusions chapter brings together only what can be concluded from the current background study and proposed methodology. Final conclusions based on empirical outcomes will be drawn from the evidence obtained during the implementation and experimental evaluation.
+Chapter~\ref{chapter_backStudy} builds up the technical and contextual background, reviews the relevant literature, and identifies the research gap. Chapter~\ref{chapter_methodology} introduces the research design, data protocol, formal tasks, proposed framework, and evaluation plan. The Implementation and Experimental Results chapters document the reproducible pipelines, multi-date validation, model outputs and evidence limits. The Conclusions chapter separates measured findings from claims that still require an untouched holdout, owner-policy replay or participant study.
 
 
 \cleardoublepage
@@ -2578,9 +2580,11 @@ exposure and reports the 28-day exposed-sales mean as the lowest-WAPE
 candidate; its Q4 2025 period had already been inspected and is not an
 untouched final test. CatBoost Tweedie and a raw two-stage hurdle remain
 development challengers; hurdle probabilities are uncalibrated. The RQ2
-model comparison and RQ3 scenario analysis use supplied labels and
-assumptions, while RQ4 has only a computational case audit. No actual
-owner-policy comparison or participant usability study has been completed.
+model comparison is supplemented by a six-date rolling ranking validation.
+RQ3 includes the supplied scenario analysis and an observed-sales historical
+backtest, but no actual owner-policy replay or audited accounting cost. RQ4
+has only a computational case audit. No participant usability study has been
+completed.
 The data manifest's real-origin claim remains unverified. A future holdout,
 independent business provenance, owner-policy replay and consented user
 study remain necessary before field-effectiveness claims.
@@ -2614,6 +2618,19 @@ resample scenario rows; they describe variation across this scenario file,
 not sampling uncertainty for participating businesses. Future demand is
 the generated scenario-oracle field, so the runner does not claim a
 real-owner policy comparison or realised savings.
+
+\section{Multi-Date Validation and Owner-Impact Runner}
+
+The supplemental runner \texttt{run\_multidate\_business\_impact.py} applies
+the same point-in-time rule to all three operational tasks. It writes one
+aggregate CSV per research question, a run manifest with input checksums and
+parameters, and three report figures. RQ1 evaluates six seven-day cutoffs;
+RQ2 evaluates six rolling customer snapshots; and RQ3 evaluates eight
+historical 30-day cutoffs using observed sales after the cutoff. The runner
+does not copy raw customer or transaction identifiers into the committed
+outputs. The RQ3 cost function is deliberately exposed as a parameterised
+assumption so that an owner can replace the 2\% holding factor and margin
+proxy with documented business costs during a later replay.
 
 \section{RQ4 Explanation-Case Audit}
 
@@ -3076,6 +3093,76 @@ Coverage nevertheless varies materially by month. The interval estimates
 are therefore useful diagnostics for uncertainty communication but are
 not yet sufficient to guarantee a fixed coverage level in deployment.
 
+\section{Multi-Date Out-of-Time Demand Validation}
+\label{sec:rq1_multidate_validation}
+
+The fixed-origin results above are complemented by a second date-based
+evaluation designed to answer a practical owner question: when the forecast
+is made at different points in the year, how close is it to the demand that
+actually follows? Six month-end cutoffs (30 April--30 September 2025) were
+used. At each cutoff, the model was trained only on earlier seven-day origins
+within a trailing 365-day window and then predicted the next seven days for
+all 512 shop--category series. The two comparators were a weekly seasonal
+naive forecast and the previous-28-day mean. Thus, the date of the decision is
+always earlier than the measured outcome.
+
+For a series $j$ at cutoff $t$, the two simple forecasts are
+\[
+ \hat{y}^{(7)}_{j,t}=\sum_{h=1}^{7}y_{j,t-h},\qquad
+ \hat{y}^{(28)}_{j,t}=7\left(\frac{1}{28}\sum_{h=1}^{28}y_{j,t-h}\right).
+\]
+The HistGradientBoosting model uses lagged demand, rolling means and
+dispersion, series history and calendar encodings. It is fitted with a
+Poisson loss, which penalises errors on a non-negative count target while
+preserving the chronological split. The reported network totals are sums of
+the 512 leaf predictions; WAPE is
+$\sum_j|\hat y_j-y_j|/\sum_j|y_j|$.
+
+\begin{table}[H]
+\centering
+\scriptsize
+\setlength{\tabcolsep}{3pt}
+\caption{Six-date seven-day demand validation at the shop--category level.}
+\label{tab:rq1_multidate_validation}
+\begin{tabularx}{\textwidth}{|p{0.15\textwidth}|C{0.14\textwidth}|C{0.15\textwidth}|C{0.13\textwidth}|C{0.13\textwidth}|C{0.13\textwidth}|Y|}
+\hline
+\textbf{Cutoff} & \textbf{Actual units} & \textbf{HGB forecast} & \textbf{HGB WAPE} & \textbf{28-day WAPE} & \textbf{Weekly WAPE} & \textbf{HGB signed bias} \\
+\hline
+30 Apr 2025 & 9,978 & 10,118 & 31.41\% & 39.27\% & 43.38\% & +140 \\
+\hline
+31 May 2025 & 12,659 & 11,408 & 28.86\% & 36.11\% & 43.79\% & -1,251 \\
+\hline
+30 Jun 2025 & 10,010 & 9,600 & 32.26\% & 46.11\% & 46.75\% & -410 \\
+\hline
+31 Jul 2025 & 9,793 & 9,538 & 33.61\% & 36.70\% & 43.95\% & -255 \\
+\hline
+31 Aug 2025 & 9,417 & 9,240 & 34.23\% & 39.32\% & 48.74\% & -177 \\
+\hline
+30 Sep 2025 & 9,125 & 9,301 & 34.05\% & 38.47\% & 49.74\% & +176 \\
+\hline
+\end{tabularx}
+\end{table}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{Figures/rq1_multidate_actual_vs_predicted.png}
+\caption{Actual next-seven-day demand, model predictions and WAPE across six
+chronological cutoffs. The lower panel makes the date-to-date error variation
+visible instead of hiding it in one pooled score.}
+\label{fig:rq1_multidate_actual_vs_predicted}
+\end{figure}
+
+Across the six cutoffs, HistGradientBoosting has mean WAPE 32.40\%, compared
+with 39.33\% for the 28-day mean and 46.06\% for the weekly naive rule. Its
+aggregate signed bias is -2.91\% over 60,982 actual units. The model is
+therefore materially more useful for this seven-day, shop--category decision
+than the two simple comparators in this multi-date test, although its WAPE
+still ranges from 28.86\% to 34.23\%. This result must not be merged with the
+separate one-day SKU exposure diagnostic, where the target grain, horizon and
+stock-eligibility rule are different and the 28-day mean remained the best
+WAPE baseline. The multi-date result is a stronger operational diagnostic,
+not a claim that every SKU forecast is accurate.
+
 \begin{table}[H]
 \centering
 \small
@@ -3127,9 +3214,11 @@ automatic routing.
 The separate SKU diagnostic assigns zeros only to reconstructed positive-stock
 days and quarantines all 253 histories with negative balances. It is an
 exposure-conditioned observed-sales evaluation, not latent-demand estimation.
-The RQ3 scenario analysis and RQ4 explanation-case audit are reported below;
-neither supplies evidence of actual owner-policy benefit or participant
-usability.
+The RQ3 scenario analysis and the new historical observed-sales backtest are
+reported below. They provide decision-analysis evidence across dates, but do
+not establish audited owner-policy profit. The RQ4 explanation-case audit
+also remains a mechanical consistency check without participant usability
+evidence.
 
 \section{RQ1 Exposure-Conditioned SKU Diagnostic}
 \label{sec:rq1_sku_exposure_results}
@@ -3227,6 +3316,66 @@ the constant-prevalence baseline. This supports ranking performance on
 the supplied snapshots, not the causal effect of a retention action.
 Source provenance remains unverified.
 
+\section{Multi-Date Customer-Risk Stability and Targeting Lift}
+\label{sec:rq2_multidate_validation}
+
+The supplied temporal split gives one useful test, but a retention system
+also needs to remain useful as the snapshot date changes. A rolling
+evaluation was therefore run at six snapshot dates from 31 March 2024 to
+30 June 2025. For each date, all earlier snapshots were used for fitting and
+only the customers at the current date were scored. No later snapshot or
+future label was used in the feature matrix. The model output is
+\(p_i=P(y_i=1\mid x_i)\), the estimated probability that customer $i$ will
+become inactive in the following 90 days. Average precision (AP) measures
+ranking quality under class imbalance, while the Brier score measures the
+mean squared probability error.
+
+\begin{table}[H]
+\centering
+\scriptsize
+\setlength{\tabcolsep}{3pt}
+\caption{Rolling customer-inactivity validation and the highest-risk decile.}
+\label{tab:rq2_multidate_validation}
+\begin{tabularx}{\textwidth}{|p{0.16\textwidth}|C{0.14\textwidth}|C{0.17\textwidth}|C{0.14\textwidth}|C{0.14\textwidth}|Y|}
+\hline
+\textbf{Snapshot} & \textbf{Actual inactive} & \textbf{Mean predicted probability} & \textbf{AP} & \textbf{Top-10\% observed inactive} & \textbf{Brier} \\
+\hline
+31 Mar 2024 & 32.15\% & 28.47\% & 0.619 & 69.91\% & 0.165 \\
+\hline
+30 Jun 2024 & 37.79\% & 30.17\% & 0.684 & 77.90\% & 0.178 \\
+\hline
+30 Sep 2024 & 39.46\% & 35.43\% & 0.705 & 79.98\% & 0.172 \\
+\hline
+31 Dec 2024 & 39.51\% & 27.97\% & 0.716 & 79.60\% & 0.185 \\
+\hline
+31 Mar 2025 & 39.01\% & 35.61\% & 0.722 & 81.16\% & 0.166 \\
+\hline
+30 Jun 2025 & 43.34\% & 38.01\% & 0.767 & 86.06\% & 0.168 \\
+\hline
+\end{tabularx}
+\end{table}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{Figures/rq2_multidate_inactivity.png}
+\caption{Rolling inactivity performance. The left panel compares the observed
+base rate with the mean predicted probability; the right panel shows why the
+ranking is operationally useful: the highest-risk 10\% consistently contains
+far more inactive customers than the full population.}
+\label{fig:rq2_multidate_inactivity}
+\end{figure}
+
+The top-risk decile has an observed inactivity rate of 69.91--86.06\%,
+whereas the corresponding full-population rate is 32.15--43.34\%. This is
+approximately a 1.99--2.17-fold targeting lift, so a small SME can direct a
+limited retention budget to a much smaller customer list. The mean predicted
+probability is below the observed rate at all six dates, with a gap of 3.40
+to 11.54 percentage points. The model is therefore useful as a ranking tool,
+but its probabilities require calibration before they are interpreted as
+literal customer-level percentages or used to set an automatic contact
+threshold. The experiment demonstrates predictive targeting value, not that
+an SMS, discount or call caused the subsequent order.
+
 \section{RQ3 Replenishment Scenario Comparison}
 
 The supplied file contains 2,500 scenarios at the 31 July 2025 cutoff,
@@ -3263,6 +3412,125 @@ the trend policy is not superior on both outcomes. The figures are not
 realised savings and do not compare against a participating owner's
 documented policy.
 
+\section{Historical Multi-Date Replenishment Backtest and Owner Impact}
+\label{sec:rq3_multidate_validation}
+
+The paired scenario comparison is useful for controlled policy testing, but
+it does not show what would have happened after a real historical cutoff. A
+second backtest therefore uses observed sales after eight month-end cutoffs
+from 28 February to 30 September 2025. For every shop--SKU pair, the next
+30 days of observed sales are kept as the outcome. Stock at the cutoff is
+reconstructed from inventory movements, while demand estimates use only the
+preceding 30 and 90 days.
+
+The baseline and trend forecasts are defined as
+\[
+ \hat D_{30}^{\mathrm{base}}=30(D_{90}/90),\qquad
+ \hat D_{30}^{\mathrm{trend}}=30\left[0.6(D_{30}/30)+0.4(D_{90}/90)\right].
+\]
+For forecast $\hat D$, stock $I_t$, reorder point $r$ and case pack $k$,
+the proposed order is
+\[
+ Q=k\left\lceil\frac{\max(0,\hat D+r-I_t)}{k}\right\rceil.
+\]
+To make the owner trade-off explicit, the decision-analysis cost is
+\[
+ C=Qc+0.02\,\bar I c+L\max(p-c,0),
+\]
+where $c$ is purchase cost, $\bar I$ is average post-order stock, $L$ is
+lost units and $p$ is the catalogue retail price. The 2\% holding factor is
+an assumption for comparing policies; it is not an audited accounting rate.
+
+\begin{table}[H]
+\centering
+\scriptsize
+\setlength{\tabcolsep}{2pt}
+\caption{Observed-sales replenishment backtest across eight historical cutoffs.}
+\label{tab:rq3_multidate_backtest}
+\begin{tabularx}{\textwidth}{|p{0.13\textwidth}|C{0.14\textwidth}|C{0.14\textwidth}|C{0.14\textwidth}|C{0.15\textwidth}|C{0.13\textwidth}|Y|}
+\hline
+\textbf{Cutoff} & \textbf{Actual next-30d units} & \textbf{Baseline forecast} & \textbf{Trend forecast} & \textbf{Trend cost change} & \textbf{Lost units (both)} & \textbf{Pairs} \\
+\hline
+28 Feb 2025 & 50,747 & 39,877 & 40,006 & +0.21\% & 0 & 12,197 \\
+\hline
+31 Mar 2025 & 51,113 & 43,831 & 48,432 & +1.85\% & 0 & 12,300 \\
+\hline
+30 Apr 2025 & 41,546 & 47,574 & 49,698 & +0.84\% & 0 & 12,289 \\
+\hline
+31 May 2025 & 53,803 & 47,974 & 44,083 & -0.44\% & 0 & 12,422 \\
+\hline
+30 Jun 2025 & 40,632 & 48,529 & 51,693 & +1.57\% & 0 & 12,377 \\
+\hline
+31 Jul 2025 & 42,010 & 45,099 & 42,498 & -0.00\% & 0 & 12,305 \\
+\hline
+31 Aug 2025 & 40,160 & 45,425 & 42,912 & -0.13\% & 0 & 12,311 \\
+\hline
+30 Sep 2025 & 39,222 & 40,916 & 40,462 & +0.12\% & 0 & 12,183 \\
+\hline
+\end{tabularx}
+\end{table}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{Figures/rq3_multidate_strategy_impact.png}
+\caption{Historical RQ3 backtest. The top panel compares realised next-30-day
+demand with both forecasts; the middle panel shows the assumption-based cost;
+the lower panel confirms that no lost units occurred under either policy in
+this stock-rich reconstructed sample.}
+\label{fig:rq3_multidate_strategy_impact}
+\end{figure}
+
+Across all eight cutoffs, baseline cost is BDT 61.341 million and trend-policy
+cost is BDT 61.675 million, a weighted increase of 0.54\%. The trend policy is
+cheaper at only three of eight cutoffs and more expensive at five. Both
+policies record zero lost units because reconstructed stock is high relative
+to the observed 30-day demand; this is evidence about the selected historical
+sample, not proof that either policy prevents stock-outs in a different SME.
+The practical contribution is therefore decision visibility: an owner can see
+when trend adjustment changes procurement and holding cost, while avoiding a
+false claim of guaranteed profit. A real owner-policy replay with validated
+purchase, holding and lost-sales costs is still required before financial
+deployment.
+
+\section{Business-Owner Decision Value}
+\label{sec:business_owner_value}
+
+The experiments translate the modelling outputs into three decisions that a
+small business owner can understand and audit. Demand forecasting estimates
+how many units may be needed soon; inactivity prediction ranks which existing
+customers should receive limited retention attention; and replenishment
+optimisation compares the cash, stock and service consequences of an order
+rule. The evidence is useful because each decision is shown against an
+observed outcome at several dates, rather than represented by one overall
+accuracy number.
+
+\begin{table}[H]
+\centering
+\small
+\caption{How the research can support an SME owner's decisions.}
+\label{tab:business_owner_decision_value}
+\begin{tabularx}{\textwidth}{|p{0.18\textwidth}|p{0.25\textwidth}|p{0.26\textwidth}|Y|}
+\hline
+\textbf{Owner question} & \textbf{Model evidence} & \textbf{Operational use} & \textbf{Evidence boundary} \\
+\hline
+How much should I prepare for next week? & RQ1 HGB mean WAPE 32.40\% across six dates, with actual and predicted units shown separately. & Set a shop--category planning quantity and review dates with larger bias or WAPE. & Not a guarantee for an unseen business; stock-out demand is not recovered. \\
+\hline
+Which customers need attention first? & RQ2 highest-risk 10\% observed inactivity 69.91--86.06\%, versus 32.15--43.34\% overall. & Prioritise a small, affordable call, message or offer list instead of contacting everyone. & Ranking is useful, but probabilities need calibration and action impact was not randomised. \\
+\hline
+Which replenishment rule is cheaper? & RQ3 evaluates forecast, order quantity, stock, lost units and an explicit cost function at eight dates. & Compare the owner policy with baseline/trend alternatives and identify months needing review. & Costs are decision-analysis assumptions; both policies had zero lost units in this stock-rich sample. \\
+\hline
+\end{tabularx}
+\end{table}
+
+The mathematical formulation makes the benefit inspectable: forecast error is
+measured against realised demand, customer ranking is measured against the
+later inactivity label, and policy cost is decomposed into purchase, holding
+and lost-margin terms. This supports an SME owner as a monitoring and
+prioritisation tool, not as an autonomous promise of profit. The next
+validation step is to log owner decisions and realised outcomes so that the
+same metrics can be recalculated with actual intervention, cost and service
+data.
+
 \section{RQ4 Explanation-Case Consistency Audit}
 
 All 1,800 supplied cases have the date 31 December 2025. The audit
@@ -3292,11 +3560,11 @@ The real owner study for RQ4 remains incomplete.
 \hline
 \textbf{RQ} & \textbf{Evidence completed} & \textbf{Remaining requirement} \\
 \hline
-RQ1 & Multi-horizon development benchmark and exposure-conditioned SKU diagnostic & Untouched future test; independent stock and source validation; better performance than strong simple baselines \\
+RQ1 & Multi-horizon development benchmark, six-date seven-day validation and exposure-conditioned SKU diagnostic & Untouched future test; independent stock and source validation; leaf-level cost evaluation \\
 \hline
-RQ2 & Label reconstruction and temporal model comparison on supplied data & Independent provenance and external business validation; no causal retention-effect claim \\
+RQ2 & Label reconstruction, supplied temporal split and six-date rolling ranking validation & Independent provenance and external business validation; probability calibration and no causal retention-effect claim \\
 \hline
-RQ3 & Paired comparison on 2,500 generated-demand scenarios & Participating owner's actual policy and validated realised cost/outcome data \\
+RQ3 & Paired comparison on 2,500 scenario rows plus eight-date observed-sales backtest & Participating owner's actual policy and validated realised cost/outcome data \\
 \hline
 RQ4 & Mechanical consistency audit of 1,800 prepared test cases & Consented participant study with measured task accuracy, completion time, confidence and usability \\
 \hline
@@ -3310,23 +3578,28 @@ business provenance remains unverified. RQ1 shop--category results are
 bounded to the supplied panel, selected development origins and cumulative
 forecast horizons. The exposure-conditioned SKU diagnostic uses Q4 2025,
 which had previously been inspected; neither that period nor the earlier
-development origins constitute an untouched final test. The RQ3 future
-demand consists of generated scenario values, and RQ4 uses prepared rule-test
-cases rather than participant responses.
+development origins constitute an untouched final test. The new RQ3
+historical backtest uses observed sales after each cutoff, but its cost terms
+remain assumptions and it does not replay an owner's documented policy. The
+separate RQ3 scenario comparison uses generated scenario values, and RQ4
+uses prepared rule-test cases rather than participant responses.
 The earlier WAPE values of 83.98\%, 84.04\% and 84.56\% are not compared
 with the current experiments because their target, aggregation, origins
 and metric denominators have not been reproduced on identical evaluation
 rows.
 
 The evidence supports keeping context features as a shop--category
-development challenger while retaining the pooled baseline as fallback.
-The SKU results do not establish an advantage over the strongest simple
-baseline. RQ2 supports ranking performance on the supplied snapshots, not
-retention impact. RQ3 is only a scenario comparison; RQ4 is only a rule
+development challenger while retaining the pooled baseline as fallback. The
+multi-date seven-day RQ1 validation is operationally stronger than the
+one-day SKU diagnostic, but it does not remove the need for an untouched test
+and stock validation. RQ2 supports high-risk customer ranking, not a causal
+retention effect. RQ3 shows how an owner can compare policies across dates,
+but not audited profit or universal stock-out prevention. RQ4 is only a rule
 consistency audit. Remaining empirical work includes independent source and
-stock validation, an untouched RQ1 test, participating-owner policy replay,
-and a consented participant study. No universal model winner or untested
-business-impact claim is asserted.
+stock validation, an untouched RQ1 test, calibrated customer probabilities,
+participating-owner policy replay, validated costs and a consented participant
+study. No universal model winner or untested business-impact claim is
+asserted.
 
 \cleardoublepage
 \chapter{Conclusions}
@@ -3357,16 +3630,21 @@ also show lower pooled WAPE, but use only three origins each.
 
 An exposure-conditioned SKU diagnostic found that the 28-day exposed-sales
 mean had lower Q4 WAPE than HistGradientBoosting; the period had already been
-inspected and is not a blind holdout. For RQ2, temporal model comparison on
+inspected and is not a blind holdout. A separate six-date seven-day validation
+recorded mean WAPE of 32.40\% for HistGradientBoosting, with actual and
+predicted totals shown at every cutoff. For RQ2, temporal model comparison on
 the supplied snapshots produced a HistGradientBoosting PR-AUC of 0.746 after
-all 72,146 labels matched an independent order-history reconstruction.
-For RQ3, the trend scenario had 0.87\% lower cost but 55 more lost units
-than the supplied baseline. For RQ4, all prepared cases passed mechanical
+all 72,146 labels matched an independent order-history reconstruction; the
+rolling evaluation also placed 69.91--86.06\% observed inactivity in the
+highest-risk 10\%. For RQ3, the trend scenario had 0.87\% lower cost but 55
+more lost units than the supplied baseline, while the eight-date observed-sales
+backtest showed a 0.54\% weighted cost increase and zero lost units under both
+policies in a stock-rich sample. For RQ4, all prepared cases passed mechanical
 rule checks, but there are no validated participant responses. These findings
-are conditional on unverified source data and scenario assumptions. The
-contribution is an auditable evaluation process; owner-policy benefit,
-measured usability, causal customer-action effects and transfer to other
-businesses remain unestablished.
+are conditional on unverified source data, cost assumptions and the absence of
+causal intervention evidence. The contribution is an auditable, date-aware
+decision process; owner-policy benefit, measured usability, causal
+customer-action effects and transfer to other businesses remain unestablished.
 
 
 
