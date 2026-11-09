@@ -1,6 +1,6 @@
 """Mechanical consistency audit for prepared explanation cases.
 
-This is a computational audit of generated cases. It does not analyse
+This is a computational audit of prepared rule-test cases. It does not analyse
 participant ratings or usability; those require a real, consented user study.
 """
 from __future__ import annotations
@@ -115,7 +115,7 @@ def run(data_dir: Path, out: Path, figures_dir: Path) -> None:
     if data["case_id"].duplicated().any():
         raise ValueError("Duplicate case_id values.")
     rating = data["human_rating"].fillna("").astype(str).str.strip().str.upper()
-    # Rating text in a generated case sheet is not participant provenance.
+    # Rating text in a prepared case sheet is not participant provenance.
     summary = {
         "case_count": int(len(data)),
         "date_range": [str(data["as_of_date"].min().date()), str(data["as_of_date"].max().date())],
@@ -140,7 +140,7 @@ def run(data_dir: Path, out: Path, figures_dir: Path) -> None:
         "supplied_human_rating_values": {str(k): int(v) for k, v in rating.value_counts(dropna=False).items()},
         "validated_participant_response_count": 0,
         "human_usability_metrics": None,
-        "interpretation": "All rows are prepared generated explanation rule-test cases. Action and constraint checks use the supplied reorder point, pending quantity, pack size and scenario budget. The target order-up-to quantity is absent from the file, so this audit does not assess whether the quantity is economically optimal. The human_rating field has no linked participant, consent, task, timestamp, or response provenance and is excluded from human-study results.",
+        "interpretation": "All rows are prepared explanation rule-test cases. Action and constraint checks use the supplied reorder point, pending quantity, pack size and scenario budget. The target order-up-to quantity is absent from the file, so this audit does not assess whether the quantity is economically optimal. The human_rating field has no linked participant, consent, task, timestamp, or response provenance and is excluded from human-study results.",
     }
     (out / "case_audit_summary.json").write_text(json.dumps(summary, indent=2), encoding="utf-8")
     save_rq4_figure(summary, figures_dir)

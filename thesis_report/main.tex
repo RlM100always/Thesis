@@ -3198,17 +3198,17 @@ $\sum_j|\hat y_j-y_j|/\sum_j|y_j|$.
 \hline
 \textbf{Cutoff} & \textbf{Actual units} & \textbf{HGB forecast} & \textbf{HGB WAPE} & \textbf{28-day WAPE} & \textbf{Weekly WAPE} & \textbf{HGB signed bias} \\
 \hline
-30 Apr 2025 & 9,978 & 10,118 & 31.41\% & 39.27\% & 43.38\% & +140 \\
+30 Apr 2025 & 9,978 & 10,069 & 31.38\% & 39.27\% & 43.38\% & +91 \\
 \hline
-31 May 2025 & 12,659 & 11,408 & 28.86\% & 36.11\% & 43.79\% & -1,251 \\
+31 May 2025 & 12,659 & 11,314 & 29.18\% & 36.11\% & 43.79\% & -1,345 \\
 \hline
-30 Jun 2025 & 10,010 & 9,600 & 32.26\% & 46.11\% & 46.75\% & -410 \\
+30 Jun 2025 & 10,010 & 9,565 & 32.36\% & 46.11\% & 46.75\% & -445 \\
 \hline
-31 Jul 2025 & 9,793 & 9,538 & 33.61\% & 36.70\% & 43.95\% & -255 \\
+31 Jul 2025 & 9,793 & 9,505 & 33.80\% & 36.70\% & 43.95\% & -288 \\
 \hline
-31 Aug 2025 & 9,417 & 9,240 & 34.23\% & 39.32\% & 48.74\% & -177 \\
+31 Aug 2025 & 9,417 & 9,214 & 34.50\% & 39.32\% & 48.74\% & -203 \\
 \hline
-30 Sep 2025 & 9,125 & 9,301 & 34.05\% & 38.47\% & 49.74\% & +176 \\
+30 Sep 2025 & 9,125 & 9,314 & 34.20\% & 38.47\% & 49.74\% & +189 \\
 \hline
 \end{tabularx}
 \end{table}
@@ -3223,9 +3223,9 @@ diagnostic detail.}
 \label{fig:rq1_simple_actual_vs_predicted}
 \end{figure}
 
-Across the six cutoffs, HistGradientBoosting has mean WAPE 32.40\%, compared
+Across the six cutoffs, HistGradientBoosting has mean WAPE 32.57\%, compared
 with 39.33\% for the 28-day mean and 46.06\% for the weekly naive rule. Its
-aggregate signed bias is -2.91\% over 60,982 actual units. The model is
+aggregate signed bias is -3.29\% over 60,982 actual units. The model is
 therefore materially more useful for this seven-day, shop--category decision
 than the two simple comparators in this multi-date test, although its WAPE
 still ranges from 28.86\% to 34.23\%. This result must not be merged with the
@@ -3233,6 +3233,46 @@ separate one-day SKU exposure diagnostic, where the target grain, horizon and
 stock-eligibility rule are different and the 28-day mean remained the best
 WAPE baseline. The multi-date result is a stronger operational diagnostic,
 not a claim that every SKU forecast is accurate.
+
+\begin{table}[H]
+\centering
+\small
+\caption{Frozen-tail RQ1 stress check after freezing the context-aware model.}
+\label{tab:rq1_frozen_tail}
+\begin{tabularx}{\textwidth}{|X|C{0.13\textwidth}|C{0.16\textwidth}|C{0.16\textwidth}|C{0.13\textwidth}|Y|}
+\hline
+\textbf{Model} & \textbf{Origins} & \textbf{Actual units} & \textbf{Forecast units} & \textbf{WAPE} & \textbf{Bias} \\
+\hline
+Base LightGBM & 13 & 120,127 & 118,831.0 & 33.58\% & -1.08\% \\
+\hline
+Context-aware LightGBM & 13 & 120,127 & 119,369.6 & \textbf{33.45\%} & -0.63\% \\
+\hline
+\end{tabularx}
+\end{table}
+
+The model was fitted once through 30 September 2025 and then scored at 13
+weekly origins from 1 October to 24 December 2025. All rolling and
+cross-series features stop before each origin. Context features reduce WAPE
+by 0.13 percentage points and reduce aggregate under-forecast bias, but this
+is a pre-inspected Q4 tail stress check rather than a blind final holdout.
+The graphs below show both the unit-level outcome and the error split by
+demand regime.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{Figures/rq1_final_holdout_actual_vs_predicted.png}
+\caption{RQ1 frozen-tail stress check: actual versus frozen context-aware
+forecast across 13 weekly origins.}
+\label{fig:rq1_frozen_tail_actual_predicted}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.9\textwidth]{Figures/rq1_final_holdout_regime_wape.png}
+\caption{RQ1 frozen-tail WAPE by demand regime. Regimes use training-period
+history only.}
+\label{fig:rq1_frozen_tail_regime}
+\end{figure}
 
 \begin{table}[H]
 \centering
@@ -3438,8 +3478,9 @@ retained in the table.}
 
 The top-risk decile has an observed inactivity rate of 69.91--86.06\%,
 whereas the corresponding full-population rate is 32.15--43.34\%. This is
-approximately a 1.99--2.17-fold targeting lift, so a small SME can direct a
-limited retention budget to a much smaller customer list. The mean predicted
+approximately a 1.99--2.17-fold targeting lift, with a mean lift of 2.06x;
+date-level bootstrap intervals average 1.98--2.14x. A small SME can therefore
+direct a limited retention budget to a much smaller customer list. The mean predicted
 probability is below the observed rate at all six dates, with a gap of 3.40
 to 11.54 percentage points. The model is therefore useful as a ranking tool,
 but its probabilities require calibration before they are interpreted as
@@ -3451,7 +3492,7 @@ an SMS, discount or call caused the subsequent order.
 
 The supplied file contains 2,500 scenarios at the 31 July 2025 cutoff,
 covering 32 shops and 477 SKUs. Its future-demand field is explicitly
-scenario-generated oracle demand. The baseline and trend policy were
+oracle future-demand assumptions. The baseline and trend policy were
 compared on identical scenarios; product costs confirmed zero order-budget
 breaches for either policy.
 
@@ -3556,11 +3597,23 @@ cheaper at only three of eight cutoffs and more expensive at five. Both
 policies record zero lost units because reconstructed stock is high relative
 to the observed 30-day demand; this is evidence about the selected historical
 sample, not proof that either policy prevents stock-outs in a different SME.
-The practical contribution is therefore decision visibility: an owner can see
-when trend adjustment changes procurement and holding cost, while avoiding a
-false claim of guaranteed profit. A real owner-policy replay with validated
-purchase, holding and lost-sales costs is still required before financial
-deployment.
+The low-stock quartile file repeats the comparison for the least-stocked
+pairs. A holding-cost sensitivity check at 0\%, 2\%, 5\% and 10\% changes the
+absolute cost level but not the service result: lost units remain zero for
+both policies. A service-cost Pareto frontier is therefore not identifiable
+from this stock-rich sample. The practical contribution is decision
+visibility: an owner can see when trend adjustment changes procurement and
+holding cost, while avoiding a false claim of guaranteed profit. A real
+owner-policy replay with validated purchase, holding and lost-sales costs is
+still required before financial deployment.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.88\textwidth]{Figures/rq3_cost_sensitivity.png}
+\caption{RQ3 sensitivity to the declared holding-cost rate. The two policies
+remain close, while the observed-sales sample provides no lost-unit separation.}
+\label{fig:rq3_cost_sensitivity}
+\end{figure}
 
 \section{Business-Owner Decision Value}
 \label{sec:business_owner_value}
@@ -3583,7 +3636,7 @@ accuracy number.
 \hline
 \textbf{Owner question} & \textbf{Model evidence} & \textbf{Operational use} & \textbf{Evidence boundary} \\
 \hline
-How much should I prepare for next week? & RQ1 HGB mean WAPE 32.40\% across six dates, with actual and predicted units shown separately. & Set a shop--category planning quantity and review dates with larger bias or WAPE. & Not a guarantee for an unseen business; stock-out demand is not recovered. \\
+How much should I prepare for next week? & RQ1 leakage-safe HGB mean WAPE 32.57\% across six dates, plus a frozen-tail context check at 33.45\%. & Set a shop--category planning quantity and review dates with larger bias or WAPE. & Not a guarantee for an unseen business; stock-out demand is not recovered. \\
 \hline
 Which customers need attention first? & RQ2 highest-risk 10\% observed inactivity 69.91--86.06\%, versus 32.15--43.34\% overall. & Prioritise a small, affordable call, message or offer list instead of contacting everyone. & Ranking is useful, but probabilities need calibration and action impact was not randomised. \\
 \hline
@@ -3711,7 +3764,7 @@ also show lower pooled WAPE, but use only three origins each.
 An exposure-conditioned SKU diagnostic found that the 28-day exposed-sales
 mean had lower Q4 WAPE than HistGradientBoosting; the period had already been
 inspected and is not a blind holdout. A separate six-date seven-day validation
-recorded mean WAPE of 32.40\% for HistGradientBoosting, with actual and
+recorded leakage-safe mean WAPE of 32.57\% for HistGradientBoosting, with actual and
 predicted totals shown at every cutoff. For RQ2, temporal model comparison on
 the supplied snapshots produced a HistGradientBoosting PR-AUC of 0.746 after
 all 72,146 labels matched an independent order-history reconstruction; the

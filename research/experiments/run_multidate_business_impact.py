@@ -60,7 +60,13 @@ def rq1_features(values: np.ndarray, series_idx: np.ndarray, origin_idx: np.ndar
     cols.append(last7.mean(axis=1))
     cols.append(last28.mean(axis=1))
     cols.append(last28.std(axis=1))
-    series_mean = values[series_idx].mean(axis=1)
+    # Point-in-time only: the historical series mean must stop at the
+    # forecast origin.  Using the full row here would leak future demand into
+    # the feature and make the WAPE optimistic.
+    series_mean = np.asarray([
+        values[int(series), : int(origin)].mean()
+        for series, origin in zip(series_idx, origin_idx)
+    ], dtype=np.float32)
     cols.append(series_mean)
     day = dates.take(origin_idx).dayofweek.to_numpy()
     month = dates.take(origin_idx).month.to_numpy()
@@ -183,13 +189,30 @@ def run_rq2(snapshot_path: Path, out: Path, figures: Path) -> pd.DataFrame:
         y = test["inactive_next_90d_label"].to_numpy(dtype=int)
         top_n = max(1, int(np.ceil(len(y) * 0.10)))
         top_idx = np.argpartition(probability, -top_n)[-top_n:]
+        # The top-decile selection is fixed by the model score.  Bootstrap the
+        # observed labels within the full population and selected group to
+        # quantify uncertainty around the operational targeting lift.
+        rng = np.random.default_rng(SEED + int(pd.Timestamp(date).strftime("%Y%m%d")))
+        lift_draws = []
+        selected_labels = y[top_idx]
+        for _ in range(2000):
+            overall_draw = y[rng.integers(0, len(y), size=len(y))].mean()
+            selected_draw = selected_labels[rng.integers(0, len(selected_labels), size=len(selected_labels))].mean()
+            lift_draws.append(selected_draw / max(overall_draw, 1e-9))
+        lift_draws = np.asarray(lift_draws)
+        overall_rate = float(y.mean())
+        top_rate = float(selected_labels.mean())
         rows.append({
             "snapshot_date": pd.Timestamp(date).date().isoformat(),
             "train_rows": int(len(train)),
             "test_rows": int(len(test)),
-            "actual_inactivity_rate": float(y.mean()),
+            "targeted_customer_count": int(top_n),
+            "actual_inactivity_rate": overall_rate,
             "mean_predicted_inactivity_probability": float(probability.mean()),
-            "top_decile_observed_inactivity_rate": float(y[top_idx].mean()),
+            "top_decile_observed_inactivity_rate": top_rate,
+            "targeting_lift": float(top_rate / max(overall_rate, 1e-9)),
+            "targeting_lift_ci_low": float(np.quantile(lift_draws, 0.025)),
+            "targeting_lift_ci_high": float(np.quantile(lift_draws, 0.975)),
             "average_precision": float(average_precision_score(y, probability)),
             "roc_auc": float(roc_auc_score(y, probability)) if len(np.unique(y)) == 2 else None,
             "brier_score": float(brier_score_loss(y, probability)),
@@ -223,7 +246,10 @@ def run_rq2(snapshot_path: Path, out: Path, figures: Path) -> pd.DataFrame:
     ax.set_ylabel("Observed inactivity (%)")
     ax.set_title("RQ2: Why targeting the highest-risk 10% helps")
     ax.grid(axis="y", alpha=0.25)
-    ax.text(0.5, 0.96, f"Targeting lift: {top / overall:.2f}×", transform=ax.transAxes, ha="center", va="top", color="#b91c1c", fontsize=12)
+    lift = metrics["targeting_lift"].mean()
+    ci_low = metrics["targeting_lift_ci_low"].mean()
+    ci_high = metrics["targeting_lift_ci_high"].mean()
+    ax.text(0.5, 0.96, f"Targeting lift: {lift:.2f}× (date-level 95% CI mean {ci_low:.2f}–{ci_high:.2f}×)", transform=ax.transAxes, ha="center", va="top", color="#b91c1c", fontsize=10)
     for bar, value in zip(bars, [overall, top]):
         ax.text(bar.get_x() + bar.get_width() / 2, value + 3, f"{value:.1f}%", ha="center", fontsize=10)
     savefig(fig, figures / "rq2_simple_targeting_lift.png")
@@ -244,6 +270,8 @@ def run_rq3(data_dir: Path, out: Path, figures: Path) -> pd.DataFrame:
     products["margin_bdt"] = (products["base_retail_price_bdt"] - products["standard_purchase_cost_bdt"]).clip(lower=0)
     cutoffs = pd.to_datetime(["2025-02-28", "2025-03-31", "2025-04-30", "2025-05-31", "2025-06-30", "2025-07-31", "2025-08-31", "2025-09-30"])
     rows: list[dict] = []
+    low_stock_rows: list[dict] = []
+    sensitivity_rows: list[dict] = []
     for cutoff in cutoffs:
         start30 = cutoff - pd.Timedelta(days=29)
         start90 = cutoff - pd.Timedelta(days=89)
@@ -280,6 +308,37 @@ def run_rq3(data_dir: Path, out: Path, figures: Path) -> pd.DataFrame:
                 + 0.02 * detail[f"{prefix}_avg_stock"] * detail["standard_purchase_cost_bdt"]
                 + detail[f"{prefix}_lost_units"] * detail["margin_bdt"]
             )
+        stock_threshold = float(detail["stock_at_cutoff"].quantile(0.25))
+        low_stock = detail["stock_at_cutoff"] <= stock_threshold
+        for prefix in ("baseline", "trend"):
+            low_cost = float(detail.loc[low_stock, f"{prefix}_cost_bdt"].sum())
+            low_demand = float(detail.loc[low_stock, "actual_future_demand_30d"].sum())
+            low_lost = float(detail.loc[low_stock, f"{prefix}_lost_units"].sum())
+            low_stock_rows.append({
+                "cutoff": cutoff.date().isoformat(),
+                "stock_threshold_units_q25": stock_threshold,
+                "policy": prefix,
+                "low_stock_pairs": int(low_stock.sum()),
+                "actual_future_demand_30d": low_demand,
+                "total_cost_bdt": low_cost,
+                "lost_units": low_lost,
+                "service_level_pct": float(100 * (1 - low_lost / max(low_demand, 1.0))),
+            })
+        for holding_rate in (0.00, 0.02, 0.05, 0.10):
+            for prefix in ("baseline", "trend"):
+                sensitivity_cost = (
+                    detail[f"{prefix}_order_qty"] * detail["standard_purchase_cost_bdt"]
+                    + holding_rate * detail[f"{prefix}_avg_stock"] * detail["standard_purchase_cost_bdt"]
+                    + detail[f"{prefix}_lost_units"] * detail["margin_bdt"]
+                ).sum()
+                sensitivity_rows.append({
+                    "cutoff": cutoff.date().isoformat(),
+                    "holding_rate": holding_rate,
+                    "policy": prefix,
+                    "total_cost_bdt": float(sensitivity_cost),
+                    "lost_units": float(detail[f"{prefix}_lost_units"].sum()),
+                    "service_level_pct": float(100 * (1 - detail[f"{prefix}_lost_units"].sum() / max(detail["actual_future_demand_30d"].sum(), 1.0))),
+                })
         rows.append({
             "cutoff": cutoff.date().isoformat(),
             "pairs": int(len(detail)),
@@ -297,6 +356,9 @@ def run_rq3(data_dir: Path, out: Path, figures: Path) -> pd.DataFrame:
         })
     metrics = pd.DataFrame(rows)
     metrics.to_csv(out / "rq3_multidate_business_impact.csv", index=False)
+    pd.DataFrame(low_stock_rows).to_csv(out / "rq3_low_stock_metrics.csv", index=False)
+    sensitivity = pd.DataFrame(sensitivity_rows)
+    sensitivity.to_csv(out / "rq3_cost_sensitivity.csv", index=False)
     fig, axes = plt.subplots(3, 1, figsize=(11, 10), sharex=True)
     x = np.arange(len(metrics))
     axes[0].plot(x, metrics["actual_future_demand_30d"], marker="o", linewidth=2.5, color="#111827", label="Actual next-30-day demand")
@@ -334,6 +396,18 @@ def run_rq3(data_dir: Path, out: Path, figures: Path) -> pd.DataFrame:
     for bar, value in zip(bars, [baseline_total, trend_total]):
         ax.text(bar.get_x() + bar.get_width() / 2, value + 0.12, f"BDT {value:.2f}m", ha="center", fontsize=10)
     savefig(fig, figures / "rq3_simple_cost_tradeoff.png")
+    sensitivity_summary = sensitivity.groupby(["holding_rate", "policy"], as_index=False)["total_cost_bdt"].sum()
+    fig, ax = plt.subplots(figsize=(8.5, 4.8))
+    for policy, color in [("baseline", "#64748b"), ("trend", "#d97706")]:
+        part = sensitivity_summary[sensitivity_summary["policy"].eq(policy)]
+        ax.plot(part["holding_rate"] * 100, part["total_cost_bdt"] / 1_000_000, marker="o", linewidth=2.5, label=policy.title(), color=color)
+    ax.set_xlabel("Holding-cost rate applied to average stock (%)")
+    ax.set_ylabel("Total decision-analysis cost (BDT million)")
+    ax.set_title("RQ3: Cost sensitivity to the declared holding-cost assumption")
+    ax.text(0.99, 0.03, "Lost units remained 0 for both policies in this backtest", transform=ax.transAxes, ha="right", va="bottom", fontsize=9, color="#374151")
+    ax.grid(axis="y", alpha=0.25)
+    ax.legend(frameon=False)
+    savefig(fig, figures / "rq3_cost_sensitivity.png")
     return metrics
 
 
@@ -348,9 +422,11 @@ def run(data_dir: Path, out: Path, figures: Path) -> None:
         "rq1_cutoffs": rq1["cutoff"].unique().tolist(),
         "rq2_snapshot_dates": rq2["snapshot_date"].tolist(),
         "rq3_cutoffs": rq3["cutoff"].tolist(),
-        "rq3_cost_function": "purchase_cost + 0.02 * purchase_cost * average_stock + lost_units * max(retail_price - purchase_cost, 0)",
+        "rq1_feature_policy": "All rolling means, including the series mean, stop strictly before each forecast origin; no full-history feature is used.",
+        "rq2_uncertainty": "Date-level bootstrap confidence intervals for targeting lift; top-decile selection is fixed by model score.",
+        "rq3_cost_function": "purchase_cost + holding_rate * purchase_cost * average_stock + lost_units * max(retail_price - purchase_cost, 0); primary rate 0.02, sensitivity 0/2/5/10%.",
         "rq3_assumption_note": "Historical backtest uses observed sales after each cutoff; it is a decision-analysis estimate, not audited accounting profit or causal business impact.",
-        "outputs": ["rq1_multidate_metrics.csv", "rq2_multidate_metrics.csv", "rq3_multidate_business_impact.csv", "rq1_multidate_actual_vs_predicted.png", "rq1_simple_actual_vs_predicted.png", "rq2_multidate_inactivity.png", "rq2_simple_targeting_lift.png", "rq3_multidate_strategy_impact.png", "rq3_simple_cost_tradeoff.png"],
+        "outputs": ["rq1_multidate_metrics.csv", "rq2_multidate_metrics.csv", "rq3_multidate_business_impact.csv", "rq3_low_stock_metrics.csv", "rq3_cost_sensitivity.csv", "rq1_multidate_actual_vs_predicted.png", "rq1_simple_actual_vs_predicted.png", "rq2_multidate_inactivity.png", "rq2_simple_targeting_lift.png", "rq3_multidate_strategy_impact.png", "rq3_simple_cost_tradeoff.png", "rq3_cost_sensitivity.png"],
         "input_files": {
             "rq1_daily_shop_category.csv": sha256(data_dir / "rq1_daily_shop_category.csv"),
             "rq2_customer_snapshots_90d.csv": sha256(data_dir / "rq2_customer_snapshots_90d.csv"),

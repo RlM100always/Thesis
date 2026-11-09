@@ -16,17 +16,27 @@ import matplotlib.pyplot as plt
 import pandas as pd
 
 
-def build(results_dir: Path, output: Path) -> None:
+def build(results_dir: Path, output: Path, forecast_dir: Path) -> None:
     multidate = results_dir / "multidate_business_impact"
     rq1 = pd.read_csv(multidate / "rq1_multidate_metrics.csv")
     rq2 = pd.read_csv(multidate / "rq2_multidate_metrics.csv")
     rq3 = pd.read_csv(multidate / "rq3_multidate_business_impact.csv")
     rq4 = pd.read_json(results_dir / "rq4_explanation_case_audit" / "case_audit_summary.json", typ="series")
 
-    rq1_hgb = rq1[rq1["model"].eq("hist_gradient_boosting")]
-    rq1_actual = float(rq1_hgb["actual_total_units"].sum())
-    rq1_predicted = float(rq1_hgb["predicted_total_units"].sum())
-    rq1_wape = float(rq1_hgb["WAPE"].mean() * 100)
+    frozen_metrics = forecast_dir / "aggregate_metrics.csv"
+    if frozen_metrics.exists():
+        frozen = pd.read_csv(frozen_metrics)
+        rq1_context = frozen[frozen["model"].eq("LightGBM_context")].iloc[0]
+        rq1_actual = float(rq1_context["actual_total"])
+        rq1_predicted = float(rq1_context["forecast_total"])
+        rq1_wape = float(rq1_context["WAPE"] * 100)
+        rq1_label = "Frozen tail (13 weekly origins)"
+    else:
+        rq1_hgb = rq1[rq1["model"].eq("hist_gradient_boosting")]
+        rq1_actual = float(rq1_hgb["actual_total_units"].sum())
+        rq1_predicted = float(rq1_hgb["predicted_total_units"].sum())
+        rq1_wape = float(rq1_hgb["WAPE"].mean() * 100)
+        rq1_label = "Six rolling cutoffs"
     rq2_overall = float(rq2["actual_inactivity_rate"].mean() * 100)
     rq2_top = float(rq2["top_decile_observed_inactivity_rate"].mean() * 100)
     rq3_base = float(rq3["baseline_total_cost_bdt"].sum() / 1_000_000)
@@ -53,8 +63,11 @@ def build(results_dir: Path, output: Path) -> None:
     ax.set_ylabel("Observed inactivity (%)")
     ax.set_ylim(0, 100)
     ax.grid(axis="y", alpha=0.25)
-    lift = rq2_top / rq2_overall
-    ax.text(0.5, 0.93, f"Targeting lift: {lift:.2f}×", transform=ax.transAxes, ha="center", fontsize=11, color="#b91c1c")
+    lift = float(rq2["targeting_lift"].mean()) if "targeting_lift" in rq2 else rq2_top / rq2_overall
+    ci_low = float(rq2["targeting_lift_ci_low"].mean()) if "targeting_lift_ci_low" in rq2 else float("nan")
+    ci_high = float(rq2["targeting_lift_ci_high"].mean()) if "targeting_lift_ci_high" in rq2 else float("nan")
+    ci_text = f" (mean 95% CI {ci_low:.2f}–{ci_high:.2f}×)" if pd.notna(ci_low) else ""
+    ax.text(0.5, 0.93, f"Targeting lift: {lift:.2f}×{ci_text}", transform=ax.transAxes, ha="center", fontsize=9, color="#b91c1c")
     for bar, value in zip(bars, [rq2_overall, rq2_top]):
         ax.text(bar.get_x() + bar.get_width() / 2, value + 3, f"{value:.1f}%", ha="center", fontsize=10)
 
@@ -79,7 +92,7 @@ def build(results_dir: Path, output: Path) -> None:
 
     for ax in axes.ravel():
         ax.spines[["top", "right"]].set_visible(False)
-    fig.text(0.5, 0.015, "Interpretation: predictive and rule evidence is measured; causal profit and participant usability are not yet established.", ha="center", fontsize=9, color="#374151")
+    fig.text(0.5, 0.015, f"RQ1: {rq1_label}. Predictive and rule evidence is measured; causal profit and participant usability are not established.", ha="center", fontsize=9, color="#374151")
     output.parent.mkdir(parents=True, exist_ok=True)
     fig.tight_layout(rect=[0, 0.04, 1, 0.95])
     fig.savefig(output, dpi=220, bbox_inches="tight")
@@ -89,9 +102,10 @@ def build(results_dir: Path, output: Path) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--results-dir", type=Path, default=Path("research/experiments/results"))
+    parser.add_argument("--forecast-dir", type=Path, default=Path("research/forecasting/results/rq1_frozen_tail_v1"))
     parser.add_argument("--output", type=Path, default=Path("thesis_report/Figures/thesis_results_overview.png"))
     args = parser.parse_args()
-    build(args.results_dir, args.output)
+    build(args.results_dir, args.output, args.forecast_dir)
 
 
 if __name__ == "__main__":

@@ -53,7 +53,7 @@ These are predictive results for the supplied snapshots. They do not show that a
 
 **Files:** `rq3_offline_policy_comparison.csv` and `products.csv`.
 
-The file has 2,500 paired scenarios at the 31 July 2025 cutoff, across 32 shops and 477 SKUs. Its future-demand oracle field contains generated scenario values; it is not realized future sales. The same scenario inputs were used to compare the baseline and trend policies. Costs and budgets are scenario assumptions, not observed business accounts.
+The file has 2,500 paired scenarios at the 31 July 2025 cutoff, across 32 shops and 477 SKUs. Its future-demand oracle field contains assumption-based scenario values; it is not realized future sales. The same scenario inputs were used to compare the baseline and trend policies. Costs and budgets are scenario assumptions, not observed business accounts.
 
 | Outcome | Baseline | Trend policy | Difference |
 |---|---:|---:|---:|
@@ -87,19 +87,25 @@ python research/experiments/run_multidate_business_impact.py \
   --figures-dir thesis_report/Figures
 ```
 
-### RQ1 — six-date actual-versus-predicted demand
+### RQ1 — leakage-safe six-date actual-versus-predicted demand
 
 Cutoffs: 30 April, 31 May, 30 June, 31 July, 31 August and 30 September 2025. At each cutoff, the model predicts the following seven days for all 512 shop--category series. Training origins are earlier than the cutoff and use a trailing 365-day window. The HistGradientBoosting model uses lag 1/7/14/28 demand, 7- and 28-day means and dispersion, series history and calendar encodings; the Poisson loss keeps the count target non-negative.
 
-The six-date mean WAPE is **32.40%** for HistGradientBoosting, **39.33%** for the previous-28-day mean and **46.06%** for the weekly naive rule. Actual total demand over the six horizons is 60,982 units; the model predicts 59,204.65 (aggregate signed bias -2.91%). The reader-facing actual-versus-predicted graph is `thesis_report/Figures/rq1_simple_actual_vs_predicted.png`; the full two-panel diagnostic is retained as `rq1_multidate_actual_vs_predicted.png`. The per-date values and WAPE are in `rq1_multidate_metrics.csv`.
+The earlier 32.40% figure came from a full-history series-mean feature and is no longer treated as valid primary evidence. The runner now uses a point-in-time series mean that stops strictly before each origin. The corrected six-date mean WAPE is **32.57%** for HistGradientBoosting, **39.33%** for the previous-28-day mean and **46.06%** for the weekly naive rule. Actual total demand over the six horizons is 60,982 units; the leakage-safe model predicts 58,981.02 (aggregate signed bias -3.29%). The reader-facing actual-versus-predicted graph is `thesis_report/Figures/rq1_simple_actual_vs_predicted.png`; the full two-panel diagnostic is retained as `rq1_multidate_actual_vs_predicted.png`. The per-date values and WAPE are in `rq1_multidate_metrics.csv`.
 
 This is a seven-day shop--category validation. It must not be merged with the separate one-day SKU exposure diagnostic, where the target grain and stock-eligibility rule differ and the 28-day mean remains the strongest WAPE baseline.
 
-### RQ2 — six-date customer-inactivity stability and targeting lift
+### RQ1 — frozen Q4 tail stress check
+
+`research/forecasting/run_final_holdout.py` fits the context-aware LightGBM once using data through 30 September 2025 and scores 13 weekly origins from 1 October to 24 December 2025. All rolling and cross-series features are point-in-time. The context model gives **33.45% WAPE**, MAE **6.037 units per shop-category seven-day forecast**, RMSE **8.234**, actual **120,127** units and predicted **119,369.62** units (bias **-0.63%**). The base model gives 33.58% WAPE, so context features improve the frozen-tail check by 0.13 percentage points.
+
+The tail was inspected in earlier project work, so the output is named a **pre-inspected frozen-tail stress check**, not a blind final holdout. Its outputs are `research/forecasting/results/rq1_frozen_tail_v1/aggregate_metrics.csv`, `origin_metrics.csv`, `regime_metrics.csv`, and `run_manifest.json`; the reader-facing graphs are `thesis_report/Figures/rq1_final_holdout_actual_vs_predicted.png` and `rq1_final_holdout_regime_wape.png`. Regime-wise WAPE is reported separately because intermittent and lumpy series behave differently from smooth and erratic demand.
+
+### RQ2 — six-date customer-inactivity stability, lift and uncertainty
 
 Snapshot dates: 31 March and 30 June and 30 September 2024, then 31 December 2024, 31 March 2025 and 30 June 2025. Each date is scored using only earlier snapshots for fitting. The mean predicted probability is compared with the observed inactivity rate, average precision and Brier score. The highest-risk 10% is also measured against all customers.
 
-The observed inactivity rate is 32.15--43.34% across dates, while the highest-risk 10% contains 69.91--86.06% inactive customers. That is approximately a **1.99--2.17x targeting lift**. The simple decision graph is `thesis_report/Figures/rq2_simple_targeting_lift.png`; the full rolling diagnostic remains `rq2_multidate_inactivity.png`. The mean probability is below the observed rate on every date, so the model is suitable for ranking and campaign prioritisation but needs probability calibration before a literal probability threshold is used. This does not prove that a retention message or discount causes a later purchase. Outputs: `rq2_multidate_metrics.csv` and both figures.
+The observed inactivity rate is 32.15--43.34% across dates, while the highest-risk 10% contains 69.91--86.06% inactive customers. That is a mean **2.06x targeting lift**; date-level bootstrap intervals average 1.98--2.14x across the six snapshots. The simple decision graph is `thesis_report/Figures/rq2_simple_targeting_lift.png`; the full rolling diagnostic remains `rq2_multidate_inactivity.png`. The mean probability is below the observed rate on every date, so the model is suitable for ranking and campaign prioritisation but needs probability calibration before a literal probability threshold is used. This does not prove that a retention message or discount causes a later purchase. Outputs: `rq2_multidate_metrics.csv` and both figures.
 
 ### RQ3 — eight-date observed-sales replenishment backtest
 
@@ -111,7 +117,7 @@ cost = order_quantity * purchase_cost
        + lost_units * max(retail_price - purchase_cost, 0)
 ```
 
-The 2% holding factor is an assumption-based comparison term, not audited accounting profit. Across all eight dates, baseline cost is BDT 61.341m and trend-policy cost is BDT 61.675m: a weighted **+0.54%** change. Trend is cheaper at 3 dates and more expensive at 5. Both policies have zero lost units because reconstructed stock is high relative to observed demand in this sample; this is not evidence of universal stockout prevention. The simple decision graph is `thesis_report/Figures/rq3_simple_cost_tradeoff.png`; the full diagnostic remains `rq3_multidate_strategy_impact.png`. Outputs: `rq3_multidate_business_impact.csv` and both figures.
+The 2% holding factor is an assumption-based comparison term, not audited accounting profit. Across all eight dates, baseline cost is BDT 61.341m and trend-policy cost is BDT 61.675m: a weighted **+0.54%** change. Trend is cheaper at 3 dates and more expensive at 5. Both policies have zero lost units because reconstructed stock is high relative to observed demand in this sample; this is not evidence of universal stockout prevention. The new low-stock file isolates the bottom stock quartile, while `rq3_cost_sensitivity.csv` repeats the comparison at 0%, 2%, 5% and 10% holding-cost rates. Because lost units remain zero at every rate, this dataset does not identify a service-cost Pareto frontier; it identifies how the cost comparison changes when the declared holding assumption changes. The simple decision graph is `thesis_report/Figures/rq3_simple_cost_tradeoff.png`, the sensitivity graph is `rq3_cost_sensitivity.png`, and the full diagnostic remains `rq3_multidate_strategy_impact.png`. Outputs: `rq3_multidate_business_impact.csv`, `rq3_low_stock_metrics.csv`, `rq3_cost_sensitivity.csv` and the three figures.
 
 ### What this means for an SME owner
 
@@ -143,7 +149,7 @@ The thesis contribution is decision-oriented rather than a claim of a new machin
 
 - Source provenance is unverified; structural reconciliation does not establish origin.
 - RQ1 lacks a blind final test and independent physical-stock validation.
-- RQ3 includes an observed-sales backtest, but its cost terms are assumptions and owner-policy and audited realised-cost evidence remain missing; the separate 2,500-row scenario file uses generated future-demand values.
+- RQ3 includes an observed-sales backtest, but its cost terms are assumptions and owner-policy and audited realised-cost evidence remain missing; the separate 2,500-row scenario file uses assumption-based future-demand values.
 - RQ4 is a rules audit, not a participant study.
 
 Aggregate result folders:

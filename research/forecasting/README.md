@@ -21,7 +21,7 @@ The repository contains a fixed-origin benchmark comparing:
 - Croston-SBA
 - TSB
 
-It also contains a context-feature experiment and a historical price/activity feature ablation. Those outputs are development results. The exposure-conditioned SKU diagnostic is saved under `research/experiments/results/rq1_exposure_aware_20261109/`; its Q4 period had been inspected and is not an untouched holdout. The final untouched holdout has not been evaluated.
+It also contains a context-feature experiment and a historical price/activity feature ablation. Those outputs are development results. The exposure-conditioned SKU diagnostic is saved under `research/experiments/results/rq1_exposure_aware_20261109/`; its Q4 period had been inspected and is not an untouched holdout. An untouched future period or held-out business still needs to be reserved for the final thesis claim.
 
 Recorded fixed-origin pooled WAPE:
 
@@ -33,6 +33,19 @@ Recorded fixed-origin pooled WAPE:
 | 28 days | 18.57% | 19.28% | 18.84% | 25.62% | 27.38% | 29.16% |
 
 The raw hurdle model's one-day WAPE is accompanied by material aggregate under-forecast bias and uncalibrated probabilities; it is not selected on WAPE alone. LightGBM is the current fallback candidate for 7/14/28-day shop-category development forecasting, with CatBoost retained as a challenger.
+
+### Leakage-safe frozen-tail check
+
+`run_final_holdout.py` freezes the context-aware LightGBM after 30 September
+2025 and scores 13 weekly origins from 1 October to 24 December 2025. The
+series-history and cross-series features are calculated only from observations
+available before each origin. The context model reaches 33.45% WAPE, MAE
+6.037, RMSE 8.234 and signed bias -0.63%; the base model reaches 33.58% WAPE.
+The Q4 tail was inspected earlier in the project, so this is a pre-inspected
+frozen-tail stress check rather than a blind final-holdout claim. Aggregate,
+origin and regime results are saved under
+`research/forecasting/results/rq1_frozen_tail_v1/` and the two reader-facing
+figures are saved under `thesis_report/Figures/`.
 
 ## Source audit
 

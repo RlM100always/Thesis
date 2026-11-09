@@ -11,9 +11,9 @@ py -3.12 -m venv .venv312
 python -m pip install -r requirements.txt
 \end{lstlisting}
 
-The synthetic research pipeline is run in order:
+The legacy benchmark research pipeline is run in order:
 
-\begin{lstlisting}[language=bash,caption={Rebuild the synthetic research artifacts.}]
+\begin{lstlisting}[language=bash,caption={Rebuild the legacy benchmark artifacts.}]
 python 00_normalize_dataset.py
 python 01_preprocessing.py
 python 01b_customer_features.py
@@ -75,19 +75,19 @@ The local dashboard is normally available at
 \textbf{Path} & \textbf{Content} \\
 \hline
 \endhead
-\path{normalized_data/} & Six dimension tables and transaction fact generated from the synthetic flat file \\
+\path{normalized_data/} & Six dimension tables and transaction fact generated from the legacy flat file \\
 \path{output/customer_features.csv} & Customer-level features used by leakage-safe classification \\
 \path{output/classification_v2_results.pkl} & Corrected test, cross-validation, confidence interval and McNemar results \\
 \path{output/customer_segments.csv} & K-Means assignment and customer profile data \\
 \path{output/forecast_results.pkl} & LSTM, ARIMA and seasonal-naive predictions/metrics \\
 \path{output/churn_results.pkl} & Churn ROC/PR/lift metrics and model selection \\
 \path{output/return_results.pkl} & Leakage-safe pre-dispatch return metrics \\
-\path{output/models/} & Synthetic pipeline estimators and preprocessing artifacts \\
+\path{output/models/} & Legacy benchmark estimators and preprocessing artifacts \\
 \path{output/figures/} & Publication-quality experiment figures \\
 \path{artifacts/real_public/real_data_validation.json} & UCI and Bangladesh retailer public-real results \\
 \path{artifacts/real_public/price_forecast_benchmark.json} & Four Bangladesh market-price forecast comparisons \\
 \path{artifacts/real/<org-id>/demand_model.joblib} & Organization-specific demand artifact when training succeeds \\
-\path{artifacts/scalability-smoke.csv} & Small synthetic scalability timing/memory observations \\
+\path{artifacts/scalability-smoke.csv} & Small benchmark scalability timing/memory observations \\
 \path{docs/REAL_DATA_PROTOCOL.md} & Primary data acquisition, privacy and acceptance protocol \\
 \path{docs/REAL_DATA_SOURCES.md} & Evidence-tier register and public-data limitations \\
 \hline
@@ -99,6 +99,6 @@ The local dashboard is normally available at
 The repository excludes large regenerable outputs from version control but keeps
 the source dataset and report figures needed for review. LSTM output can move
 slightly across runs due to early stopping/backend nondeterminism; stored artifact
-metrics must therefore be quoted consistently. Synthetic, public-real and primary
+metrics must therefore be quoted consistently. Legacy benchmark, public-real and primary
 real artifacts use separate paths and must not be averaged into one reported
 number.

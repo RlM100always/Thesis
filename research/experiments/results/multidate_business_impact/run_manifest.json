@@ -26,18 +26,23 @@
     "2025-08-31",
     "2025-09-30"
   ],
-  "rq3_cost_function": "purchase_cost + 0.02 * purchase_cost * average_stock + lost_units * max(retail_price - purchase_cost, 0)",
+  "rq1_feature_policy": "All rolling means, including the series mean, stop strictly before each forecast origin; no full-history feature is used.",
+  "rq2_uncertainty": "Date-level bootstrap confidence intervals for targeting lift; top-decile selection is fixed by model score.",
+  "rq3_cost_function": "purchase_cost + holding_rate * purchase_cost * average_stock + lost_units * max(retail_price - purchase_cost, 0); primary rate 0.02, sensitivity 0/2/5/10%.",
   "rq3_assumption_note": "Historical backtest uses observed sales after each cutoff; it is a decision-analysis estimate, not audited accounting profit or causal business impact.",
   "outputs": [
     "rq1_multidate_metrics.csv",
     "rq2_multidate_metrics.csv",
     "rq3_multidate_business_impact.csv",
+    "rq3_low_stock_metrics.csv",
+    "rq3_cost_sensitivity.csv",
     "rq1_multidate_actual_vs_predicted.png",
     "rq1_simple_actual_vs_predicted.png",
     "rq2_multidate_inactivity.png",
     "rq2_simple_targeting_lift.png",
     "rq3_multidate_strategy_impact.png",
-    "rq3_simple_cost_tradeoff.png"
+    "rq3_simple_cost_tradeoff.png",
+    "rq3_cost_sensitivity.png"
   ],
   "input_files": {
     "rq1_daily_shop_category.csv": "ab741f4d72c49706ba2abc8f096659324d862f758c4f171b84dd55a3ab6cbcbd",

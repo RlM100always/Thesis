@@ -32,5 +32,5 @@
   },
   "validated_participant_response_count": 0,
   "human_usability_metrics": null,
-  "interpretation": "All rows are prepared generated explanation rule-test cases. Action and constraint checks use the supplied reorder point, pending quantity, pack size and scenario budget. The target order-up-to quantity is absent from the file, so this audit does not assess whether the quantity is economically optimal. The human_rating field has no linked participant, consent, task, timestamp, or response provenance and is excluded from human-study results."
+  "interpretation": "All rows are prepared explanation rule-test cases. Action and constraint checks use the supplied reorder point, pending quantity, pack size and scenario budget. The target order-up-to quantity is absent from the file, so this audit does not assess whether the quantity is economically optimal. The human_rating field has no linked participant, consent, task, timestamp, or response provenance and is excluded from human-study results."
 }
