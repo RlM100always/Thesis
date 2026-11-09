@@ -4,7 +4,7 @@
 **Online stores:** https://thesis-j0n8.onrender.com/#/stores
 **NEW Cloudflare D1 owner dashboard:** https://thesis-j0n8.onrender.com/#/d1-owner
 
-## Current status (8 November 2026)
+## Current status (9 November 2026)
 
 The React website is deployed on Render and the Cloudflare Worker `bsmart-commerce-api` has been deployed with the production multi-store upgrade. The Worker URL is https://bsmart-commerce-api.bcs-written-rakib.workers.dev . Cloudflare D1 `bsmart-commerce` remains the authoritative store/customer/order/inventory database for the D1 storefront.
 
@@ -43,3 +43,106 @@ The D1 commerce platform and legacy FastAPI operational system remain separate. 
 - [Deployment, verification and rollback runbook](docs/DEPLOYMENT_RUNBOOK.md)
 
 The implementation plan distinguishes existing functionality from work still required. Do not treat sample catalogue stores as real merchants, and never publish owner passwords, platform-admin keys, API tokens or payment secrets in this public repository.
+
+## Research, report and software work status
+
+This repository now records the complete work sequence for the thesis: dataset
+audit, four research-question experiments, report preparation, result figures,
+and the B-SMART software/tool implementation. The detailed research log is in
+[`research/experiments/README.md`](research/experiments/README.md), while the
+forecasting-specific methods and outputs are in
+[`research/forecasting/README.md`](research/forecasting/README.md).
+
+### 1. Research workflow
+
+| Step | Current status | Evidence or output |
+|---|---|---|
+| Dataset acquisition and audit | Completed with limits recorded | Researcher-provided real Bangladesh SME dataset; structural joins, sales totals, inventory movements and labels were reconciled. Source provenance and physical-stock provenance remain unverified. |
+| RQ1 — demand forecasting | Leakage-safe experiments completed | Six-date shop-category validation, frozen Q4 tail stress check, baseline comparison, regime-wise WAPE and actual-versus-predicted graphs. Corrected six-date HGB WAPE: **32.57%**; frozen context model WAPE: **33.45%**. |
+| RQ2 — customer inactivity | Completed on temporal snapshots | Label reconstruction matched 72,146 rows; PR-AUC, ROC-AUC, Brier score, top-decile lift and bootstrap lift intervals reported. Mean top-decile lift: **2.06x**. |
+| RQ3 — replenishment | Historical backtest and scenario comparison completed | Eight observed-sales cutoffs, cost decomposition, low-stock subset and 0/2/5/10% holding-cost sensitivity. Trend cost change: **+0.54%**; lost units: **0 vs 0**. Actual owner-policy replay is still required. |
+| RQ4 — explanation evaluation | Computational audit completed; human study open | 1,800 rule-test cases pass mechanical checks at 100%. Validated participant responses: **0**. No human usability or decision-accuracy claim is made. |
+| Integrated analysis | Completed | SME-owner interpretation, evidence boundaries, limitations, simple result graphs and a four-RQ overview figure added. |
+
+No single overall “accuracy score” is used. Forecasting, classification,
+replenishment cost and explanation usability use different valid metrics.
+
+### 2. Report-making workflow
+
+`thesis_report/main.tex` is the active report source. The report now contains:
+
+- dataset profile and experiment-design rationale;
+- leakage-safe RQ1 results and regime-wise error analysis;
+- RQ2 ranking, lift and uncertainty results;
+- RQ3 historical cost, low-stock and sensitivity analysis;
+- RQ4 mechanical-evidence versus human-study boundary;
+- simple reader-facing figures and the integrated results overview;
+- SME owner meaning, novelty, limitations and remaining validation steps.
+
+Important report files:
+
+- [`thesis_report/main.tex`](thesis_report/main.tex) — active report source;
+- [`thesis_report/BUILD.md`](thesis_report/BUILD.md) — build instructions;
+- [`thesis_report/Figures/`](thesis_report/Figures/) — report figures;
+- [`research/experiments/results/multidate_business_impact/`](research/experiments/results/multidate_business_impact/) — cross-RQ result tables;
+- [`research/forecasting/results/rq1_frozen_tail_v1/`](research/forecasting/results/rq1_frozen_tail_v1/) — frozen-tail RQ1 metrics.
+
+Build from the repository root:
+
+```bash
+cd thesis_report
+pdflatex -interaction=nonstopmode -halt-on-error main.tex
+pdflatex -interaction=nonstopmode -halt-on-error main.tex
+```
+
+The source and figures are updated. The local execution environment currently
+lacks the TeX format files (`pdflatex.fmt`/`xelatex.fmt`), so local PDF
+compilation is blocked; the repository workflow remains the intended PDF build
+path.
+
+### 3. Software and tool implementation workflow
+
+| Software area | Current status | Main location or URL |
+|---|---|---|
+| Public React storefront | Deployed and smoke-tested | https://thesis-j0n8.onrender.com |
+| Store directory | Implemented with inactive demo-store protection | `frontend/`, `#/stores` |
+| Cloudflare Worker API | Deployed as `bsmart-commerce-api` | `cloudflare/`, Worker URL in the deployment section above |
+| Cloudflare D1 commerce database | Schema and migrations deployed; demo records preserved and clearly marked | `cloudflare/migrations/`, D1 database `bsmart-commerce` |
+| Business-owner console | Separate owner account, PBKDF2 password hashing, private store draft, product/stock/order tools and admin approval flow implemented | `frontend/` and `cloudflare/` owner routes |
+| Inventory and POS tools | Demo stock CRUD, order flow, stock movement and cashbook reconciliation tested | Cloudflare Worker live-smoke workflows |
+| AI assistant | Worker binding exists; deterministic database-grounded fallback is active while model inference is disabled by default | `cloudflare/` assistant routes |
+| Admin and deployment controls | Approval, access-register, migration and rollback documentation maintained | [`docs/PRODUCTION_IMPLEMENTATION_PLAN.md`](docs/PRODUCTION_IMPLEMENTATION_PLAN.md), [`docs/DEPLOYMENT_RUNBOOK.md`](docs/DEPLOYMENT_RUNBOOK.md) |
+| Legacy FastAPI system | Still separate from D1; historical POS, CRM, accounting and purchasing data are not claimed to be migrated | `api/`, `run_api.py` |
+
+The D1 sample shops are fictional demo records, not verified merchants. The
+legacy FastAPI database and the D1 commerce database must not be treated as one
+shared historical dataset.
+
+### 4. Reproducibility sequence
+
+To reproduce the current thesis evidence, use this order:
+
+1. Keep the raw Drive export outside Git and run the source audits.
+2. Run the RQ1--RQ4 experiment scripts in `research/experiments/`.
+3. Run `research/experiments/run_multidate_business_impact.py` for the cross-RQ date-level outputs.
+4. Run `research/forecasting/run_final_holdout.py` for the frozen-tail RQ1 check.
+5. Run `research/experiments/build_thesis_results_overview.py` to regenerate the overview figure.
+6. Rebuild `thesis_report/main.tex` and inspect the figures before submission.
+7. Run the software checks and deployment smoke tests only against demo or approved operational data.
+
+### 5. Remaining research and delivery steps
+
+- reserve and evaluate one genuinely untouched future period or held-out business for the final RQ1 claim;
+- validate reconstructed stock exposure with owner-approved physical-stock records;
+- calibrate RQ2 probabilities and, if possible, measure a retention action with a consented intervention design;
+- collect a participating owner's actual reorder policy and validated purchase, holding and lost-sales costs for RQ3;
+- run the consented SME participant study required for RQ4, measuring task accuracy, completion time, confidence and usability;
+- compile and visually inspect the final PDF through the configured TeX/CI environment;
+- complete production migration only after the legacy database backup and merchant identity/approval requirements are satisfied.
+
+The current implementation is therefore reproducible and report-ready for the
+available evidence, but the remaining owner-policy, blind-holdout and human
+participant steps must be completed before making causal business-impact or
+human-usability claims.
+
+Latest research branch: [codex/complete-rq-experiments-20261109](https://github.com/RlM100always/Thesis/tree/codex/complete-rq-experiments-20261109)
