@@ -1,10 +1,10 @@
-# Real SME research dataset — current source and workflow
+# Research dataset — current source and workflow
 
-Status: 8 November 2026
+Status: 9 November 2026
 
 ## Dataset identity
 
-The thesis uses the real Bangladesh SME dataset supplied by the researcher through the project Google Drive folder. The Drive manifest identifies the package as real SME sales and real people data, in BDT, covering 1 January 2023 to 31 December 2025. This is the dataset to use for the thesis experiments and report.
+The researcher supplied the Bangladesh data package through the project Google Drive folder. Its manifest claims real SME sales and people, in BDT, covering 1 January 2023 to 31 December 2025. The manifest also records a generation seed and describes validation as a “modeled world”. No independent source-system export, business-owner attestation, or source lineage was available for this review, so origin and representativeness remain unverified. Report results as conditional on the supplied package.
 
 Manifest-level structure:
 
@@ -61,6 +61,9 @@ The explanation dataset contains 1,800 cases. A field named human_rating does no
 
 Raw source files remain in the private project Google Drive folder. Do not commit raw customer records, contact details or other identifiable information to GitHub. Commit code, non-sensitive aggregate outputs, figures and run manifests needed to reproduce the research.
 
-## Current research boundary
+## Current research boundary — 9 November runs
 
-RQ1 has existing development experiments in the repository, but SKU-level exposure-aware evaluation and a final untouched evaluation remain to be completed. RQ2 requires a reproducible classification pipeline and model comparison. RQ3 requires scenario evaluation plus the participating owner's actual-policy comparison. RQ4 requires a real participant study before any human-feedback claim can be made.
+- **RQ1:** Source joins and quantities reconcile internally. The new exposure-conditioned diagnostic covers 1,130,148 Q4 shop-SKU days, but the period was previously inspected; the 28-day exposed-sales mean (183.65% WAPE) slightly outperformed HistGradientBoosting (184.66%). No untouched test or independent physical-stock validation is available.
+- **RQ2:** The 90-day labels were rebuilt from supplied orders with zero mismatches. On the supplied temporal split, HistGradientBoosting achieved PR-AUC 0.746 and ROC-AUC 0.830. Source provenance remains unverified; no causal retention effect was evaluated.
+- **RQ3:** The trend policy lowered cost by 0.87% but increased scenario lost units from 45 to 100 across 2,500 generated-oracle scenarios. The participating owner's actual policy and realised outcomes remain unavailable.
+- **RQ4:** All 1,800 prepared cases passed action, explanation and constraint checks. The supplied YES ratings have no participant provenance; validated participant responses remain zero.

@@ -1,0 +1,36 @@
+{
+  "case_count": 1800,
+  "date_range": [
+    "2025-12-31",
+    "2025-12-31"
+  ],
+  "actions_as_supplied": {
+    "NO_ACTION": 1601,
+    "REORDER": 199
+  },
+  "evidence_complete_as_supplied": {
+    "YES": 1800
+  },
+  "cases_below_reorder_point_after_pending_orders": 200,
+  "rule_action_matches_including_budget_block": 1800,
+  "rule_action_match_rate": 1.0,
+  "constraint_reason_matches": 1800,
+  "constraint_reason_match_rate": 1.0,
+  "suggested_quantities_that_are_case_pack_multiples": 1800,
+  "suggested_quantity_case_pack_rate": 1.0,
+  "suggested_quantities_within_scenario_budget": 1800,
+  "suggested_quantity_budget_compliance_rate": 1.0,
+  "reorders_without_reorder_point_need": 0,
+  "no_action_below_reorder_point_due_to_budget": 1,
+  "explanations_mark_stock_as_scenario_data": 1800,
+  "explanations_mention_stock": 1800,
+  "explanations_mention_reorder_point": 1800,
+  "explanations_mention_pack_multiple": 1800,
+  "explanations_mention_scenario_budget": 1800,
+  "supplied_human_rating_values": {
+    "YES": 1800
+  },
+  "validated_participant_response_count": 0,
+  "human_usability_metrics": null,
+  "interpretation": "All rows are prepared generated explanation rule-test cases. Action and constraint checks use the supplied reorder point, pending quantity, pack size and scenario budget. The target order-up-to quantity is absent from the file, so this audit does not assess whether the quantity is economically optimal. The human_rating field has no linked participant, consent, task, timestamp, or response provenance and is excluded from human-study results."
+}

@@ -726,7 +726,7 @@ def main(argv=None) -> int:
     parser.add_argument("--folds", type=int, default=3)
     parser.add_argument("--min-history", type=int, default=56)
     parser.add_argument("--development-end", default="2025-10-01", help="Exclusive development cutoff; defaults to protect the inspected 2025-Q4 test period")
-    parser.add_argument("--evidence-status", choices=["real_user_provided", "verified_observed", "observed_unverified", "synthetic_fixture"], default="real_user_provided")
+    parser.add_argument("--evidence-status", choices=["real_user_provided", "verified_observed", "observed_unverified", "synthetic_fixture"], default="observed_unverified")
     parser.add_argument("--fill-missing-dates-as-zero", action="store_true",
                         help="Explicitly assume unrecorded dates inside each series are zero-demand days")
     parser.add_argument("--candidates", default="seasonal_naive_7,croston,sba,tsb,two_stage_hist,hist_gradient_boosting,lightgbm,catboost")
@@ -753,7 +753,7 @@ def main(argv=None) -> int:
         "input_file_name": source.name,
         "input_sha256": sha256_file(source),
         "evidence_class": args.evidence_status,
-        "dataset_source": "Real SME dataset supplied through the project Google Drive folder.",
+        "dataset_source": "Researcher-supplied package; source provenance is unverified.",
         "development_end_exclusive": args.development_end,
         "legacy_test_period": "2025-10-01 through 2025-12-31; excluded from development model selection",
         "input_rows": int(len(panel)),

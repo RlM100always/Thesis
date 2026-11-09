@@ -1,0 +1,102 @@
+{
+  "audit_version": "1.1.0",
+  "evidence_status": "user_provided_provenance_unverified",
+  "dataset_nature": "100% real SME sales or real people",
+  "manifest_sha256": "b18d4cfec1541773b3d3bb7ea78f7913d14f63a144174cd4a1731e6dc062d1d5",
+  "source_files": {
+    "sales_orders": {
+      "rows": 365447,
+      "columns": [
+        "order_id",
+        "shop_id",
+        "customer_id",
+        "order_datetime",
+        "channel",
+        "payment_status",
+        "discount_total_bdt",
+        "gross_total_bdt",
+        "net_total_bdt",
+        "invoice_amount_bdt",
+        "cash_received_at_checkout_bdt"
+      ],
+      "sha256": "09b1c0833bbc191d82889f9e39664625688bd65e63e0b4e0eb92c96861a4f48f"
+    },
+    "sales_lines": {
+      "rows": 736683,
+      "columns": [
+        "line_id",
+        "order_id",
+        "shop_id",
+        "sku_id",
+        "quantity",
+        "unit_price_bdt",
+        "line_discount_bdt",
+        "net_sales_bdt",
+        "unit_cost_bdt",
+        "lot_id"
+      ],
+      "sha256": "afd694f3b731e4eae8558df572a7e49556e6e54310cb8ed2d259901d6e33f714"
+    },
+    "rq1_daily_sku_sales_observed": {
+      "rows": 699220,
+      "columns": [
+        "shop_id",
+        "sku_id",
+        "date",
+        "units_sold_observed",
+        "sales_value_bdt_observed",
+        "zero_day_interpretation"
+      ],
+      "sha256": "9611e489bba1074ce7c498fc5015fd3d3955dbdddda84928bac4a044d121401d"
+    },
+    "rq1_daily_shop_category": {
+      "rows": 561152,
+      "columns": [
+        "shop_id",
+        "category",
+        "date",
+        "units_sold_observed",
+        "is_zero_observed_sales"
+      ],
+      "sha256": "ab741f4d72c49706ba2abc8f096659324d862f758c4f171b84dd55a3ab6cbcbd"
+    },
+    "inventory_movements": {
+      "rows": 994808,
+      "columns": [
+        "movement_id",
+        "shop_id",
+        "sku_id",
+        "lot_id",
+        "movement_datetime",
+        "movement_type",
+        "quantity_delta",
+        "unit_cost_bdt",
+        "reference_id"
+      ],
+      "sha256": "23b58051e5c74bff62c9e1914023760c64d27cd30a121a72f3ae46981041fc58"
+    }
+  },
+  "shop_count": 32,
+  "category_count": 16,
+  "shop_category_series": 512,
+  "shop_category_rows": 561152,
+  "shop_category_units": 1580361,
+  "shop_category_zero_ratio": 0.3759623061131387,
+  "sales_line_order_unmatched": 0,
+  "sales_line_shop_mismatch": 0,
+  "sku_daily_unmatched_keys": 0,
+  "sku_daily_quantity_mismatches": 0,
+  "sku_daily_value_max_abs_difference": 9.094947017729282e-13,
+  "positive_shop_category_mismatches": 0,
+  "sale_movement_unmatched": 0,
+  "sale_movement_quantity_mismatch": 0,
+  "purchase_movement_unmatched": 0,
+  "purchase_movement_quantity_mismatch": 0,
+  "negative_stock_movement_events": 269,
+  "negative_stock_shop_sku_combinations": 253,
+  "positive_sale_days_nonpositive_intraday_stock": 330,
+  "reconstructed_in_stock_days": 13781575,
+  "reconstructed_censored_days": 764537,
+  "category_zero_days_with_no_in_stock_sku": 0,
+  "raw_data_committed": false
+}

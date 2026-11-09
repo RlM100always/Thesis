@@ -42,8 +42,9 @@ Customer · Payment · Expense · Promotion · Price.
 | `api/domain_models.py` (live multi-tenant SQL app) | **[IMPLEMENTED]** — all 12 entities exist as tables |
 | `00a_generate_pharmacy_dataset.py` (research dataset) | **[PARTIAL]** — Sales, Products, Price, Stock level, Batch, Expiry, Customer, Payment, Promotion present; Supplier, Purchase order and Expense are not generated |
 
-The current empirical source is the real SME dataset supplied through the
-project Google Drive folder. Its manifest covers 32 shops, 480 products,
+The current empirical source is the researcher-supplied package in the
+project Google Drive folder. Its manifest claims real data, but source
+provenance remains unverified. The manifest lists 32 shops, 480 products,
 11,000 customers and the period 2023–2025. The pharmacy catalogue and demand
 examples referenced in older sections of this architecture are historical
 context and are not the current thesis dataset.

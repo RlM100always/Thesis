@@ -1,0 +1,54 @@
+{
+  "experiment": "RQ1 exposure-conditioned daily SKU observed-sales evaluation",
+  "target": "daily observed units on shop-SKU-days whose reconstructed intraday inventory stayed positive",
+  "zero_policy": "set zero only on eligible exposed days; censor nonpositive or quarantined days",
+  "temporal_protocol": "train through 2025-09-30; sequential one-day predictions from 2025-10-01 through 2025-12-31; past test outcomes become available to later daily forecasts",
+  "preexisting_data_exposure": "Q4 2025 was previously inspected in project work; this is not an untouched final holdout",
+  "features": [
+    "lag_1",
+    "lag_7",
+    "lag_14",
+    "lag_28",
+    "mean_exposed_7d",
+    "mean_exposed_28d",
+    "exposure_ratio_28d",
+    "log_opening_stock",
+    "days_since_last_exposed_sale",
+    "dow_sin",
+    "dow_cos",
+    "month_sin",
+    "month_cos",
+    "sku_2023_mean",
+    "shop_2023_mean",
+    "category_2023_mean"
+  ],
+  "model": {
+    "class": "sklearn.ensemble.HistGradientBoostingRegressor",
+    "loss": "poisson",
+    "learning_rate": 0.06,
+    "max_iter": 80,
+    "max_leaf_nodes": 15,
+    "min_samples_leaf": 80,
+    "l2_regularization": 5.0,
+    "random_state": 20261109,
+    "zero_sampling": "all positive training days plus up to 500,000 exposed zero days, weighted to represent the full exposed-zero set"
+  },
+  "input_hashes": {
+    "inventory_movements.csv": "23b58051e5c74bff62c9e1914023760c64d27cd30a121a72f3ae46981041fc58",
+    "rq1_daily_sku_sales_observed.csv": "9611e489bba1074ce7c498fc5015fd3d3955dbdddda84928bac4a044d121401d",
+    "products.csv": "ab96545725e7ff96120da8f151b79419ec8bdf255a333edd97e097346a0efe4e"
+  },
+  "output_files": [
+    "exposure_audit_summary.json",
+    "q4_exposure_metrics.csv",
+    "shop_cluster_bootstrap.json"
+  ],
+  "seed": 20261109,
+  "python": "3.12.14",
+  "pandas": "2.2.3",
+  "numpy": "2.3.5",
+  "scikit_learn": "1.8.0",
+  "elapsed_seconds": 17.2,
+  "raw_data_copied_to_repository": false,
+  "provenance_limit": "Drive manifest declares real-world origin but source lineage was not independently verified in this run."
+}

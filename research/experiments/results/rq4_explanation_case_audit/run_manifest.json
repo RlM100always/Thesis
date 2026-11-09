@@ -1,0 +1,11 @@
+{
+  "experiment": "RQ4 computational explanation-case audit",
+  "scope": "rule and text consistency only; no participant study",
+  "input_hashes": {
+    "rq4_explanation_cases.csv": "690890fde22e4a1aa34dbfa450f15e85525519a5110700966e7c7a86d981a9fc",
+    "products.csv": "ab96545725e7ff96120da8f151b79419ec8bdf255a333edd97e097346a0efe4e"
+  },
+  "python": "3.12.14",
+  "pandas": "2.2.3",
+  "numpy": "2.3.5"
+}

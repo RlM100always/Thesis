@@ -8,7 +8,7 @@ The audited shop-category model uses only local-series history and calendar vari
 
 Input: controlled Drive file `rq1_daily_shop_category.csv`, SHA-256 recorded in `run_manifest.json`. It contains 561,152 daily rows, 512 shop-category series, 32 shops, 16 categories, 1,096 days, and 1,580,361 observed units. The zero-sales share is 37.5962%.
 
-**Dataset:** real SME data supplied through the project Google Drive folder. These results are development-origin comparisons; they are not a final untouched holdout.
+**Dataset:** researcher-supplied Drive package; its manifest claims real SME data, but source provenance remains unverified. These results are development-origin comparisons; they are not a final untouched holdout.
 
 ## Model design
 
@@ -55,7 +55,7 @@ python -m pip install -r research/forecasting/requirements.txt
 python research/forecasting/context_aware_experiment.py \
   --input /path/to/rq1_daily_shop_category.csv \
   --output /path/to/context_aware_v1 \
-  --evidence-status real_user_provided
+  --evidence-status observed_unverified
 ```
 
 Outputs include fold and aggregate metrics, paired bootstrap, prequential intervals, hierarchy roll-ups, prequential bias calibration, predictions, and a run manifest. Raw business records are not committed.

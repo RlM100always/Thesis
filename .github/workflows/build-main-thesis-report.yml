@@ -15,6 +15,19 @@ on:
       - 'thesis_report/Thesis.cls'
       - 'thesis_report/*.sty'
       - '.github/workflows/build-main-thesis-report.yml'
+  pull_request:
+    paths:
+      - 'thesis_report/main.tex'
+      - 'thesis_report/logo.pdf'
+      - 'thesis_report/Figures/**'
+      - 'thesis_report/Chapters/**'
+      - 'thesis_report/Appendices/**'
+      - 'thesis_report/preamble.tex'
+      - 'thesis_report/title.tex'
+      - 'thesis_report/Bibliography.bib'
+      - 'thesis_report/Thesis.cls'
+      - 'thesis_report/*.sty'
+      - '.github/workflows/build-main-thesis-report.yml'
   workflow_dispatch:
 
 permissions:
@@ -28,10 +41,8 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout main
+      - name: Checkout report source
         uses: actions/checkout@v4
-        with:
-          ref: main
 
       - name: Install TeX Live
         run: |
@@ -48,7 +59,16 @@ jobs:
           echo '--- LaTeX warnings ---'
           grep -n 'LaTeX Warning' main.log || true
 
+      - name: Upload pull request PDF for review
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: main-thesis-report-pdf
+          path: thesis_report/main.pdf
+          if-no-files-found: error
+
       - name: Publish the compiled main report PDF
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: |
           git fetch origin main
           git reset --hard origin/main

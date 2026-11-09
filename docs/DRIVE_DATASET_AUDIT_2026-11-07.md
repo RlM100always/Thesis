@@ -1,10 +1,12 @@
 # Google Drive dataset audit — current thesis package
 
-Updated: 8 November 2026
+Updated: 9 November 2026
 
-## Dataset source
+## Source and provenance
 
-The thesis uses the real Bangladesh SME dataset supplied by the researcher through the project Google Drive folder. The Drive manifest identifies the data as real SME sales and real people data, with BDT currency and coverage from 1 January 2023 to 31 December 2025. The repository contains research code and non-sensitive aggregate outputs; the raw source package remains in Drive.
+The researcher supplied the Bangladesh data package through the project Google Drive folder. The manifest claims real SME sales and people, in BDT, covering 1 January 2023 to 31 December 2025. It also records a generation seed and describes business validation as a “modeled world”. No independent source-system export, business-owner attestation, or source lineage was available for this audit. The data origin and representativeness therefore remain unverified. Results below are conditional on the supplied package.
+
+Raw source files remain in Drive. The repository stores code and non-sensitive aggregate outputs; raw customer and transaction records are not committed.
 
 ## Manifest inventory
 
@@ -25,59 +27,43 @@ The thesis uses the real Bangladesh SME dataset supplied by the researcher throu
 | Promotions | 1,216 |
 | Calendar records | 1,096 |
 
-## Prepared research datasets
+## Research datasets
 
-| Research question | Dataset size | Interpretation and current requirement |
+| Research question | Dataset size | Interpretation |
 |---|---:|---|
-| RQ1 — Demand forecasting | 699,220 positive-sale SKU records | Sparse observed sales. Missing SKU-date rows are not automatically zero; evaluate active assortment and inventory exposure. |
-| RQ2 — Customer prediction | 72,146 snapshots; 10,613 unique customers | Separate TRAIN/TEST assignments are supplied and must be preserved for the primary evaluation. |
-| RQ3 — Replenishment | 2,500 policy scenarios | Supports scenario-based policy evaluation. A participating owner's actual policy is still needed for an observed business-policy comparison. |
-| RQ4 — Explanation evaluation | 1,800 explanation cases | The human_rating column alone does not establish real participant feedback. A real user study is still required. |
+| RQ1 — Demand forecasting | 699,220 positive-sale SKU records; 561,152 shop-category-day records | Sparse SKU file; a missing SKU date is not automatically zero demand. The SKU diagnostic labels only ledger-reconstructed full-day stock exposure. |
+| RQ2 — Customer prediction | 72,146 snapshots; 10,613 customers | Supplied chronological TRAIN/TEST assignments preserved. Repeated customers appear across temporal partitions; cluster bootstrap used. |
+| RQ3 — Replenishment | 2,500 scenarios | The future-oracle demand field contains generated scenario values, not realized future sales. No participating owner's actual policy is included. |
+| RQ4 — Explanation evaluation | 1,800 cases | Prepared rule-test cases; their values are not live inventory records. The YES field has no participant or response provenance. |
 
-## RQ1 transaction and panel reconciliation already recorded
+## Source reconciliation and exposure audit
 
-The existing RQ1 audit records the following structural checks against the supplied Drive package:
+The 9 November audit found 0 unmatched order-line joins, 0 shop mismatches, 0 SKU quantity mismatches, 0 positive-category mismatches, 0 unmatched sale movements, and 0 unmatched purchase receipts. The prepared SKU and shop-category totals reconcile to 1,580,361 units. These checks establish internal consistency, not authenticity or physical-stock accuracy.
 
-- 365,447 sales orders and 736,683 sales lines.
-- Sales lines were aggregated by shop, SKU and date to reproduce 699,220 prepared positive-sale SKU records, totalling 1,580,361 units.
-- The prepared shop-category panel contains 561,152 rows, 512 shop-category series and 1,096 dates, with 1,580,361 observed units.
-- The SKU-level export is sparse. Missing SKU-date records must not be blindly filled with zero.
-- The inventory-ledger audit recorded negative-balance events and positive-sale days with non-positive reconstructed intraday stock. These require reconciliation before SKU availability labels are used as ground truth.
+The inventory file contained 994,808 movements. The audit found 269 negative-balance events across 253 shop-SKU histories and 330 positive-sale days with non-positive reconstructed intraday stock. The exposure-conditioned panel quarantines all 253 affected histories, retains 13,545,871 positive-stock shop-SKU days, assigns zeros only to 12,860,044 eligible exposed zero records, and retains 685,827 eligible positive-sale records.
 
-These are existing repository audit outputs; they are not a claim that a new audit or model run was executed during this documentation update.
+## Experimental results recorded 9 November
 
-## Existing RQ1 development experiments
+### RQ1 — SKU observed-sales diagnostic
 
-The repository already contains fixed-origin development results comparing LightGBM Tweedie, CatBoost Tweedie, a CatBoost hurdle model, weekly seasonal-naive, Croston-SBA and TSB. It also contains a context-feature experiment and a historical price/activity ablation. Their recorded metrics are development results, not a final untouched holdout.
+The previously inspected Q4 2025 period contains 1,130,148 exposed shop-SKU days from 13,019 series, 119,161 observed units, and a 95.34% zero share. WAPE was 190.28% for weekly seasonal naive, 183.65% for the 28-day exposed-sales mean, and 184.66% for HistGradientBoosting. The HGB-minus-mean WAPE difference was +1.01 percentage points (2,000-resample shop-bootstrap 95% interval: -0.21 to +2.25). HGB did not beat the strongest simple baseline on WAPE. The period was previously inspected and is not a final blind holdout. Exposure is reconstructed from ledger records and has not been validated against physical stock.
 
-| Horizon | Best recorded pooled WAPE in the fixed-origin development run |
-|---:|---:|
-| 1 day | CatBoost hurdle: 79.23% (with material under-forecast bias; not selected) |
-| 7 days | LightGBM Tweedie: 33.74% |
-| 14 days | LightGBM Tweedie: 24.11% |
-| 28 days | LightGBM Tweedie: 18.57% |
+### RQ2 — customer inactivity
 
-Q4 2025 was previously inspected and was excluded from model selection. It must not be described as an untouched final test. SKU-level exposure-aware evaluation, model calibration and a genuinely untouched final evaluation remain outstanding.
+The 90-day labels were independently rebuilt from order dates with 0 mismatches across all 72,146 snapshots. The supplied temporal split contains 50,982 training and 21,164 test rows. HistGradientBoosting achieved test PR-AUC 0.746, ROC-AUC 0.830, Brier score 0.168, precision 0.588, and recall 0.913 at a threshold selected on the final training cohort. Customer-cluster bootstrap 95% interval for PR-AUC: 0.736–0.758. These are predictive results on the supplied snapshots, not causal retention-effect estimates.
 
-## RQ2 — Customer prediction
+### RQ3 — replenishment scenarios
 
-The supplied snapshot file has 72,146 rows and 10,613 unique customers, with separate TRAIN and TEST assignments. The next implementation step is a reproducible pipeline that validates the target definition, checks snapshot dates and customer overlap, fits preprocessing on TRAIN only, compares simple baselines with candidate classifiers, and reports PR-AUC, ROC-AUC, F1, recall/precision at an operational threshold, Lift@K and calibration where appropriate.
+Across 2,500 scenarios, the trend policy reduced total scenario cost from BDT 2,227,690.07 to BDT 2,208,289.47 (-0.87%) while scenario lost units increased from 45 to 100. The paired bootstrap cost difference was -BDT 7.76 per scenario (95% interval -9.26 to -6.30); lost-unit change was +0.022 per scenario (0.012 to 0.034). This result uses generated future-demand scenario values; it is not realised savings or an owner-policy comparison.
 
-## RQ3 — Replenishment
+### RQ4 — explanation cases
 
-The supplied 2,500 scenarios can be used to compare replenishment policies under common scenario inputs and explicit constraints. The evaluation must report the assumptions and scenario metrics. It must not present scenario results as the participating owner's observed policy or as realised savings. Obtain and encode the owner's actual policy for the real-policy comparison.
+All 1,800 cases matched the recomputed action and constraint reason; all quantities were case-pack multiples within the stated scenario budget, and the explanation text mentioned the required inputs. The cases are prepared rule-test data, not participant observations. Validated participant responses: 0. No usability or task-performance outcome is available.
 
-## RQ4 — Explanation evaluation
+## Remaining evidence
 
-The supplied 1,800 cases can support structured explanation testing. The presence of a human_rating column is not sufficient evidence of a completed human study. A real study requires actual participants, consent, defined tasks, recorded answers, task correctness, completion time and feedback. Until then, report the cases as prepared evaluation material, not user-study results.
-
-## Data and reporting rules
-
-1. Use the Drive package as the real SME research dataset.
-2. Preserve original source tables and checksums; never overwrite source files during cleaning.
-3. Do not convert missing SKU dates into zero without active-assortment and availability evidence.
-4. Preserve the provided customer TRAIN/TEST split.
-5. Keep scenario evaluation separate from observed owner-policy evaluation.
-6. Keep generated or prepared explanation cases separate from actual participant responses.
-7. Record the exact model, features, target, split, cutoff, parameters, environment and metrics for each run.
-8. Report final results only after the corresponding pipeline has actually run and its output files have been inspected.
+1. Verify source lineage and independently validate stock exposure.
+2. Freeze RQ1 model selection and run one untouched future or held-out-business evaluation.
+3. Obtain a participating owner's actual replenishment policy and validated outcomes for policy replay.
+4. Conduct a consented RQ4 participant study with recorded tasks and measured accuracy, completion time, confidence, and usability.
+5. Keep all claims conditional until source provenance is established.

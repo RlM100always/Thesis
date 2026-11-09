@@ -38,7 +38,10 @@ def audit(root: Path, output: Path) -> dict:
     manifest_path = root / "manifest.json"
     manifest = json.loads(manifest_path.read_text(encoding="utf-8")) if manifest_path.exists() else {}
     current_claim = str(manifest.get("dataset_nature", "Real SME dataset supplied by the researcher"))
-    evidence_status = "real_user_provided"
+    # The Drive manifest declares the package real, but the thesis team has
+    # not supplied independent provenance records. Keep the run label neutral
+    # until that claim is verified; scenario columns are separately marked.
+    evidence_status = "user_provided_provenance_unverified"
     sku = read_csv(root, "rq1_daily_sku_sales_observed", ["date"])
     shopcat = read_csv(root, "rq1_daily_shop_category", ["date"])
     orders = read_csv(root, "sales_orders", ["order_datetime"])

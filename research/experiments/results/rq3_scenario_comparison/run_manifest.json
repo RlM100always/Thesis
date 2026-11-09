@@ -1,0 +1,14 @@
+{
+  "experiment": "RQ3 paired scenario comparison",
+  "comparison": "provided baseline policy versus provided trend policy on identical scenario rows",
+  "uncertainty": "paired percentile bootstrap over the 2,500 scenario rows; not a real-business sampling interval",
+  "seed": 20261109,
+  "input_hashes": {
+    "rq3_offline_policy_comparison.csv": "bc40cd1ab471e0a0ed7c9aff959d9de185d57be9b81e59ece610a29d42fec860",
+    "products.csv": "ab96545725e7ff96120da8f151b79419ec8bdf255a333edd97e097346a0efe4e"
+  },
+  "python": "3.12.14",
+  "pandas": "2.2.3",
+  "numpy": "2.3.5",
+  "raw_customer_ids_written": false
+}

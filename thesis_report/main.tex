@@ -419,7 +419,7 @@
 }
 
 \newcommand{\system}{B-SMART}
-\newcommand{\reportdate}{8 November 2026}
+\newcommand{\reportdate}{9 November 2026}
 \newcommand{\projectperiod}{February 2026 - February 2027}
 \newcommand{\cmark}{\cellcolor{softgreen}\textbf{C}}
 \newcommand{\amark}{\cellcolor{softorange}\textbf{A}}
@@ -497,9 +497,10 @@ and development-stage experimental evidence for the thesis project entitled
 Insight Extraction, and Strategy Optimization}. The work is conducted by the
 authors under the supervision of Dr. Saifuddin Md. Tareeq. Ideas, methods,
 datasets, software libraries, and findings originating from prior work are
-acknowledged and cited. The numerical forecasting results are restricted to
-the supplied daily shop--category panel and the development protocol described
-in this report. They do not represent a final untouched-test evaluation or a
+acknowledged and cited. The Drive manifest describes the source package as
+real SME data, but its provenance has not been independently verified; the
+report therefore treats results as conditional on the supplied package. The
+numerical results do not represent a final untouched-test evaluation or a
 claim of effectiveness across all SME sectors. This report is current to
 \reportdate; the project remains in progress until February 2027.
 
@@ -521,27 +522,27 @@ claim of effectiveness across all SME sectors. This report is current to
 \begin{center}
   {\huge\textit{Abstract}\par}
 \end{center}
-This thesis develops \system{}, an AI-powered business analytics and
-decision-support framework for performance evaluation, demand prediction,
-customer insight and feasible recommendations in Bangladeshi SMEs. The
-supplied dataset manifest identifies the business package as real SME sales
-and real people. The RQ1 daily panel contains 561,152 observations across
-32 shops, 16 categories and 512 shop--category series from 2023 to 2025,
-with 1,580,361 observed units and 37.60\% zero-sales observations. The
-forecasting target is observed sales, not unobserved latent demand.
+This progress report documents \system{}, an AI-powered business analytics
+and decision-support framework for Bangladeshi SMEs. The Drive manifest
+claims real SME source data, but it also records a generation seed and
+"modeled world" validation wording; source provenance has not been
+independently verified. The complete RQ1 panel contains 561,152
+shop--category--day observations and 1,580,361 observed units. In an
+exposure-conditioned SKU diagnostic, the 28-day exposed-sales mean achieved
+183.65\% WAPE on 1,130,148 Q4 2025 exposed days, slightly better than the
+HistGradientBoosting model at 184.66\%. Q4 had previously been inspected,
+so this is not an untouched final test.
 
-A leakage-controlled LightGBM Tweedie experiment compared historical
-series features with additional shop, category and network context features.
-Across nine monthly seven-day development origins, pooled WAPE decreased
-from 33.47\% to 32.66\%; the context model won six of nine origins. Its
-aggregate bias increased in magnitude from -2.02\% to -6.05\%, illustrating
-the trade-off between absolute error and under-forecasting. The context
-model also improved pooled WAPE in the three-origin 1-, 14- and 28-day
-development comparisons. Prequential interval coverage and bottom-up
-hierarchical aggregation were evaluated as additional diagnostics.
-These results are development evidence, not a final untouched-test claim.
-SKU-level latent demand, inventory-policy benefit and customer-action
-effectiveness require separate evidence and evaluation.
+For RQ2, source-order reconstruction matched all 72,146 supplied inactivity
+labels. HistGradientBoosting achieved test PR-AUC 0.746 and ROC-AUC 0.830
+on the supplied temporal split. In 2,500 RQ3 scenarios, the trend policy
+reduced scenario cost by 0.87\% but increased scenario lost units from 45
+to 100; future oracle-demand values are generated scenario assumptions, not
+realized sales. A mechanical audit of 1,800 RQ4 cases found complete rule,
+pack-size and budget consistency,
+but those cases and their unverified \texttt{human\_rating} field are not a
+participant study. The report therefore makes no claim of real-world cost
+savings, owner-policy benefit or measured usability.
 
 \clearpage
 
@@ -1235,9 +1236,12 @@ is available.
 
 
 \subsection{Data Acquisition and Variable Availability}
-The supplied package contains operational sales, customer, product, purchase,
-payment, inventory, return, promotion and calendar records. RQ1 uses the
-complete daily shop--category observed-sales panel. Other tables are joined
+The supplied package contains tables for sales, customers, products, purchases,
+payments, inventory, returns, promotions and calendar records. Its manifest
+claims real-business origin, but also includes a generation seed and a
+"modeled world" validation description. The provenance of the underlying
+transactions and people has not been independently established. RQ1 uses the
+complete daily shop--category observed-sales panel; other tables are joined
 only after their keys, event times and business meaning are checked.
 
 Each variable is classified by availability time. Price, promotion or supplier
@@ -2158,13 +2162,21 @@ reported only when the corresponding empirical evidence is available.
 
 \section{Dataset Package and Research Scope}
 
-The supplied dataset manifest identifies the package as 100\% real SME sales
-and real people, with Bangladesh as the business context, BDT currency and
-coverage from 1 January 2023 to 31 December 2025. It lists 32 shops, 11,000
+The supplied dataset manifest claims 100\% real SME sales and real people,
+with Bangladesh as the business context, BDT currency and coverage from
+1 January 2023 to 31 December 2025. It lists 32 shops, 11,000
 customers, 480 products and 56 suppliers. The source package includes
 365,447 sales orders, 736,683 sales lines, 381,756 payments, 122,422 purchase
 orders and purchase lines, 994,808 inventory movements, 134,379 inventory
 lots, 5,102 returns, 1,216 promotions and 1,096 calendar rows.
+
+The same manifest records a generation seed and describes business
+validation as a "modeled world" for Bangladeshi SMEs. The RQ3 future-demand
+field uses generated scenario demand, and RQ4 consists of prepared rule-test
+cases rather than participant responses. No independent source-system export, business-owner attestation
+or source lineage was available in this run. The package is therefore
+treated as researcher-supplied data with unverified provenance; internal
+joins establish consistency, not real-world origin or representativeness.
 
 The RQ1 experiment uses the dedicated complete daily shop--category panel:
 32 shops, 16 categories, 512 series and 1,096 daily observations per series,
@@ -2176,7 +2188,7 @@ the public repository contains code, schemas, checksums and aggregate outputs.
 \begin{table}[H]
 \centering
 \small
-\caption{Source-table coverage declared in the supplied real-business dataset manifest.}
+\caption{Source-table coverage declared in the supplied dataset manifest.}
 \label{tab:source_table_coverage}
 \begin{tabularx}{\textwidth}{|X|r|X|X|}
 \hline
@@ -2211,11 +2223,11 @@ Calendar & 1,096 & Daily calendar coverage & Calendar feature validation \\
 \end{tabularx}
 \end{table}
 
-The manifest declares the source package to contain real SME sales and real
-people. The table distinguishes source coverage from the fields actually
-used by RQ1: the presence of a source table does not make every field an
-eligible predictor. A variable is admitted only after its join key, business
-meaning and availability time have been checked.
+The table distinguishes counts declared by the manifest from fields
+actually used by RQ1: the presence of a source table does not make every
+field an eligible predictor. A variable is admitted only after its join
+key, business meaning and availability time have been checked. The
+manifest's real-data claim remains unverified.
 
 
 \section{Data Validation and Preprocessing}
@@ -2275,7 +2287,10 @@ The 736,683 sales lines join to 365,447 sales orders without missing order
 references or shop mismatches. Aggregating source sales lines by
 \texttt{shop\_id}, \texttt{sku\_id} and calendar date reproduces all 699,220
 rows of the prepared positive-sale SKU table exactly, including 1,580,361
-units and the recorded sales value to floating-point precision. This is an internal reconciliation of the supplied real-business records; it confirms record-level consistency across the linked tables.
+units and the recorded sales value to floating-point precision. This is an
+internal reconciliation of the supplied tables. It confirms record-level
+consistency across linked tables, but does not independently establish
+where the records originated.
 
 The prepared SKU export contains 32 shops, 480 SKUs and 13,271
 shop--SKU combinations with at least one positive-sale record. It contains
@@ -2332,7 +2347,14 @@ records are quarantined from SKU exposure labels pending correction. Across
 the 13,272 inventory-tracked shop--SKU combinations and 1,096 dates, the
 ledger reconstructs 13,781,575 fully in-stock days and 764,537 days with
 non-positive intraday balance. These are derived diagnostics, not an
-independent stock audit. Every zero-sales shop--category day has at least
+independent stock audit. A separate exposure-aware panel run quarantined
+all 253 shop--SKU histories containing negative balances. The resulting
+panel contains 13,545,871 eligible shop--SKU--days: 685,827 positive-sale
+days and 12,860,044 zeros created only where reconstructed intraday stock
+remained positive. The run excluded 13,393 positive-sale records from
+exposure labels because their histories were quarantined or their
+reconstructed intraday balance was non-positive. Every zero-sales
+shop--category day has at least
 one recorded SKU with positive reconstructed stock during that day; this
 does not rule out item-level stock-outs or unrecorded assortment.
 
@@ -2377,6 +2399,10 @@ Reconstructed fully in-stock days & 13,781,575 & Derived ledger diagnostic acros
 \hline
 Days with non-positive intraday balance & 764,537 & Exposure is not eligible as a known positive-stock day \\
 \hline
+Eligible shop--SKU--days after full-series quarantine & 13,545,871 & Zeros assigned only within reconstructed positive-stock exposure \\
+\hline
+Positive-sale days excluded from exposure labels & 13,393 & Includes quarantined shop--SKU histories and non-positive intraday stock \\
+\hline
 \end{tabularx}
 \end{table}
 
@@ -2385,8 +2411,10 @@ stock count. Every zero-sales shop--category day has at least one recorded
 SKU with positive reconstructed stock during that day, but this does not
 rule out item-level stock-outs or unrecorded assortment. The 2,088
 theoretical shop--SKU combinations without an opening movement are not
-assumed to be active series. These limitations justify keeping the current
-RQ1 target at shop--category observed sales until SKU exposure is validated.
+assumed to be active series. The exposure-conditioned SKU experiment in
+Section~\ref{sec:rq1_sku_exposure_results} uses the reconstructed panel as a
+diagnostic; physical availability and the Q4 period are not independently
+verified or untouched.
 
 
 \section{RQ1 Forecasting Pipeline}
@@ -2544,20 +2572,58 @@ location and is not copied into the public source repository.
 
 \section{Current Implementation Boundaries}
 
-The executable experiment remains a shop--category observed-sales forecast.
-It does not establish SKU-level latent demand, price or promotion uplift,
-or inventory-policy benefit. CatBoost Tweedie and a raw two-stage hurdle
-have now been evaluated as challengers; the hurdle probabilities remain
-uncalibrated. The inventory ledger has been reconciled internally, but
-negative-balance events and positive-sale days with non-positive intraday
-stock must be quarantined before SKU exposure labels are used. Calibrated
-prediction intervals, hierarchical reconciliation, point-in-time price
-and promotion features, and inventory replay remain subsequent tasks.
-The data are real business records according to the supplied manifest;
-however, real-data origin does not by itself establish generalisation.
-The current results are development estimates from selected periods.
-A final untouched period or held-out businesses are still required before
-claiming future predictive performance outside the development windows.
+The multi-horizon LightGBM experiment remains a shop--category
+observed-sales forecast. A separate SKU diagnostic uses reconstructed
+exposure and reports the 28-day exposed-sales mean as the lowest-WAPE
+candidate; its Q4 2025 period had already been inspected and is not an
+untouched final test. CatBoost Tweedie and a raw two-stage hurdle remain
+development challengers; hurdle probabilities are uncalibrated. The RQ2
+model comparison and RQ3 scenario analysis use supplied labels and
+assumptions, while RQ4 has only a computational case audit. No actual
+owner-policy comparison or participant usability study has been completed.
+The data manifest's real-origin claim remains unverified. A future holdout,
+independent business provenance, owner-policy replay and consented user
+study remain necessary before field-effectiveness claims.
+
+\section{RQ2 Customer Inactivity Pipeline}
+
+The supplied 90-day inactivity label was independently reconstructed from
+the supplied sales-order dates: a snapshot is labelled inactive when no
+customer order occurs after its cutoff and on or before its 90-day horizon
+end. All 72,146 labels matched this rule. The supplied temporal split was
+preserved: training snapshots end on 31 December 2024 and test snapshots
+cover 31 March--30 June 2025. Customer and snapshot identifiers were
+excluded from predictors. Historical recency, order counts, sales value,
+basket value, tenure and home-shop category were used.
+
+Constant-prevalence, logistic-regression, random-forest and
+HistGradientBoosting candidates were compared. The final training fit uses
+all supplied TRAIN rows; the final TRAIN cohort is used for candidate and
+threshold selection. Test metrics include average precision, ROC-AUC,
+Brier score, thresholded precision/recall/F1, top-decile lift and a
+customer-cluster bootstrap. The target and predictors remain conditional on
+the supplied snapshot and order package.
+
+\section{RQ3 Scenario Policy Pipeline}
+
+The scenario runner compares the supplied baseline and trend-policy
+outcomes on the same 2,500 rows, one cutoff date, 32 shops and 477 SKUs.
+It verifies the supplied scenario cost-gap arithmetic and joins product
+purchase costs to check order-budget feasibility. Paired bootstrap intervals
+resample scenario rows; they describe variation across this scenario file,
+not sampling uncertainty for participating businesses. Future demand is
+the generated scenario-oracle field, so the runner does not claim a
+real-owner policy comparison or realised savings.
+
+\section{RQ4 Explanation-Case Audit}
+
+The case audit re-evaluates whether stock plus pending orders crosses the
+reorder point, whether the scenario budget can buy a case pack, and whether
+the suggested quantity is a pack multiple within the stated budget. It also
+checks whether explanation text mentions stock, reorder point, pack multiple
+and budget. This is a mechanical consistency check. The supplied
+\texttt{human\_rating} field has no participant, consent, task, timestamp or
+response provenance, so it is excluded from all usability calculations.
 
 \cleardoublepage
 \chapter{Experimental Results}
@@ -2565,8 +2631,9 @@ claiming future predictive performance outside the development windows.
 
 \section{Evidence Boundary and Panel Integrity}
 
-The supplied dataset manifest identifies the package as real SME business
-data. The shop--category panel contains 561,152 observations, 512 unique
+The supplied dataset manifest claims real SME business data, but its
+generation-seed and "modeled world" fields leave source provenance
+unverified. The shop--category panel contains 561,152 observations, 512 unique
 series and 1,096 daily observations per series. It totals 1,580,361 units;
 37.5962\% of rows are explicit zero-sales observations. The audit found no
 duplicate shop--category--date keys, missing required values, zero-flag
@@ -3057,30 +3124,208 @@ are calibrated and bias is controlled. Croston--SBA and TSB remain
 intermittent-demand comparators, but sparse regime support does not justify
 automatic routing.
 
-SKU-level forecasting remains availability-aware. Missing SKU dates become
-zero only when active assortment and positive stock exposure are established.
-Negative-ledger events, stock-out periods, unknown assortment and closed-shop
-days remain censored or unknown. The separately identified simulated
-unmet-demand table is not used as observed sales or empirical lost-sales
-ground truth. RQ3 inventory-policy replay and RQ4 owner-facing explanation
-evaluation require their own evidence and experiments.
+The separate SKU diagnostic assigns zeros only to reconstructed positive-stock
+days and quarantines all 253 histories with negative balances. It is an
+exposure-conditioned observed-sales evaluation, not latent-demand estimation.
+The RQ3 scenario analysis and RQ4 explanation-case audit are reported below;
+neither supplies evidence of actual owner-policy benefit or participant
+usability.
+
+\section{RQ1 Exposure-Conditioned SKU Diagnostic}
+\label{sec:rq1_sku_exposure_results}
+
+Inventory movements were reconstructed chronologically. The panel retained
+13,545,871 exposed shop--SKU--days after quarantining 253 histories with
+negative balances. It contains 685,827 positive days and 12,860,044 zeros
+assigned only when reconstructed stock remained positive throughout the day.
+The diagnostic training window ends on 30 September 2025. Sequential
+one-day predictions cover 1 October--31 December 2025, with prior observed
+outcomes available to subsequent daily predictions. The Q4 period had been
+inspected earlier in project work and is not an untouched final holdout.
+
+The evaluation includes 1,130,148 exposed shop--SKU--days from 13,019
+series, with 119,161 observed units and a 95.34\% zero-target share. The
+HistGradientBoosting model used all eligible positive training days and a
+weighted sample of 500,000 exposed-zero days. The comparators are a weekly
+same-day seasonal-naive rule and the mean over the previous 28 exposed days.
+
+\begin{table}[H]
+\centering
+\small
+\caption{Exposure-conditioned one-day SKU results on the previously inspected Q4 period.}
+\label{tab:rq1_sku_exposure_results}
+\begin{tabularx}{\textwidth}{|X|C{0.17\textwidth}|C{0.17\textwidth}|C{0.17\textwidth}|C{0.17\textwidth}|}
+\hline
+\textbf{Model} & \textbf{WAPE} & \textbf{MAE} & \textbf{RMSE} & \textbf{Bias} \\
+\hline
+Weekly seasonal naive & 190.28\% & 0.201 & 0.853 & +1.19\% \\
+\hline
+28-day exposed-sales mean & \textbf{183.65\%} & \textbf{0.194} & 0.616 & +0.82\% \\
+\hline
+HistGradientBoosting & 184.66\% & 0.195 & \textbf{0.604} & +2.06\% \\
+\hline
+\end{tabularx}
+\end{table}
+
+The 28-day mean has the lowest WAPE; HistGradientBoosting is 1.01
+percentage points worse on that metric, although it has a slightly lower
+RMSE. A 2,000-replicate shop-cluster bootstrap for the HGB-minus-28-day-mean
+WAPE difference is +1.01 percentage points, with a descriptive 95\%
+interval of -0.21 to +2.25 points. The interval includes zero and is based
+on only 32 shops. HGB improves on weekly seasonal naive, but does not
+outperform the strongest simple baseline on WAPE. The result does not
+support promoting the machine-learning candidate for this task.
+
+This diagnostic evaluates observed sales conditional on reconstructed
+full-day stock exposure. It does not recover demand during stock-outs.
+Ledger-based exposure is not independently checked against physical stock,
+and this reporting period is not blind; RQ1 therefore remains incomplete.
+
+\section{RQ2 Customer Inactivity Prediction}
+
+The 90-day inactivity labels were reconstructed from the supplied sales
+orders. There were no missing customer histories and no label mismatches
+among 72,146 snapshots. The temporal TRAIN split contains 50,982 rows
+through 31 December 2024; the TEST split contains 21,164 rows from
+31 March--30 June 2025. The test inactivity rate is 41.18\%, compared with
+36.39\% in TRAIN. Repeated customers appear on both sides of this temporal
+split, so uncertainty intervals resample customer clusters; customer IDs
+were not used as model features.
+
+Models were selected on the final TRAIN snapshot cohort (31 December 2024)
+by average precision, then refitted on all TRAIN rows. Each candidate's
+decision threshold was selected on that validation cohort by F1. The
+HistGradientBoosting validation average precision was 0.717, the highest
+of the three fitted candidates.
+
+\begin{table}[H]
+\centering
+\small
+\caption{Customer-inactivity model comparison on the supplied temporal TEST split.}
+\label{tab:rq2_test_metrics}
+\begin{tabularx}{\textwidth}{|X|C{0.16\textwidth}|C{0.16\textwidth}|C{0.16\textwidth}|C{0.16\textwidth}|}
+\hline
+\textbf{Candidate} & \textbf{PR-AUC} & \textbf{ROC-AUC} & \textbf{Brier} & \textbf{F1} \\
+\hline
+Constant TRAIN prevalence & 0.412 & 0.500 & 0.245 & 0.000 \\
+\hline
+Logistic regression & 0.739 & 0.823 & 0.178 & 0.710 \\
+\hline
+HistGradientBoosting & \textbf{0.746} & \textbf{0.830} & \textbf{0.168} & 0.716 \\
+\hline
+Random forest & 0.732 & 0.825 & 0.170 & \textbf{0.718} \\
+\hline
+\end{tabularx}
+\end{table}
+
+For the selected HistGradientBoosting model, the validation-selected
+threshold is 0.222. TEST precision is 0.588, recall is 0.913, and
+precision in the highest-scored 10\% is 0.845 (2.05 times the test base
+rate). A 300-replicate customer-cluster bootstrap gives a 95\% interval of
+0.736--0.758 for PR-AUC and 0.326--0.345 for its paired improvement over
+the constant-prevalence baseline. This supports ranking performance on
+the supplied snapshots, not the causal effect of a retention action.
+Source provenance remains unverified.
+
+\section{RQ3 Replenishment Scenario Comparison}
+
+The supplied file contains 2,500 scenarios at the 31 July 2025 cutoff,
+covering 32 shops and 477 SKUs. Its future-demand field is explicitly
+scenario-generated oracle demand. The baseline and trend policy were
+compared on identical scenarios; product costs confirmed zero order-budget
+breaches for either policy.
+
+\begin{table}[H]
+\centering
+\small
+\caption{Paired replenishment outcomes under the supplied scenario assumptions.}
+\label{tab:rq3_scenario_results}
+\begin{tabularx}{\textwidth}{|X|C{0.22\textwidth}|C{0.22\textwidth}|C{0.22\textwidth}|}
+\hline
+\textbf{Scenario outcome} & \textbf{Baseline} & \textbf{Trend policy} & \textbf{Change} \\
+\hline
+Total scenario cost (BDT) & 2,227,690.07 & 2,208,289.47 & -19,400.60 (-0.87\%) \\
+\hline
+Lost units in scenarios & 45 & 100 & +55 \\
+\hline
+Mean average stock (units) & 157.13 & 155.03 & -2.10 \\
+\hline
+Order-budget breaches & 0 & 0 & 0 \\
+\hline
+\end{tabularx}
+\end{table}
+
+The paired scenario bootstrap estimates a mean trend-minus-baseline cost
+difference of -BDT 7.76 per scenario (95\% interval -9.26 to -6.30) and
+0.022 additional lost units per scenario (95\% interval 0.012 to 0.034).
+Under these assumptions, lower scenario cost accompanies more lost units;
+the trend policy is not superior on both outcomes. The figures are not
+realised savings and do not compare against a participating owner's
+documented policy.
+
+\section{RQ4 Explanation-Case Consistency Audit}
+
+All 1,800 supplied cases have the date 31 December 2025. The audit
+recomputed the action and constraint reason from inventory position,
+reorder point, case-pack size and scenario budget. All 1,800 matched.
+All suggested quantities were case-pack multiples within the stated
+scenario budget, and each explanation text mentioned stock, reorder point,
+pack multiple and budget. The result verifies rule and text consistency
+only; the case file identifies stock values as scenario data, not live
+inventory.
+
+The supplied \texttt{human\_rating} value is YES in all 1,800 rows, but
+there is no participant, consent, task, timestamp or response provenance.
+Validated participant responses are therefore zero, and no usability,
+confidence, task-correctness or decision-time metric can be reported.
+The real owner study for RQ4 remains incomplete.
+
+\section{Research-Question Evidence Status}
+\label{sec:rq_status}
+
+\begin{table}[H]
+\centering
+\small
+\caption{Current status of empirical evidence for the four research questions.}
+\label{tab:rq_status}
+\begin{tabularx}{\textwidth}{|p{0.10\textwidth}|p{0.27\textwidth}|Y|}
+\hline
+\textbf{RQ} & \textbf{Evidence completed} & \textbf{Remaining requirement} \\
+\hline
+RQ1 & Multi-horizon development benchmark and exposure-conditioned SKU diagnostic & Untouched future test; independent stock and source validation; better performance than strong simple baselines \\
+\hline
+RQ2 & Label reconstruction and temporal model comparison on supplied data & Independent provenance and external business validation; no causal retention-effect claim \\
+\hline
+RQ3 & Paired comparison on 2,500 generated-demand scenarios & Participating owner's actual policy and validated realised cost/outcome data \\
+\hline
+RQ4 & Mechanical consistency audit of 1,800 prepared test cases & Consented participant study with measured task accuracy, completion time, confidence and usability \\
+\hline
+\end{tabularx}
+\end{table}
 
 \section{Threats to Validity and Summary}
 
-The results are measured on the supplied real-business dataset and are
-bounded to the shop--category panel, selected development origins and
-cumulative forecast horizons. The final untouched test has not yet been
-evaluated. Previously inspected Q4 2025 is excluded from model selection.
+The results are measured on the researcher-supplied package, whose claimed
+business provenance remains unverified. RQ1 shop--category results are
+bounded to the supplied panel, selected development origins and cumulative
+forecast horizons. The exposure-conditioned SKU diagnostic uses Q4 2025,
+which had previously been inspected; neither that period nor the earlier
+development origins constitute an untouched final test. The RQ3 future
+demand consists of generated scenario values, and RQ4 uses prepared rule-test
+cases rather than participant responses.
 The earlier WAPE values of 83.98\%, 84.04\% and 84.56\% are not compared
 with the current experiments because their target, aggregation, origins
 and metric denominators have not been reproduced on identical evaluation
 rows.
 
-The evidence supports advancing context features as a development
-challenger, while retaining the pooled baseline as fallback. Remaining
-work includes an untouched test, cost-sensitive bias evaluation,
-SKU exposure correction, interval validation and separate inventory-policy
-and owner-task experiments. No universal model winner or untested
+The evidence supports keeping context features as a shop--category
+development challenger while retaining the pooled baseline as fallback.
+The SKU results do not establish an advantage over the strongest simple
+baseline. RQ2 supports ranking performance on the supplied snapshots, not
+retention impact. RQ3 is only a scenario comparison; RQ4 is only a rule
+consistency audit. Remaining empirical work includes independent source and
+stock validation, an untouched RQ1 test, participating-owner policy replay,
+and a consented participant study. No universal model winner or untested
 business-impact claim is asserted.
 
 \cleardoublepage
@@ -3090,14 +3335,15 @@ business-impact claim is asserted.
 \section{Research Summary}
 
 This thesis develops and evaluates an integrated SME analytics framework
-using the supplied Bangladesh business records. The dataset manifest
-identifies the package as real SME sales and real people. Source tables
-were internally reconciled: sales lines join to orders, prepared SKU
-aggregates reproduce from transaction lines, category totals reproduce
-from SKU sales, and inventory sale movements match sales lines. The
-inventory audit also identifies negative-balance events and positive-sale
-days with non-positive reconstructed stock; these remain quarantined from
-SKU exposure labels pending correction.
+using the researcher-supplied Bangladesh data package. Its manifest claims
+real SME sales and people, but a generation seed and "modeled world" wording
+leave source provenance unverified. Structural checks found that sales lines
+join to orders, prepared SKU aggregates reproduce from transaction lines,
+category totals reproduce from SKU sales, and inventory sale movements
+reconcile to sales lines. These checks establish internal consistency, not
+real-world origin. The inventory audit also found negative-balance histories
+and positive-sale days with non-positive reconstructed stock; affected
+histories were quarantined from the exposure-conditioned SKU diagnostic.
 
 For RQ1, the complete shop--category panel supports observed-sales
 forecasting. A context-aware LightGBM challenger adds historical shop,
@@ -3109,13 +3355,18 @@ to -6.05\%. The model is therefore a leading development challenger,
 not yet a final production selection. The one-, 14- and 28-day comparisons
 also show lower pooled WAPE, but use only three origins each.
 
-Prequential interval diagnostics and bottom-up aggregation provide
-additional evidence. SKU latent demand, inventory-policy benefit,
-customer-action effectiveness and cross-sector transfer remain separate
-evaluation tasks. The contribution is an auditable, evidence-aware process
-that selects methods against common baselines, preserves temporal validity
-and links predictions to feasible business decisions. No accuracy target
-is forced and no untested business-impact claim is made.
+An exposure-conditioned SKU diagnostic found that the 28-day exposed-sales
+mean had lower Q4 WAPE than HistGradientBoosting; the period had already been
+inspected and is not a blind holdout. For RQ2, temporal model comparison on
+the supplied snapshots produced a HistGradientBoosting PR-AUC of 0.746 after
+all 72,146 labels matched an independent order-history reconstruction.
+For RQ3, the trend scenario had 0.87\% lower cost but 55 more lost units
+than the supplied baseline. For RQ4, all prepared cases passed mechanical
+rule checks, but there are no validated participant responses. These findings
+are conditional on unverified source data and scenario assumptions. The
+contribution is an auditable evaluation process; owner-policy benefit,
+measured usability, causal customer-action effects and transfer to other
+businesses remain unestablished.
 
 
 

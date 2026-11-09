@@ -488,6 +488,6 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--input", required=True, type=Path)
     parser.add_argument("--output", required=True, type=Path)
-    parser.add_argument("--evidence-status", default="real_user_provided")
+    parser.add_argument("--evidence-status", default="observed_unverified")
     args = parser.parse_args()
     run(args.input, args.output, args.evidence_status)

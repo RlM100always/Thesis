@@ -2,7 +2,7 @@
   "pipeline": "rq1_fixed_origin_multi_candidate_v2",
   "input_file": "rq1_daily_shop_category.csv",
   "input_sha256": "ab741f4d72c49706ba2abc8f096659324d862f758c4f171b84dd55a3ab6cbcbd",
-  "evidence_status": "real_user_provided",
+  "evidence_status": "observed_unverified",
   "rows": 561152,
   "shops": 32,
   "categories": 16,
@@ -84,5 +84,5 @@
   "numpy": "2.3.5",
   "catboost": "1.2.8",
   "sklearn": "1.8.0",
-  "dataset_source": "Real SME dataset supplied through the project Google Drive folder."
+  "dataset_source": "Researcher-supplied package; source provenance unverified. The manifest claims real SME data but records a generation seed and modeled-world validation wording."
 }

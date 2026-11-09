@@ -26,7 +26,8 @@ published report. The compiled PDF is
 supersedes the older Overleaf-only note below.
 
 The active report describes a multi-sector Bangladesh SME framework and uses
-the real SME research dataset supplied through the project Google Drive folder.
+a researcher-supplied package whose manifest claims real data; source provenance
+has not been independently verified.
 The older pharmacy-specific scope note above is historical supervisor context;
 do not use it to overwrite the active multi-sector scope without a new
 supervisor instruction. Preserve the existing University of Dhaka LaTeX class,

@@ -36,7 +36,7 @@
     "sales_orders.csv": "09b1c0833bbc191d82889f9e39664625688bd65e63e0b4e0eb92c96861a4f48f",
     "products.csv": "ab96545725e7ff96120da8f151b79419ec8bdf255a333edd97e097346a0efe4e"
   },
-  "provenance_status": "real_user_provided",
+  "provenance_status": "user_provided_provenance_unverified",
   "final_holdout_evaluated": false,
   "python": "3.13.5",
   "pandas": "2.2.3",
@@ -50,5 +50,5 @@
     "origins_where_baseline_wins": 4,
     "decision": "Do not adopt transaction-derived features in the current model; they did not improve pooled WAPE or mean MAE across the nine development origins."
   },
-  "dataset_source": "Real SME dataset supplied through the project Google Drive folder."
+  "dataset_source": "Researcher-supplied package; source provenance unverified."
 }

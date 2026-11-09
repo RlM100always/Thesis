@@ -401,7 +401,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--input", required=True, type=Path)
     parser.add_argument("--output", required=True, type=Path)
-    parser.add_argument("--evidence-status", default="real_user_provided", choices=["real_user_provided", "verified_observed", "observed_unverified", "synthetic_fixture"])
+    parser.add_argument("--evidence-status", default="observed_unverified", choices=["real_user_provided", "verified_observed", "observed_unverified", "synthetic_fixture"])
     parser.add_argument("--provenance-evidence", type=Path, help="Optional source-owner evidence JSON for independently audited source records.")
     args = parser.parse_args()
     run(args.input, args.output, evidence_status=args.evidence_status, provenance_evidence=args.provenance_evidence)

@@ -1,6 +1,6 @@
 # B-SMART thesis research data — current source
 
-The active thesis research uses the real Bangladesh SME dataset supplied by the researcher through the project Google Drive folder. The package covers 2023–2025 and contains shop, product, customer, sales, payment, procurement, inventory, return, promotion and calendar data.
+The thesis research uses the Bangladesh data package supplied through the project Google Drive folder. Its manifest claims real SME data, but a generation seed and “modeled world” wording leave source provenance unverified. The package covers 2023–2025 and contains shop, product, customer, sales, payment, procurement, inventory, return, promotion and calendar data.
 
 ## Research datasets
 
@@ -16,8 +16,8 @@ The active thesis research uses the real Bangladesh SME dataset supplied by the 
 - Do not commit raw customer identities, contact details or other personal records.
 - Keep each RQ's data, target definition, split and evaluation protocol separate.
 
-## Current work
+## Current work — 9 November 2026
 
-RQ1 has existing development model outputs; exposure-aware SKU evaluation and a final untouched evaluation remain. RQ2 needs its reproducible classification pipeline and model comparison. RQ3 needs scenario evaluation and the participating owner's actual-policy comparison. RQ4 needs a real participant study before human-feedback claims can be reported.
+RQ1 has a completed exposure-conditioned Q4 diagnostic, but its period was previously inspected and it does not beat the 28-day exposed-sales mean on WAPE; an untouched test and independent stock validation remain. RQ2 has a reproducible temporal model comparison and zero label mismatches on 72,146 snapshots. RQ3 has a paired comparison on 2,500 generated-demand scenarios; owner-policy replay and validated realised outcomes remain. RQ4 has a mechanical audit of 1,800 prepared cases; a consented participant study remains necessary for any human-feedback result.
 
 Use the current research documentation in research/forecasting/README.md and docs/REAL_DATA_ONBOARDING.md. Do not use older reset notes as the description of the current dataset.

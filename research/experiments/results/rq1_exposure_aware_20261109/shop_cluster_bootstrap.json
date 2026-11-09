@@ -1,0 +1,33 @@
+{
+  "weekly_naive": {
+    "WAPE": 1.9027960740852394
+  },
+  "moving_mean_28_exposed_days": {
+    "WAPE": 1.836495766648833
+  },
+  "hist_gradient_boosting": {
+    "WAPE": 1.8465978967788075
+  },
+  "paired_hgb_minus_weekly_naive_shop_bootstrap": {
+    "unit": "shop cluster",
+    "shops": 32,
+    "replicates": 2000,
+    "WAPE_difference": -0.05619817730643195,
+    "percentile_95pct_ci": [
+      -0.07301325898222233,
+      -0.03842006456821451
+    ],
+    "interpretation": "Descriptive cluster bootstrap; small number of shops limits precision."
+  },
+  "paired_hgb_minus_moving_mean_28_exposed_days_shop_bootstrap": {
+    "unit": "shop cluster",
+    "shops": 32,
+    "replicates": 2000,
+    "WAPE_difference": 0.010102130129974407,
+    "percentile_95pct_ci": [
+      -0.0020900233592256287,
+      0.022470877165773236
+    ],
+    "interpretation": "Descriptive cluster bootstrap; small number of shops limits precision."
+  }
+}

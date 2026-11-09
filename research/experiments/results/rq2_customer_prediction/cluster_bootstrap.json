@@ -1,0 +1,21 @@
+{
+  "unit": "customer_id cluster",
+  "replicates_requested": 300,
+  "replicates_used": 300,
+  "selected_model_average_precision_95pct_ci": [
+    0.7362157351352628,
+    0.7579916886399383
+  ],
+  "constant_train_prevalence_average_precision_95pct_ci": [
+    0.40489097143686087,
+    0.41966172236789573
+  ],
+  "paired_ap_difference_95pct_ci": [
+    0.32562651799551834,
+    0.34470745720090207
+  ],
+  "paired_ap_difference_mean": 0.3347538284365255,
+  "selected_model": "hist_gradient_boosting",
+  "observed_test_average_precision": 0.7464181998710603,
+  "observed_constant_baseline_average_precision": 0.4118314118314118
+}

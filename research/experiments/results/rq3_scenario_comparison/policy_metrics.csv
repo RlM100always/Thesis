@@ -1,0 +1,7 @@
+metric,sum,mean
+baseline_cost_bdt_scenario,2227690.07,891.076028
+trend_cost_bdt_scenario,2208289.4699999997,883.3157879999999
+baseline_lost_units_scenario,45.0,0.018
+trend_lost_units_scenario,100.0,0.04
+baseline_avg_stock_units,392825.27999999997,157.130112
+trend_avg_stock_units,387567.97,155.027188

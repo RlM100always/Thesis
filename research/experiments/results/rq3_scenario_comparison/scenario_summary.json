@@ -1,0 +1,50 @@
+{
+  "n_scenarios": 2500,
+  "cutoff_dates": [
+    "2025-07-31"
+  ],
+  "shops": 32,
+  "skus": 477,
+  "scenario_oracle_nonzero_share": 0.658,
+  "baseline": {
+    "total_cost_bdt_scenario": 2227690.07,
+    "mean_cost_bdt_scenario": 891.076028,
+    "lost_units_scenario": 45.0,
+    "mean_average_stock_units_scenario": 157.130112,
+    "total_order_units": 7356.0,
+    "budget_violation_count_using_product_cost": 0
+  },
+  "trend": {
+    "total_cost_bdt_scenario": 2208289.4699999997,
+    "mean_cost_bdt_scenario": 883.3157879999999,
+    "lost_units_scenario": 100.0,
+    "mean_average_stock_units_scenario": 155.027188,
+    "total_order_units": 654.0,
+    "budget_violation_count_using_product_cost": 0
+  },
+  "trend_minus_baseline_cost_bdt": -19400.600000000093,
+  "trend_cost_relative_change_percent": -0.8708841620863383,
+  "trend_minus_baseline_lost_units": 55.0,
+  "paired_cost_bootstrap_trend_minus_baseline": {
+    "mean_paired_difference": -7.76024,
+    "percentile_95pct_ci": [
+      -9.261025799999999,
+      -6.3003894
+    ],
+    "positive_cases": 1,
+    "zero_cases": 2370,
+    "negative_cases": 129
+  },
+  "paired_lost_units_bootstrap_trend_minus_baseline": {
+    "mean_paired_difference": 0.022,
+    "percentile_95pct_ci": [
+      0.0116,
+      0.0336
+    ],
+    "positive_cases": 23,
+    "zero_cases": 2477,
+    "negative_cases": 0
+  },
+  "provided_cost_gap_reconciliation_mismatches": 0,
+  "input_semantics": "The future oracle-demand field contains generated scenario values; budgets and costs are assumptions, not realised business outcomes."
+}

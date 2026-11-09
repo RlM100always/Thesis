@@ -1,0 +1,72 @@
+{
+  "experiment": "RQ2 customer inactivity prediction",
+  "protocol": "supplied temporal TRAIN/TEST split; latest TRAIN snapshot cohort used for model selection and threshold selection; final fits use all TRAIN rows; TEST evaluated once",
+  "label": "no repeat purchase during the following 90-day window, as supplied",
+  "features": [
+    "recency_days",
+    "orders_last_30d",
+    "orders_last_90d",
+    "orders_last_180d",
+    "sales_last_90d_bdt",
+    "mean_basket_last_90d_bdt",
+    "lifetime_orders_so_far",
+    "tenure_days",
+    "snapshot_month_sin",
+    "snapshot_month_cos",
+    "home_shop_id"
+  ],
+  "excluded_features": [
+    "customer_id",
+    "snapshot_id",
+    "horizon_end",
+    "split"
+  ],
+  "validation_date": "2024-12-31",
+  "selected_model_by_validation_average_precision": "hist_gradient_boosting",
+  "selected_threshold": 0.22198165259362707,
+  "data_audit": {
+    "rows": 72146,
+    "train_rows": 50982,
+    "test_rows": 21164,
+    "customers": 10613,
+    "train_customers": 10483,
+    "test_customers": 10613,
+    "customers_in_both_splits": 10483,
+    "train_target_rate": 0.3639127535208505,
+    "test_target_rate": 0.4118314118314118,
+    "train_snapshot_min": "2023-12-31",
+    "train_snapshot_max": "2024-12-31",
+    "test_snapshot_min": "2025-03-31",
+    "test_snapshot_max": "2025-06-30",
+    "train_horizon_end_max": "2025-03-31",
+    "label_validation": {
+      "source": "sales_orders.csv",
+      "rule": "inactive=1 iff no customer order occurs after snapshot_date and on/before horizon_end",
+      "horizon_days": 90,
+      "missing_customer_order_history": 0,
+      "label_mismatches": 0,
+      "recomputed_positive_label_rows": 27269
+    }
+  },
+  "input": {
+    "file": "rq2_customer_snapshots_90d.csv",
+    "sha256": "19477afee416a8ea87b1cb36006785b0efd6469425f4e4a6318a56dd2799710c"
+  },
+  "label_source": {
+    "file": "sales_orders.csv",
+    "sha256": "09b1c0833bbc191d82889f9e39664625688bd65e63e0b4e0eb92c96861a4f48f"
+  },
+  "output_files": [
+    "validation_metrics.csv",
+    "test_metrics.csv",
+    "reliability_bins.csv",
+    "cluster_bootstrap.json"
+  ],
+  "seed": 20261109,
+  "python": "3.12.14",
+  "pandas": "2.2.3",
+  "numpy": "2.3.5",
+  "scikit_learn": "1.8.0",
+  "raw_customer_ids_written": false,
+  "caveat": "This evaluates the supplied snapshots and target; it does not establish real-world retention impact or independently verify source provenance."
+}

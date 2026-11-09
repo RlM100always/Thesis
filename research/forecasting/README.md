@@ -4,7 +4,7 @@ This research-only package contains the demand-forecasting pipelines and their s
 
 ## Dataset
 
-The module uses the real Bangladesh SME dataset supplied through the project Google Drive folder. The prepared SKU-level observed-sales file contains 699,220 positive-sale records. The complete shop-category daily panel used by the existing benchmark contains 561,152 rows, 512 series, 32 shops and 1,096 dates.
+The module uses the Bangladesh package supplied through the project Google Drive folder. Its manifest claims real source data, but a generation seed and “modeled world” wording leave provenance unverified. The prepared SKU-level observed-sales file contains 699,220 positive-sale records. The complete shop-category daily panel used by the existing benchmark contains 561,152 rows, 512 series, 32 shops and 1,096 dates.
 
 The SKU export is sparse: a missing SKU-date is not automatically zero demand. A zero label is valid only when the SKU is active and availability evidence supports that it was in stock for the relevant period. Stockout, inactive assortment, closed-shop and unknown-availability periods must remain censored or unknown.
 
@@ -21,7 +21,7 @@ The repository contains a fixed-origin benchmark comparing:
 - Croston-SBA
 - TSB
 
-It also contains a context-feature experiment and a historical price/activity feature ablation. The existing outputs are development results. The final untouched holdout has not been evaluated, and the SKU-level exposure-aware evaluation is still required.
+It also contains a context-feature experiment and a historical price/activity feature ablation. Those outputs are development results. The exposure-conditioned SKU diagnostic is saved under `research/experiments/results/rq1_exposure_aware_20261109/`; its Q4 period had been inspected and is not an untouched holdout. The final untouched holdout has not been evaluated.
 
 Recorded fixed-origin pooled WAPE:
 
@@ -47,13 +47,13 @@ The audit checks sales-order/line joins, SKU aggregation, category aggregation, 
 ## Fixed-origin model benchmark
 
 ~~~powershell
-python research/forecasting/rq1_shop_category_experiment.py --input path\to\rq1_daily_shop_category.csv --output artifacts\rq1_fixed_origin_v2 --evidence-status real_user_provided
+python research/forecasting/rq1_shop_category_experiment.py --input path\to\rq1_daily_shop_category.csv --output artifacts\rq1_fixed_origin_v2 --evidence-status observed_unverified
 ~~~
 
 ## Context-aware experiment
 
 ~~~powershell
-python research/forecasting/context_aware_experiment.py --input path\to\rq1_daily_shop_category.csv --output artifacts\context_aware_v1 --evidence-status real_user_provided
+python research/forecasting/context_aware_experiment.py --input path\to\rq1_daily_shop_category.csv --output artifacts\context_aware_v1 --evidence-status observed_unverified
 ~~~
 
 ## Input contract
@@ -80,13 +80,14 @@ Missing dates are rejected by default. Use a zero only when the source supports 
 - Pooled, per-shop, per-category and demand-regime metrics
 - Run manifests, figures and contract tests
 
-## Remaining RQ1 work
+## Exposure-conditioned SKU diagnostic and remaining work
 
-1. Build the exposure-aware SKU-level panel and retain unknown/stockout periods as censored rather than zero.
-2. Reconcile inventory-ledger anomalies before using reconstructed availability as a target label.
-3. Complete branch/shop–SKU model evaluation with the same chronological cutoffs and appropriate baselines.
-4. Calibrate hurdle probabilities and prediction intervals on development-only folds.
-5. Add price/promotion features only when their timestamps prove they were available at the forecast origin.
-6. Freeze model selection, then evaluate once on a genuinely untouched future period or held-out businesses.
+The 9 November run reconstructs inventory and assigns zeros only on full-day positive-stock exposure. It quarantines 253 shop-SKU histories containing negative balances. On the previously inspected Q4 2025 period, the 28-day exposed-sales mean has WAPE 183.65%, compared with 184.66% for HistGradientBoosting and 190.28% for weekly seasonal naive. This evaluates observed sales conditional on reconstructed exposure, not latent demand during stock-outs.
+
+1. Validate reconstructed exposure against physical stock or owner-approved inventory records.
+2. Freeze model selection, then evaluate once on an untouched future period or held-out businesses.
+3. Evaluate shortage costs and subgroups on validated evidence.
+4. Calibrate occurrence probabilities and prediction intervals on development-only folds.
+5. Add price/promotion features only when timestamps prove they were available at the forecast origin.
 
 Do not describe the development outputs as final holdout performance.
