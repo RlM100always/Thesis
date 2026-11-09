@@ -103,7 +103,7 @@ The principal saved result locations are:
 - Current compiled PDF: `output/pdf/main-thesis-report.pdf`
 
 The current PDF was compiled from the updated master source, checked as an A4
-document with 87 pages, and visually inspected for the cover, tables,
+document with 88 pages, and visually inspected for the cover, tables,
 figures, headers, page numbers, and section transitions. The report presents
 the result in a reader-facing order: dataset profile, experiment design,
 simple result graph, business meaning, and limitation for each RQ. It does
@@ -124,7 +124,7 @@ pdflatex -interaction=nonstopmode -halt-on-error main.tex
 ```
 
 The final checked-in PDF was built from this source with the report figures
-present, then compressed for repository delivery without changing its 87-page
+present, then compressed for repository delivery without changing its 88-page
 A4 layout.
 
 ### Software/tool workflow
