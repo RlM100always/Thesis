@@ -143,6 +143,21 @@ def run_rq1(panel_path: Path, out: Path, figures: Path) -> pd.DataFrame:
     axes[1].grid(axis="y", alpha=0.25)
     axes[1].legend(frameon=False)
     savefig(fig, figures / "rq1_multidate_actual_vs_predicted.png")
+
+    # Reader-facing figure: one outcome line and one model line. The
+    # baseline comparison remains in the table/CSV, while this graph answers
+    # the first visual question directly: did the forecast follow reality?
+    fig, ax = plt.subplots(figsize=(10, 4.6))
+    ax.plot(x, series["actual"], marker="o", linewidth=3, color="#111827", label="Actual next-7-day demand")
+    ax.plot(x, series["hist_gradient_boosting"], marker="o", linewidth=2.5, color="#2563eb", label="HGB forecast")
+    ax.set_title("RQ1: What actually happened versus the forecast?")
+    ax.set_ylabel("Units")
+    ax.set_xlabel("Forecast cutoff")
+    ax.set_xticks(x, series["cutoff"], rotation=25, ha="right")
+    ax.grid(axis="y", alpha=0.25)
+    ax.legend(frameon=False)
+    ax.text(0.99, 0.97, f"Mean WAPE: {metrics.loc[metrics['model'].eq('hist_gradient_boosting'), 'WAPE'].mean() * 100:.2f}%", transform=ax.transAxes, ha="right", va="top", color="#1d4ed8", fontsize=11)
+    savefig(fig, figures / "rq1_simple_actual_vs_predicted.png")
     return metrics
 
 
@@ -199,6 +214,19 @@ def run_rq2(snapshot_path: Path, out: Path, figures: Path) -> pd.DataFrame:
     for ax in axes:
         ax.grid(axis="y", alpha=0.25)
     savefig(fig, figures / "rq2_multidate_inactivity.png")
+
+    fig, ax = plt.subplots(figsize=(8, 4.6))
+    overall = metrics["actual_inactivity_rate"].mean() * 100
+    top = metrics["top_decile_observed_inactivity_rate"].mean() * 100
+    bars = ax.bar(["All customers", "Highest-risk 10%"], [overall, top], color=["#9ca3af", "#dc2626"])
+    ax.set_ylim(0, 100)
+    ax.set_ylabel("Observed inactivity (%)")
+    ax.set_title("RQ2: Why targeting the highest-risk 10% helps")
+    ax.grid(axis="y", alpha=0.25)
+    ax.text(0.5, 0.96, f"Targeting lift: {top / overall:.2f}×", transform=ax.transAxes, ha="center", va="top", color="#b91c1c", fontsize=12)
+    for bar, value in zip(bars, [overall, top]):
+        ax.text(bar.get_x() + bar.get_width() / 2, value + 3, f"{value:.1f}%", ha="center", fontsize=10)
+    savefig(fig, figures / "rq2_simple_targeting_lift.png")
     return metrics
 
 
@@ -292,6 +320,20 @@ def run_rq3(data_dir: Path, out: Path, figures: Path) -> pd.DataFrame:
     for ax in axes:
         ax.grid(axis="y", alpha=0.25)
     savefig(fig, figures / "rq3_multidate_strategy_impact.png")
+
+    fig, ax = plt.subplots(figsize=(8, 4.6))
+    baseline_total = metrics["baseline_total_cost_bdt"].sum() / 1_000_000
+    trend_total = metrics["trend_total_cost_bdt"].sum() / 1_000_000
+    bars = ax.bar(["Baseline", "Trend policy"], [baseline_total, trend_total], color=["#64748b", "#d97706"])
+    ax.set_ylabel("Decision-analysis cost (BDT million)")
+    ax.set_title("RQ3: What did the historical backtest show?")
+    ax.set_ylim(min(baseline_total, trend_total) - 1.0, max(baseline_total, trend_total) + 1.0)
+    ax.grid(axis="y", alpha=0.25)
+    change = (trend_total / baseline_total - 1) * 100
+    ax.text(0.5, 0.96, f"Trend cost change: {change:+.2f}% | lost units: 0 vs 0", transform=ax.transAxes, ha="center", va="top", color="#9a3412", fontsize=10)
+    for bar, value in zip(bars, [baseline_total, trend_total]):
+        ax.text(bar.get_x() + bar.get_width() / 2, value + 0.12, f"BDT {value:.2f}m", ha="center", fontsize=10)
+    savefig(fig, figures / "rq3_simple_cost_tradeoff.png")
     return metrics
 
 
@@ -308,7 +350,7 @@ def run(data_dir: Path, out: Path, figures: Path) -> None:
         "rq3_cutoffs": rq3["cutoff"].tolist(),
         "rq3_cost_function": "purchase_cost + 0.02 * purchase_cost * average_stock + lost_units * max(retail_price - purchase_cost, 0)",
         "rq3_assumption_note": "Historical backtest uses observed sales after each cutoff; it is a decision-analysis estimate, not audited accounting profit or causal business impact.",
-        "outputs": ["rq1_multidate_metrics.csv", "rq2_multidate_metrics.csv", "rq3_multidate_business_impact.csv", "rq1_multidate_actual_vs_predicted.png", "rq2_multidate_inactivity.png", "rq3_multidate_strategy_impact.png"],
+        "outputs": ["rq1_multidate_metrics.csv", "rq2_multidate_metrics.csv", "rq3_multidate_business_impact.csv", "rq1_multidate_actual_vs_predicted.png", "rq1_simple_actual_vs_predicted.png", "rq2_multidate_inactivity.png", "rq2_simple_targeting_lift.png", "rq3_multidate_strategy_impact.png", "rq3_simple_cost_tradeoff.png"],
         "input_files": {
             "rq1_daily_shop_category.csv": sha256(data_dir / "rq1_daily_shop_category.csv"),
             "rq2_customer_snapshots_90d.csv": sha256(data_dir / "rq2_customer_snapshots_90d.csv"),

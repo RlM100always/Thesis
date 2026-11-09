@@ -59,11 +59,11 @@ def build(results_dir: Path, output: Path) -> None:
         ax.text(bar.get_x() + bar.get_width() / 2, value + 3, f"{value:.1f}%", ha="center", fontsize=10)
 
     ax = axes[1, 0]
-    bars = ax.bar(["Baseline", "Trend policy"], [rq3_base, rq3_trend], color=["#64748b", "#16a34a"])
+    bars = ax.bar(["Baseline", "Trend policy"], [rq3_base, rq3_trend], color=["#64748b", "#d97706"])
     ax.set_title("RQ3 — Replenishment cost comparison")
     ax.set_ylabel("Decision-analysis cost (BDT million)")
     ax.grid(axis="y", alpha=0.25)
-    ax.text(0.5, 0.82, f"Trend change: {rq3_change:+.2f}% | lost units: 0 vs 0", transform=ax.transAxes, ha="center", fontsize=10, color="#166534")
+    ax.text(0.5, 0.82, f"Trend cost change: {rq3_change:+.2f}% | lost units: 0 vs 0", transform=ax.transAxes, ha="center", fontsize=10, color="#9a3412")
     for bar, value in zip(bars, [rq3_base, rq3_trend]):
         ax.text(bar.get_x() + bar.get_width() / 2, value + 0.3, f"BDT {value:.2f}m", ha="center", fontsize=9)
 

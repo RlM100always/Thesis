@@ -2689,6 +2689,17 @@ RQ4 & 1,800 prepared explanation cases; no participant linkage or consent record
 \end{tabularx}
 \end{table}
 
+These checks directly determine what a defensible result can mean. The large
+zero-sales share makes percentage error unstable at the individual series
+level, so RQ1 reports a seven-day aggregate view alongside the exposure-aware
+SKU diagnostic. Repeated customer snapshots make random splitting unsafe, so
+RQ2 uses chronological rolling validation and evaluates the limited top-risk
+list. The reconstructed inventory is stock-rich, so RQ3 must report cost and
+lost units separately rather than calling a zero-stockout result a guaranteed
+profit. Finally, the prepared RQ4 cases can establish rule consistency but not
+human usability; that is why the participant evidence is shown as absent
+instead of being inferred from a prefilled rating field.
+
 \begin{figure}[H]
 \centering
 \includegraphics[width=\textwidth]{Figures/thesis_results_overview.png}
@@ -2708,6 +2719,13 @@ case-pack, stock and cost constraints, and (v) an explanation audit that does
 not confuse rule consistency with human usability. This design connects
 machine-learning outputs to owner decisions while keeping unsupported causal
 or profit claims outside the results.
+
+For reader-facing communication, the following result figures deliberately show
+one decision at a time: realised demand versus the forecast, the practical
+customer targeting lift, and the historical replenishment cost trade-off. The
+full date-level metrics and comparator panels remain in the accompanying CSV
+files and diagnostic figures, but the primary figures answer the business
+question without requiring the reader to decode several axes at once.
 
 \section{Demand-Regime Distribution}
 
@@ -3197,11 +3215,12 @@ $\sum_j|\hat y_j-y_j|/\sum_j|y_j|$.
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=\textwidth]{Figures/rq1_multidate_actual_vs_predicted.png}
-\caption{Actual next-seven-day demand, model predictions and WAPE across six
-chronological cutoffs. The lower panel makes the date-to-date error variation
-visible instead of hiding it in one pooled score.}
-\label{fig:rq1_multidate_actual_vs_predicted}
+\includegraphics[width=\textwidth]{Figures/rq1_simple_actual_vs_predicted.png}
+\caption{Reader-facing RQ1 result: realised next-seven-day demand versus the
+HistGradientBoosting forecast at six chronological cutoffs. The mean WAPE is
+shown directly on the graph; the date-level comparator table retains the full
+diagnostic detail.}
+\label{fig:rq1_simple_actual_vs_predicted}
 \end{figure}
 
 Across the six cutoffs, HistGradientBoosting has mean WAPE 32.40\%, compared
@@ -3409,12 +3428,12 @@ mean squared probability error.
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=\textwidth]{Figures/rq2_multidate_inactivity.png}
-\caption{Rolling inactivity performance. The left panel compares the observed
-base rate with the mean predicted probability; the right panel shows why the
-ranking is operationally useful: the highest-risk 10\% consistently contains
-far more inactive customers than the full population.}
-\label{fig:rq2_multidate_inactivity}
+\includegraphics[width=\textwidth]{Figures/rq2_simple_targeting_lift.png}
+\caption{Reader-facing RQ2 result: observed inactivity for all customers versus
+the highest-risk 10\% selected by the model. The graph reports the average
+targeting lift directly; chronological metrics and calibration diagnostics are
+retained in the table.}
+\label{fig:rq2_simple_targeting_lift}
 \end{figure}
 
 The top-risk decile has an observed inactivity rate of 69.91--86.06\%,
@@ -3524,12 +3543,11 @@ an assumption for comparing policies; it is not an audited accounting rate.
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=\textwidth]{Figures/rq3_multidate_strategy_impact.png}
-\caption{Historical RQ3 backtest. The top panel compares realised next-30-day
-demand with both forecasts; the middle panel shows the assumption-based cost;
-the lower panel confirms that no lost units occurred under either policy in
-this stock-rich reconstructed sample.}
-\label{fig:rq3_multidate_strategy_impact}
+\includegraphics[width=\textwidth]{Figures/rq3_simple_cost_tradeoff.png}
+\caption{Reader-facing RQ3 result: total historical decision-analysis cost for
+the baseline and trend policies. The trend policy is 0.54\% more expensive in
+this stock-rich sample, while both policies record zero lost units.}
+\label{fig:rq3_simple_cost_tradeoff}
 \end{figure}
 
 Across all eight cutoffs, baseline cost is BDT 61.341 million and trend-policy

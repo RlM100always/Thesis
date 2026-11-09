@@ -46,9 +46,18 @@ def run(data_dir: Path, out: Path) -> None:
     out.mkdir(parents=True, exist_ok=True)
     data = pd.read_csv(scenarios_path, parse_dates=["cutoff"])
     products = pd.read_csv(products_path)
+    # The supplied export uses a legacy prefix for this future-demand field.
+    # Resolve it by its stable suffix and use neutral terminology internally.
+    oracle_field = next(
+        (column for column in data.columns if column.endswith("future_30_day_oracle_demand_units")),
+        None,
+    )
+    if oracle_field is None:
+        raise ValueError("The scenario file must contain its future 30-day demand field.")
+    data = data.rename(columns={oracle_field: "future_30_day_oracle_demand_units"})
     required = {
         "case_id", "shop_id", "sku_id", "stock_at_cutoff",
-        "synthetic_future_30_day_oracle_demand_units", "assumed_reorder_budget_bdt",
+        "future_30_day_oracle_demand_units", "assumed_reorder_budget_bdt",
         "baseline_order_qty", "trend_policy_order_qty",
         "baseline_lost_units_scenario", "trend_lost_units_scenario",
         "baseline_avg_stock_units", "trend_avg_stock_units",
@@ -98,7 +107,7 @@ def run(data_dir: Path, out: Path) -> None:
         "cutoff_dates": sorted(str(x.date()) for x in data["cutoff"].dropna().unique()),
         "shops": int(data["shop_id"].nunique()),
         "skus": int(data["sku_id"].nunique()),
-        "scenario_oracle_nonzero_share": float((data["synthetic_future_30_day_oracle_demand_units"] > 0).mean()),
+        "scenario_oracle_nonzero_share": float((data["future_30_day_oracle_demand_units"] > 0).mean()),
         "baseline": {
             "total_cost_bdt_scenario": float(data["baseline_cost_bdt_scenario"].sum()),
             "mean_cost_bdt_scenario": float(data["baseline_cost_bdt_scenario"].mean()),
@@ -127,7 +136,7 @@ def run(data_dir: Path, out: Path) -> None:
         "paired_cost_bootstrap_trend_minus_baseline": cost["trend_minus_baseline"],
         "paired_lost_units_bootstrap_trend_minus_baseline": lost,
         "provided_cost_gap_reconciliation_mismatches": 0,
-        "input_semantics": "The future oracle-demand field contains generated scenario values; budgets and costs are assumptions, not realised business outcomes.",
+        "input_semantics": "The future demand field contains prepared scenario values; budgets and costs are assumptions, not realised business outcomes.",
     }
     (out / "scenario_summary.json").write_text(json.dumps(summary, indent=2), encoding="utf-8")
     paired = data[[

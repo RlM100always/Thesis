@@ -33,8 +33,11 @@
     "rq2_multidate_metrics.csv",
     "rq3_multidate_business_impact.csv",
     "rq1_multidate_actual_vs_predicted.png",
+    "rq1_simple_actual_vs_predicted.png",
     "rq2_multidate_inactivity.png",
-    "rq3_multidate_strategy_impact.png"
+    "rq2_simple_targeting_lift.png",
+    "rq3_multidate_strategy_impact.png",
+    "rq3_simple_cost_tradeoff.png"
   ],
   "input_files": {
     "rq1_daily_shop_category.csv": "ab741f4d72c49706ba2abc8f096659324d862f758c4f171b84dd55a3ab6cbcbd",
