@@ -4,7 +4,7 @@
 **Online stores:** https://thesis-j0n8.onrender.com/#/stores
 **NEW Cloudflare D1 owner dashboard:** https://thesis-j0n8.onrender.com/#/d1-owner
 
-## Current status (8 November 2026)
+## Current status (10 November 2026)
 
 The React website is deployed on Render and the Cloudflare Worker `bsmart-commerce-api` has been deployed with the production multi-store upgrade. The Worker URL is https://bsmart-commerce-api.bcs-written-rakib.workers.dev . Cloudflare D1 `bsmart-commerce` remains the authoritative store/customer/order/inventory database for the D1 storefront.
 
@@ -63,6 +63,19 @@ explicitly below.
 | RQ3 replenishment | Eight-date observed-sales backtest, baseline-versus-trend policy comparison, low-stock slice, holding-cost sensitivity, service/cost interpretation, and owner-impact graph | Owner's actual policy, validated cost inputs, and realised owner outcomes are still required; the separate 2,500-row scenario file is assumption-based |
 | RQ4 explanation evaluation | 1,800-case mechanical explanation audit, constraint checks, and evidence-boundary graph | Validated participant responses are 0; human usability, confidence, task accuracy, and completion-time results are not claimed |
 
+### Reader-facing result summary
+
+| RQ | Main measured result | Correct interpretation |
+|---|---|---|
+| RQ1 | Leakage-safe six-date HGB WAPE **32.57%**, versus 28-day mean **39.33%** and weekly naive **46.06%**; frozen-tail context check **33.45%** | The model is useful for short-horizon planning in this panel, but the final claim still needs a blind holdout and validated stock exposure |
+| RQ2 | Test PR-AUC **0.746**, ROC-AUC **0.830**, and mean highest-risk-decile lift **2.06x** with bootstrap uncertainty | The model can rank a smaller retention list; it does not prove that a retention action causes extra purchases |
+| RQ3 | Eight-date observed-sales backtest: trend policy cost change **+0.54%** and lost units **0 vs 0**; trend cheaper at 3 dates and more expensive at 5 | The recommendation is a cost/service comparison, not guaranteed profit; owner's actual policy and validated costs are still missing |
+| RQ4 | **1,800/1,800** mechanical explanation checks passed; validated participant responses **0** | The explanation rules are internally consistent, but no human usability result is claimed |
+
+These figures are intentionally shown as separate metrics. Forecasting error,
+classification ranking, replenishment cost and explanation usability answer
+different questions and must not be collapsed into one overall score.
+
 Run instructions and saved aggregate outputs are documented in
 `research/experiments/README.md` and `research/forecasting/README.md`. Raw
 customer, order, inventory, and scenario files remain outside GitHub. The
@@ -101,6 +114,18 @@ To rebuild after changing the source, use the commands in `thesis_report/BUILD.m
 with a complete TeX Live installation. The checked-in PDF is the current
 compiled artifact; auxiliary TeX files and private data exports are not
 committed.
+
+The standard build sequence is:
+
+```bash
+cd thesis_report
+pdflatex -interaction=nonstopmode -halt-on-error main.tex
+pdflatex -interaction=nonstopmode -halt-on-error main.tex
+```
+
+The final checked-in PDF was built from this source with the report figures
+present, then compressed for repository delivery without changing its 87-page
+A4 layout.
 
 ### Software/tool workflow
 
