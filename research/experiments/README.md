@@ -16,7 +16,7 @@ From the repository root, set `--data-dir` to a private folder containing the Dr
 python research/experiments/run_rq1_exposure_aware.py --data-dir /path/to/private/drive-export
 python research/experiments/run_rq2_customer_prediction.py --data-dir /path/to/private/drive-export
 python research/experiments/run_rq3_scenario_comparison.py --data-dir /path/to/private/drive-export
-python research/experiments/run_rq4_explanation_case_audit.py --data-dir /path/to/private/drive-export
+python research/experiments/run_rq4_explanation_case_audit.py --data-dir /path/to/private/drive-export --figures-dir thesis_report/Figures
 ```
 
 The scripts save outputs under `research/experiments/results/` unless `--output-dir` is supplied. Do not commit the input CSVs.
@@ -120,6 +120,24 @@ The 2% holding factor is an assumption-based comparison term, not audited accoun
 - RQ3 exposes the cash/service trade-off: the trend rule is not automatically cheaper, and the historical backtest shows exactly which dates increase the decision-analysis cost.
 
 These are decision-support findings, not audited profit or causal intervention results. The owner-policy replay still needs documented reorder rules, validated purchase/holding/lost-sales costs and realised outcomes from participating businesses.
+
+## RQ4 — what is actually demonstrated
+
+The RQ4 audit covers 1,800 prepared explanation cases dated 31 December 2025. The supplied action, constraint reason, case-pack quantity and budget checks all match at 100%; every explanation includes the stock, reorder point, pack multiple and budget evidence. The supplied `human_rating=YES` field is not treated as a participant response because it has no participant ID, consent, task completion record, timestamp or response provenance. Validated participant responses are therefore **0**.
+
+The runner now creates `thesis_report/Figures/rq4_explanation_evidence.png`, which places the 100% mechanical pass rates beside the 0 validated participant responses. This makes the correct RQ4 conclusion visible: the explanation mechanism is computationally consistent, but usability, confidence, task accuracy and decision time remain unevaluated.
+
+## Integrated result overview and thesis novelty
+
+To build the one-page summary figure after the RQ1--RQ4 runners have run:
+
+```bash
+python research/experiments/build_thesis_results_overview.py
+```
+
+The output is `thesis_report/Figures/thesis_results_overview.png`. It shows actual-versus-forecast demand, the customer targeting lift, the replenishment cost trade-off and the RQ4 evidence boundary in one view.
+
+The thesis contribution is decision-oriented rather than a claim of a new machine-learning algorithm. Its design contribution is the combination of exposure-aware demand targets, date-aware validation, top-decile customer targeting, constraint- and cost-linked replenishment, and an explanation audit that separates mechanical consistency from human usability. The data analysis determines the method: sparse/lumpy demand requires exposure and aggregation checks; imbalanced inactivity requires PR-AUC and lift; stock-rich replenishment requires cost decomposition; and prepared explanation cases cannot substitute for a participant study.
 
 ## Cross-RQ limits and saved outputs
 

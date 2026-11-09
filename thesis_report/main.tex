@@ -2640,7 +2640,9 @@ the suggested quantity is a pack multiple within the stated budget. It also
 checks whether explanation text mentions stock, reorder point, pack multiple
 and budget. This is a mechanical consistency check. The supplied
 \texttt{human\_rating} field has no participant, consent, task, timestamp or
-response provenance, so it is excluded from all usability calculations.
+response provenance, so it is excluded from all usability calculations. The
+runner also produces a two-panel evidence figure: mechanical pass rates on
+the left and prepared-case versus validated-participant counts on the right.
 
 \cleardoublepage
 \chapter{Experimental Results}
@@ -2656,6 +2658,56 @@ series and 1,096 daily observations per series. It totals 1,580,361 units;
 duplicate shop--category--date keys, missing required values, zero-flag
 mismatches or missing dates within the complete panel. Transaction and
 inventory reconciliation findings are reported in Chapter~\ref{chapter_implementation}.
+
+\section{Dataset-to-Decision Analysis and Integrated Results}
+\label{sec:dataset_decision_analysis}
+
+The dataset is not one homogeneous modelling table. Each research question
+has a different analytical grain, target and decision loss. Treating every
+row as an interchangeable training example would hide stock censoring,
+class imbalance and the difference between a prepared rule case and a real
+user response. The experiment design therefore follows the data structure:
+
+\begin{table}[H]
+\centering
+\scriptsize
+\setlength{\tabcolsep}{3pt}
+\caption{How the supplied data structure determines the evaluation design.}
+\label{tab:dataset_to_decision_design}
+\begin{tabularx}{\textwidth}{|p{0.09\textwidth}|p{0.22\textwidth}|p{0.22\textwidth}|p{0.27\textwidth}|Y|}
+\hline
+\textbf{RQ} & \textbf{Data evidence} & \textbf{Design problem} & \textbf{Evaluation response} & \textbf{Decision output} \\
+\hline
+RQ1 & 561,152 shop--category--day rows; 512 series; 37.60\% zero-sales rows; many lumpy series. & Daily SKU sales are sparse and can be censored by unavailable stock. & Compare a seven-day shop--category forecast across six dates, then keep the one-day SKU exposure diagnostic separate. & Planning quantity with actual-versus-predicted demand and date-specific error. \\
+\hline
+RQ2 & 72,146 customer snapshots; 10,613 customers; 90-day inactivity labels. & Inactivity is imbalanced and repeated customers create temporal dependence. & Use chronological rolling fits, PR-AUC/Brier score and highest-risk-decile lift rather than accuracy alone. & A small, ranked retention list for limited owner resources. \\
+\hline
+RQ3 & 2,500 policy scenarios plus eight observed-sales historical cutoffs; reconstructed inventory is stock-rich. & Scenario cost is not realised profit, and high stock can conceal service differences. & Separate scenario results from observed-sales backtest and decompose purchase, holding and lost-margin cost. & Policy comparison with an explicit cash/service trade-off. \\
+\hline
+RQ4 & 1,800 prepared explanation cases; no participant linkage or consent record. & A prefilled rating field cannot establish usability or human performance. & Audit rule, constraint, pack and text consistency, then report participant evidence separately as zero. & Owner-readable explanation mechanism with a clear evidence boundary. \\
+\hline
+\end{tabularx}
+\end{table}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{Figures/thesis_results_overview.png}
+\caption{The complete thesis result in one view. RQ1 compares realised and
+forecast units, RQ2 shows the targeting lift, RQ3 shows the policy cost
+trade-off, and RQ4 distinguishes mechanical rule evidence from the absent
+participant study.}
+\label{fig:thesis_results_overview}
+\end{figure}
+
+The novelty is therefore methodological and decision-oriented rather than a
+claim of inventing a new classifier. The framework combines (i) exposure-aware
+target construction for sparse SME demand, (ii) date-aware validation across
+multiple operational cutoffs, (iii) customer ranking evaluated at the budget-
+relevant top decile, (iv) replenishment evaluation that links forecasts to
+case-pack, stock and cost constraints, and (v) an explanation audit that does
+not confuse rule consistency with human usability. This design connects
+machine-learning outputs to owner decisions while keeping unsupported causal
+or profit claims outside the results.
 
 \section{Demand-Regime Distribution}
 
@@ -3542,6 +3594,16 @@ pack multiple and budget. The result verifies rule and text consistency
 only; the case file identifies stock values as scenario data, not live
 inventory.
 
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{Figures/rq4_explanation_evidence.png}
+\caption{RQ4 evidence boundary. Every mechanical check passes for the 1,800
+prepared cases, but the dataset contains zero validated participant responses.
+The graph makes clear why the current RQ4 result is an explanation-engine
+audit, not a usability study.}
+\label{fig:rq4_explanation_evidence}
+\end{figure}
+
 The supplied \texttt{human\_rating} value is YES in all 1,800 rows, but
 there is no participant, consent, task, timestamp or response provenance.
 Validated participant responses are therefore zero, and no usability,
@@ -3645,6 +3707,13 @@ are conditional on unverified source data, cost assumptions and the absence of
 causal intervention evidence. The contribution is an auditable, date-aware
 decision process; owner-policy benefit, measured usability, causal
 customer-action effects and transfer to other businesses remain unestablished.
+
+The thesis novelty is the evidence design that connects these tasks without
+mixing their meanings: exposure-aware demand evaluation for sparse sales,
+rolling risk ranking for imbalanced inactivity, constraint- and cost-linked
+replenishment, and explanation consistency separated from human usability.
+This makes the framework useful for SME monitoring and prioritisation while
+keeping the claims proportionate to what the supplied data can actually prove.
 
 
 

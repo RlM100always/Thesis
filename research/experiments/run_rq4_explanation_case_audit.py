@@ -13,6 +13,10 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+import matplotlib
+
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
 
 
 def sha256(path: Path) -> str:
@@ -23,7 +27,42 @@ def sha256(path: Path) -> str:
     return h.hexdigest()
 
 
-def run(data_dir: Path, out: Path) -> None:
+def save_rq4_figure(summary: dict, figures_dir: Path) -> None:
+    figures_dir.mkdir(parents=True, exist_ok=True)
+    checks = [
+        ("Action", summary["rule_action_match_rate"] * 100),
+        ("Reason", summary["constraint_reason_match_rate"] * 100),
+        ("Pack multiple", summary["suggested_quantity_case_pack_rate"] * 100),
+        ("Budget", summary["suggested_quantity_budget_compliance_rate"] * 100),
+        ("Text evidence", 100.0 if summary["explanations_mention_stock"] == summary["case_count"] and summary["explanations_mention_reorder_point"] == summary["case_count"] and summary["explanations_mention_pack_multiple"] == summary["case_count"] and summary["explanations_mention_scenario_budget"] == summary["case_count"] else 0.0),
+    ]
+    fig, axes = plt.subplots(1, 2, figsize=(11, 4.8), gridspec_kw={"width_ratios": [1.35, 1]})
+    labels = [x[0] for x in checks]
+    values = [x[1] for x in checks]
+    bars = axes[0].barh(labels, values, color="#16a34a")
+    axes[0].set_xlim(0, 105)
+    axes[0].set_xlabel("Pass rate (%)")
+    axes[0].set_title("Mechanical explanation checks")
+    axes[0].grid(axis="x", alpha=0.25)
+    for bar, value in zip(bars, values):
+        axes[0].text(min(value + 1, 101), bar.get_y() + bar.get_height() / 2, f"{value:.0f}%", va="center", fontsize=9)
+
+    human_labels = ["Prepared cases audited", "Validated participant\nresponses"]
+    human_values = [summary["case_count"], summary["validated_participant_response_count"]]
+    human_bars = axes[1].bar(human_labels, human_values, color=["#64748b", "#dc2626"])
+    axes[1].set_ylabel("Count")
+    axes[1].set_title("Human-study evidence")
+    axes[1].grid(axis="y", alpha=0.25)
+    axes[1].set_ylim(0, max(human_values[0] * 1.15, 10))
+    for bar, value in zip(human_bars, human_values):
+        axes[1].text(bar.get_x() + bar.get_width() / 2, max(value, 1) + human_values[0] * 0.03, f"{value:,}", ha="center", fontsize=10)
+    fig.suptitle("RQ4: What is verified, and what is still missing?", fontsize=14, y=1.02)
+    fig.tight_layout()
+    fig.savefig(figures_dir / "rq4_explanation_evidence.png", dpi=220, bbox_inches="tight")
+    plt.close(fig)
+
+
+def run(data_dir: Path, out: Path, figures_dir: Path) -> None:
     cases_path = data_dir / "rq4_explanation_cases.csv"
     products_path = data_dir / "products.csv"
     if not cases_path.exists() or not products_path.exists():
@@ -68,7 +107,7 @@ def run(data_dir: Path, out: Path) -> None:
         data["available_budget_bdt_scenario"].to_numpy() + 0.01
     )
     text = data["explanation"].fillna("").astype(str)
-    mentions_scenario_stock = text.str.contains("synthetic", case=False)
+    mentions_scenario_stock = text.str.contains(r"scenario|generated|prepared", case=False, regex=True)
     mentions_stock = text.str.contains(r"stock\s+\d+", case=False, regex=True)
     mentions_reorder_point = text.str.contains(r"reorder\s+point\s+\d+", case=False, regex=True)
     mentions_pack = text.str.contains(r"pack\s+multiple\s+\d+", case=False, regex=True)
@@ -104,9 +143,11 @@ def run(data_dir: Path, out: Path) -> None:
         "interpretation": "All rows are prepared generated explanation rule-test cases. Action and constraint checks use the supplied reorder point, pending quantity, pack size and scenario budget. The target order-up-to quantity is absent from the file, so this audit does not assess whether the quantity is economically optimal. The human_rating field has no linked participant, consent, task, timestamp, or response provenance and is excluded from human-study results.",
     }
     (out / "case_audit_summary.json").write_text(json.dumps(summary, indent=2), encoding="utf-8")
+    save_rq4_figure(summary, figures_dir)
     manifest = {
         "experiment": "RQ4 computational explanation-case audit",
         "scope": "rule and text consistency only; no participant study",
+        "figure_outputs": ["rq4_explanation_evidence.png"],
         "input_hashes": {
             cases_path.name: sha256(cases_path),
             products_path.name: sha256(products_path),
@@ -123,8 +164,9 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--data-dir", type=Path, required=True)
     parser.add_argument("--output-dir", type=Path, default=Path("research/experiments/results/rq4_explanation_case_audit"))
+    parser.add_argument("--figures-dir", type=Path, default=Path("thesis_report/Figures"))
     args = parser.parse_args()
-    run(args.data_dir, args.output_dir)
+    run(args.data_dir, args.output_dir, args.figures_dir)
 
 
 if __name__ == "__main__":
