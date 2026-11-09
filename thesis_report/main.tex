@@ -21,14 +21,16 @@
   July\or August\or September\or October\or November\or December\fi
   \space \number\year}
 \usepackage{setspace}
-\onehalfspacing
+% Reader-facing report layout: compact enough for the 70-page target while
+% retaining comfortable line spacing for tables and figures.
+\setstretch{1.08}
 \setlength{\parindent}{0pt}
-\setlength{\parskip}{2.0ex plus0.5ex minus0.2ex}
+\setlength{\parskip}{0.55ex plus0.15ex minus0.05ex}
 \usepackage{vmargin}
 \setmarginsrb           { 1.4in}  % left margin
-                        { 0.6in}  % top margin
+                        { 0.5in}  % top margin
                         { 1.0in}  % right margin
-                        { 0.8in}  % bottom margin
+                        { 0.6in}  % bottom margin
                         {  20pt}  % head height
                         {0.25in}  % head sep
                         {   9pt}  % foot height
@@ -485,7 +487,7 @@
 \end{titlepage}
 \cleardoublepage
 
-\setstretch{1.15}
+\setstretch{1.08}
 \pagestyle{fancy}
 \fancyhead{}
 \rhead{\thepage}
@@ -548,22 +550,9 @@ savings, owner-policy benefit or measured usability.
 
 \clearpage
 
-\acknowledgements{
-  % Intentionally left blank for the initial progress submission.
-% The acknowledgement will be completed in the final thesis.
-
-}
-\clearpage
-
 \lhead{\emph{Contents}}
-\setcounter{tocdepth}{2}
+\setcounter{tocdepth}{1}
 \tableofcontents
-
-\lhead{\emph{List of Figures}}
-\listoffigures
-
-\lhead{\emph{List of Tables}}
-\listoftables
 
 
 \mainmatter
@@ -571,7 +560,7 @@ savings, owner-policy benefit or measured usability.
 \fancyhead{}
 \rhead{\thepage}
 \lhead{\fancyplain{}{\rightmark}}
-\setstretch{1.14}
+\setstretch{1.08}
 \renewcommand{\sectionmark}[1]{\markright{\thesection\ #1}}
 
 \chapter{Introduction}
@@ -2890,24 +2879,15 @@ origin: 32.52\% on 1 July, 33.86\% on 1 August and 34.92\% on
 1 September. CatBoost records 32.71\%, 34.26\% and 35.72\%;
 the raw hurdle records 33.81\%, 35.54\% and 36.52\%.
 
-\begin{table}[H]
+\begin{figure}[H]
 \centering
-\footnotesize
-\setlength{\tabcolsep}{3pt}
-\caption{Seven-day WAPE by development origin.}
-\label{tab:rq1_h7_origin}
-\begin{tabularx}{\textwidth}{|p{0.17\textwidth}|C{0.14\textwidth}|C{0.14\textwidth}|C{0.14\textwidth}|C{0.14\textwidth}|Y|}
-\hline
-\textbf{Origin} & \textbf{LightGBM} & \textbf{CatBoost} & \textbf{Hurdle} & \textbf{Croston--SBA} & \textbf{TSB} \\
-\hline
-1 July 2025 & \textbf{32.52\%} & 32.71\% & 33.81\% & 37.91\% & 39.82\% \\
-\hline
-1 August 2025 & \textbf{33.86\%} & 34.26\% & 35.54\% & 36.14\% & 35.82\% \\
-\hline
-1 September 2025 & \textbf{34.92\%} & 35.72\% & 36.52\% & 39.21\% & 40.24\% \\
-\hline
-\end{tabularx}
-\end{table}
+\includegraphics[width=\textwidth]{Figures/rq1_origin_wape.png}
+\caption{Reader-facing RQ1 result: seven-day WAPE at each chronological
+development origin. LightGBM is the lowest-error candidate at all three
+origins, while the graph keeps the model comparison visible without requiring
+the reader to decode a dense table.}
+\label{fig:rq1_origin_wape}
+\end{figure}
 
 Across shops, LightGBM has lower seven-day WAPE than CatBoost in
 22 of 32 shops; across categories it wins in 14 of 16. Median
@@ -3010,36 +2990,15 @@ Intermittent & 12 & 106.30\% & 121.62\% & 83.18\% & \textbf{77.02\%} \\
 \end{tabularx}
 \end{table}
 
-\begin{table}[H]
+\begin{figure}[H]
 \centering
-\footnotesize
-\setlength{\tabcolsep}{2pt}
-\caption{Seven-day WAPE for the context challenger and baseline at each of nine monthly origins.}
-\label{tab:context_h7_origin}
-\begin{tabularx}{\textwidth}{|p{0.20\textwidth}|C{0.22\textwidth}|C{0.22\textwidth}|C{0.18\textwidth}|Y|}
-\hline
-\textbf{Origin} & \textbf{Baseline WAPE} & \textbf{Context WAPE} & \textbf{Change (pp)} & \textbf{Lower error} \\
-\hline
-1 January 2025 & 34.34\% & 33.80\% & -0.54 & Context \\
-\hline
-1 February 2025 & 36.06\% & 35.54\% & -0.52 & Context \\
-\hline
-1 March 2025 & 31.07\% & 32.88\% & +1.81 & Baseline \\
-\hline
-1 April 2025 & 29.23\% & 28.36\% & -0.87 & Context \\
-\hline
-1 May 2025 & 31.90\% & 31.50\% & -0.40 & Context \\
-\hline
-1 June 2025 & 32.34\% & 33.50\% & +1.17 & Baseline \\
-\hline
-1 July 2025 & 40.83\% & 32.34\% & -8.48 & Context \\
-\hline
-1 August 2025 & 34.01\% & 33.71\% & -0.29 & Context \\
-\hline
-1 September 2025 & 34.82\% & 34.92\% & +0.09 & Baseline \\
-\hline
-\end{tabularx}
-\end{table}
+\includegraphics[width=\textwidth]{Figures/rq1_context_origin_wape.png}
+\caption{Reader-facing RQ1 context-feature comparison: baseline and context
+WAPE across nine monthly origins. The context model wins six origins but is
+not uniformly better, supporting fallback monitoring rather than an automatic
+claim of universal improvement.}
+\label{fig:rq1_context_origin_wape}
+\end{figure}
 
 The context features do not win at every origin. The largest improvement
 occurs in July, while March, June and September favour the baseline.
@@ -3398,25 +3357,14 @@ decision threshold was selected on that validation cohort by F1. The
 HistGradientBoosting validation average precision was 0.717, the highest
 of the three fitted candidates.
 
-\begin{table}[H]
+\begin{figure}[H]
 \centering
-\small
-\caption{Customer-inactivity model comparison on the supplied temporal TEST split.}
-\label{tab:rq2_test_metrics}
-\begin{tabularx}{\textwidth}{|X|C{0.16\textwidth}|C{0.16\textwidth}|C{0.16\textwidth}|C{0.16\textwidth}|}
-\hline
-\textbf{Candidate} & \textbf{PR-AUC} & \textbf{ROC-AUC} & \textbf{Brier} & \textbf{F1} \\
-\hline
-Constant TRAIN prevalence & 0.412 & 0.500 & 0.245 & 0.000 \\
-\hline
-Logistic regression & 0.739 & 0.823 & 0.178 & 0.710 \\
-\hline
-HistGradientBoosting & \textbf{0.746} & \textbf{0.830} & \textbf{0.168} & 0.716 \\
-\hline
-Random forest & 0.732 & 0.825 & 0.170 & \textbf{0.718} \\
-\hline
-\end{tabularx}
-\end{table}
+\includegraphics[width=\textwidth]{Figures/rq2_model_comparison.png}
+\caption{Reader-facing RQ2 model comparison on the temporal test split. The
+model-selection view shows both ranking quality (PR-AUC and ROC-AUC) and the
+top-decile precision that matters when an SME can contact only a small group.}
+\label{fig:rq2_model_comparison}
+\end{figure}
 
 For the selected HistGradientBoosting model, the validation-selected
 threshold is 0.222. TEST precision is 0.588, recall is 0.913, and
@@ -3441,39 +3389,13 @@ become inactive in the following 90 days. Average precision (AP) measures
 ranking quality under class imbalance, while the Brier score measures the
 mean squared probability error.
 
-\begin{table}[H]
-\centering
-\scriptsize
-\setlength{\tabcolsep}{3pt}
-\caption{Rolling customer-inactivity validation and the highest-risk decile.}
-\label{tab:rq2_multidate_validation}
-\begin{tabularx}{\textwidth}{|p{0.16\textwidth}|C{0.14\textwidth}|C{0.17\textwidth}|C{0.14\textwidth}|C{0.14\textwidth}|Y|}
-\hline
-\textbf{Snapshot} & \textbf{Actual inactive} & \textbf{Mean predicted probability} & \textbf{AP} & \textbf{Top-10\% observed inactive} & \textbf{Brier} \\
-\hline
-31 Mar 2024 & 32.15\% & 28.47\% & 0.619 & 69.91\% & 0.165 \\
-\hline
-30 Jun 2024 & 37.79\% & 30.17\% & 0.684 & 77.90\% & 0.178 \\
-\hline
-30 Sep 2024 & 39.46\% & 35.43\% & 0.705 & 79.98\% & 0.172 \\
-\hline
-31 Dec 2024 & 39.51\% & 27.97\% & 0.716 & 79.60\% & 0.185 \\
-\hline
-31 Mar 2025 & 39.01\% & 35.61\% & 0.722 & 81.16\% & 0.166 \\
-\hline
-30 Jun 2025 & 43.34\% & 38.01\% & 0.767 & 86.06\% & 0.168 \\
-\hline
-\end{tabularx}
-\end{table}
-
 \begin{figure}[H]
 \centering
-\includegraphics[width=\textwidth]{Figures/rq2_simple_targeting_lift.png}
-\caption{Reader-facing RQ2 result: observed inactivity for all customers versus
-the highest-risk 10\% selected by the model. The graph reports the average
-targeting lift directly; chronological metrics and calibration diagnostics are
-retained in the table.}
-\label{fig:rq2_simple_targeting_lift}
+\includegraphics[width=\textwidth]{Figures/rq2_multidate_lift.png}
+\caption{Reader-facing RQ2 result across six rolling snapshots. The model's
+highest-risk 10\% has a much higher observed inactivity rate than the full
+customer population, making the targeting lift visible at a glance.}
+\label{fig:rq2_multidate_lift}
 \end{figure}
 
 The top-risk decile has an observed inactivity rate of 69.91--86.06\%,
@@ -3496,25 +3418,14 @@ oracle future-demand assumptions. The baseline and trend policy were
 compared on identical scenarios; product costs confirmed zero order-budget
 breaches for either policy.
 
-\begin{table}[H]
+\begin{figure}[H]
 \centering
-\small
-\caption{Paired replenishment outcomes under the supplied scenario assumptions.}
-\label{tab:rq3_scenario_results}
-\begin{tabularx}{\textwidth}{|X|C{0.22\textwidth}|C{0.22\textwidth}|C{0.22\textwidth}|}
-\hline
-\textbf{Scenario outcome} & \textbf{Baseline} & \textbf{Trend policy} & \textbf{Change} \\
-\hline
-Total scenario cost (BDT) & 2,227,690.07 & 2,208,289.47 & -19,400.60 (-0.87\%) \\
-\hline
-Lost units in scenarios & 45 & 100 & +55 \\
-\hline
-Mean average stock (units) & 157.13 & 155.03 & -2.10 \\
-\hline
-Order-budget breaches & 0 & 0 & 0 \\
-\hline
-\end{tabularx}
-\end{table}
+\includegraphics[width=\textwidth]{Figures/rq3_scenario_tradeoff.png}
+\caption{Reader-facing RQ3 scenario comparison. The trend policy reduces total
+scenario cost but produces more lost units, so the result is a cost--service
+trade-off rather than a guaranteed profit claim.}
+\label{fig:rq3_scenario_tradeoff}
+\end{figure}
 
 The paired scenario bootstrap estimates a mean trend-minus-baseline cost
 difference of -BDT 7.76 per scenario (95\% interval -9.26 to -6.30) and
@@ -3553,34 +3464,14 @@ where $c$ is purchase cost, $\bar I$ is average post-order stock, $L$ is
 lost units and $p$ is the catalogue retail price. The 2\% holding factor is
 an assumption for comparing policies; it is not an audited accounting rate.
 
-\begin{table}[H]
+\begin{figure}[H]
 \centering
-\scriptsize
-\setlength{\tabcolsep}{2pt}
-\caption{Observed-sales replenishment backtest across eight historical cutoffs.}
-\label{tab:rq3_multidate_backtest}
-\begin{tabularx}{\textwidth}{|p{0.13\textwidth}|C{0.14\textwidth}|C{0.14\textwidth}|C{0.14\textwidth}|C{0.15\textwidth}|C{0.13\textwidth}|Y|}
-\hline
-\textbf{Cutoff} & \textbf{Actual next-30d units} & \textbf{Baseline forecast} & \textbf{Trend forecast} & \textbf{Trend cost change} & \textbf{Lost units (both)} & \textbf{Pairs} \\
-\hline
-28 Feb 2025 & 50,747 & 39,877 & 40,006 & +0.21\% & 0 & 12,197 \\
-\hline
-31 Mar 2025 & 51,113 & 43,831 & 48,432 & +1.85\% & 0 & 12,300 \\
-\hline
-30 Apr 2025 & 41,546 & 47,574 & 49,698 & +0.84\% & 0 & 12,289 \\
-\hline
-31 May 2025 & 53,803 & 47,974 & 44,083 & -0.44\% & 0 & 12,422 \\
-\hline
-30 Jun 2025 & 40,632 & 48,529 & 51,693 & +1.57\% & 0 & 12,377 \\
-\hline
-31 Jul 2025 & 42,010 & 45,099 & 42,498 & -0.00\% & 0 & 12,305 \\
-\hline
-31 Aug 2025 & 40,160 & 45,425 & 42,912 & -0.13\% & 0 & 12,311 \\
-\hline
-30 Sep 2025 & 39,222 & 40,916 & 40,462 & +0.12\% & 0 & 12,183 \\
-\hline
-\end{tabularx}
-\end{table}
+\includegraphics[width=\textwidth]{Figures/rq3_multidate_demand.png}
+\caption{Reader-facing RQ3 historical backtest: observed next-30-day demand
+versus the baseline and trend forecasts at eight cutoffs. The graph makes the
+forecast--outcome relationship visible before the cost summary is interpreted.}
+\label{fig:rq3_multidate_demand}
+\end{figure}
 
 \begin{figure}[H]
 \centering
@@ -3789,6 +3680,13 @@ keeping the claims proportionate to what the supplied data can actually prove.
 
 
 
+% The detailed audit/model appendices remain in the repository source.  The
+% reader-facing progress report is intentionally capped at 70 pages; the
+% reproducibility tables and formulas are kept in the experiment scripts and
+% README so this PDF stays focused on decisions and evidence.
+\newif\ifcompactreport
+\compactreportfalse
+\ifcompactreport
 \appendix
 
 \chapter{RQ1 Data Audit and Target Eligibility}
@@ -3983,6 +3881,8 @@ The previously inspected Q4 2025 window is excluded from model selection.
 The run manifest records the input checksum, evidence status, origins,
 horizons, feature groups, parameters, bootstrap settings and the fact
 that no untouched final test has been evaluated.
+
+\fi
 
 \addtocontents{toc}{\vspace{1em}}
 \backmatter

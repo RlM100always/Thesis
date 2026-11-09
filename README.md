@@ -60,7 +60,7 @@ explicitly below.
 |---|---|---|
 | RQ1 demand forecasting | Exposure-aware SKU audit, fixed-origin model comparison, six-date leakage-safe shop-category validation, frozen-tail stress check, regime-wise analysis, and actual-versus-predicted figures | A blind final holdout and independent physical-stock validation are still required before a final deployment claim |
 | RQ2 customer inactivity | Temporal split, model comparison, PR-AUC/ROC-AUC/Brier, top-risk-decile lift, six-date rolling validation, and customer-cluster bootstrap intervals | Ranking and campaign prioritisation are supported; causal retention impact and final probability calibration are not yet measured |
-| RQ3 replenishment | Eight-date observed-sales backtest, baseline-versus-trend policy comparison, low-stock slice, holding-cost sensitivity, service/cost interpretation, and owner-impact graph | Owner's actual policy, validated cost inputs, and realised owner outcomes are still required; the separate 2,500-row scenario file is assumption-based |
+| RQ3 replenishment | Eight-date observed-sales backtest, baseline-versus-trend policy comparison, low-stock slice, holding-cost sensitivity, service/cost interpretation, and owner-impact graphs | Owner's actual policy, validated cost inputs, and realised owner outcomes are still required; the separate 2,500-row scenario file is assumption-based |
 | RQ4 explanation evaluation | 1,800-case mechanical explanation audit, constraint checks, and evidence-boundary graph | Validated participant responses are 0; human usability, confidence, task accuracy, and completion-time results are not claimed |
 
 ### Reader-facing result summary
@@ -92,6 +92,7 @@ The principal saved result locations are:
 - `research/experiments/results/rq3_scenario_comparison/`
 - `research/experiments/results/rq4_explanation_case_audit/`
 - `thesis_report/Figures/`
+- `research/experiments/build_reader_figures.py` (rebuilds the six compact result graphs from the saved CSV aggregates)
 
 ### Report-making workflow
 
@@ -103,8 +104,11 @@ The principal saved result locations are:
 - Current compiled PDF: `output/pdf/main-thesis-report.pdf`
 
 The current PDF was compiled from the updated master source, checked as an A4
-document with 88 pages, and visually inspected for the cover, tables,
-figures, headers, page numbers, and section transitions. The report presents
+document with exactly **70 pages**, and visually inspected for the cover,
+tables, figures, headers, page numbers, and section transitions. Repeated
+result tables were replaced by direct graphs where a visual comparison is
+clearer: RQ1 origin/context WAPE, RQ2 model comparison and targeting lift,
+and RQ3 scenario trade-off and historical demand backtest. The report presents
 the result in a reader-facing order: dataset profile, experiment design,
 simple result graph, business meaning, and limitation for each RQ. It does
 not combine forecasting, inactivity, replenishment, and explanation into one
@@ -124,8 +128,9 @@ pdflatex -interaction=nonstopmode -halt-on-error main.tex
 ```
 
 The final checked-in PDF was built from this source with the report figures
-present, then compressed for repository delivery without changing its 88-page
-A4 layout.
+embedded at publication-readable resolution. The source keeps the detailed
+audit/model appendices available for reproducibility, while the reader-facing
+PDF omits those long appendices to meet the 70-page limit.
 
 ### Software/tool workflow
 
