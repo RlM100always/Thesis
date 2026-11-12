@@ -5,13 +5,13 @@ import { defaultOrderStatusNote } from "./order-workflow.js";
 import { isPublicStore, INTERNAL_TEST_STORE_SLUGS } from "./store-visibility.js";
 import { customerAssistantRouter } from "./assistant-routes.js";
 /*
- B-SMART Cloudflare D1 Commerce API.
- Public storefront catalogues, customer accounts, saved addresses, account-linked
- order history and support chat. Seeded/demo stores accept simulated orders only.
- An explicitly admin-approved merchant store may accept cash-on-delivery orders
- with manual fulfilment; no online payment gateway, courier integration or refund
- automation is active. Legacy FastAPI business and historical customer records
- remain separate and are not synchronized.
+B-SMART Cloudflare Primary Commerce API.
+ The existing bsmart-commerce D1 database is the source of truth for storefront,
+ customer, merchant, order, coupon and inventory records. Only verified,
+ platform-approved merchant stores are publicly listed. Checkout currently
+ supports cash-on-delivery and merchant-managed fulfilment; no online payment
+ gateway, courier API or automated refund provider is configured. Legacy FastAPI
+ operational modules remain a separate, explicitly staged migration.
 */
 const allowed = new Set([
   "https://thesis-j0n8.onrender.com",
@@ -241,7 +241,7 @@ export default {
     const excluded=[...INTERNAL_TEST_STORE_SLUGS],marks=excluded.map(()=>"?").join(",");
     const row=await env.DB.prepare("SELECT COUNT(*) n FROM commerce_stores WHERE is_active=1 AND slug NOT IN ("+marks+")").bind(...excluded).first();
     const pro=await env.DB.prepare("SELECT COUNT(*) n FROM commerce_products p JOIN commerce_stores s ON s.id=p.store_id WHERE p.is_listed=1 AND s.is_active=1 AND s.slug NOT IN ("+marks+")").bind(...excluded).first();
-    return output(request,{status:"ok",database:"Cloudflare D1",scope:"public_storefronts",stores:row.n,products:pro.n,live_payments:false,assistant_enabled:env.AI_ENABLED==="true"&&!!env.AI});
+    return output(request,{status:"ok",database:"Cloudflare D1",scope:"public_storefronts",stores:row.n,products:pro.n,live_payments:false,assistant_enabled:env.AI_ENABLED!=="false"&&!!env.AI});
    }
    if((path==="/api/public/store"||path==="/api/public/store/")&&method==="GET") {
     const excluded=[...INTERNAL_TEST_STORE_SLUGS],marks=excluded.map(()=>"?").join(",");
@@ -252,7 +252,7 @@ export default {
     const excluded=[...INTERNAL_TEST_STORE_SLUGS],marks=excluded.map(()=>"?").join(",");
     const stores=await env.DB.prepare("SELECT COUNT(*) n FROM commerce_stores WHERE is_active=1 AND slug NOT IN ("+marks+")").bind(...excluded).first();
     const products=await env.DB.prepare("SELECT COUNT(*) n FROM commerce_products p JOIN commerce_stores s ON s.id=p.store_id WHERE p.is_listed=1 AND s.is_active=1 AND s.slug NOT IN ("+marks+")").bind(...excluded).first();
-    return output(request,{active_stores:stores.n,listed_products:products.n,catalog_ready:!!(stores.n&&products.n),source:"cloudflare_d1",mode:"demo"});
+    return output(request,{active_stores:stores.n,listed_products:products.n,catalog_ready:!!(stores.n&&products.n),source:"cloudflare_d1",mode:"cloudflare_primary"});
    }
    if(path.startsWith("/api/public/store/slug/")&&method==="GET"){
     const slug=decodeURIComponent(path.slice("/api/public/store/slug/".length));

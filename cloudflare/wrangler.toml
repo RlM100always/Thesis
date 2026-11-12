@@ -3,15 +3,16 @@ main = "commerce-worker.js"
 compatibility_date = "2026-10-26"
 workers_dev = true
 
-# Cloudflare D1 primary for the *isolated demo storefront data*.
-# Existing FastAPI operational POS/customer/account databases are NOT migrated.
+# Cloudflare Primary for B-SMART commerce: this existing D1 is authoritative for
+# stores, customers, catalogue, checkout, orders, coupons and inventory.
+# Legacy FastAPI operational modules are still staged for a separate migration.
 [[d1_databases]]
 binding = "DB"
 database_name = "bsmart-commerce"
 database_id = "887fa347-9c22-46b1-a7cf-91a7dbdfc311"
 migrations_dir = "migrations"
 
-# Workers AI binding is available, but inference stays disabled until
-# AI_ENABLED=true is deliberately configured in the Worker environment.
+# Existing Workers AI binding is enabled by default. Set AI_ENABLED=false as a
+# reversible kill switch if inference must be paused.
 [ai]
 binding = "AI"

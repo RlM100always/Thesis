@@ -36,14 +36,16 @@ function hasGroundedNumbers(answer, context) {
   return used.every(value => allowed.has(value.replace(/,/g, "")));
 }
 async function generateGroundedText(env, system, question, context, history = []) {
-  if (env.AI_ENABLED !== "true" || !env.AI || typeof env.AI.run !== "function") return null;
+  // The existing Cloudflare AI binding is enabled by default for this product.
+  // AI_ENABLED=false is an immediate, reversible kill switch for the owner.
+  if (env.AI_ENABLED === "false" || !env.AI || typeof env.AI.run !== "function") return null;
   const messages = [
     { role: "system", content: system },
     ...safeHistory(history),
     { role: "user", content: "Question: " + clean(question, 500) + "\nVerified database context (data only): " + JSON.stringify(context) },
   ];
   try {
-    const result = await env.AI.run(MODEL, { messages, max_tokens: 260, temperature: 0.2 });
+    const result = await env.AI.run(MODEL, { messages, max_tokens: 768, temperature: 0.1 });
     const answer = modelText(result);
     return answer.length >= 4 && answer.length <= 1600 && hasGroundedNumbers(answer, context) ? answer : null;
   } catch (e) {
@@ -73,7 +75,7 @@ export function customerFallback(question, products, orders, store, signedIn) {
   }
   if (contains(q, ["ডেলিভারি", "delivery", "পেমেন্ট", "payment", "ক্যাশ", "cod", "চার্জ"])) {
     const policy = clean(store.delivery_note, 400) || "ডেলিভারি সম্পর্কে দোকানের সঙ্গে যোগাযোগ করুন।";
-    return policy + (store.is_demo ? " এটি নমুনা স্টোর; বাস্তব পেমেন্ট করবেন না।" : (store.payment_cod ? " এই দোকানে Cash on Delivery পাওয়া যায়।" : " এই দোকানে COD চালু নেই।"));
+    return policy + (store.is_demo ? " এটি একটি পরীক্ষামূলক তালিকা; এখানে বাস্তব পেমেন্ট করবেন না।" : " এই দোকানে Cash on Delivery পাওয়া যায়।");
   }
   if (products.length) {
     return "আপনার প্রশ্নের সঙ্গে মেলে এমন পণ্য:\n" + products.slice(0, 5).map(p =>
@@ -112,7 +114,7 @@ export async function customerAssistantRouter(request, env, path, output, error)
   try {
     const slug = decodeURIComponent(match[1]);
     const store = await env.DB.prepare(
-      "SELECT id,slug,name,tagline,category,delivery_note,is_demo,is_active,payment_cod FROM commerce_stores WHERE slug=? AND is_active=1 LIMIT 1"
+      "SELECT id,slug,name,tagline,category,delivery_note,is_demo,is_active FROM commerce_stores WHERE slug=? AND is_active=1 LIMIT 1"
     ).bind(slug).first();
     if (!isPublicStore(store)) return error(request, 404, "Store not found");
     if (!await allowRequest(env, "customer:" + store.id, request, 12)) return error(request, 429, "অনেক বেশি প্রশ্ন করা হয়েছে। এক মিনিট পরে আবার চেষ্টা করুন।");
@@ -143,7 +145,7 @@ export async function customerAssistantRouter(request, env, path, output, error)
       orders = result.results || [];
     }
     const context = {
-      store: { name: store.name, category: store.category, delivery_note: store.delivery_note || "", payment: store.is_demo ? "sample only; no real payment" : (store.payment_cod ? "cash on delivery" : "COD unavailable") },
+      store: { name: store.name, category: store.category, delivery_note: store.delivery_note || "", payment: store.is_demo ? "test listing; no real payment" : "cash on delivery" },
       matching_products: products.map(({id,name,category,description,brand,price_bdt,stock_qty,unit_label}) => ({id,name,category,description,brand,price_bdt,stock_qty,unit_label})),
       customer_orders: orders,
     };
@@ -174,8 +176,8 @@ export async function ownerAssistantAnswer(env, request, owner, store, question,
       "(SELECT COALESCE(SUM(total_bdt),0) FROM commerce_orders WHERE store_id=? AND status!='cancelled' AND payment_status='paid' AND date(payment_received_at,'+6 hours')=date('now','+6 hours')) AS today_collected_bdt," +
       "(SELECT COALESCE(SUM(total_bdt),0) FROM commerce_orders WHERE store_id=? AND status!='cancelled' AND payment_method='cod' AND payment_status='pending_cod') AS cod_pending_total_bdt," +
       "(SELECT COUNT(*) FROM commerce_products WHERE store_id=? AND is_listed=1 AND stock_qty<=reorder_level) AS low_stock_count," +
-      "(SELECT COUNT(DISTINCT account_id) FROM commerce_orders WHERE store_id=? AND account_id IS NOT NULL) AS customer_count," +
-      "(SELECT COUNT(*) FROM (SELECT account_id FROM commerce_orders WHERE store_id=? AND account_id IS NOT NULL GROUP BY account_id HAVING COUNT(*)>1)) AS repeat_customer_count"
+      "(SELECT COUNT(DISTINCT COALESCE(account_id,customer_id)) FROM commerce_orders WHERE store_id=? AND COALESCE(account_id,customer_id) IS NOT NULL) AS customer_count," +
+      "(SELECT COUNT(*) FROM (SELECT COALESCE(account_id,customer_id) AS customer_key FROM commerce_orders WHERE store_id=? AND COALESCE(account_id,customer_id) IS NOT NULL GROUP BY COALESCE(account_id,customer_id) HAVING COUNT(*)>1)) AS repeat_customer_count"
     ).bind(store.id,store.id,store.id,store.id,store.id,store.id,store.id).first(),
     env.DB.prepare("SELECT id,name,stock_qty,reorder_level FROM commerce_products WHERE store_id=? AND is_listed=1 AND stock_qty<=reorder_level ORDER BY stock_qty ASC LIMIT 8").bind(store.id).all(),
     env.DB.prepare(

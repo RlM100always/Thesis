@@ -1,9 +1,11 @@
 import { canTransitionOrderStatus, defaultOrderStatusNote } from "./order-workflow.js";
+import { hasMerchantPermission, merchantPermissionFor } from "./merchant-permissions.mjs";
+import { isLoginLocked, nextLoginFailure } from "./login-lockout.mjs";
 import { ownerAssistantAnswer } from "./assistant-routes.js";
 
-/* Authenticated Cloudflare D1 merchant console (separate from legacy FastAPI).
-   Public demo checkout does not accept any real payment or delivery.
-   IMPORTANT: This owner identity is not imported from ephemeral SQLite.
+/* Authenticated Cloudflare Primary merchant console.
+   Owner and staff identities are stored in this D1 database. Legacy FastAPI
+   identities are not imported without a verified source export.
 */
 const encoder=new TextEncoder();
 const hex=arr=>Array.from(new Uint8Array(arr),b=>b.toString(16).padStart(2,"0")).join("");
@@ -30,6 +32,34 @@ async function json(request,error,max=10000){
 const short=(value,n=120)=>String(value??"").trim().slice(0,n);
 const validEmail=email=>/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)&&email.length<=180;
 const authMailConfigured=env=>Boolean(env.RESEND_API_KEY&&env.AUTH_EMAIL_FROM);
+async function allowMerchantAuthRequest(env,request,scope,limit=10) {
+ const ip=short(request.headers.get("CF-Connecting-IP")||"unknown",80);
+ const key=await sha256("merchant-auth:"+scope+":"+ip);
+ const windowId=Math.floor(Date.now()/60000);
+ await env.DB.prepare(
+  "INSERT INTO commerce_ai_rate_limits(key_hash,window_id,request_count) VALUES(?,?,1) " +
+  "ON CONFLICT(key_hash) DO UPDATE SET " +
+  "request_count=CASE WHEN commerce_ai_rate_limits.window_id=excluded.window_id THEN commerce_ai_rate_limits.request_count+1 ELSE 1 END," +
+  "window_id=excluded.window_id,updated_at=CURRENT_TIMESTAMP"
+ ).bind(key,windowId).run();
+ const row=await env.DB.prepare("SELECT request_count FROM commerce_ai_rate_limits WHERE key_hash=?").bind(key).first();
+ return Number(row?.request_count||0)<=limit;
+}
+
+function dhakaDate(value=Date.now()) {
+ return new Date(value+6*60*60*1000).toISOString().slice(0,10);
+}
+function shiftIsoDate(value,days) {
+ const date=new Date(value+"T00:00:00.000Z");
+ date.setUTCDate(date.getUTCDate()+days);
+ return date.toISOString().slice(0,10);
+}
+function validIsoDate(value) {
+ if(!/^\d{4}-\d{2}-\d{2}$/.test(String(value||"")))return false;
+ const date=new Date(value+"T00:00:00.000Z");
+ return Number.isFinite(date.getTime())&&date.toISOString().slice(0,10)===value;
+}
+
 function ownerPortalLink(env,parameter,token){
  const base=String(env.PUBLIC_APP_URL||"https://thesis-j0n8.onrender.com").replace(/\/$/,"");
  return base+"/#/d1-owner?"+parameter+"="+encodeURIComponent(token);
@@ -70,26 +100,61 @@ async function viewer(req,env){
  const match=/^Bearer ([a-f0-9]{64})$/.exec(bearer);
  if(!match)return null;
  const digest=await sha256(match[1]);
- return env.DB.prepare("SELECT a.id,a.email,a.role FROM merchant_sessions s JOIN merchant_accounts a ON a.id=s.account_id WHERE s.token_hash=? AND s.expires_at>? AND a.is_active=1").bind(digest,new Date().toISOString()).first();
+ return env.DB.prepare(
+  "SELECT a.id,a.email,a.role,a.display_name,ss.store_id,ss.owner_id,ss.role AS staff_role " +
+  "FROM merchant_sessions s JOIN merchant_accounts a ON a.id=s.account_id " +
+  "LEFT JOIN merchant_staff_store_access ss ON ss.account_id=a.id AND ss.is_active=1 " +
+  "LEFT JOIN merchant_accounts oa ON oa.id=ss.owner_id " +
+  "WHERE s.token_hash=? AND s.expires_at>? AND a.is_active=1 " +
+  "AND (a.role='owner' OR (a.role='staff' AND oa.is_active=1))"
+ ).bind(digest,new Date().toISOString()).first();
 }
 async function myStore(env,owner){
+ if(owner.role==="staff"){
+  return env.DB.prepare(
+   "SELECT s.* FROM commerce_stores s JOIN merchant_staff_store_access x ON x.store_id=s.id " +
+   "WHERE x.account_id=? AND x.owner_id=s.owner_id AND x.is_active=1 LIMIT 1"
+  ).bind(owner.id).first();
+ }
  return env.DB.prepare("SELECT * FROM commerce_stores WHERE owner_id=? ORDER BY created_at LIMIT 1").bind(owner.id).first();
 }
 async function storeOnly(env,owner){const row=await myStore(env,owner);if(!row)throw new Error("Create a store first");return row;}
 function stripStore(s){return {id:s.id,slug:s.slug,name:s.name,tagline:s.tagline||"",category:s.category||"",area:s.area||"",is_active:!!s.is_active,is_demo:!!s.is_demo,created_at:s.created_at};}
 async function dashboard(env,owner){
  const store=await myStore(env,owner);
- if(!store)return {account:{email:owner.email},store:null,products:[],orders:[],metrics:{orders:0,inventory_units:0,placed_total_bdt:0},stock_adjustments:[],cashbook:[]};
+ const isOwner=owner.role==="owner";
+ const can=permission=>isOwner||hasMerchantPermission(owner.staff_role,permission);
+ const account={email:owner.email,display_name:owner.display_name||owner.email,role:owner.role,staff_role:owner.staff_role||null,is_staff:!isOwner};
+ if(!store)return {account,store:null,products:[],orders:[],metrics:{orders:0,inventory_units:0},stock_adjustments:[],cashbook:[]};
  const [products,orders,stats,adjustments,cashbook]=await Promise.all([
-  env.DB.prepare("SELECT id,sku,name,category,description,brand,tags,compare_at_price_bdt,unit_label,price_bdt,stock_qty,reorder_level,is_listed,created_at,updated_at FROM commerce_products WHERE store_id=? ORDER BY created_at DESC LIMIT 200").bind(store.id).all(),
-  env.DB.prepare("SELECT id,order_number,status,status_note,cancellation_reason,total_bdt,placed_at,payment_method,payment_status,payment_received_at,payment_received_by,payment_note,shipping_name,shipping_phone,shipping_address FROM commerce_orders WHERE store_id=? ORDER BY placed_at DESC LIMIT 150").bind(store.id).all(),
+  can("products:read")?env.DB.prepare("SELECT id,sku,name,category,description,brand,tags,compare_at_price_bdt,unit_label,price_bdt,stock_qty,reorder_level,is_listed,created_at,updated_at FROM commerce_products WHERE store_id=? ORDER BY created_at DESC LIMIT 200").bind(store.id).all():Promise.resolve({results:[]}),
+  can("orders:read")?env.DB.prepare("SELECT id,order_number,status,status_note,cancellation_reason,total_bdt,placed_at,payment_method,payment_status,payment_received_at,payment_received_by,payment_note,shipping_name,shipping_phone,shipping_address FROM commerce_orders WHERE store_id=? ORDER BY placed_at DESC LIMIT 150").bind(store.id).all():Promise.resolve({results:[]}),
   env.DB.prepare("SELECT (SELECT COUNT(*) FROM commerce_orders WHERE store_id=?) AS orders,(SELECT COALESCE(SUM(stock_qty),0) FROM commerce_products WHERE store_id=?) AS inventory_units,(SELECT COALESCE(SUM(total_bdt),0) FROM commerce_orders WHERE store_id=? AND status!='cancelled') AS placed_total_bdt,(SELECT COALESCE(SUM(total_bdt),0) FROM commerce_orders WHERE store_id=? AND status!='cancelled' AND payment_method='cod' AND payment_status='paid') AS cod_paid_total_bdt,(SELECT COALESCE(SUM(total_bdt),0) FROM commerce_orders WHERE store_id=? AND status!='cancelled' AND payment_method='cod' AND payment_status='pending_cod') AS cod_pending_total_bdt,(SELECT COUNT(*) FROM commerce_products WHERE store_id=? AND is_listed=1 AND stock_qty<=reorder_level) AS low_stock_count").bind(store.id,store.id,store.id,store.id,store.id,store.id).first(),
-  env.DB.prepare("SELECT product_id,old_quantity,new_quantity,delta,reason,created_at FROM commerce_stock_adjustments WHERE store_id=? ORDER BY created_at DESC LIMIT 25").bind(store.id).all(),
-  env.DB.prepare("SELECT id,kind,amount_bdt,description,created_at,related_order_id FROM commerce_cashbook WHERE store_id=? ORDER BY created_at DESC LIMIT 75").bind(store.id).all()
+  can("inventory:read")?env.DB.prepare("SELECT product_id,old_quantity,new_quantity,delta,reason,created_at FROM commerce_stock_adjustments WHERE store_id=? ORDER BY created_at DESC LIMIT 25").bind(store.id).all():Promise.resolve({results:[]}),
+  isOwner?env.DB.prepare("SELECT id,kind,amount_bdt,description,created_at,related_order_id FROM commerce_cashbook WHERE store_id=? ORDER BY created_at DESC LIMIT 75").bind(store.id).all():Promise.resolve({results:[]})
  ]);
- return {account:{email:owner.email},store:stripStore(store),products:products.results,orders:orders.results,metrics:stats,stock_adjustments:adjustments.results,cashbook:cashbook.results};
+ const metrics={...(stats||{})};
+ if(!can("orders:read"))metrics.orders=0;
+ if(!can("inventory:read")){delete metrics.inventory_units;delete metrics.low_stock_count;}
+ if(!can("analytics:read")){delete metrics.placed_total_bdt;delete metrics.cod_paid_total_bdt;delete metrics.cod_pending_total_bdt;}
+ return {account,store:stripStore(store),products:products.results||[],orders:orders.results||[],metrics,stock_adjustments:adjustments.results||[],cashbook:cashbook.results||[]};
 }
 const errorCode=e=>/UNIQUE constraint failed/.test(e.message||"")?409:500;
+async function merchantAudit(env,storeId,actorId,action,targetType,targetId,details={}) {
+ await env.DB.prepare(
+  "INSERT INTO commerce_merchant_audit(id,store_id,actor_account_id,action,target_type,target_id,details) VALUES(?,?,?,?,?,?,?)"
+ ).bind(crypto.randomUUID(),storeId,actorId||null,action,targetType,targetId||null,JSON.stringify(details)).run();
+}
+function storeSlug(name) {
+ const base=String(name||"").toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"").slice(0,42)||"store";
+ return base+"-"+randomHex(3);
+}
+async function createMerchantSession(env,accountId) {
+ const token=newSession(),tokenHash=await sha256(token),expires=new Date(Date.now()+12*60*60*1000).toISOString();
+ await env.DB.prepare("INSERT INTO merchant_sessions(token_hash,account_id,expires_at) VALUES(?,?,?)").bind(tokenHash,accountId,expires).run();
+ return {token,expires_at:expires};
+}
+
 export async function merchantRouter(req,env,path,output,error){
  if(!path.startsWith("/api/merchant/"))return null;
  const method=req.method;
@@ -98,11 +163,68 @@ export async function merchantRouter(req,env,path,output,error){
    const secret=newSession(),digest=await sha256(secret);
    return output(req,{status:"ok",db:"D1",password_auth_ready:true,password_hash:"PBKDF2-HMAC-SHA-256",password_iterations:100000,legacy_access_key_support:true,email_verification_configured:authMailConfigured(env),password_reset_configured:authMailConfigured(env),health_digest_ok:digest.length===64});
   }
+
+  if(method==="POST"&&path==="/api/merchant/accept-owner-invite"){
+   const b=await json(req,error),token=String(b.token||"").trim().toLowerCase(),password=String(b.password||"");
+   const displayName=short(b.display_name,120);
+   if(!/^[a-f0-9]{64}$/.test(token))return bad(req,error,400,"Invalid or expired owner invitation");
+   if(password.length<12||password.length>128)return bad(req,error,422,"Password must contain 12-128 characters");
+   if(displayName.length<2)return bad(req,error,422,"Owner name must contain at least 2 characters");
+   const now=new Date().toISOString(),tokenHash=await sha256(token);
+   const invite=await env.DB.prepare(
+    "SELECT * FROM merchant_owner_invites WHERE token_hash=? AND expires_at>? AND accepted_at IS NULL AND revoked_at IS NULL AND identity_confirmed=1 LIMIT 1"
+   ).bind(tokenHash,now).first();
+   if(!invite)return bad(req,error,400,"Invalid or expired owner invitation");
+   if(await env.DB.prepare("SELECT id FROM merchant_accounts WHERE email=?").bind(invite.email).first())
+    return bad(req,error,409,"An account already exists for this owner email");
+   const accountId=crypto.randomUUID(),storeId="merchant-"+crypto.randomUUID();
+   const slug=storeSlug(invite.store_name),salt=randomHex(16),hash=await passwordDigest(password,salt);
+   const sessionToken=newSession(),sessionHash=await sha256(sessionToken),sessionExpires=new Date(Date.now()+12*60*60*1000).toISOString();
+   try{
+    await env.DB.batch([
+     env.DB.prepare("UPDATE merchant_owner_invites SET accepted_at=CURRENT_TIMESTAMP WHERE id=? AND accepted_at IS NULL AND revoked_at IS NULL AND expires_at>?").bind(invite.id,now),
+     env.DB.prepare("INSERT INTO merchant_accounts(id,email,display_name,password_hash,password_salt,access_key_digest,email_verified_at,email_verification_method,is_active,role) VALUES(?,?,?,?,?,NULL,CURRENT_TIMESTAMP,'platform_admin_invite',1,'owner')").bind(accountId,invite.email,displayName,hash,salt),
+     env.DB.prepare("INSERT INTO commerce_stores(id,slug,name,tagline,category,area,theme,color,is_demo,is_active,owner_id,delivery_note) VALUES(?,?,?,?,?,?,?,?,0,0,?,?)").bind(storeId,slug,invite.store_name,invite.tagline||"",invite.category,invite.area,"clean","#087e59",accountId,"Awaiting platform review"),
+     env.DB.prepare("INSERT INTO merchant_sessions(token_hash,account_id,expires_at) VALUES(?,?,?)").bind(sessionHash,accountId,sessionExpires),
+     env.DB.prepare("INSERT INTO commerce_platform_admin_audit(id,action,target_type,target_id,details) VALUES(?,?,?,?,?)").bind(crypto.randomUUID(),"owner_invite_accepted","merchant_account",accountId,JSON.stringify({invite_id:invite.id,email:invite.email,store_id:storeId,store_slug:slug,verification_method:"platform_admin_out_of_band"}))
+    ]);
+   }catch(e){return bad(req,error,errorCode(e),"Owner account could not be created. The invitation may already have been used.");}
+   return output(req,{created:true,token:sessionToken,expires_at:sessionExpires,email:invite.email,store:{id:storeId,slug,name:invite.store_name,is_active:false},note:"Your store account is ready. The store remains private until platform approval."},201);
+  }
+  if(method==="POST"&&path==="/api/merchant/staff/accept-invite"){
+   const b=await json(req,error),token=String(b.token||"").trim().toLowerCase(),password=String(b.password||"");
+   const displayName=short(b.display_name,120);
+   if(!/^[a-f0-9]{64}$/.test(token))return bad(req,error,400,"Invalid or expired staff invitation");
+   if(password.length<12||password.length>128)return bad(req,error,422,"Password must contain 12-128 characters");
+   if(displayName.length<2)return bad(req,error,422,"Staff name must contain at least 2 characters");
+   const now=new Date().toISOString(),tokenHash=await sha256(token);
+   const invite=await env.DB.prepare(
+    "SELECT i.*,s.name AS store_name,a.is_active AS owner_active FROM merchant_staff_invites i " +
+    "JOIN commerce_stores s ON s.id=i.store_id JOIN merchant_accounts a ON a.id=i.owner_id " +
+    "WHERE i.token_hash=? AND i.expires_at>? AND i.accepted_at IS NULL AND i.revoked_at IS NULL AND a.is_active=1 AND s.owner_id=a.id LIMIT 1"
+   ).bind(tokenHash,now).first();
+   if(!invite)return bad(req,error,400,"Invalid or expired staff invitation");
+   if(await env.DB.prepare("SELECT id FROM merchant_accounts WHERE email=?").bind(invite.email).first())
+    return bad(req,error,409,"An account already exists for this email. Contact the store owner.");
+   const accountId=crypto.randomUUID(),salt=randomHex(16),hash=await passwordDigest(password,salt);
+   const sessionToken=newSession(),sessionHash=await sha256(sessionToken),sessionExpires=new Date(Date.now()+12*60*60*1000).toISOString();
+   try{
+    await env.DB.batch([
+     env.DB.prepare("UPDATE merchant_staff_invites SET accepted_at=CURRENT_TIMESTAMP WHERE id=? AND accepted_at IS NULL AND revoked_at IS NULL AND expires_at>?").bind(invite.id,now),
+     env.DB.prepare("INSERT INTO merchant_accounts(id,email,display_name,password_hash,password_salt,access_key_digest,email_verified_at,email_verification_method,is_active,role) VALUES(?,?,?,?,?,NULL,CURRENT_TIMESTAMP,'store_staff_invite',1,'staff')").bind(accountId,invite.email,displayName,hash,salt),
+     env.DB.prepare("INSERT INTO merchant_staff_store_access(account_id,owner_id,store_id,role,is_active) VALUES(?,?,?,?,1)").bind(accountId,invite.owner_id,invite.store_id,invite.role),
+     env.DB.prepare("INSERT INTO merchant_sessions(token_hash,account_id,expires_at) VALUES(?,?,?)").bind(sessionHash,accountId,sessionExpires),
+     env.DB.prepare("INSERT INTO commerce_merchant_audit(id,store_id,actor_account_id,action,target_type,target_id,details) VALUES(?,?,?,?,?,?,?)").bind(crypto.randomUUID(),invite.store_id,invite.owner_id,"staff_invite_accepted","staff_account",accountId,JSON.stringify({invite_id:invite.id,email:invite.email,role:invite.role}))
+    ]);
+   }catch(e){return bad(req,error,errorCode(e),"Staff account could not be created. The invitation may already have been used.");}
+   return output(req,{created:true,token:sessionToken,expires_at:sessionExpires,email:invite.email,display_name:displayName,role:"staff",staff_role:invite.role,store_name:invite.store_name},201);
+  }
   if(method==="POST"&&path==="/api/merchant/register"){
    const b=await json(req,error),email=short(b.email,200).toLowerCase(),password=String(b.password||"");
    if(!validEmail(email))return bad(req,error,422,"Valid email required");
    if(password.length<12||password.length>128)return bad(req,error,422,"Password must contain 12-128 characters");
    if(!authMailConfigured(env))return bad(req,error,503,"Owner email verification is not configured yet");
+   if(!await allowMerchantAuthRequest(env,req,"register",5))return bad(req,error,429,"Too many registration requests; try again later.");
    const today=await env.DB.prepare("SELECT COUNT(*) AS n FROM merchant_accounts WHERE created_at >= datetime('now','start of day')").first();
    if(Number(today?.n||0)>=20)return bad(req,error,429,"Daily account registration limit reached");
    if(await env.DB.prepare("SELECT id FROM merchant_accounts WHERE email=?").bind(email).first())
@@ -132,6 +254,7 @@ export async function merchantRouter(req,env,path,output,error){
   if(method==="POST"&&path==="/api/merchant/resend-verification"){
    if(!authMailConfigured(env))return bad(req,error,503,"Owner email verification is not configured yet");
    const b=await json(req,error),email=short(b.email,200).toLowerCase();
+   if(validEmail(email)&&!await allowMerchantAuthRequest(env,req,"resend:"+email,3))return bad(req,error,429,"Too many verification requests; try again later.");
    if(validEmail(email)){
     const row=await env.DB.prepare("SELECT id,email,email_verified_at FROM merchant_accounts WHERE email=?").bind(email).first();
     if(row&&!row.email_verified_at){
@@ -144,6 +267,7 @@ export async function merchantRouter(req,env,path,output,error){
   if(method==="POST"&&path==="/api/merchant/forgot-password"){
    if(!authMailConfigured(env))return bad(req,error,503,"Password recovery email is not configured yet");
    const b=await json(req,error),email=short(b.email,200).toLowerCase();
+   if(validEmail(email)&&!await allowMerchantAuthRequest(env,req,"forgot:"+email,3))return bad(req,error,429,"Too many password reset requests; try again later.");
    if(validEmail(email)){
     const row=await env.DB.prepare("SELECT id,email FROM merchant_accounts WHERE email=?").bind(email).first();
     if(row){
@@ -157,6 +281,7 @@ export async function merchantRouter(req,env,path,output,error){
    const b=await json(req,error),token=String(b.token||"").trim(),password=String(b.password||"");
    if(!/^[a-f0-9]{64}$/i.test(token))return bad(req,error,400,"Invalid or expired password reset link");
    if(password.length<12||password.length>128)return bad(req,error,422,"Password must contain 12-128 characters");
+   if(!await allowMerchantAuthRequest(env,req,"reset",8))return bad(req,error,429,"Too many password reset attempts; try again later.");
    const row=await env.DB.prepare("SELECT id FROM merchant_accounts WHERE password_reset_token_hash=? AND password_reset_expires_at>?").bind(await sha256(token.toLowerCase()),new Date().toISOString()).first();
    if(!row)return bad(req,error,400,"Invalid or expired password reset link");
    const salt=randomHex(16),hash=await passwordDigest(password,salt);
@@ -173,9 +298,10 @@ export async function merchantRouter(req,env,path,output,error){
    const legacyKey=String(b.access_key||(/^[0-9a-f]{64}$/i.test(password)?password:"")).trim().toLowerCase();
    if(!validEmail(email)||(!password&&!legacyKey))return bad(req,error,401,"Invalid email or password");
    const now=new Date().toISOString();
+   if(!await allowMerchantAuthRequest(env,req,"login:"+email,12))return bad(req,error,429,"Too many login requests; try again later.");
    const lock=await env.DB.prepare("SELECT failures,lock_until FROM merchant_login_attempts WHERE email=?").bind(email).first();
-   if(lock?.lock_until&&lock.lock_until>now)return bad(req,error,429,"Too many attempts; try again later");
-   const acc=await env.DB.prepare("SELECT id,email,password_hash,password_salt,access_key_digest,email_verified_at,is_active,role FROM merchant_accounts WHERE email=?").bind(email).first();
+   if(isLoginLocked(lock,Date.now()))return bad(req,error,429,"Too many attempts; try again later");
+   const acc=await env.DB.prepare("SELECT id,email,display_name,password_hash,password_salt,access_key_digest,email_verified_at,is_active,role FROM merchant_accounts WHERE email=?").bind(email).first();
    let valid=false;
    if(acc&&password.length>=12&&acc.password_salt&&acc.password_salt!=="DISABLED"&&acc.password_hash!=="ACCESS_KEY_ONLY"){
     valid=constantTimeEqual(await passwordDigest(password,acc.password_salt),acc.password_hash);
@@ -184,21 +310,38 @@ export async function merchantRouter(req,env,path,output,error){
     valid=constantTimeEqual(await sha256(legacyKey),acc.access_key_digest||"");
    }
    if(valid&&!Number(acc.is_active??1))return bad(req,error,403,"This owner account is suspended. Contact the platform administrator.");
-   if(valid&&acc.role!=="owner")return bad(req,error,403,"This account role cannot access the owner panel.");
+   if(valid&& !["owner","staff"].includes(acc.role))return bad(req,error,403,"This account role cannot access the merchant panel.");
+   let staffAccess=null;
+   if(valid&&acc.role==="staff"){
+    staffAccess=await env.DB.prepare(
+     "SELECT x.store_id,x.owner_id,x.role FROM merchant_staff_store_access x " +
+     "JOIN merchant_accounts a ON a.id=x.owner_id JOIN commerce_stores s ON s.id=x.store_id " +
+     "WHERE x.account_id=? AND x.is_active=1 AND a.is_active=1 AND s.owner_id=a.id LIMIT 1"
+    ).bind(acc.id).first();
+    if(!staffAccess)return bad(req,error,403,"Staff access is suspended or no longer assigned to a store.");
+   }
    if(valid&&acc.password_hash!=="ACCESS_KEY_ONLY"&&!acc.email_verified_at)
     return bad(req,error,403,"Please verify your email before signing in. Use the verification link sent to your inbox.");
    if(!valid){
-    const failures=(lock?.failures||0)+1,until=failures>=6?new Date(Date.now()+15*60*1000).toISOString():null;
-    await env.DB.prepare("INSERT INTO merchant_login_attempts(email,failures,lock_until) VALUES(?,?,?) ON CONFLICT(email) DO UPDATE SET failures=excluded.failures,lock_until=excluded.lock_until").bind(email,failures,until).run();
+    const attempt=nextLoginFailure(lock,Date.now());
+    await env.DB.prepare("INSERT INTO merchant_login_attempts(email,failures,lock_until) VALUES(?,?,?) ON CONFLICT(email) DO UPDATE SET failures=excluded.failures,lock_until=excluded.lock_until").bind(email,attempt.failures,attempt.lock_until).run();
     return bad(req,error,401,"Invalid email or password");
    }
    await env.DB.prepare("DELETE FROM merchant_login_attempts WHERE email=?").bind(email).run();
    const token=newSession(),tokenHash=await sha256(token),expires=new Date(Date.now()+12*60*60*1000).toISOString();
    await env.DB.prepare("INSERT INTO merchant_sessions(token_hash,account_id,expires_at) VALUES(?,?,?)").bind(tokenHash,acc.id,expires).run();
-   return output(req,{token,expires_at:expires,email:acc.email});
+   if(acc.role==="staff")await env.DB.prepare("UPDATE merchant_staff_store_access SET last_login_at=CURRENT_TIMESTAMP,updated_at=CURRENT_TIMESTAMP WHERE account_id=?").bind(acc.id).run();
+   return output(req,{token,expires_at:expires,email:acc.email,display_name:acc.display_name||null,role:acc.role,staff_role:staffAccess?.role||null});
   }
   const owner=await viewer(req,env);
   if(!owner)return bad(req,error,401,"Merchant login required");
+  if(owner.role==="staff"){
+   const permission=merchantPermissionFor(method,path);
+   if(!permission||!hasMerchantPermission(owner.staff_role,permission))
+    return bad(req,error,403,"Your store role does not allow this action.");
+  }else if(owner.role!=="owner"){
+   return bad(req,error,403,"Merchant account role is not authorised.");
+  }
   if(method==="POST"&&path==="/api/merchant/logout"){
    const token=req.headers.get("Authorization").slice(7);
    await env.DB.prepare("DELETE FROM merchant_sessions WHERE token_hash=?").bind(await sha256(token)).run();
@@ -232,6 +375,156 @@ export async function merchantRouter(req,env,path,output,error){
    return output(req,{deleted:true});
   }
   if(method==="GET"&&path==="/api/merchant/dashboard")return output(req,await dashboard(env,owner));
+
+  if(method==="GET"&&path==="/api/merchant/staff"){
+   if(owner.role!=="owner")return bad(req,error,403,"Only the store owner can manage staff.");
+   const store=await storeOnly(env,owner);
+   const [staff,invites]=await Promise.all([
+    env.DB.prepare(
+     "SELECT a.id,a.email,a.display_name,x.role,x.is_active,a.is_active AS account_active,x.created_at,x.last_login_at " +
+     "FROM merchant_staff_store_access x JOIN merchant_accounts a ON a.id=x.account_id " +
+     "WHERE x.store_id=? AND x.owner_id=? ORDER BY x.created_at DESC"
+    ).bind(store.id,owner.id).all(),
+    env.DB.prepare(
+     "SELECT id,email,display_name,role,expires_at,created_at FROM merchant_staff_invites " +
+     "WHERE store_id=? AND owner_id=? AND accepted_at IS NULL AND revoked_at IS NULL ORDER BY created_at DESC"
+    ).bind(store.id,owner.id).all()
+   ]);
+   return output(req,{staff:staff.results||[],invites:invites.results||[],roles:["manager","sales","inventory","support","analyst"]});
+  }
+  if(method==="POST"&&path==="/api/merchant/staff"){
+   if(owner.role!=="owner")return bad(req,error,403,"Only the store owner can invite staff.");
+   const store=await storeOnly(env,owner),b=await json(req,error);
+   if(store.is_demo)return bad(req,error,409,"Staff access is available only for a verified operational store.");
+   const email=short(b.email,180).toLowerCase(),displayName=short(b.display_name,120),role=short(b.role,24);
+   if(!validEmail(email)||displayName.length<2||!["manager","sales","inventory","support","analyst"].includes(role))
+    return bad(req,error,422,"Provide a valid staff name, email and role.");
+   if(await env.DB.prepare("SELECT id FROM merchant_accounts WHERE email=?").bind(email).first())
+    return bad(req,error,409,"This email already has a merchant account. Each staff login must use a unique email.");
+   const token=newSession(),tokenHash=await sha256(token),id=crypto.randomUUID();
+   const expires=new Date(Date.now()+72*60*60*1000).toISOString();
+   try{
+    await env.DB.batch([
+     env.DB.prepare("UPDATE merchant_staff_invites SET revoked_at=CURRENT_TIMESTAMP WHERE store_id=? AND email=? AND accepted_at IS NULL AND revoked_at IS NULL").bind(store.id,email),
+     env.DB.prepare("INSERT INTO merchant_staff_invites(id,owner_id,store_id,email,display_name,role,token_hash,expires_at) VALUES(?,?,?,?,?,?,?,?)").bind(id,owner.id,store.id,email,displayName,role,tokenHash,expires)
+    ]);
+   }catch(e){return bad(req,error,errorCode(e),"Staff invitation could not be created.");}
+   await merchantAudit(env,store.id,owner.id,"staff_invite_created","staff_invite",id,{email,display_name:displayName,role,expires_at:expires});
+   return output(req,{created:true,id,email,display_name:displayName,role,expires_at:expires,invite_url:ownerPortalLink(env,"staff_invite",token),share_once:true},201);
+  }
+  const staffMatch=/^\/api\/merchant\/staff\/([a-zA-Z0-9-]{2,90})$/.exec(path);
+  if(method==="PATCH"&&staffMatch){
+   if(owner.role!=="owner")return bad(req,error,403,"Only the store owner can change staff access.");
+   const store=await storeOnly(env,owner),b=await json(req,error),id=staffMatch[1];
+   const current=await env.DB.prepare(
+    "SELECT x.account_id,x.role,x.is_active,a.email FROM merchant_staff_store_access x JOIN merchant_accounts a ON a.id=x.account_id " +
+    "WHERE x.account_id=? AND x.store_id=? AND x.owner_id=?"
+   ).bind(id,store.id,owner.id).first();
+   if(!current)return bad(req,error,404,"Staff account not found for this store.");
+   const role=b.role===undefined?current.role:short(b.role,24);
+   const active=b.is_active===undefined?!!current.is_active:b.is_active;
+   if(!["manager","sales","inventory","support","analyst"].includes(role)||typeof active!=="boolean")
+    return bad(req,error,422,"Invalid staff role or status.");
+   await env.DB.batch([
+    env.DB.prepare("UPDATE merchant_staff_store_access SET role=?,is_active=?,updated_at=CURRENT_TIMESTAMP WHERE account_id=? AND store_id=? AND owner_id=?").bind(role,active?1:0,id,store.id,owner.id),
+    env.DB.prepare("UPDATE merchant_accounts SET is_active=? WHERE id=? AND role='staff'").bind(active?1:0,id),
+    ...(!active?[env.DB.prepare("DELETE FROM merchant_sessions WHERE account_id=?").bind(id)]:[])
+   ]);
+   await merchantAudit(env,store.id,owner.id,active?"staff_access_updated":"staff_access_suspended","staff_account",id,{email:current.email,previous_role:current.role,role,is_active:active});
+   return output(req,{updated:true,role,is_active:active,sessions_revoked:!active});
+  }
+  const staffInviteMatch=/^\/api\/merchant\/staff-invites\/([a-zA-Z0-9-]{2,90})$/.exec(path);
+  if(method==="PATCH"&&staffInviteMatch){
+   if(owner.role!=="owner")return bad(req,error,403,"Only the store owner can revoke staff invitations.");
+   const store=await storeOnly(env,owner),id=staffInviteMatch[1];
+   const result=await env.DB.prepare(
+    "UPDATE merchant_staff_invites SET revoked_at=CURRENT_TIMESTAMP WHERE id=? AND store_id=? AND owner_id=? AND accepted_at IS NULL AND revoked_at IS NULL"
+   ).bind(id,store.id,owner.id).run();
+   if(!result.meta?.changes)return bad(req,error,404,"Pending staff invitation not found.");
+   await merchantAudit(env,store.id,owner.id,"staff_invite_revoked","staff_invite",id,{});
+   return output(req,{revoked:true});
+  }
+  if(method==="GET"&&path==="/api/merchant/analytics"){
+   const store=await storeOnly(env,owner),url=new URL(req.url);
+   const to=url.searchParams.get("to")||dhakaDate();
+   const from=url.searchParams.get("from")||shiftIsoDate(to,-29);
+   if(!validIsoDate(from)||!validIsoDate(to)||from>to)return bad(req,error,422,"Choose a valid analytics date range.");
+   const days=(Date.parse(to+"T00:00:00Z")-Date.parse(from+"T00:00:00Z"))/86400000;
+   if(days>365)return bad(req,error,422,"Analytics range cannot exceed 366 days.");
+   const [summary,daily,topProducts,categories,inventory,repeatCustomers]=await Promise.all([
+    env.DB.prepare(
+     "SELECT COUNT(*) AS orders_total,"+
+     "COALESCE(SUM(CASE WHEN status!='cancelled' THEN total_bdt ELSE 0 END),0) AS order_value_bdt,"+
+     "COALESCE(SUM(CASE WHEN status!='cancelled' AND payment_status='paid' THEN total_bdt ELSE 0 END),0) AS collected_bdt,"+
+     "COALESCE(SUM(CASE WHEN status!='cancelled' AND payment_method='cod' AND payment_status='pending_cod' THEN total_bdt ELSE 0 END),0) AS pending_cod_bdt,"+
+     "COUNT(DISTINCT CASE WHEN status!='cancelled' THEN COALESCE(account_id,customer_id) END) AS customers,"+
+     "COALESCE(AVG(CASE WHEN status!='cancelled' THEN total_bdt END),0) AS average_order_bdt,"+
+     "SUM(CASE WHEN status='cancelled' THEN 1 ELSE 0 END) AS cancelled_orders "+
+     "FROM commerce_orders WHERE store_id=? AND date(placed_at,'+6 hours') BETWEEN ? AND ?"
+    ).bind(store.id,from,to).first(),
+    env.DB.prepare(
+     "SELECT date(placed_at,'+6 hours') AS day,COUNT(*) AS orders,"+
+     "COALESCE(SUM(total_bdt),0) AS order_value_bdt,"+
+     "COALESCE(SUM(CASE WHEN payment_status='paid' THEN total_bdt ELSE 0 END),0) AS collected_bdt "+
+     "FROM commerce_orders WHERE store_id=? AND status!='cancelled' AND date(placed_at,'+6 hours') BETWEEN ? AND ? "+
+     "GROUP BY date(placed_at,'+6 hours') ORDER BY day"
+    ).bind(store.id,from,to).all(),
+    env.DB.prepare(
+     "SELECT l.product_id,l.product_name AS name,SUM(l.quantity) AS units_sold,SUM(l.line_total_bdt) AS sales_bdt "+
+     "FROM commerce_order_lines l JOIN commerce_orders o ON o.id=l.order_id "+
+     "WHERE o.store_id=? AND o.status!='cancelled' AND date(o.placed_at,'+6 hours') BETWEEN ? AND ? "+
+     "GROUP BY l.product_id,l.product_name ORDER BY units_sold DESC,sales_bdt DESC LIMIT 10"
+    ).bind(store.id,from,to).all(),
+    env.DB.prepare(
+     "SELECT COALESCE(p.category,'অন্যান্য') AS category,SUM(l.quantity) AS units_sold,SUM(l.line_total_bdt) AS sales_bdt "+
+     "FROM commerce_order_lines l JOIN commerce_orders o ON o.id=l.order_id "+
+     "LEFT JOIN commerce_products p ON p.id=l.product_id AND p.store_id=o.store_id "+
+     "WHERE o.store_id=? AND o.status!='cancelled' AND date(o.placed_at,'+6 hours') BETWEEN ? AND ? "+
+     "GROUP BY COALESCE(p.category,'অন্যান্য') ORDER BY sales_bdt DESC LIMIT 12"
+    ).bind(store.id,from,to).all(),
+    env.DB.prepare(
+     "SELECT COUNT(*) AS listed_products,COALESCE(SUM(stock_qty),0) AS stock_units,"+
+     "SUM(CASE WHEN stock_qty<=reorder_level THEN 1 ELSE 0 END) AS low_stock_count,"+
+     "SUM(CASE WHEN stock_qty=0 THEN 1 ELSE 0 END) AS out_of_stock_count,"+
+     "COALESCE(SUM(stock_qty*price_bdt),0) AS stock_retail_value_bdt "+
+     "FROM commerce_products WHERE store_id=? AND is_listed=1"
+    ).bind(store.id).first(),
+    env.DB.prepare(
+     "SELECT COUNT(*) AS repeat_customers FROM ("+
+     "SELECT COALESCE(account_id,customer_id) AS customer_key FROM commerce_orders WHERE store_id=? AND COALESCE(account_id,customer_id) IS NOT NULL AND status!='cancelled' "+
+     "AND date(placed_at,'+6 hours') BETWEEN ? AND ? GROUP BY COALESCE(account_id,customer_id) HAVING COUNT(*)>1)"
+    ).bind(store.id,from,to).first()
+   ]);
+   return output(req,{period:{from,to,timezone:"Asia/Dhaka"},summary:{...(summary||{}),repeat_customers:Number(repeatCustomers?.repeat_customers||0)},daily:daily.results||[],top_products:topProducts.results||[],categories:categories.results||[],inventory:inventory||{}});
+  }
+  if(method==="GET"&&path==="/api/merchant/inventory-alerts"){
+   const store=await storeOnly(env,owner);
+   const [alerts,summary,movements,adjustments]=await Promise.all([
+    env.DB.prepare(
+     "SELECT id,sku,name,category,stock_qty,reorder_level,unit_label,price_bdt,"+
+     "CASE WHEN stock_qty=0 THEN 'out_of_stock' ELSE 'low_stock' END AS alert_type "+
+     "FROM commerce_products WHERE store_id=? AND is_listed=1 AND stock_qty<=reorder_level "+
+     "ORDER BY CASE WHEN stock_qty=0 THEN 0 ELSE 1 END,stock_qty ASC,name LIMIT 100"
+    ).bind(store.id).all(),
+    env.DB.prepare(
+     "SELECT COUNT(*) AS listed_products,COALESCE(SUM(stock_qty),0) AS stock_units,"+
+     "SUM(CASE WHEN stock_qty<=reorder_level THEN 1 ELSE 0 END) AS low_stock_count,"+
+     "SUM(CASE WHEN stock_qty=0 THEN 1 ELSE 0 END) AS out_of_stock_count "+
+     "FROM commerce_products WHERE store_id=? AND is_listed=1"
+    ).bind(store.id).first(),
+    env.DB.prepare(
+     "SELECT m.id,m.product_id,p.name AS product_name,m.quantity_change,m.reason,m.created_at "+
+     "FROM commerce_inventory_movements m LEFT JOIN commerce_products p ON p.id=m.product_id "+
+     "WHERE m.store_id=? ORDER BY m.created_at DESC LIMIT 50"
+    ).bind(store.id).all(),
+    env.DB.prepare(
+     "SELECT a.id,a.product_id,p.name AS product_name,a.old_quantity,a.new_quantity,a.delta,a.reason,a.created_at "+
+     "FROM commerce_stock_adjustments a LEFT JOIN commerce_products p ON p.id=a.product_id "+
+     "WHERE a.store_id=? ORDER BY a.created_at DESC LIMIT 50"
+    ).bind(store.id).all()
+   ]);
+   return output(req,{summary:summary||{},alerts:alerts.results||[],movements:movements.results||[],adjustments:adjustments.results||[]});
+  }
    if(method==="GET"&&path==="/api/merchant/coupons"){
     const store=await storeOnly(env,owner);
     const {results}=await env.DB.prepare("SELECT c.*,(SELECT COUNT(*) FROM commerce_coupon_redemptions r WHERE r.coupon_id=c.id) AS usage_count FROM commerce_coupons c WHERE c.store_id=? ORDER BY c.created_at DESC").bind(store.id).all();
@@ -356,7 +649,7 @@ export async function merchantRouter(req,env,path,output,error){
    if(name.length<3||!area||!category)return bad(req,error,422,"Invalid store profile");
    if(b.is_active===true&&!store.is_active)return bad(req,error,403,"A platform administrator must approve and publish this store");
    const active=b.is_active===false?0:Number(store.is_active);
-   await env.DB.prepare("UPDATE commerce_stores SET name=?,tagline=?,category=?,area=?,is_active=? WHERE id=? AND owner_id=?").bind(name,tagline,category,area,active,store.id,owner.id).run();
+   await env.DB.prepare("UPDATE commerce_stores SET name=?,tagline=?,category=?,area=?,is_active=? WHERE id=? AND owner_id=?").bind(name,tagline,category,area,active,store.id,store.owner_id).run();
    return output(req,{store:stripStore(await myStore(env,owner))});
   }
   if(method==="POST"&&path==="/api/merchant/cashbook"){
@@ -436,6 +729,32 @@ export async function merchantRouter(req,env,path,output,error){
     await env.DB.batch([update,env.DB.prepare("INSERT INTO commerce_stock_adjustments(id,store_id,product_id,old_quantity,new_quantity,delta,reason) VALUES(?,?,?,?,?,?,?)").bind(crypto.randomUUID(),store.id,p.id,p.stock_qty,qty,diff,"Owner manual inventory correction")]);
    } else await update.run();
    return output(req,{updated:true,stock_change:diff});
+  }
+
+  const inventoryMatch=/^\/api\/merchant\/inventory\/([a-zA-Z0-9-]{2,90})$/.exec(path);
+  if(method==="PATCH"&&inventoryMatch){
+   const store=await storeOnly(env,owner);
+   const product=await env.DB.prepare("SELECT id,stock_qty,reorder_level FROM commerce_products WHERE store_id=? AND id=?").bind(store.id,inventoryMatch[1]).first();
+   if(!product)return bad(req,error,404,"Product not found");
+   const b=await json(req,error);
+   if(!b||typeof b!=="object"||Array.isArray(b))return bad(req,error,422,"Invalid inventory adjustment.");
+   if(Object.keys(b).some(key=>!["stock_qty","reorder_level","reason"].includes(key)))
+    return bad(req,error,403,"Inventory staff may change stock quantity and reorder level only.");
+   const quantity=b.stock_qty===undefined?Number(product.stock_qty):Number(b.stock_qty);
+   const reorder=b.reorder_level===undefined?Number(product.reorder_level??5):Number(b.reorder_level);
+   const reason=short(b.reason||"Manual stock correction",180);
+   if(!integer(quantity,0,1000000)||!integer(reorder,0,1000000)||reason.length<3)
+    return bad(req,error,422,"Enter a valid stock quantity, reorder level and reason.");
+   const delta=quantity-Number(product.stock_qty);
+   const update=env.DB.prepare("UPDATE commerce_products SET stock_qty=?,reorder_level=?,updated_at=CURRENT_TIMESTAMP WHERE id=? AND store_id=?")
+    .bind(quantity,reorder,product.id,store.id);
+   const statements=[update];
+   if(delta)statements.push(env.DB.prepare(
+    "INSERT INTO commerce_stock_adjustments(id,store_id,product_id,old_quantity,new_quantity,delta,reason) VALUES(?,?,?,?,?,?,?)"
+   ).bind(crypto.randomUUID(),store.id,product.id,product.stock_qty,quantity,delta,reason));
+   await env.DB.batch(statements);
+   await merchantAudit(env,store.id,owner.id,"inventory_adjusted","product",product.id,{old_quantity:product.stock_qty,new_quantity:quantity,delta,reorder_level:reorder,reason});
+   return output(req,{updated:true,product_id:product.id,stock_qty:quantity,reorder_level:reorder,stock_change:delta});
   }
   const paymentMatch=/^\/api\/merchant\/orders\/([a-zA-Z0-9-]{2,90})\/payment$/.exec(path);
   if(method==="PATCH"&&paymentMatch){
