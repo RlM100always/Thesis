@@ -105,3 +105,11 @@ node --check --input-type=module < cloudflare/platform-admin-routes.js
 - Platform Admin reviews the business and approves activation.
 - Only real, approved merchant stores can be listed publicly and use COD/manual fulfilment.
 - Record store name, public URL, owner login URL, owner email, role and approval status in `STORE_ACCESS_REGISTER.md`. Never record passwords or tokens.
+
+## Newly verified Render risk — 8 November 2026
+
+- Render's documented runtime variable `RENDER=true` is available on every Render service. The FastAPI app currently defaults to `APP_ENV=development`, `AUTH_MODE=development` and `sqlite:///./bsmart.db` when those values are not explicitly configured.
+- The live startup diagnostic on 8 November repeatedly reported `db_backend=sqlite`, 1 organization, 0 stores, 4 catalogue products and 0 listed products. Render's service configuration has no persistent disk. Do not treat this SQLite file as a durable production database.
+- A Render PostgreSQL instance named `thesis-db` exists in Singapore, but the `thesis` service is not connected to it. It is on the Free plan and reports expiry on 24 November 2026. Its IP allowlist is empty; the connected read-only query tool cannot inspect it. Its data must be treated as unknown until the owner provides safe access or a verified export.
+- Do not switch `DATABASE_URL` to the PostgreSQL instance or migrate its data without a backup, schema/row-count audit and reconciliation. Do not expose the database with a broad public IP allowlist to enable a remote query.
+- A code hardening change now prevents the implicit development owner from being used on Render even when `APP_ENV=development`. Real JWT authentication is required for hosted FastAPI routes. This does not make SQLite persistent or complete the D1 operational migration.

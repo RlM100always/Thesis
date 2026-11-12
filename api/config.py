@@ -6,6 +6,7 @@ the deployment environment; no credential is committed to the repository.
 """
 
 from functools import lru_cache
+import os
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -49,6 +50,11 @@ class Settings(BaseSettings):
     @property
     def is_production(self) -> bool:
         return self.app_env.lower() == "production"
+
+    @property
+    def is_hosted(self) -> bool:
+        """True on Render even when APP_ENV was accidentally left at its local default."""
+        return os.getenv("RENDER", "").strip().lower() == "true"
 
     def validate_runtime(self) -> None:
         if self.is_production and self.auth_mode != "jwt":
