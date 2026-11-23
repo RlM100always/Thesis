@@ -28,7 +28,24 @@ The supplied manifest describes the operational tables as real SME records. Deri
 | LightGBM | 0.6986 | 0.8143 | 0.1705 | 0.7452 | 0.8301 | 0.1659 | 0.8271 |
 | CatBoost | **0.7005** | **0.8174** | **0.1692** | **0.7470** | **0.8313** | **0.1647** | **0.8300** |
 
-On TEST, the selected CatBoost threshold (0.1539, chosen on OOF only) gives precision 0.5385, recall 0.9598 and F2 0.8300. Ranking the top 10% by risk gives precision 0.8465, recall 0.2056 and lift 2.055 over the test prevalence. The customer-cluster bootstrap (500 resamples) gives 95% intervals of 0.7364–0.7584 for PR-AUC, 0.8260–0.8370 for ROC-AUC and 0.1619–0.1673 for Brier.
+Threshold-based classification measures were evaluated on TEST using the F2-maximising threshold selected separately for each classifier from calibrated, training-only rolling-origin predictions. The positive class is inactivity within the next 90 days.
+
+| Model | Threshold | Precision | Recall | F1-score | ROC-AUC |
+|---|---:|---:|---:|---:|---:|
+| Logistic regression | 0.1911 | 0.5131 | 0.9703 | 0.6713 | 0.8234 |
+| LightGBM | 0.1633 | 0.5220 | 0.9687 | 0.6784 | 0.8301 |
+| CatBoost | **0.1539** | **0.5385** | **0.9598** | **0.6900** | **0.8313** |
+
+For the selected CatBoost model, the TEST confusion matrix at threshold 0.1539 is:
+
+| Actual class | Predicted active | Predicted inactive |
+|---|---:|---:|
+| Active (0) | 5,279 (TN) | 7,169 (FP) |
+| Inactive (1) | 350 (FN) | 8,366 (TP) |
+
+Thus, 8,366 of 8,716 actually inactive snapshots were detected (recall 95.98%). Of the 15,535 snapshots classified as inactive, 8,366 were actually inactive (precision 53.85%). The F1-score is 0.6900. The threshold favours recall, but it also produces 7,169 false positives; this error volume should be considered before using the scores to initiate retention contact. The ROC curve is stored as 21 aggregate points in \`roc_curve_points.csv\`; the confusion counts are stored in \`confusion_matrix.csv\`. No row-level customer predictions are exported.
+
+Ranking the top 10% by risk gives precision 0.8465, recall 0.2056 and lift 2.055 over the test prevalence. The customer-cluster bootstrap (500 resamples) gives 95% intervals of 0.7364–0.7584 for PR-AUC, 0.8260–0.8370 for ROC-AUC and 0.1619–0.1673 for Brier score.
 
 The final snapshot-only feature policy removes undated customer-master attributes. The selected CatBoost model therefore has a cleaner point-in-time information set than the earlier exploratory run. This is predictive evidence only; it does not estimate the causal effect of a retention message or campaign. The temporal test contains repeated customers from TRAIN, so it does not establish cold-start performance for new customers.
 
