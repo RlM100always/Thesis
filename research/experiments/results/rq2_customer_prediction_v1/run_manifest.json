@@ -1,23 +1,133 @@
 {
-  "experiment":"rq2_temporal_customer_inactivity_prediction_v1",
-  "snapshot_file":"rq2_customer_snapshots_90d_A.csv",
-  "snapshot_sha256":"19477afee416a8ea87b1cb36006785b0efd6469425f4e4a6318a56dd2799710c",
-  "sales_orders_sha256":"09b1c0833bbc191d82889e9f39664625688bd65e63e0b4e0eb92c96861a4f48f",
-  "rows":72146,"unique_customers":10613,
-  "split":"Supplied chronological TRAIN/TEST split preserved",
-  "validation_dates":["2024-06-30","2024-09-30","2024-12-31"],
-  "target_reconstruction_agreement":1.0,
-  "features":["recency_days","orders_last_30d","orders_last_90d","orders_last_180d","sales_last_90d_bdt","mean_basket_last_90d_bdt","lifetime_orders_so_far","tenure_days","snapshot_year","snapshot_month","snapshot_quarter","month_sin","month_cos","orders_90_180d","orders_30_90d","sales_per_order_90d","orders_per_tenure_90d","recent_order_share_90d","recency_frequency_ratio","tenure_years","home_shop_id"],
-  "excluded":["snapshot_id","customer_id","customer_name","horizon_end","split","target","customer_type","loyalty_member","home_division","home_district"],
-  "feature_availability_policy":"snapshot columns and deterministic transformations only; undated current customer-master attributes excluded",
-  "models":["Recency_rule","LogisticRegression","LightGBMClassifier","CatBoostClassifier"],
-  "model_parameters":{"LightGBM":{"n_estimators":250,"n_jobs":2},"CatBoost":{"iterations":250,"thread_count":2}},
-  "selected_model":"CatBoost",
-  "selection_rule":"Highest training-only OOF PR-AUC, tie-broken by calibrated Brier",
-  "calibration":"Platt sigmoid fit on rolling-origin OOF TRAIN predictions",
-  "threshold_rule":"F2-maximising threshold selected on OOF calibrated probabilities",
-  "test_metrics_selected_model":{"model":"CatBoost","n":21164,"positive_rate":0.4118314118314118,"pr_auc":0.7470048426161467,"roc_auc":0.8312954216295179,"brier":0.1647320518970453,"precision_at_10pct":0.8464808691544639,"recall_at_10pct":0.20559889857732905,"lift_at_10pct":2.055406277510908,"threshold":0.153927045837954,"precision":0.5385259092372063,"recall":0.9598439651216154,"f2":0.8299767852536757},
-  "customer_cluster_bootstrap":{"replicates":500,"seed":20261123,"ci":{"PR_AUC":[0.7364330089534364,0.7474445351987199,0.7583582371364821],"ROC_AUC":[0.825998837258715,0.831849924237142,0.8369556490866025],"Brier":[0.1618603772506709,0.16454750273608687,0.1672686661342048]}},
-  "limitations":["Temporal evaluation within the supplied customer population; repeated customers occur across the time split.","Customer identifiers and names are excluded from predictors.","The target is no repeat purchase within 90 days, not permanent churn or causal campaign response."],
-  "runtime_seconds":29.85,"python":"3.13.5","pandas":"2.2.3","numpy":"2.3.5"
+  "experiment": "rq2_temporal_customer_inactivity_prediction_v1",
+  "snapshot_file": "rq2_customer_snapshots_90d_A.csv",
+  "snapshot_sha256": "19477afee416a8ea87b1cb36006785b0efd6469425f4e4a6318a56dd2799710c",
+  "sales_orders_sha256": "09b1c0833bbc191d82889e9f39664625688bd65e63e0b4e0eb92c96861a4f48f",
+  "rows": 72146,
+  "unique_customers": 10613,
+  "split": "Supplied chronological TRAIN/TEST split preserved",
+  "validation_dates": [
+    "2024-06-30",
+    "2024-09-30",
+    "2024-12-31"
+  ],
+  "target_reconstruction_agreement": 1,
+  "features": [
+    "recency_days",
+    "orders_last_30d",
+    "orders_last_90d",
+    "orders_last_180d",
+    "sales_last_90d_bdt",
+    "mean_basket_last_90d_bdt",
+    "lifetime_orders_so_far",
+    "tenure_days",
+    "snapshot_year",
+    "snapshot_month",
+    "snapshot_quarter",
+    "month_sin",
+    "month_cos",
+    "orders_90_180d",
+    "orders_30_90d",
+    "sales_per_order_90d",
+    "orders_per_tenure_90d",
+    "recent_order_share_90d",
+    "recency_frequency_ratio",
+    "tenure_years",
+    "home_shop_id"
+  ],
+  "excluded": [
+    "snapshot_id",
+    "customer_id",
+    "customer_name",
+    "horizon_end",
+    "split",
+    "target",
+    "customer_type",
+    "loyalty_member",
+    "home_division",
+    "home_district"
+  ],
+  "feature_availability_policy": "snapshot columns and deterministic transformations only; undated current customer-master attributes excluded",
+  "models": [
+    "Recency_rule",
+    "LogisticRegression",
+    "LightGBMClassifier",
+    "CatBoostClassifier"
+  ],
+  "model_parameters": {
+    "LightGBM": {
+      "n_estimators": 250,
+      "n_jobs": 2
+    },
+    "CatBoost": {
+      "iterations": 250,
+      "thread_count": 2
+    }
+  },
+  "selected_model": "CatBoost",
+  "selection_rule": "Highest training-only OOF PR-AUC, tie-broken by calibrated Brier",
+  "calibration": "Platt sigmoid fit on rolling-origin OOF TRAIN predictions",
+  "threshold_rule": "F2-maximising threshold selected on OOF calibrated probabilities",
+  "test_metrics_selected_model": {
+    "model": "CatBoost",
+    "n": 21164,
+    "positive_rate": 0.4118314118314118,
+    "pr_auc": 0.7470048426161467,
+    "roc_auc": 0.8312954216295179,
+    "brier": 0.1647320518970453,
+    "precision_at_10pct": 0.8464808691544639,
+    "recall_at_10pct": 0.20559889857732905,
+    "lift_at_10pct": 2.055406277510908,
+    "threshold": 0.153927045837954,
+    "precision": 0.5385259092372063,
+    "recall": 0.9598439651216154,
+    "f2": 0.8299767852536757,
+    "f1": 0.6899509298585625
+  },
+  "customer_cluster_bootstrap": {
+    "replicates": 500,
+    "seed": 20261123,
+    "ci": {
+      "PR_AUC": [
+        0.7364330089534364,
+        0.7474445351987199,
+        0.7583582371364821
+      ],
+      "ROC_AUC": [
+        0.825998837258715,
+        0.831849924237142,
+        0.8369556490866025
+      ],
+      "Brier": [
+        0.1618603772506709,
+        0.16454750273608687,
+        0.1672686661342048
+      ]
+    }
+  },
+  "limitations": [
+    "Temporal evaluation within the supplied customer population; repeated customers occur across the time split.",
+    "Customer identifiers and names are excluded from predictors.",
+    "The target is no repeat purchase within 90 days, not permanent churn or causal campaign response."
+  ],
+  "runtime_seconds": 29.85,
+  "python": "3.13.5",
+  "pandas": "2.2.3",
+  "numpy": "2.3.5",
+  "confusion_matrix_selected_model": {
+    "model": "CatBoost",
+    "threshold": 0.153927045837954,
+    "positive_class": "inactive_next_90d",
+    "true_negative_active": 5279,
+    "false_positive_inactive": 7169,
+    "false_negative_active": 350,
+    "true_positive_inactive": 8366
+  },
+  "roc_curve_points_file": "roc_curve_points.csv",
+  "additional_classification_outputs": {
+    "confusion_matrix_file": "confusion_matrix.csv",
+    "roc_curve_points_file": "roc_curve_points.csv",
+    "positive_class": "inactive_next_90d",
+    "threshold_selection": "F2-maximising threshold selected from training-only calibrated rolling-origin predictions"
+  }
 }
