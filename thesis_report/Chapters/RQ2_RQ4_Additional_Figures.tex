@@ -1,4 +1,90 @@
 \section*{Supplementary graphical diagnostics for RQ2--RQ4}
+\subsection*{RQ2: Classification metrics and error analysis}
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[x=0.105cm,y=0.045cm,font=\scriptsize]
+  \draw[->,thick] (0,0)--(82,0) node[right] {Model};
+  \draw[->,thick] (0,0)--(0,106) node[above] {Metric (\%)};
+  \foreach \y in {0,20,40,60,80,100} {
+    \draw[gray!35] (0,\y)--(80,\y);
+    \node[left] at (0,\y) {\y};
+  }
+  % Logistic regression
+  \fill[softblue] (6,0) rectangle (8.2,51.31);
+  \fill[dugold] (9,0) rectangle (11.2,97.03);
+  \fill[dugreen] (12,0) rectangle (14.2,67.13);
+  \fill[softorange] (15,0) rectangle (17.2,82.34);
+  % LightGBM
+  \fill[softblue] (33,0) rectangle (35.2,52.20);
+  \fill[dugold] (36,0) rectangle (38.2,96.87);
+  \fill[dugreen] (39,0) rectangle (41.2,67.84);
+  \fill[softorange] (42,0) rectangle (44.2,83.01);
+  % CatBoost
+  \fill[softblue] (60,0) rectangle (62.2,53.85);
+  \fill[dugold] (63,0) rectangle (65.2,95.98);
+  \fill[dugreen] (66,0) rectangle (68.2,69.00);
+  \fill[softorange] (69,0) rectangle (71.2,83.13);
+  \node[align=center] at (11.6,-9) {Logistic\\regression};
+  \node[align=center] at (38.1,-9) {LightGBM};
+  \node[align=center] at (65.6,-9) {CatBoost};
+  \fill[softblue] (1,-24) rectangle (4,-19); \node[anchor=west] at (5,-21.5) {Precision};
+  \fill[dugold] (21,-24) rectangle (24,-19); \node[anchor=west] at (25,-21.5) {Recall};
+  \fill[dugreen] (40,-24) rectangle (43,-19); \node[anchor=west] at (44,-21.5) {F1-score};
+  \fill[softorange] (60,-24) rectangle (63,-19); \node[anchor=west] at (64,-21.5) {ROC-AUC};
+\end{tikzpicture}
+\caption{Threshold-based precision, recall and F1-score, together with threshold-independent ROC-AUC, for the three fitted classifiers on the temporal TEST set. Precision, recall and F1 use each model's F2-maximising threshold selected from training-only predictions.}
+\label{fig:rq2_classification_metrics}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[x=5.2cm,y=5.2cm,font=\scriptsize]
+  \draw[->,thick] (0,0)--(1.04,0) node[right] {False-positive rate};
+  \draw[->,thick] (0,0)--(0,1.04) node[above] {True-positive rate};
+  \foreach \v in {0,0.2,0.4,0.6,0.8,1.0} {
+    \draw[gray!30] (\v,0)--(\v,1.0);
+    \draw[gray!30] (0,\v)--(1.0,\v);
+    \node[below] at (\v,0) {\v};
+    \node[left] at (0,\v) {\v};
+  }
+  \draw[gray!65,dashed,thick] (0,0)--(1,1);
+  \draw[dugreen,very thick] plot coordinates {
+    (0.00,0.00011) (0.05,0.31494) (0.10,0.47396)
+    (0.15,0.59913) (0.20,0.68942) (0.25,0.75126)
+    (0.30,0.80289) (0.35,0.84764) (0.40,0.88481)
+    (0.45,0.91510) (0.50,0.93850) (0.55,0.95468)
+    (0.60,0.96455) (0.65,0.97568) (0.70,0.98440)
+    (0.75,0.98944) (0.80,0.99346) (0.85,0.99690)
+    (0.90,0.99874) (0.95,0.99943) (1.00,1.00)
+  };
+  \node[draw=dugreen,rounded corners,fill=white,align=center] at (0.72,0.22) {CatBoost\\ROC-AUC = 0.8313};
+\end{tikzpicture}
+\caption{Receiver operating characteristic curve for the selected CatBoost model on the 21,164-snapshot temporal TEST set. The plotted points are interpolated from the held-out predictions; the reported ROC-AUC is calculated from the full, unrounded score vector.}
+\label{fig:rq2_roc_curve}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[font=\scriptsize]
+  \node[anchor=south] at (3.0,3.2) {Predicted class};
+  \node[anchor=south] at (1.15,2.85) {Active (0)};
+  \node[anchor=south] at (4.15,2.85) {Inactive (1)};
+  \node[anchor=east] at (-0.15,2.0) {Actual active (0)};
+  \node[anchor=east] at (-0.15,0.65) {Actual inactive (1)};
+  \fill[softgreen,draw=gray!70] (0,1.35) rectangle (2.55,2.65);
+  \fill[softorange,draw=gray!70] (2.65,1.35) rectangle (5.20,2.65);
+  \fill[softorange,draw=gray!70] (0,0.00) rectangle (2.55,1.25);
+  \fill[softgreen,draw=gray!70] (2.65,0.00) rectangle (5.20,1.25);
+  \node[align=center] at (1.275,2.12) {\Large 5,279\\[2pt]True negative};
+  \node[align=center] at (3.925,2.12) {\Large 7,169\\[2pt]False positive};
+  \node[align=center] at (1.275,0.62) {\Large 350\\[2pt]False negative};
+  \node[align=center] at (3.925,0.62) {\Large 8,366\\[2pt]True positive};
+\end{tikzpicture}
+\caption{CatBoost confusion matrix on the temporal TEST set at threshold 0.1539. Inactivity within 90 days is the positive class. The false-positive count indicates active customers who were classified as inactive.}
+\label{fig:rq2_confusion_matrix}
+\end{figure}
+
 \subsection*{RQ2: Calibration, date stability and uncertainty}
 \begin{figure}[H]
 \centering
