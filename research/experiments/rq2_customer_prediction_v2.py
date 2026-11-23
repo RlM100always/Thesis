@@ -222,7 +222,7 @@ def stage_select(data_dir: Path, output_dir: Path, snapshot_name: str):
         "snapshot_sha256": sha256(data_dir / snapshot_name),
         "sales_orders_sha256": sha256(data_dir / "sales_orders.csv"),
     }
-    (output_dir / "pretest_state.json").write_text(json.dumps(state, indent=2), encoding="utf-8")
+    (output_dir / "pretest_state.json").write_text(json.dumps(state, indent=2, default=str), encoding="utf-8")
     selection.to_csv(output_dir / "model_selection_train_only.csv", index=False)
     pd.DataFrame(fold_rows).to_csv(output_dir / "fold_metrics_train_only.csv", index=False)
     print(json.dumps({"stage": "select_complete", "selected_feature_variant": selected,
