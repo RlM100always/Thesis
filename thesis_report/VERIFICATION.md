@@ -16,8 +16,12 @@
 - The existing 500-resample customer-cluster bootstrap intervals were
   retained because the rerun reproduced the same deterministic TEST metrics.
 - Research contract tests: 7 passed locally, including the new F1 and
-  confusion-count test. The LaTeX report build is triggered by the source
-  updates and is to be checked before publication.
+  confusion-count test. GitHub Actions research tests: successful, run
+  [45221453888](https://github.com/RlM100always/Thesis/actions/runs/45221453888).
+- LaTeX build: successful, run
+  [45221403503](https://github.com/RlM100always/Thesis/actions/runs/45221403503).
+  Final PDF: 87 A4 pages, 634,662 bytes; published at
+  `output/pdf/main-thesis-report.pdf`.
 
 ## Academic language revision — 23 November 2026
 
