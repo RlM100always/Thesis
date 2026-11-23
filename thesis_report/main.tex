@@ -669,8 +669,9 @@ Feature attribution supports inspection but does not establish causality
 \cite{lundberg2017shap,miller2019explanation}.
 \end{enumerate}
 The thesis evaluates an integrated SME decision-support framework. It does
-not assume that machine learning must outperform every baseline; a simpler
-method is valid when more reliable or economical for the task.
+not assume that machine learning must outperform every baseline; a less
+complex method may be preferable when it provides greater reliability or
+lower operational cost for the task.
 
 \section{Analytical Logic and Claim Boundaries}
 The process separates an observed business event, an estimate based on
@@ -869,7 +870,7 @@ consistency; source documentation establishes declared origin.
 RFM is a framework for summarising customer transaction history through
 three behavioural dimensions: \emph{recency}, \emph{frequency} and
 \emph{monetary value}. These features can be derived from transaction records
-and retain interpretable behavioural meanings. Fader, Hardie, and Lee link RFM with Customer Lifetime Value (CLV) through the Pareto/NBD and gamma--gamma components, demonstrating how the value of a particular customer history can be estimated \cite{fader2005rfm}. CLV can be used as an outcome or planning measure, but it is not necessarily suitable as a direct prediction target or operational goal.
+and have direct behavioural interpretations. Fader, Hardie, and Lee link RFM with Customer Lifetime Value (CLV) through the Pareto/NBD and gamma--gamma components, demonstrating how the value of a particular customer history can be estimated \cite{fader2005rfm}. CLV can be used as an outcome or planning measure, but it is not necessarily suitable as a direct prediction target or operational goal.
 
 A field that defines a segment should not be admitted as an independent predictor of that same segment, as this would introduce information leakage. The question for unsupervised segmentation is whether coherent behavioural groups can be identified without an existing label. K-Means aims to:
 
@@ -1111,10 +1112,10 @@ operationalized as follows:
     and a seasonal-naive benchmark.
 
     \item[RQ2 / H2]
-    A model trained from historically valid customer snapshots will predict
-    future inactivity better than an event base-rate or rule-based baseline, as
-    measured by PR-AUC, and will achieve Lift@10\% greater than 1.0 without
-    unacceptable deterioration in probability calibration.
+    A model trained from historically valid customer snapshots will achieve
+    higher PR-AUC for future inactivity than an event base-rate or rule-based
+    baseline, and will achieve Lift@10\% greater than 1.0 without unacceptable
+    deterioration in probability calibration.
 
     \item[RQ3 / H3]
     Under identical demand paths, costs, and operational constraints, the
@@ -2884,7 +2885,7 @@ is established and they improve pooled and origin-stability metrics.
 \section{Performance by Demand Regime}
 
 At seven days, CatBoost has slightly lower WAPE than LightGBM in the
-erratic group (28.50\% versus 28.67\%), while LightGBM performs better
+erratic group (28.50\% versus 28.67\%), while LightGBM achieves lower WAPE
 in the lumpy and smooth groups. Croston--SBA has lower WAPE in the
 intermittent group (77.02\% versus 106.30\% for LightGBM), but that
 subset contains only four series, twelve series-origin forecasts and
