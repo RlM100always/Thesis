@@ -22,7 +22,7 @@ window has not finished by that origin. A recency ranking rule, logistic
 regression, LightGBM and CatBoost are compared. Platt calibration and the
 F2 decision threshold are fitted from training-only out-of-time predictions.
 The model is selected on validation PR-AUC, with calibrated Brier score as
-the tie-breaker. The supplied TEST split is opened only after this selection.
+the tie-breaker. The supplied test split is opened only after this selection.
 The implementation writes aggregate metrics, date-level metrics,
 calibration bins, customer-cluster bootstrap intervals and feature
 importance; it does not write row-level customer predictions.
@@ -38,15 +38,15 @@ in scenario lost units, average stock, supplied scenario cost and order
 quantity. Uncertainty is estimated by resampling shops, preserving the
 within-shop case structure.
 
-The source does not document the scenario-cost formula and does not provide
+The source does not document the scenario-cost formula or provide
 the participating business's observed replenishment policy. Accordingly,
 the experiment is a paired scenario audit rather than a historical replay
-of the participating business's policy. It cannot establish realised savings, causal policy
-effects or the full RQ3 claim.
+of the participating business's policy. This comparison does not establish
+realised savings, causal policy effects or the full RQ3 claim.
 
 \section{RQ4 Decision Rule and Explanation Pipeline}
 
-The richer RQ4 export contains 1,800 prepared cases across 32 shops and
+The extended RQ4 export contains 1,800 prepared cases across 32 shops and
 467 SKUs, all dated 31 December 2025. The rule audit joins the product
 master and independently recomputes inventory position as on-hand stock
 plus pending purchases. Reordering is triggered when this position is below
@@ -59,9 +59,9 @@ A deterministic bilingual explanation generator has separate branches for
 sufficient stock, a feasible reorder and a budget-blocked reorder. It states
 the evidence relevant to each branch, including stock components, inventory
 position, reorder point, target, pack arithmetic, feasible quantity, cost,
-budget and supplier lead time. A numeric-coverage audit checks generated
+budget and supplier lead time. A numerical-coverage audit checks generated
 English and Bangla explanations without exporting case-level text. The
-constant human-rating field is not treated as participant evidence; the
+the \texttt{human\_rating} field is constant across all cases and is therefore not treated as participant feedback; the
 counterbalanced study involving SME owners and managers remains planned and has not yet been conducted.
 
 \begin{figure}[H]
@@ -78,14 +78,14 @@ flow/.style={-{Latex[length=2mm]},thick,draw=gray!75}]
 \node[module] (rq2) at (3.7,-3.25) {RQ2: 90-day inactivity prediction\\recency, logistic regression, LightGBM and CatBoost};
 \node[module] (rq3) at (-3.7,-5.45) {RQ3: paired replenishment scenarios\\cost, stock and lost-unit trade-offs};
 \node[module] (rq4) at (3.7,-5.45) {RQ4: deterministic reorder rules\\bilingual evidence-based explanations};
-\node[result] (out) at (0,-7.45) {Aggregate evidence, uncertainty and predefined evaluation and deployment criteria\\Human review remains responsible for business actions};
+\node[result] (out) at (0,-7.45) {Aggregated evidence and uncertainty\\Business actions remain subject to human review};
 \draw[flow] (src)--(audit);
 \draw[flow] (audit)--(rq1); \draw[flow] (audit)--(rq2);
 \draw[flow] (audit)--(rq3); \draw[flow] (audit)--(rq4);
 \draw[flow] (rq1)--(out); \draw[flow] (rq2)--(out);
 \draw[flow] (rq3)--(out); \draw[flow] (rq4)--(out);
 \end{tikzpicture}
-\caption{Task-specific research pipelines under a shared evidence and data-quality gate.}
+\caption{Task-specific research pipelines within a shared evidence and data-quality framework.}
 \label{fig:rq1_rq4_research_pipelines}
 \end{figure}
 
