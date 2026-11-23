@@ -2209,9 +2209,11 @@ reported only when the corresponding empirical evidence is available.
 
 \section{Dataset Package and Research Scope}
 
-The supplied dataset manifest identifies the package as 100\% real SME sales
-and real people, with Bangladesh as the business context, BDT currency and
-coverage from 1 January 2023 to 31 December 2025. It lists 32 shops, 11,000
+According to the supplied dataset manifest, the source package contains
+SME sales transactions and individual-level customer records from Bangladesh,
+denominated in BDT and covering 1 January 2023 to 31 December 2025. This
+provenance classification is reported as supplied and has not been independently
+verified through a field audit. It lists 32 shops, 11,000
 customers, 480 products and 56 suppliers. The source package includes
 365,447 sales orders, 736,683 sales lines, 381,756 payments, 122,422 purchase
 orders and purchase lines, 994,808 inventory movements, 134,379 inventory
@@ -2220,8 +2222,8 @@ lots, 5,102 returns, 1,216 promotions and 1,096 calendar rows.
 The RQ1 experiment uses the dedicated complete daily shop--category panel:
 32 shops, 16 categories, 512 series and 1,096 daily observations per series,
 for 561,152 rows. The panel contains 1,580,361 observed units. The separate
-simulated unmet-demand table is not used as observed sales or as empirical
-lost-sales ground truth. Raw business records remain in controlled storage;
+simulated unmet-demand table is not treated as observed sales or as an
+empirical reference for lost sales. Raw business records remain in controlled storage;
 the public repository contains code, schemas, checksums and aggregate outputs.
 
 \begin{table}[H]
@@ -2262,9 +2264,9 @@ Calendar & 1,096 & Daily calendar coverage & Calendar feature validation \\
 \end{tabularx}
 \end{table}
 
-The manifest declares the source package to contain real SME sales and real
-people. The table distinguishes source coverage from the fields actually
-used by RQ1: the presence of a source table does not make every field an
+The manifest identifies the source package as containing SME transaction
+records and individual-level customer records. The table distinguishes the
+source tables supplied from the variables used in RQ1: the presence of a source table does not make every field an
 eligible predictor. A variable is admitted only after its join key, business
 meaning and availability time have been checked.
 
@@ -2460,7 +2462,7 @@ A 56-day history is required before a feature row is admitted.
 The LightGBM Tweedie candidate uses variance power 1.3, 100 boosting
 iterations, learning rate 0.035, 31 leaves, minimum child samples 80,
 row and column subsampling 0.85, subsampling frequency 1, L2 regularisation
-2.0 and seed 42. The CatBoost Tweedie challenger uses 120 iterations,
+2.0 and seed 42. The CatBoost Tweedie candidate model uses 120 iterations,
 depth 6, learning rate 0.04 and L2 regularisation 5. The two-stage CatBoost
 hurdle uses a 100-iteration occurrence classifier and a 100-iteration
 positive-quantity regressor, depth 5 and learning rate 0.04; the classifier
@@ -2506,7 +2508,7 @@ definition and eligible rows are used for baseline and context comparisons.
 \section{Context-Aware Forecasting Model Development}
 
 The existing pooled LightGBM Tweedie model was retained as the controlled
-baseline. The challenger used the same estimator family and settings while
+baseline. The context-aware model used the same estimator family and settings while
 adding cross-series information available before each forecast origin:
 shop-level sums and means, category-level sums and means, network totals,
 recent shop/category trends and the focal series' share of its shop,
@@ -2529,7 +2531,7 @@ demand. Code and aggregate outputs are stored under
 \begin{table}[H]
 \centering
 \small
-\caption{LightGBM Tweedie configuration shared by the baseline and context challenger.}
+\caption{LightGBM Tweedie configuration shared by the baseline and context-aware model.}
 \label{tab:lightgbm_configuration}
 \begin{tabularx}{\textwidth}{|p{0.33\textwidth}|p{0.22\textwidth}|Y|}
 \hline
@@ -2554,7 +2556,7 @@ Random seed & 42 & Reproducibility of stochastic steps \\
 \end{tabularx}
 \end{table}
 
-The context challenger changes the information set, not the estimator
+The context-aware model changes the information set, not the estimator
 family or hyperparameter budget. This controlled design makes the
 feature-group comparison easier to interpret: an observed difference
 is associated with the added historical context rather than a simultaneous
@@ -2600,18 +2602,18 @@ in controlled storage and are not copied into the public repository.
 \section{Current Implementation Boundaries}
 
 RQ1 remains a shop--category observed-sales forecast and does not establish
-SKU-level latent demand. Its context-aware model is a development challenger,
-not a production selection. RQ2 evaluates a fixed 90-day no-repeat-purchase
+SKU-level latent demand. Its context-aware model remains a development-stage candidate and has not
+been selected for production deployment. RQ2 evaluates a fixed 90-day no-repeat-purchase
 outcome within the supplied customer population; repeated customers occur
 across the temporal split, and no causal retention-campaign effect is
 estimated. RQ3 is a paired scenario audit using synthetic oracle demand,
-not a replay against an owner's observed policy. RQ4 verifies a deterministic
+not a replay against the observed replenishment policy of a participating business. RQ4 verifies a deterministic
 rule and the numerical content of bilingual explanations; the participant
 study has not been conducted. Negative-ledger events and positive-sale days
 with non-positive reconstructed stock remain quarantined before SKU
 availability labels are used. Untouched future and held-out-business tests,
-inventory replay with a documented cost model, and the RQ4 owner study
-remain promotion gates. Real-data provenance alone does not establish
+inventory replay with a documented cost model, and a study involving SME
+owners and managers remain prerequisites for further evaluation and potential deployment. Real-data provenance alone does not establish
 generalisation or business impact.
 
 \cleardoublepage
@@ -2811,10 +2813,10 @@ the raw hurdle records 33.81\%, 35.54\% and 36.52\%.
 \end{table}
 
 Across shops, LightGBM has lower seven-day WAPE than CatBoost in
-22 of 32 shops; across categories it wins in 14 of 16. Median
+22 of 32 shops; and has lower WAPE in 14 of 16 categories. Median
 shop-level WAPE is 35.89\% for LightGBM and 36.79\% for CatBoost.
-The model is not uniformly best for every shop, so per-shop monitoring
-and abstention remain necessary.
+The context-aware model does not achieve the lowest WAPE for every shop;
+shop-level monitoring and abstention are therefore necessary.
 
 \begin{table}[H]
 \centering
@@ -2841,7 +2843,7 @@ TSB & \(-4.90\) pp & \([-6.11,-3.72]\) pp & LightGBM lower WAPE \\
 The intervals resample 512 shop--category series with 2,000 bootstrap
 replicates. They quantify variation across the development series under
 the fixed-origin protocol; they are not uncertainty intervals for
-future real-world SME performance and do not replace an untouched test.
+future performance in operational SME settings and do not replace an untouched test.
 
 \section{Historical Transaction-Feature Ablation}
 
@@ -2915,7 +2917,7 @@ Intermittent & 12 & 106.30\% & 121.62\% & 83.18\% & \textbf{77.02\%} \\
 \centering
 \footnotesize
 \setlength{\tabcolsep}{2pt}
-\caption{Seven-day WAPE for the context challenger and baseline at each of nine monthly origins.}
+\caption{Seven-day WAPE for the context-aware model and baseline at each of nine monthly origins.}
 \label{tab:context_h7_origin}
 \begin{tabularx}{\textwidth}{|p{0.20\textwidth}|C{0.22\textwidth}|C{0.22\textwidth}|C{0.18\textwidth}|Y|}
 \hline
@@ -2942,7 +2944,7 @@ Intermittent & 12 & 106.30\% & 121.62\% & 83.18\% & \textbf{77.02\%} \\
 \end{tabularx}
 \end{table}
 
-The context features do not win at every origin. The largest improvement
+The context-aware model does not achieve lower WAPE at every origin. The largest improvement
 occurs in July, while March, June and September favour the baseline.
 This variation is important: a pooled reduction must not be presented as
 uniform improvement across time. It supports retaining the baseline as
@@ -2952,10 +2954,10 @@ a fallback and monitoring the context model by origin and business.
 \section{Context-Aware Model Results}
 
 Table~\ref{tab:context_aware_results} compares the historical-feature
-baseline with the context-aware challenger on identical development
+baseline with the context-aware model on identical development
 origins. At seven days, pooled WAPE decreases from 33.47\% to 32.66\%,
 an absolute reduction of 0.81 percentage points (2.41\% relative).
-The challenger wins at six of nine monthly origins. A paired
+The context-aware model has lower WAPE at six of the nine monthly origins. A paired
 2,000-replicate shop--category cluster bootstrap estimates the
 context-minus-baseline WAPE difference at -0.81 percentage points,
 with a 95\% interval of [-1.09, -0.52] percentage points.
@@ -2997,9 +2999,9 @@ Bottom-up aggregation of the same seven-day leaf forecasts is coherent.
 WAPE is 32.66\% at shop--category level, 14.95\% at shop total, 10.98\%
 at category total and 7.85\% at network total. Lower aggregate errors
 partly reflect cancellation and do not establish equivalent leaf-level
-replenishment accuracy. The context model is the leading development
-challenger; production selection requires a genuinely untouched future
-period or held-out businesses and explicit under-forecast cost evaluation.
+replenishment accuracy. The context-aware model remains a candidate for further evaluation;
+production selection requires an untouched future period or held-out
+businesses and an explicit assessment of under-forecast costs.
 
 \begin{table}[H]
 \centering
@@ -3100,8 +3102,8 @@ accuracy when the decision is a local reorder.
 
 RQ1 results are development estimates from selected origins; the final
 untouched period has not been evaluated, and previously inspected Q4 2025
-is excluded from selection. The context challenger has greater
-under-forecast bias than its baseline, and SKU stock exposure remains
+is excluded from selection. The context-aware model has greater
+under-forecast bias than the baseline, and SKU stock exposure remains
 subject to ledger anomalies. RQ2 is a temporal evaluation with repeated
 customers across TRAIN and TEST; it does not establish cold-start
 generalisation or campaign effectiveness. RQ3 uses synthetic future
@@ -3110,15 +3112,17 @@ cannot be interpreted as realised savings. RQ4's constant rating fields
 are not participant observations, and the explanation study remains
 unconducted.
 
-The current evidence supports a context-aware RQ1 development challenger,
-a CatBoost RQ2 temporal predictor, a documented RQ3 scenario trade-off and
-a technically consistent RQ4 rule with bilingual explanation templates.
-It does not support autonomous purchasing, automated customer contact,
-a claim of realised policy savings or a claim of improved owner usability.
-The next gates are an untouched future and held-out-business evaluation,
-a documented policy replay against the owner's actual policy, and a
-consenting owner study. No universal model winner or untested
-business-impact claim is asserted.
+The current evidence supports the context-aware LightGBM model as a
+candidate for further evaluation in RQ1, CatBoost as the selected temporal
+predictor in RQ2, a documented scenario-level trade-off analysis in RQ3, and
+a deterministic RQ4 rule with bilingual explanation templates. The results
+do not support autonomous purchasing, automated customer contact, claims of
+realised policy savings or improved usability among SME owners and managers.
+Further validation requires an untouched future and held-out-business
+evaluation, a documented policy replay against the observed replenishment
+policy of a participating business, and a consent-based study involving SME
+owners and managers. The current evidence does not establish a universally
+superior model or support claims of unmeasured business impact.
 
 \cleardoublepage
 \chapter{Conclusions}
@@ -3128,7 +3132,7 @@ business-impact claim is asserted.
 
 This thesis develops and evaluates an integrated SME analytics framework
 using the supplied Bangladesh business records. The dataset manifest
-identifies the package as real SME sales and real people. Source tables
+describes the package as containing SME sales transactions and individual-level customer records. Source tables
 were internally reconciled: sales lines join to orders, prepared SKU
 aggregates reproduce from transaction lines, category totals reproduce
 from SKU sales, and inventory sale movements match sales lines. The
@@ -3137,13 +3141,13 @@ days with non-positive reconstructed stock; these remain quarantined from
 SKU exposure labels pending correction.
 
 For RQ1, the complete shop--category panel supports observed-sales
-forecasting. A context-aware LightGBM challenger adds historical shop,
+forecasting. A context-aware LightGBM model adds historical shop,
 category and network aggregates to the baseline features. Across nine
 seven-day development origins, pooled WAPE improves from 33.47\% to
 32.66\%, with a paired cluster-bootstrap interval supporting lower
 development error. However, under-forecast bias increases from -2.02\%
-to -6.05\%. The model is therefore a leading development challenger,
-not yet a final production selection. The one-, 14- and 28-day comparisons
+to -6.05\%. The context-aware model is therefore a candidate for further
+evaluation and has not been selected for production deployment. The one-, 14- and 28-day comparisons
 also show lower pooled WAPE, but use only three origins each.
 
 Prequential interval diagnostics and bottom-up aggregation provide
@@ -3151,8 +3155,8 @@ additional evidence. SKU latent demand, inventory-policy benefit,
 customer-action effectiveness and cross-sector transfer remain separate
 evaluation tasks. The contribution is an auditable, evidence-aware process
 that selects methods against common baselines, preserves temporal validity
-and links predictions to feasible business decisions. No accuracy target
-is forced and no untested business-impact claim is made.
+and links predictions to feasible business decisions. No target accuracy level
+is imposed in advance and no untested business-impact claim is made.
 
 
 
@@ -3283,7 +3287,7 @@ and the forecast origin.
 
 \section{Context Feature Construction}
 
-The context challenger adds historical aggregates without changing the
+The context-aware model adds historical aggregates without changing the
 forecast target. For shop \(b\), category \(c\), and window \(w\), the
 shop aggregate is
 
@@ -3314,7 +3318,7 @@ forecast target window is included.
 
 The context experiment is an ablation of information availability:
 the baseline receives own-series history and calendar features, while
-the challenger receives those same features plus cross-series context.
+the context-aware model receives those same features plus cross-series context.
 The estimator family, hyperparameters, target, origins and evaluation
 rows are held constant.
 
