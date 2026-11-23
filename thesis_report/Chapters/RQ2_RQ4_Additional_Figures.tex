@@ -96,8 +96,8 @@
 \label{fig:rq3_cluster_bootstrap_intervals}
 \end{figure}\begin{figure}[H]
 \centering
-\begin{tikzpicture}[x=0.005cm,y=1.0cm,font=\scriptsize]
-  \draw[->,thick] (0,0)--(2650,0) node[right] {Number of paired cases (out of 2,500)};
+\begin{tikzpicture}[x=0.0045cm,y=1.0cm,font=\scriptsize]
+  \draw[->,thick] (0,0)--(2650,0) node[right] {Paired cases (out of 2,500)};
   \foreach \x in {0,500,1000,1500,2000,2500} {\draw[gray!35] (\x,0)--(\x,2.8);\node[below] at (\x,0) {\x};}
   \node[anchor=east] at (-30,2.15) {Scenario cost};
   \fill[dugreen] (0,1.90) rectangle (129,2.35);
@@ -120,7 +120,7 @@
 \begin{figure}[H]
 \centering
 \begin{tikzpicture}[x=0.10cm,y=0.85cm,font=\scriptsize]
-  \draw[->,thick] (0,0)--(112,0) node[right] {Required numeric evidence included (\%)};
+  \draw[->,thick] (0,0)--(112,0) node[right] {Coverage (\%)};
   \foreach \x in {0,20,40,60,80,100} {\draw[gray!35] (\x,0)--(\x,3.8);\node[below] at (\x,0) {\x};}
   \node[anchor=east] at (-2,3.0) {Sufficient stock};
   \fill[dugreen] (0,2.78) rectangle (100,3.02); \fill[dugold] (0,3.06) rectangle (100,3.30);
@@ -140,8 +140,8 @@
 
 \begin{figure}[H]
 \centering
-\begin{tikzpicture}[x=0.0065cm,y=0.68cm,font=\scriptsize]
-\draw[->,thick] (0,0)--(1980.0000000000002,0) node[right] {Number of prepared cases};
+\begin{tikzpicture}[x=0.0055cm,y=0.68cm,font=\scriptsize]
+\draw[->,thick] (0,0)--(1980.0000000000002,0) node[right] {Case count};
 \draw[gray!35] (0,0)--(0,5.65);\node[below] at (0,0) {0};
 \draw[gray!35] (500,0)--(500,5.65);\node[below] at (500,0) {500};
 \draw[gray!35] (1000,0)--(1000,5.65);\node[below] at (1000,0) {1000};

@@ -54,10 +54,10 @@
     \fill[dugreen] (\x+0.02,0) rectangle (\x+0.19,\c);
     \node[below] at (\x,-2) {\lab};
   }
-  \fill[dugold] (0.5,-10) rectangle (0.8,-7);
-  \node[anchor=west] at (0.9,-8.5) {Historical baseline};
-  \fill[dugreen] (2.7,-10) rectangle (3.0,-7);
-  \node[anchor=west] at (3.1,-8.5) {Context-aware model};
+  \fill[dugold] (0.5,-18) rectangle (0.8,-15);
+  \node[anchor=west] at (0.9,-16.5) {Historical baseline};
+  \fill[dugreen] (2.7,-18) rectangle (3.0,-15);
+  \node[anchor=west] at (3.1,-16.5) {Context-aware model};
 \end{tikzpicture}
 \caption{Paired context-aware versus historical-feature LightGBM WAPE at four cumulative horizons. The seven-day comparison uses nine origins; the other horizons use three each.}
 \label{fig:rq1_context_horizon}
@@ -86,14 +86,14 @@
   \fill[dugold] (0,0.68) rectangle (121.62,0.86);
   \fill[softorange] (0,0.88) rectangle (83.18,1.06);
   \fill[softblue] (0,1.08) rectangle (77.02,1.26);
-  \fill[dugreen] (0,-0.45) rectangle (2,-0.22);
-  \node[anchor=west] at (3,-0.34) {LightGBM};
-  \fill[dugold] (25,-0.45) rectangle (27,-0.22);
-  \node[anchor=west] at (28,-0.34) {CatBoost};
-  \fill[softorange] (55,-0.45) rectangle (57,-0.22);
-  \node[anchor=west] at (58,-0.34) {Hurdle};
-  \fill[softblue] (85,-0.45) rectangle (87,-0.22);
-  \node[anchor=west] at (88,-0.34) {Croston--SBA};
+  \fill[dugreen] (0,-1.35) rectangle (2,-1.12);
+  \node[anchor=west] at (3,-1.24) {LightGBM};
+  \fill[dugold] (25,-1.35) rectangle (27,-1.12);
+  \node[anchor=west] at (28,-1.24) {CatBoost};
+  \fill[softorange] (55,-1.35) rectangle (57,-1.12);
+  \node[anchor=west] at (58,-1.24) {Hurdle};
+  \fill[softblue] (85,-1.35) rectangle (87,-1.12);
+  \node[anchor=west] at (88,-1.24) {Croston--SBA};
 \end{tikzpicture}
 \caption{Seven-day WAPE by historical demand regime for four forecasting candidates. The intermittent group has only four series and twelve series-origin forecasts, so it does not support automatic model routing.}
 \label{fig:rq1_regime_model_comparison}
