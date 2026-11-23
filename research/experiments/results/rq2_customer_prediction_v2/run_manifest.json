@@ -1,0 +1,63 @@
+{
+  "experiment": "rq2_temporal_customer_inactivity_prediction_v2",
+  "selected_model": "CatBoost",
+  "selected_feature_variant": "baseline",
+  "model_selection": "First two rolling-origin TRAIN folds only; PR-AUC primary, Brier tie-breaker",
+  "calibration": "Platt sigmoid trained on first two rolling-origin TRAIN prediction sets",
+  "threshold_selection": "Maximise precision subject to recall >= 0.85 on 2024-12-31 TRAIN origin",
+  "threshold": 0.3176030722075383,
+  "threshold_validation_metrics": {
+    "n": 10483,
+    "positive_rate": 0.39511590193646856,
+    "precision": 0.6113908664698733,
+    "recall": 0.850072428778368
+  },
+  "test_metrics": {
+    "model": "CatBoost",
+    "feature_variant": "baseline",
+    "n": 21164,
+    "positive_rate": 0.4118314118314118,
+    "pr_auc": 0.7461453295323366,
+    "roc_auc": 0.8314409006174266,
+    "brier": 0.16497885620594277,
+    "precision": 0.6064030131826742,
+    "recall": 0.8866452501147315,
+    "f1": 0.7202236719478099,
+    "f2": 0.8116282977650815,
+    "specificity": 0.5970437017994858,
+    "balanced_accuracy": 0.7418444759571087,
+    "tn": 7432,
+    "fp": 5016,
+    "fn": 988,
+    "tp": 7728,
+    "predicted_positive": 12744
+  },
+  "latest_customer_metrics": {
+    "evaluation": "latest_TEST_snapshot_per_customer",
+    "n": 10613,
+    "pr_auc": 0.7632980467447886,
+    "roc_auc": 0.8326634502057138,
+    "precision": 0.6171666171666171,
+    "recall": 0.9034782608695652,
+    "f1": 0.7333686253749779,
+    "threshold": 0.3176030722075383,
+    "tn": 3435,
+    "fp": 2578,
+    "fn": 444,
+    "tp": 4156
+  },
+  "customer_cluster_bootstrap": {
+    "pr_auc": [0.7364173271863832, 0.746939816503209, 0.757259308906428],
+    "roc_auc": [0.8261004102666925, 0.8319770105685502, 0.8371971733509028],
+    "brier": [0.1622579198499803, 0.16475733438987605, 0.16742364895302211]
+  },
+  "limitations": [
+    "The same customers occur in TRAIN and TEST; this is temporal, not cold-start evaluation.",
+    "The target is no repeat purchase in the next 90 days, not permanent churn or causal campaign response.",
+    "The TEST set was already evaluated in v1; v2 TEST results are a repeated-holdout diagnostic, not a pristine independent confirmation."
+  ],
+  "runtime_seconds": 15.0,
+  "python": "3.13.5",
+  "pandas": "2.2.3",
+  "numpy": "2.3.5"
+}
