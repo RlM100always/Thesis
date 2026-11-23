@@ -537,9 +537,11 @@ seven-day development WAPE from 33.47\% to 32.66\% across nine monthly
 origins, while under-forecast bias increased from -2.02\% to -6.05\%.
 For RQ2, a 90-day no-repeat-purchase target was reconstructed with complete
 agreement on 72,146 customer snapshots. CatBoost achieved TEST PR-AUC
-0.7470, ROC-AUC 0.8313 and Brier score 0.1647. This is a temporal test
-within the supplied customer population; repeated customers occur across
-the split, and no causal retention-campaign effect is estimated.
+0.7470, ROC-AUC 0.8313 and Brier score 0.1647. At the threshold selected
+from training-only predictions, precision was 0.5385, recall was 0.9598
+and F1-score was 0.6900. This is a temporal test within the supplied
+customer population; repeated customers occur across the split, and no
+causal retention-campaign effect is estimated.
 
 For RQ3, 2,500 paired replenishment scenarios show a trade-off: the trend
 policy has 0.87\% lower supplied scenario cost but 122.2\% more lost units.
