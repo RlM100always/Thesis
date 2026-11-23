@@ -1,0 +1,4 @@
+model,threshold,positive_class,true_negative_active,false_positive_inactive,false_negative_active,true_positive_inactive
+Logistic,0.1911031989274615,inactive_next_90d,4424,8024,259,8457
+LightGBM,0.16330180726122304,inactive_next_90d,4717,7731,273,8443
+CatBoost,0.153927045837954,inactive_next_90d,5279,7169,350,8366
