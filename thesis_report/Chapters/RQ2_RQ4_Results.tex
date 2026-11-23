@@ -164,9 +164,9 @@ matches the arithmetic difference to floating-point precision.
 
 The apparent cost reduction is not evidence of realised savings. The
 scenario-cost formula is not documented, the future demand is synthetic,
-and the participating owner's actual current policy is absent. The data
+and the participating business's observed replenishment policy was not supplied. The data
 therefore support a trade-off audit only; they do not answer the full RQ3
-question about a forecast-driven policy versus an observed owner policy.
+question about a forecast-driven policy versus the observed replenishment policy of a participating business.
 
 \section{RQ4: Decision-Rule and Explanation Audit}
 
@@ -236,32 +236,33 @@ A deterministic bilingual explanation generator was added with separate
 branches for sufficient stock, a feasible reorder and a budget-blocked
 reorder. It includes all branch-relevant numerical evidence in both English
 and Bangla in 100\% of the cases tested. This is a software-level content
-coverage result, not evidence that owners understand or prefer the wording.
+coverage result, not evidence of comprehension or preference among SME owners and managers.
 The \texttt{human\_rating} and \texttt{evidence\_complete} fields are \texttt{YES}
 for every case, so they contain no variation and cannot be treated as participant
-ratings. The RQ4 owner study remains pending; its counterbalanced design,
+ratings. The planned RQ4 study involving SME owners and managers has not yet been conducted. Its counterbalanced design,
 tasks, measures and ethics requirements are specified in
 \texttt{docs/RQ4\_USER\_STUDY\_PROTOCOL.md}.
 
 \input{Chapters/RQ2_RQ4_Additional_Figures}
 
-\section{Cross-RQ Model and Solution Design Decision}
+\section{Cross-RQ Synthesis and Model-Selection Implications}
 
-The evidence supports different decisions for the four tasks rather than
-one universal model. For RQ1, the context-aware LightGBM is the leading
-development challenger and the pooled LightGBM remains the fallback. For
-RQ2, CatBoost is selected on training-only rolling-origin validation and
-performs best on the supplied temporal test, with LightGBM close behind.
-For RQ3, neither policy is declared superior: the trend scenario reduces
-supplied cost and stock but increases lost units, and the comparison is not
-an observed owner-policy replay. For RQ4, the deterministic bilingual
-explanation template passes the numeric evidence coverage check, but no
-participant study has tested comprehension, confidence or task time.
+The results support task-specific conclusions rather than a single model
+choice. For RQ1, the context-aware LightGBM model is a candidate for further
+evaluation, while the pooled LightGBM remains the fallback. For RQ2,
+CatBoost achieves the highest PR-AUC and ROC-AUC and the lowest Brier score
+among the evaluated models on the supplied temporal test. For RQ3, neither
+policy can be declared superior: the trend scenario reduces supplied cost
+and stock but increases lost units, and the comparison does not use the
+observed replenishment policy of a participating business. For RQ4, the
+deterministic bilingual explanation template meets the numeric-evidence
+coverage criterion, but no participant study has assessed comprehension,
+confidence or task-completion time.
 
 \begin{table}[H]
 \centering
 \small
-\caption{Current evidence status and promotion gate by research question.}
+\caption{Current evidence status and further validation requirements by research question.}
 \label{tab:rq_evidence_status}
 \begin{tabularx}{\textwidth}{|p{0.10\textwidth}|X|X|}
 \hline
@@ -271,13 +272,14 @@ RQ1 & Shop--category observed-sales development forecasting & Untouched future t
 \hline
 RQ2 & Temporal 90-day inactivity prediction within the supplied customer population & New-customer generalisation and prospective campaign evaluation \\
 \hline
-RQ3 & Paired synthetic-demand scenario trade-off & Documented cost model and replay against a participating owner's actual policy \\
+RQ3 & Paired synthetic-demand scenario trade-off & Documented cost model and comparison with the participating business's observed replenishment policy \\
 \hline
-RQ4 & Rule consistency and bilingual explanation content audit & Consenting SME owner study of accuracy, comprehension, confidence and time \\
+RQ4 & Rule consistency and bilingual explanation content audit & Consent-based study involving SME owners and managers to assess accuracy, comprehension, confidence and completion time \\
 \hline
 \end{tabularx}
 \end{table}
 
-No model or policy is promoted to production solely from these results.
-Predictions remain decision support, and the owner retains responsibility
-for customer contact and purchasing actions.
+The available evidence is insufficient to justify production deployment of
+any model or policy. Predictions are provided for decision support; business
+owners and managers retain responsibility for customer-contact and
+purchasing decisions.
