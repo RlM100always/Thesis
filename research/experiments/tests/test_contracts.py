@@ -1,7 +1,7 @@
 import pandas as pd
 
 from research.experiments.rq2_customer_prediction import (
-    CATEGORICAL, FEATURES, choose_f2_threshold, ranking_metrics,
+    CATEGORICAL, FEATURES, choose_f2_threshold, confusion_counts, evaluate, ranking_metrics,
 )
 from research.experiments.rq3_policy_scenario_audit import cluster_bootstrap
 from research.experiments.rq4_explanation_audit import build_explanation, numeric_token_present
@@ -15,6 +15,22 @@ def test_rq2_ranking_metrics_and_threshold():
     threshold, f2 = choose_f2_threshold(y, score)
     assert 0 <= threshold <= 1
     assert 0 <= f2 <= 1
+
+
+def test_rq2_threshold_metrics_and_confusion_counts():
+    y = [0, 0, 1, 1]
+    probability = [0.1, 0.8, 0.2, 0.9]
+    metrics = evaluate(y, probability, threshold=0.5)
+    counts = confusion_counts(y, probability, threshold=0.5)
+    assert metrics["precision"] == 0.5
+    assert metrics["recall"] == 0.5
+    assert metrics["f1"] == 0.5
+    assert counts == {
+        "true_negative_active": 1,
+        "false_positive_inactive": 1,
+        "false_negative_active": 1,
+        "true_positive_inactive": 1,
+    }
 
 
 def test_rq2_uses_only_point_in_time_snapshot_features():
