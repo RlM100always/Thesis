@@ -23,8 +23,8 @@ from sklearn.compose import ColumnTransformer
 from sklearn.impute import SimpleImputer
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import (
-    average_precision_score, brier_score_loss, fbeta_score,
-    precision_score, recall_score, roc_auc_score,
+    average_precision_score, brier_score_loss, confusion_matrix, f1_score,
+    fbeta_score, precision_score, recall_score, roc_auc_score, roc_curve,
 )
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
@@ -192,7 +192,17 @@ def choose_f2_threshold(y, probability):
     return float(thresholds[index]), float(scores[index])
 
 
+def confusion_counts(y, probability, threshold):
+    y = np.asarray(y, dtype=int)
+    predicted = (np.asarray(probability, dtype=float) >= float(threshold)).astype(int)
+    tn, fp, fn, tp = confusion_matrix(y, predicted, labels=[0, 1]).ravel()
+    return {"true_negative_active": int(tn), "false_positive_inactive": int(fp),
+            "false_negative_active": int(fn), "true_positive_inactive": int(tp)}
+
+
 def evaluate(y, probability, threshold=None):
+    y = np.asarray(y, dtype=int)
+    probability = np.asarray(probability, dtype=float)
     result = {
         "n": int(len(y)), "positive_rate": float(np.mean(y)),
         "pr_auc": float(average_precision_score(y, probability)),
@@ -206,6 +216,7 @@ def evaluate(y, probability, threshold=None):
             "threshold": float(threshold),
             "precision": float(precision_score(y, predicted, zero_division=0)),
             "recall": float(recall_score(y, predicted, zero_division=0)),
+            "f1": float(f1_score(y, predicted, zero_division=0)),
             "f2": float(fbeta_score(y, predicted, beta=2, zero_division=0)),
         })
     return result
@@ -347,7 +358,24 @@ def run(data_dir: Path, output_dir: Path, snapshot_name: str, bootstrap_replicat
                       **ranking_metrics(y_test, rule_score)})
     test_metrics = pd.DataFrame(test_rows)
 
+    # Threshold-based confusion counts are aggregated by model. No customer-level
+    # prediction records are exported. Class 1 is inactivity within the next 90 days.
+    confusion_rows = []
+    for name, probability in test_probabilities.items():
+        counts = confusion_counts(y_test, probability, thresholds[name])
+        confusion_rows.append({
+            "model": name, "threshold": float(thresholds[name]),
+            "positive_class": "inactive_next_90d", **counts,
+        })
+    confusion_metrics = pd.DataFrame(confusion_rows)
+
     selected_probability = test_probabilities[selected_name]
+    roc_fpr, roc_tpr, _ = roc_curve(y_test, selected_probability, pos_label=1)
+    roc_grid = np.linspace(0.0, 1.0, 21)
+    roc_curve_points = pd.DataFrame({
+        "false_positive_rate": roc_grid,
+        "true_positive_rate": np.interp(roc_grid, roc_fpr, roc_tpr),
+    })
     print("[RQ2] customer-cluster bootstrap", flush=True)
     bootstrap = cluster_bootstrap(y_test, selected_probability, test["customer_id"].astype(str), bootstrap_replicates)
     customer_ids = set(train["customer_id"].astype(str))
@@ -380,6 +408,8 @@ def run(data_dir: Path, output_dir: Path, snapshot_name: str, bootstrap_replicat
     validation_metrics.to_csv(output_dir / "validation_metrics.csv", index=False)
     pd.DataFrame(validation_by_date).to_csv(output_dir / "validation_by_date.csv", index=False)
     test_metrics.to_csv(output_dir / "test_metrics.csv", index=False)
+    confusion_metrics.to_csv(output_dir / "confusion_matrix.csv", index=False)
+    roc_curve_points.to_csv(output_dir / "roc_curve_points.csv", index=False)
     pd.DataFrame(test_by_date).to_csv(output_dir / "test_by_date.csv", index=False)
     pd.DataFrame(calibration_bins).to_csv(output_dir / "calibration_bins.csv", index=False)
     pd.DataFrame([{"metric": key, "lower_2_5": value[0], "median": value[1], "upper_97_5": value[2],
@@ -420,6 +450,8 @@ def run(data_dir: Path, output_dir: Path, snapshot_name: str, bootstrap_replicat
         "calibration": "Platt sigmoid fit on rolling-origin OOF TRAIN predictions",
         "threshold_rule": "F2-maximising threshold selected on OOF calibrated probabilities",
         "test_metrics_selected_model": test_metrics[test_metrics["model"] == selected_name].iloc[0].to_dict(),
+        "confusion_matrix_selected_model": confusion_metrics[confusion_metrics["model"] == selected_name].iloc[0].to_dict(),
+        "roc_curve_points_file": "roc_curve_points.csv",
         "customer_cluster_bootstrap": {"replicates": bootstrap_replicates, "seed": 20261123, "ci": bootstrap},
         "limitations": [
             "Temporal evaluation within the supplied customer population; repeated customers occur across the time split.",
