@@ -1,0 +1,12 @@
+{
+  "cases":1800,"shops":32,"skus":467,"as_of_dates":["2025-12-31"],
+  "decision_quantity_exact_match_rate":1.0,"action_exact_match_rate":1.0,
+  "constraint_reason_exact_match_rate":1.0,"product_master_reorder_point_match_rate":1.0,
+  "action_counts":{"NO_ACTION":1601,"REORDER":199},
+  "constraint_reason_counts":{"SUFFICIENT_STOCK":1600,"UNDER_REORDER_POINT_AND_BUDGET_OK":199,"BUDGET_INSUFFICIENT":1},
+  "explanation_numeric_coverage":{"stock_units":1800,"reorder_point_units":1800,"pack_multiple_units":1800,"available_budget_bdt":1800,"numeric_lead_days":108,"pending_purchase_units":173,"suggested_order_qty_units":3,"unit_purchase_cost_bdt":0},
+  "human_rating_values":{"YES":1800},"evidence_complete_values":{"YES":1800},
+  "human_rating_is_constant":true,"generated_explanation_required_evidence_coverage_min_pct":100.0,
+  "participant_study_evidence_present":false,
+  "interpretation":"Decision-rule consistency and text-field coverage only; no owner usability or human-study effect is estimated."
+}

@@ -2532,32 +2532,36 @@ are stored in
 \url{research/forecasting/results/transaction_feature_ablation_v1/}.
 The ablation is development evidence, not an untouched final test.
 
+\input{Chapters/RQ2_RQ4_Implementation}
+
 \section{Software Environment and Reproducibility}
 
-The experiment was executed with Python 3.13.5, pandas 2.2.3, NumPy 2.3.5,
-scikit-learn 1.8.0, and LightGBM 4.6.0. The source panel's SHA-256 checksum
-is recorded in the accompanying experiment manifest. The implementation
-writes the per-origin metrics, aggregate metrics, forecast-level predictions,
-demand-regime assignments, and regime-stratified metrics as machine-readable
-CSV files. The raw business dataset is retained in its controlled data
-location and is not copied into the public source repository.
+The research experiments use Python 3.13.5, pandas 2.2.3, NumPy 2.3.5,
+scikit-learn 1.8.0, LightGBM 4.6.0 and CatBoost 1.2.8. The RQ1 and RQ2
+source checksums, model settings and run metadata are recorded in their
+machine-readable manifests. RQ1 writes forecast-level development outputs;
+RQ2 writes aggregate validation and test metrics, calibration bins,
+customer-cluster bootstrap intervals and feature importance; RQ3 and RQ4
+write paired scenario and rule/explanation audit outputs. Raw business
+records, customer identifiers and row-level customer predictions remain
+in controlled storage and are not copied into the public repository.
 
 \section{Current Implementation Boundaries}
 
-The executable experiment remains a shop--category observed-sales forecast.
-It does not establish SKU-level latent demand, price or promotion uplift,
-or inventory-policy benefit. CatBoost Tweedie and a raw two-stage hurdle
-have now been evaluated as challengers; the hurdle probabilities remain
-uncalibrated. The inventory ledger has been reconciled internally, but
-negative-balance events and positive-sale days with non-positive intraday
-stock must be quarantined before SKU exposure labels are used. Calibrated
-prediction intervals, hierarchical reconciliation, point-in-time price
-and promotion features, and inventory replay remain subsequent tasks.
-The data are real business records according to the supplied manifest;
-however, real-data origin does not by itself establish generalisation.
-The current results are development estimates from selected periods.
-A final untouched period or held-out businesses are still required before
-claiming future predictive performance outside the development windows.
+RQ1 remains a shop--category observed-sales forecast and does not establish
+SKU-level latent demand. Its context-aware model is a development challenger,
+not a production selection. RQ2 evaluates a fixed 90-day no-repeat-purchase
+outcome within the supplied customer population; repeated customers occur
+across the temporal split, and no causal retention-campaign effect is
+estimated. RQ3 is a paired scenario audit using synthetic oracle demand,
+not a replay against an owner's observed policy. RQ4 verifies a deterministic
+rule and the numerical content of bilingual explanations; the participant
+study has not been conducted. Negative-ledger events and positive-sale days
+with non-positive reconstructed stock remain quarantined before SKU
+availability labels are used. Untouched future and held-out-business tests,
+inventory replay with a documented cost model, and the RQ4 owner study
+remain promotion gates. Real-data provenance alone does not establish
+generalisation or business impact.
 
 \cleardoublepage
 \chapter{Experimental Results}
@@ -3037,50 +3041,30 @@ Consequently, network-level accuracy cannot replace shop--category
 accuracy when the decision is a local reorder.
 
 
-\section{Model and Solution Design Decision}
-
-The current forecasting design retains the original pooled LightGBM Tweedie
-as a benchmark and advances the context-aware LightGBM as the leading
-development challenger. It uses the same model family and settings while
-adding historical shop, category and network aggregates. The nine-origin
-seven-day comparison shows lower pooled WAPE and a paired cluster-bootstrap
-interval favouring the context features. However, its greater under-forecast
-bias means the final decision must consider the business cost of shortages,
-not WAPE alone.
-
-The current selection is therefore conditional: use the context-aware
-candidate for further validation, retain the baseline as fallback, and
-do not promote a production model until an untouched future period or
-held-out businesses have been evaluated. CatBoost remains a challenger;
-the hurdle model remains experimental until occurrence probabilities
-are calibrated and bias is controlled. Croston--SBA and TSB remain
-intermittent-demand comparators, but sparse regime support does not justify
-automatic routing.
-
-SKU-level forecasting remains availability-aware. Missing SKU dates become
-zero only when active assortment and positive stock exposure are established.
-Negative-ledger events, stock-out periods, unknown assortment and closed-shop
-days remain censored or unknown. The separately identified simulated
-unmet-demand table is not used as observed sales or empirical lost-sales
-ground truth. RQ3 inventory-policy replay and RQ4 owner-facing explanation
-evaluation require their own evidence and experiments.
+\input{Chapters/RQ2_RQ4_Results}
 
 \section{Threats to Validity and Summary}
 
-The results are measured on the supplied real-business dataset and are
-bounded to the shop--category panel, selected development origins and
-cumulative forecast horizons. The final untouched test has not yet been
-evaluated. Previously inspected Q4 2025 is excluded from model selection.
-The earlier WAPE values of 83.98\%, 84.04\% and 84.56\% are not compared
-with the current experiments because their target, aggregation, origins
-and metric denominators have not been reproduced on identical evaluation
-rows.
+RQ1 results are development estimates from selected origins; the final
+untouched period has not been evaluated, and previously inspected Q4 2025
+is excluded from selection. The context challenger has greater
+under-forecast bias than its baseline, and SKU stock exposure remains
+subject to ledger anomalies. RQ2 is a temporal evaluation with repeated
+customers across TRAIN and TEST; it does not establish cold-start
+generalisation or campaign effectiveness. RQ3 uses synthetic future
+demand and an undocumented scenario-cost formula, so its cost differences
+cannot be interpreted as realised savings. RQ4's constant rating fields
+are not participant observations, and the explanation study remains
+unconducted.
 
-The evidence supports advancing context features as a development
-challenger, while retaining the pooled baseline as fallback. Remaining
-work includes an untouched test, cost-sensitive bias evaluation,
-SKU exposure correction, interval validation and separate inventory-policy
-and owner-task experiments. No universal model winner or untested
+The current evidence supports a context-aware RQ1 development challenger,
+a CatBoost RQ2 temporal predictor, a documented RQ3 scenario trade-off and
+a technically consistent RQ4 rule with bilingual explanation templates.
+It does not support autonomous purchasing, automated customer contact,
+a claim of realised policy savings or a claim of improved owner usability.
+The next gates are an untouched future and held-out-business evaluation,
+a documented policy replay against the owner's actual policy, and a
+consenting owner study. No universal model winner or untested
 business-impact claim is asserted.
 
 \cleardoublepage
@@ -3119,6 +3103,8 @@ is forced and no untested business-impact claim is made.
 
 
 
+
+\input{Chapters/RQ2_RQ4_Conclusions}
 
 \appendix
 

@@ -1,0 +1,10 @@
+{
+  "experiment":"rq3_paired_policy_scenario_audit_v1","input_file":"rq3_offline_policy_comparison.csv",
+  "input_sha256":"bc40cd1ab471e0a0ed7c9aff959d9de185d57be9b81e59ece610a29d42fec860",
+  "product_master_file":"products.csv","product_master_sha256":"ab96545725e7ff96120da8f151b79419ec8bdf255a333edd97e097346a0efe4e",
+  "rows":2500,"shops":32,"skus":477,
+  "bootstrap":{"unit":"shop_id","clusters":32,"replicates":5000,"seed":20261123},
+  "validation":{"cost_gap_identity_max_abs_error":1.4210854715202004e-13,"baseline_pack_multiple_rate":1.0,"trend_pack_multiple_rate":1.0},
+  "limitations":["Future demand is explicitly labelled synthetic oracle demand.","No participating owner's actual current replenishment policy is supplied.","The scenario-cost formula is not documented in the input file; cost is reported as supplied.","Scenario results cannot establish realised savings or causal policy effects."],
+  "runtime_seconds":0.08,"python":"3.13.5","pandas":"2.2.3","numpy":"2.3.5"
+}

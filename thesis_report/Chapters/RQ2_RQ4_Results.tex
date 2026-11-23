@@ -1,0 +1,173 @@
+\section{RQ2: Ninety-Day Customer Inactivity Prediction}
+
+The target reconstruction agrees with the supplied label on all 72,146
+snapshots. The final chronological test contains 21,164 snapshots and has
+a 41.18\% positive rate. Model selection uses only three rolling-origin
+validation dates within TRAIN. CatBoost has the highest validation PR-AUC
+(0.7005) and the lowest calibrated validation Brier score (0.1692), so it
+is selected before TEST is evaluated.
+
+\begin{table}[H]
+\centering
+\small
+\caption{RQ2 validation selection and held-out temporal test performance.}
+\label{tab:rq2_customer_prediction_results}
+\begin{tabularx}{\textwidth}{|X|r|r|r|r|r|}
+\hline
+\textbf{Model} & \textbf{OOF PR-AUC} & \textbf{TEST PR-AUC} & \textbf{TEST ROC-AUC} & \textbf{TEST Brier} & \textbf{TEST F2} \\
+\hline
+Recency rule & 0.6398 & 0.6874 & 0.7559 & -- & -- \\
+\hline
+Logistic regression & 0.6963 & 0.7370 & 0.8234 & 0.1733 & 0.8235 \\
+\hline
+LightGBM & 0.6986 & 0.7452 & 0.8301 & 0.1659 & 0.8271 \\
+\hline
+CatBoost & \textbf{0.7005} & \textbf{0.7470} & \textbf{0.8313} & \textbf{0.1647} & \textbf{0.8300} \\
+\hline
+\end{tabularx}
+\end{table}
+
+The selected CatBoost model uses a threshold of 0.1539, fixed from
+training-only calibrated out-of-time predictions. On TEST this threshold
+gives precision 53.85\%, recall 95.98\% and F2 0.8300. If the business can
+review only the top 10\% of the risk-ranked customer queue, precision is
+84.65\%, recall is 20.56\% and lift over the test prevalence is 2.055.
+These are two different operating points: the F2 threshold favours recall,
+whereas the top-decile queue is more selective.
+
+A customer-cluster bootstrap with 500 resamples gives 95\% intervals of
+0.7364--0.7584 for PR-AUC, 0.8260--0.8370 for ROC-AUC and 0.1619--0.1673
+for Brier score. The test contains repeated customers seen in TRAIN
+(10,483 overlapping customers). This is a temporal evaluation for the
+existing customer population, not an unseen-customer generalisation test.
+The outcome is no repeat purchase in a fixed 90-day window; it is not
+permanent churn and does not estimate the causal effect of a retention
+campaign.
+
+\section{RQ3: Replenishment Policy Scenario Trade-Off}
+
+The 2,500 supplied cases cover 32 shops and 477 SKUs at one cutoff date.
+The future-demand total is 8,330 units and is explicitly synthetic oracle
+demand. The trend policy has lower supplied scenario cost and lower average
+stock, but it also has more lost units.
+
+\begin{table}[H]
+\centering
+\small
+\caption{Paired RQ3 scenario outcomes; differences are trend policy minus baseline.}
+\label{tab:rq3_policy_scenario_results}
+\begin{tabularx}{\textwidth}{|X|r|r|r|r|}
+\hline
+\textbf{Measure} & \textbf{Baseline total} & \textbf{Trend total} & \textbf{Mean difference per case} & \textbf{Relative change} \\
+\hline
+Lost units & 45 & 100 & +0.0220 & +122.2\% \\
+\hline
+Average stock (units) & 392,825.28 & 387,567.97 & -2.1029 & -1.34\% \\
+\hline
+Scenario cost (BDT) & 2,227,690.07 & 2,208,289.47 & -7.7602 & -0.87\% \\
+\hline
+Order quantity (units) & 7,356 & 654 & -2.6808 & -91.1\% \\
+\hline
+\end{tabularx}
+\end{table}
+
+The shop-cluster bootstrap gives 95\% intervals for mean per-case
+trend-minus-baseline differences of -BDT 8.94 to -BDT 6.65 for scenario
+cost and +0.0127 to +0.0320 units for lost sales. The corresponding
+intervals are -2.45 to -1.78 units for average stock and -3.13 to -2.27
+units for order quantity. Lost units are higher under the trend policy in
+23 cases, equal in 2,477 and lower in none. Both policy quantities are
+multiples of the case pack in every case, and the supplied cost-gap field
+matches the arithmetic difference to floating-point precision.
+
+The apparent cost reduction is not evidence of realised savings. The
+scenario-cost formula is not documented, the future demand is synthetic,
+and the participating owner's actual current policy is absent. The data
+therefore support a trade-off audit only; they do not answer the full RQ3
+question about a forecast-driven policy versus an observed owner policy.
+
+\section{RQ4: Decision-Rule and Explanation Audit}
+
+The 1,800 prepared cases cover 32 shops and 467 SKUs at 31 December 2025.
+After joining the product master, the independently recomputed suggested
+quantity, action and constraint reason each match the supplied fields in
+100\% of cases. There are 199 reorder cases and 1,601 no-action cases;
+one no-action case is blocked by insufficient budget.
+
+The supplied explanation text has uneven numeric evidence coverage.
+
+\begin{table}[H]
+\centering
+\small
+\caption{Exact numeric evidence present in the supplied RQ4 explanation text.}
+\label{tab:rq4_supplied_explanation_coverage}
+\begin{tabularx}{\textwidth}{|X|r|r|}
+\hline
+\textbf{Evidence field} & \textbf{Cases with exact value} & \textbf{Coverage} \\
+\hline
+On-hand stock & 1,800 / 1,800 & 100.00\% \\
+\hline
+Reorder point & 1,800 / 1,800 & 100.00\% \\
+\hline
+Pack multiple & 1,800 / 1,800 & 100.00\% \\
+\hline
+Available budget & 1,800 / 1,800 & 100.00\% \\
+\hline
+Supplier lead days & 108 / 1,800 & 6.00\% \\
+\hline
+Pending purchase quantity & 173 / 1,800 & 9.61\% \\
+\hline
+Suggested order quantity & 3 / 1,800 & 0.17\% \\
+\hline
+Unit purchase cost & 0 / 1,800 & 0.00\% \\
+\hline
+\end{tabularx}
+\end{table}
+
+A deterministic bilingual explanation generator was added with separate
+branches for sufficient stock, a feasible reorder and a budget-blocked
+reorder. It includes all branch-relevant numerical evidence in both English
+and Bangla in 100\% of the cases tested. This is a software-level content
+coverage result, not evidence that owners understand or prefer the wording.
+The \texttt{human\_rating} and \texttt{evidence\_complete} fields are \texttt{YES}
+for every case, so they contain no variation and cannot be treated as participant
+ratings. The RQ4 owner study remains pending; its counterbalanced design,
+tasks, measures and ethics requirements are specified in
+\texttt{docs/RQ4\_USER\_STUDY\_PROTOCOL.md}.
+
+\section{Cross-RQ Model and Solution Design Decision}
+
+The evidence supports different decisions for the four tasks rather than
+one universal model. For RQ1, the context-aware LightGBM is the leading
+development challenger and the pooled LightGBM remains the fallback. For
+RQ2, CatBoost is selected on training-only rolling-origin validation and
+performs best on the supplied temporal test, with LightGBM close behind.
+For RQ3, neither policy is declared superior: the trend scenario reduces
+supplied cost and stock but increases lost units, and the comparison is not
+an observed owner-policy replay. For RQ4, the deterministic bilingual
+explanation template passes the numeric evidence coverage check, but no
+participant study has tested comprehension, confidence or task time.
+
+\begin{table}[H]
+\centering
+\small
+\caption{Current evidence status and promotion gate by research question.}
+\label{tab:rq_evidence_status}
+\begin{tabularx}{\textwidth}{|p{0.10\textwidth}|X|X|}
+\hline
+\textbf{Question} & \textbf{What the current data support} & \textbf{What remains necessary} \\
+\hline
+RQ1 & Shop--category observed-sales development forecasting & Untouched future test, held-out businesses and cost-sensitive bias evaluation \\
+\hline
+RQ2 & Temporal 90-day inactivity prediction within the supplied customer population & New-customer generalisation and prospective campaign evaluation \\
+\hline
+RQ3 & Paired synthetic-demand scenario trade-off & Documented cost model and replay against a participating owner's actual policy \\
+\hline
+RQ4 & Rule consistency and bilingual explanation content audit & Consenting SME owner study of accuracy, comprehension, confidence and time \\
+\hline
+\end{tabularx}
+\end{table}
+
+No model or policy is promoted to production solely from these results.
+Predictions remain decision support, and the owner retains responsibility
+for customer contact and purchasing actions.
