@@ -1,5 +1,40 @@
 # Verification record
 
+## RQ1–RQ4 integration and final report build — 23 November 2026
+
+- The updated LaTeX report is compiled from `thesis_report/main.tex` and keeps
+  the existing University of Dhaka report layout.
+- GitHub Actions LaTeX build: successful, run
+  [45136998684](https://github.com/RlM100always/Thesis/actions/runs/45136998684).
+  Final PDF: 77 A4 pages, 585,929 bytes. It is published at
+  `output/pdf/main-thesis-report.pdf` and uploaded as the
+  `main-thesis-report-pdf` Actions artifact.
+- Research contract tests: successful, run
+  [45136998715](https://github.com/RlM100always/Thesis/actions/runs/45136998715).
+  Local test suite: 6 passed.
+- RQ1: nine-origin seven-day context-aware LightGBM development WAPE is
+  32.66% versus 33.47% for the historical baseline; under-forecast bias
+  increases in magnitude from -2.02% to -6.05%. This is not an untouched
+  final-test or production claim.
+- RQ2: 72,146 snapshots across 10,613 customers; the 90-day no-repeat label
+  was reconstructed with 100% agreement. CatBoost TEST PR-AUC is 0.7470,
+  ROC-AUC 0.8313 and Brier 0.1647. Repeated customers overlap across the
+  temporal split, so this is not cold-start or causal campaign evidence.
+- RQ3: 2,500 paired scenarios compare baseline and trend policies using
+  synthetic oracle demand. The trend scenario has 0.87% lower supplied
+  scenario cost but 122.2% more lost units. The cost formula and owner's
+  observed policy are unavailable; no realised-savings claim is made.
+- RQ4: suggested quantity, action and constraint reason match 100% of
+  1,800 prepared cases. Generated Bangla/English explanations have 100%
+  coverage of branch-required numeric evidence. The constant
+  `human_rating=YES` field is not participant feedback; the owner study
+  remains pending.
+- Raw business records and customer-level predictions are not committed
+  to the public repository. Only code, manifests, documentation and
+  aggregate outputs are published.
+
+# Verification record
+
 ## Current SME scope revision — 2 November 2026
 
 - Active LaTeX sources now cover Bangladeshi SMEs across sectors, with a shared
