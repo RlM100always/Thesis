@@ -31,5 +31,6 @@ jobs:
           python research/forecasting/audit_rq1_sources.py --help
           python research/forecasting/ablation_transaction_features.py --help
           python research/experiments/rq2_customer_prediction.py --help
+          python research/experiments/rq2_customer_prediction_v2.py --help
           python research/experiments/rq3_policy_scenario_audit.py --help
           python research/experiments/rq4_explanation_audit.py --help
