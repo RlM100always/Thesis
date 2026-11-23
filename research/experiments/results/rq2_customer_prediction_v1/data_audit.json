@@ -1,0 +1,11 @@
+{
+  "snapshot_rows":72146,"unique_customers":10613,"train_rows":50982,"test_rows":21164,
+  "train_customers":10483,"test_customers":10613,"customer_overlap":10483,
+  "train_date_range":["2023-12-31","2024-12-31"],"test_date_range":["2025-03-31","2025-06-30"],
+  "train_positive_rate":0.3639127535208505,"test_positive_rate":0.4118314118314118,
+  "target_reconstruction_agreement":1.0,
+  "target_definition":"No order in (snapshot_date, horizon_end], reconstructed from sales_orders.csv",
+  "customer_id_excluded_from_features":true,"customer_name_excluded":true,
+  "current_customer_master_attributes_excluded":["customer_type","loyalty_member","home_division","home_district"],
+  "feature_availability_policy":"snapshot columns and deterministic transforms only"
+}
