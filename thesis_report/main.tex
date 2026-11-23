@@ -932,13 +932,13 @@ An independent feasibility gate is also required for responsible use. A score in
 
 Data leakage occurs when training is exposed to information that would not legitimately exist at prediction time. It can enter through target-derived features, customers who appear on both sides of a data split, post-customer-action information, post-outcome variables, or transformations that are fitted before the data are split \cite{kaufman2012leakage}. Leakage control is therefore a characteristic of the data pipeline, not a model option. Before training, the system should define the prediction time, feature-availability rules, and data-splitting policy.
 
-SHAP provides additive feature contributions relative to a reference value and supports both local and global inspection of model predictions \cite{lundberg2017shap}. Such an attribution describes how the fitted model uses encoded features; it does not establish a causal relationship. In social-science research, as synthesized by Miller, the focus is often on useful explanations that are selective and contrastive \cite{miller2019explanation}. Accordingly, a recommendation card should respond to the question, ``Why this action now?'' by presenting a small number of salient, decision-relevant factors. It should avoid causal language while providing sufficient supporting evidence for the owner to assess the recommendation.
+SHAP provides additive feature contributions relative to a reference value and supports both local and global inspection of model predictions \cite{lundberg2017shap}. Such an attribution describes how the fitted model uses encoded features; it does not establish a causal relationship. In social-science research, as synthesized by Miller, the focus is often on useful explanations that are selective and contrastive \cite{miller2019explanation}. Accordingly, a recommendation card should identify the principal decision-relevant factors supporting the proposed action at the stated decision time. The explanation should avoid causal language and provide sufficient evidence for the business owner to assess the recommendation.
 
-Business conditions also evolve over time. Retail monitoring therefore needs to distinguish between data-quality failure, input-distribution shift, and deterioration in outcome performance. A model should not be considered valid simply because it remains on a retraining schedule. Evidence that a model remains valid should come from continued evaluation under a declared validation protocol. Any retrained model should be evaluated using the same validation principles that were established during development, with changes explicitly documented.
+Business conditions also evolve over time. Retail monitoring therefore needs to distinguish between data-quality failure, input-distribution shift, and deterioration in outcome performance. A model's validity cannot be inferred solely from adherence to a retraining schedule. Evidence that a model remains valid should come from continued evaluation under a declared validation protocol. Any retrained model should be evaluated using the same validation principles that were established during development, with changes explicitly documented.
 
-Once a prediction is made, the next step is to take an action subject to business constraints. Prescriptive analytics incorporates predictions into an explicit decision problem. Bertsimas and Kallus develop prescriptions based on data with auxiliary information, where observations are used to inform conditional stochastic optimization \cite{bertsimas2020prescriptive}. The present thesis follows the underlying principle of evaluating actions according to expected benefit, cost, and constraints. It does not claim to reproduce the asymptotic method or theoretical approach of the cited work. Instead, reorder and retention decisions are treated as separate action families because their outcomes, costs, permissions, and uncertainties differ.
+Subsequent decisions select actions subject to the relevant business constraints. Prescriptive analytics incorporates predictions into an explicit decision problem. Bertsimas and Kallus develop prescriptions based on data with auxiliary information, where observations are used to inform conditional stochastic optimization \cite{bertsimas2020prescriptive}. The present thesis follows the underlying principle of evaluating actions according to expected benefit, cost, and constraints. It does not claim to reproduce the asymptotic method or theoretical approach of the cited work. Instead, reorder and retention decisions are treated as separate action families because their outcomes, costs, permissions, and uncertainties differ.
 
-The proposed system is both an information-system artifact and an analytical study. Design-science research develops and evaluates artifacts in relation to a relevant problem and an existing knowledge base \cite{hevner2004design}. This perspective contributes to an evaluation plan that considers predictive validity, software behaviour, usability, and the consequences of decisions made by the owner, rather than treating a single model metric as the definitive criterion of success.
+This research combines the design and evaluation of an information-system artifact with empirical analysis. Design-science research develops and evaluates artifacts in relation to a relevant problem and an existing knowledge base \cite{hevner2004design}. This perspective informs an evaluation plan that considers predictive validity, software behaviour, usability and the consequences of decisions made by business owners, rather than treating a single model metric as a sufficient measure of system effectiveness.
 
 
 
@@ -947,7 +947,7 @@ The proposed system is both an information-system artifact and an analytical stu
 \subsection{Cross-Stream Evidence Synthesis}
 The literature supports five connected requirements: reliable operational
 data, time-valid prediction, appropriate baselines, constraint-aware action
-and accountable owner use. Bangladesh adoption studies inform local design;
+and accountable use by business owners. Bangladesh adoption studies inform local design;
 forecasting and customer-analytics studies inform model evaluation; leakage,
 calibration and explanation research inform validity; and prescriptive
 analytics links estimates to decisions. The contribution is their integration
@@ -980,16 +980,17 @@ demand, hierarchy, forecast metrics and calibration must be applied together.
 \item[G4 -- Prediction to decision.] Forecasts and customer scores must be
 translated into feasible actions under cash, stock, lead-time, cost and
 consent constraints.
-\item[G5 -- Owner-centred explanation.] Feature attribution alone does not
-show that an owner understands or appropriately uses a recommendation.
+\item[G5 -- Explanation comprehension.] Feature attribution alone does not
+establish whether business owners understand or appropriately use a
+recommendation.
 \item[G6 -- Lifecycle accountability.] Model versions, recommendations,
-owner responses, outcomes and revalidation must remain linked over time.
+business-owner responses, outcomes and revalidation must remain linked over time.
 \end{description}
 The central gap is integrative and evaluative: whether an auditable,
 multi-business SME system can combine temporally valid analytics with
 feasible, understandable actions while retaining evidence of later outcomes.
-The thesis tests this bounded contribution against the supplied data and
-available businesses.
+The study evaluates this bounded contribution using the supplied dataset
+and the businesses represented in it.
 
 \begin{table}[H]
 \centering
@@ -1008,7 +1009,7 @@ G3 Validity & Chronological splits, common baselines and frozen evaluation & Out
 \hline
 G4 Decision & Constraint-aware purchasing and retention logic & Policy replay using reconciled costs and constraints \\
 \hline
-G5 Explanation & Owner-readable evidence, uncertainty and source details & User-task correctness and appropriate interpretation \\
+G5 Explanation & Evidence interpretable by business owners, uncertainty and source details & User-task correctness and appropriate interpretation \\
 \hline
 G6 Lifecycle & Versioning, monitoring and outcome tracking & Revalidation and recommendation-outcome records \\
 \hline
@@ -1016,7 +1017,7 @@ G6 Lifecycle & Versioning, monitoring and outcome tracking & Revalidation and re
 \end{table}
 The contribution is a reproducible process for selecting suitable methods,
 linking estimates to operational constraints and limiting claims to the
-evidence actually tested.
+evidence evaluated empirically in this study.
 
 \clearpage
 
@@ -1056,7 +1057,7 @@ intended to address an applied organizational problem and evaluates that artifac
 against explicitly defined requirements \cite{hevner2004design}. The principal
 artifact is the \system{} framework, including its canonical operational data
 design, time-aware analytical pipeline, constraint-aware recommendation process,
-and mechanisms for presenting supporting evidence to the owner.
+and mechanisms for presenting supporting evidence to business owners.
 
 Empirical evaluation is necessary because a plausible technical architecture
 alone is insufficient to establish predictive validity, business usefulness,
@@ -1071,7 +1072,7 @@ users can interpret and appropriately use those recommendations.
 The work follows four stages: define the problem and evidence; design the
 operational schema, snapshots, models and decision rules; evaluate data
 integrity, prediction and robustness; and assess decision consequences and
-owner use. The four stages are conducted sequentially, with feedback permitted during development but not after the final test is frozen.
+use by business owners and managers. The four stages are conducted sequentially, with feedback permitted during development but not after the final test is frozen.
 Later findings may refine the artifact but cannot alter a frozen final test.
 
 The unit of analysis depends on the task: a shop--category or SKU time series
@@ -1122,7 +1123,7 @@ operationalized as follows:
     replenishment policy used by the participating owner.
 
     \item[RQ4 / H4]
-    In counterbalanced owner decision tasks, an explanation-supported condition
+    In counterbalanced decision tasks completed by SME owners and managers, an explanation-supported condition
     will improve decision accuracy or confidence without causing a practically
     detrimental increase in task-completion time relative to an output-only
     condition.
@@ -1340,7 +1341,7 @@ A model-generated customer-retention recommendation does not itself authorize
 contact with that customer. Customer consent and the participating business's
 contact policy remain independent feasibility constraints. Similarly, system
 outputs are intended to support rather than replace the decision-making authority
-of the owner.
+of the business owner or manager.
 
 
 \subsection{Canonical Operational and Analytical Model}
@@ -1382,7 +1383,7 @@ information contained in \(D_t\).
 For each KPI \(K\), the system returns \(K(D_t;W,g)\), where \(W\) is the
 reporting window and \(g\) is the aggregation level. Each KPI retains its
 numerator, denominator, filters, definition version, and data-quality status so
-that the owner can reproduce and inspect the calculation.
+that the business owner can reproduce and inspect the calculation.
 
 For reporting window \(W\), net sales are calculated from valid invoice lines
 using the documented business treatment of discounts, cancellations, and
@@ -1449,7 +1450,7 @@ its validation origin.
 Historical features include lags 1, 7, 14, 28 and 56; rolling mean,
 standard deviation, sum and zero ratio over 7, 14, 28 and 56 days; days
 since last positive sale; ADI; positive-demand mean and \(CV^2\); shop and
-category identifiers; and calendar encodings. The context-aware challenger
+category identifiers; and calendar encodings. The context-aware model
 adds past shop, category and network aggregates, recent trends and the
 series' share of those aggregates. Context features use only observations
 before the origin.
@@ -1464,13 +1465,12 @@ The forecast estimates observed sales, not unconstrained latent demand.
 Stock-out censoring, promotion effects and SKU-level forecasts require
 additional point-in-time evidence and separate validation.
 
-\subsection{Adaptive Forecasting Architecture and Promotion Gates}
+\subsection{Adaptive Forecasting Architecture and Model-Selection Criteria}
 The architecture separates source eligibility, target construction,
-candidate forecasts, model selection and business action. Source and target
-gates distinguish observed zero from censored or unknown demand. Candidates
+candidate forecasts, model selection and business action. Source and target eligibility checks distinguish observed zero from censored or unknown demand. Candidates
 are compared on common rolling origins, bias and independent-series support.
 Uncertainty and aggregation follow selection; inventory actions require
-validated costs, lead time, stock and owner constraints.
+validated costs, lead time, stock and business-specific constraints.
 
 \begin{figure}[H]
 \centering
@@ -1480,7 +1480,7 @@ validated costs, lead time, stock and owner constraints.
 \node[node] (c) at (0,-2.4) {Baseline and candidate models};
 \node[gate] (d) at (0,-3.6) {Rolling validation and selection};
 \node[node] (e) at (0,-4.8) {Uncertainty and coherent roll-up};
-\node[node] (f) at (0,-6.0) {Constraint-aware owner decision};
+\node[node] (f) at (0,-6.0) {Constraint-aware business-owner decision};
 \draw[flow] (a)--(b); \draw[flow] (b)--(c); \draw[flow] (c)--(d); \draw[flow] (d)--(e); \draw[flow] (e)--(f);
 \end{tikzpicture}
 \caption{Evidence-gated adaptive demand-forecasting architecture.}
@@ -1546,8 +1546,8 @@ lead time, pack multiple, minimum order quantity, budget, storage, expiry
 and remaining shelf life. An action is withheld when a required field is
 unknown or a hard constraint is violated.
 
-Policy evaluation compares the owner policy and proposed policy on the same
-demand path and opening inventory. Outcomes include stock-out units, average
+Policy evaluation compares the participating business's current replenishment
+policy with the proposed policy under identical demand paths and opening inventory. Outcomes include stock-out units, average
 inventory, holding cost, shortage cost, expiry and total cost. Forecast error
 alone is not interpreted as inventory benefit.
 
@@ -1569,7 +1569,7 @@ The action layer may also abstain from making a recommendation. Abstention is
 appropriate when required constraints are missing, uncertainty makes the leading
 alternatives practically indistinguishable, predicted benefit does not exceed
 action cost over the declared sensitivity range, or the relevant model fails a
-monitoring gate. An abstention accompanied by a reason is therefore treated as
+monitoring criterion. An abstention accompanied by a reason is therefore treated as
 valid safety behaviour rather than as a system error.
 
 
@@ -1716,7 +1716,7 @@ Remove infeasible actions and rank the remaining actions by \(U(a)\)\;
 Attach a concise explanation, uncertainty statement, cutoff, and evidence
 source\;
 
-Return the top-\(K\) actions and record the owner's response and any subsequent
+Return the top-\(K\) actions and record the business owner's response and any subsequent
 observable outcome\;
 
 \end{algorithm}
@@ -1758,18 +1758,18 @@ does not retrain the model within the request path.
 \node[block,fill=softorange] (models) at (4,1.5) {Baselines and models};
 \node[block,fill=softblue] (analytics) at (4,-0.2) {KPIs, demand and customer insights};
 \node[block,fill=softblue] (decision) at (0,-0.2) {Constraint-aware strategy};
-\node[output] (owner) at (-4,-0.2) {Owner decision};
+\node[output] (owner) at (-4,-0.2) {Business-owner decision};
 \node[block,fill=gray!15] (monitor) at (0,-1.9) {Outcome monitoring and revalidation};
 \draw[arrow] (src)--(audit); \draw[arrow] (audit)--(models); \draw[arrow] (models)--(analytics); \draw[arrow] (analytics)--(decision); \draw[arrow] (decision)--(owner); \draw[arrow] (owner)--(monitor); \draw[arrow,dashed] (monitor)--(audit);
 \end{tikzpicture}}
-\caption{System information flow and owner oversight.}
+\caption{System information flow and business-owner oversight.}
 \label{fig:bsmartarchitecture}
 \end{figure}
 The operational layer preserves business boundaries and source lineage.
 The analytical layer compares baselines and eligible models, then produces
 KPIs, forecasts and customer insights. The strategy layer combines those
 outputs with business constraints before displaying a recommendation.
-Owners remain decision-makers. Outcomes enter monitoring and become
+Business owners and managers retain decision authority. Outcomes enter monitoring and become
 training evidence only after reconciliation and validation for a later
 model version.
 
@@ -1780,7 +1780,7 @@ cannot alter the historical snapshot that generated an earlier prediction or
 recommendation.
 
 Operational state and recommendations may be updated when relevant events occur
-or according to a defined schedule. However, the deployed model is not blindly
+or according to a defined schedule. However, the deployed model is not automatically
 retrained after every transaction.
 
 Observed outcomes enter the monitoring process and become eligible training
@@ -1837,12 +1837,12 @@ Observed outcomes first enter the monitoring store. They become eligible for a
 later model version only after reconciliation, label maturation, and repetition
 of the appropriate validation protocol.
 
-This delay ensures that an owner's response, a corrected invoice, or a partially
+This delay ensures that a business owner's response, a corrected invoice, or a partially
 observed outcome cannot retrospectively change the evidence that supported a
 historical production decision.
 
 
-\section{Owner-Facing Recommendation Evidence Contract}
+\section{Evidence Requirements for Recommendations to Business Owners}
 \label{sec:recommendation_contract}
 
 \subsection{Minimum Recommendation Evidence}
@@ -1855,22 +1855,23 @@ consent status.
 
 When a required field is missing, the system withholds the action or labels
 the result incomplete. It does not assume costs, stock or customer responses.
-Owners may accept, reject, modify or defer actions; responses and later
-observable outcomes are retained for audit.
+Business owners may accept, reject, modify or defer actions; their responses
+and subsequent observable outcomes are retained for audit.
 
 \subsection{Human Use and Accountability}
 \label{subsec:human_use_accountability}
 
 An explanation is considered successful only when it contributes to correct and
-appropriate use. The owner study will therefore include scenarios in which the
+appropriate use. The planned study involving SME owners and managers will therefore include
+scenarios in which the
 appropriate decision is to reject or defer an apparently attractive
 recommendation.
 
 This evaluates calibrated human reliance rather than merely whether participants
 prefer a more detailed interface. The evidence contract also supports failure
 analysis because an inappropriate decision can be traced to the underlying
-estimate, missing constraint, explanation, outdated evidence, or owner
-interpretation rather than being attributed generically to the ``AI.''
+estimate, missing constraint, explanation, outdated evidence, or participant
+interpretation rather than being attributed generically to the model.
 
 
 \section{Evaluation Protocol}
@@ -2001,7 +2002,7 @@ One primary comparison and metric per research question are frozen before
 the final test. RQ1 uses paired out-of-time errors on common origins; RQ2
 uses PR-AUC with calibration as a separate criterion; RQ3 compares policies
 on identical demand paths and constraints; and RQ4 evaluates task correctness
-under counterbalanced owner tasks.
+under counterbalanced tasks completed by SME owners and managers.
 
 Uncertainty methods must respect dependence: neighbouring dates, repeated
 customer snapshots and observations from one business are not independent.
@@ -2051,8 +2052,8 @@ cost, expiry and total cost. Retention value is estimated only when
 incremental response, contact cost and consent evidence exist; otherwise
 the task remains prioritisation, not realised-profit estimation.
 
-Owner evaluation measures decision correctness, completion time, confidence,
-error count and usability. Generated test records may support software-load
+Evaluation with SME owners and managers will measure decision correctness,
+completion time, confidence, error count and perceived usability. Generated test records may support software-load
 and scalability checks, but are not mixed with empirical forecast or
 business-impact results.
 
@@ -2125,7 +2126,7 @@ test windows, grouping keys, feature version, candidate and baseline versions,
 parameters, output-artifact hashes, warnings, and start and finish times.
 
 Manual spreadsheet corrections will not be made outside this record. If an
-owner supplies a correction, it becomes a dated source or mapping revision.
+a participating business representative supplies a correction, it becomes a dated source or mapping revision.
 The correction affects downstream outputs only when a new version is executed.
 
 
@@ -2148,14 +2149,14 @@ subset for which it returned a prediction.
 \subsection{Recommendation Auditability and Claim Traceability}
 \label{subsec:claim_traceability}
 
-Auditability extends to the owner interface. Every recommendation receives an
-identifier linking the evidence contract, displayed recommendation, owner
-response, and any later observable outcome.
+Auditability also applies to the interface used by business owners. Each
+recommendation receives an identifier linking the evidence record, displayed
+recommendation, business-owner response and any subsequent observable outcome.
 
 If a recommendation changes following a data correction or model replacement,
 the previous record remains immutable and the successor record refers to it.
 This supports accountability without implying that the model, researcher, or
-owner alone caused the eventual business outcome.
+business owner alone caused the eventual business outcome.
 
 The final research package will also include a claim-to-evidence index. Each
 central claim will identify the corresponding research question, figure or
@@ -2163,7 +2164,7 @@ table, experimental record, and evidence tier.
 
 Claims supported only by public, generated, simulated, or small-sample evidence
 will remain explicitly labelled as such. This index provides a final safeguard
-against expanding the scope of a claim beyond what was actually evaluated.
+against extending claims beyond the scope of the empirical evaluation.
 
 
 \section{Threats to Validity and Planned Controls}
@@ -2188,14 +2189,15 @@ protocol, and explicit specifications for transparent baselines,
 pooled-business models, and eligible shop-adapted models.
 
 The study will also produce a reproducible evaluation package, a
-constraint-aware recommendation procedure, and an owner-study instrument.
+constraint-aware recommendation procedure, and a study protocol and instruments for evaluation with SME owners and managers.
 
 Effectiveness claims will be restricted to the sampled businesses,
-sectors, tasks and periods actually evaluated. Transfer to a new sector requires
+sectors, tasks and periods evaluated empirically in this study. Transfer to a new sector requires
 schema and constraint mapping, new evidence and held-out-sector evaluation.
 
-The system supports business decisions under owner oversight; automated
-actions outside the evaluated business tasks remain excluded.
+The system supports business decisions under the oversight of business
+owners or managers; automated actions outside the evaluated business tasks
+remain excluded.
 
 Implementation details, observed numerical results, and conclusions will be
 reported only when the corresponding empirical evidence is available.
