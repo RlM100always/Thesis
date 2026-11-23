@@ -4,22 +4,50 @@ These scripts complement the RQ1 shop-category forecasting pipeline. Raw Drive e
 
 ## RQ2 — 90-day customer inactivity prediction
 
+### Original classifier comparison (v1)
+
 Required controlled inputs:
 
-- `rq2_customer_snapshots_90d_A.csv` (the selected export with `inactive_next_90d_label`; the script also accepts `inactive_next_90d_synthetic_label`)
+- `rq2_customer_snapshots_90d.csv` (Google Drive export with `inactive_next_90d_label`)
 - `sales_orders.csv`
 
-Run:
+Run the original experiment to reproduce the initial Logistic Regression, LightGBM and CatBoost comparison:
 
 ```bash
 python research/experiments/rq2_customer_prediction.py \
   --data-dir /path/to/controlled/exports \
-  --snapshot-file rq2_customer_snapshots_90d_A.csv \
+  --snapshot-file rq2_customer_snapshots_90d.csv \
   --output-dir research/experiments/results/rq2_customer_prediction_v1 \
   --bootstrap-replicates 500
 ```
 
-The script reconstructs the no-purchase-within-90-days target from order headers and stops unless it matches the supplied label exactly. It preserves the supplied chronological TRAIN/TEST split, uses rolling-origin validation inside TRAIN, compares a recency rule, logistic regression, LightGBM and CatBoost, calibrates with training-only out-of-time predictions, and selects the F2 threshold without using TEST. Only historical snapshot fields and deterministic transformations are used. Current customer-master attributes without effective-date history are excluded. Customer IDs and names are excluded from model features. The script writes aggregate ranking and classification metrics (including precision, recall and F1-score at the training-selected threshold), per-model confusion-matrix counts, 21-point ROC-curve coordinates for the selected model, date-level metrics, calibration bins, customer-cluster bootstrap intervals and feature importance. It does not export row-level predictions or customer identifiers.
+### Threshold refinement (v2)
+
+Run the three stages in order. Each stage uses TRAIN only until the final scoring stage:
+
+```bash
+python research/experiments/rq2_customer_prediction_v2.py --stage select \
+  --data-dir /path/to/controlled/exports \
+  --snapshot-file rq2_customer_snapshots_90d.csv \
+  --output-dir research/experiments/results/rq2_customer_prediction_v2
+
+python research/experiments/rq2_customer_prediction_v2.py --stage threshold \
+  --data-dir /path/to/controlled/exports \
+  --snapshot-file rq2_customer_snapshots_90d.csv \
+  --output-dir research/experiments/results/rq2_customer_prediction_v2
+
+python research/experiments/rq2_customer_prediction_v2.py --stage score \
+  --data-dir /path/to/controlled/exports \
+  --snapshot-file rq2_customer_snapshots_90d.csv \
+  --output-dir research/experiments/results/rq2_customer_prediction_v2 \
+  --bootstrap-replicates 500
+```
+
+The v2 pipeline preserves the supplied chronological TRAIN/TEST split and independently reconstructs the 90-day no-repeat label from order headers. It compares the original CatBoost feature set with a past-only customer-trajectory extension on the first two rolling-origin TRAIN folds. The selected feature set is calibrated using those two folds. The final TRAIN origin (31 December 2024) is reserved for threshold selection: the primary threshold maximises precision subject to at least 85% recall. TEST is scored only after the model, calibrator and threshold are frozen.
+
+The v2 outputs include TRAIN-only model and threshold selection tables, TEST operating-point comparisons, snapshot-level and latest-snapshot-per-customer metrics, confusion counts, ROC coordinates, calibration bins, date-level metrics, feature importance and customer-cluster bootstrap intervals. Only aggregate outputs are written; no customer IDs or row-level predictions are exported.
+
+**Interpretation limit:** v2 changes the classification operating point; it does not materially improve ranking discrimination. The TEST set was already evaluated in v1, so v2 TEST results are a repeated-holdout diagnostic rather than a pristine independent confirmation. A later untouched period is needed for independent confirmation.
 
 ## RQ3 — replenishment policy scenario audit
 
