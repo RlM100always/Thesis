@@ -1,0 +1,17 @@
+{
+  "snapshot_rows": 72146,
+  "unique_customers": 10613,
+  "train_rows": 50982,
+  "test_rows": 21164,
+  "train_dates": ["2023-12-31", "2024-12-31"],
+  "test_dates": ["2025-03-31", "2025-06-30"],
+  "train_customer_count": 10483,
+  "test_customer_count": 10613,
+  "train_test_customer_overlap": 10483,
+  "target_reconstruction_agreement": 1.0,
+  "snapshot_sha256": "19477afee416a8ea87b1cb36006785b0efd6469425f4e4a6318a56dd2799710c",
+  "sales_orders_sha256": "09b1c0833bbc191d82889e9f39664625688bd65e63e0b4e0eb92c96861a4f48f",
+  "selected_feature_variant": "baseline",
+  "customer_id_used_as_predictor": false,
+  "previous_snapshot_target_used_as_predictor": false
+}
