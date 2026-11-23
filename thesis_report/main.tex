@@ -523,7 +523,8 @@ claim of effectiveness across all SME sectors. This report is current to
 \end{center}
 This thesis develops \system{}, an AI-powered business analytics and
 decision-support framework for performance evaluation, demand prediction,
-customer insight and feasible recommendations in Bangladeshi SMEs. According to the supplied dataset manifest, the source package contains
+customer insight and feasible recommendations in Bangladeshi SMEs.
+According to the supplied dataset manifest, the source package contains
 SME sales transactions and individual-level customer records. This provenance
 statement is reported as supplied and has not been independently verified
 through a field audit. The RQ1 daily panel contains 561,152 observations across
@@ -596,7 +597,7 @@ across ledgers, spreadsheets and separate applications. Owners may see that
 sales have changed without knowing which products, customers or operating
 conditions explain the change, or what response is feasible.
 
-The challenge extends beyond displaying historical KPIs. Retail decisions
+The research problem extends beyond the presentation of historical KPIs. Retail decisions
 require demand estimates while accounting for cash, stock, supplier lead time,
 pack size, storage and expiry. Customer inactivity, incomplete cost records
 and promotion effects create further analytical risks. This research connects
@@ -829,9 +830,15 @@ accuracy of analytical models. A mixed-method study identifies awareness of
 potential benefits, government support, top-management support and financial
 support as important determinants of ICT adoption among SMEs in rural Bangladesh \cite{hoque2016ict}. A later survey of 535 SME managers combines the technology--organization--environment model with diffusion-of-innovation concepts. The authors \cite{shahadat2023digital} recognize that factors such as relative advantage, complexity, perceived cost, management support, competitive pressure, and government support are important considerations. These studies suggest that organizational readiness and costs, as well as technological fit and workflow functionality, warrant attention when considering technology adoption. However, the two studies do not evaluate a retail prediction system.
 
-This operating context also includes mobile financial services. Through in-depth interviews, accessibility, spatial and temporal mobility, and access to information were found to be important issues in the daily use of MFS in Bangladesh. Self-control and the affordances related to self-control are also important considerations \cite{hazra2021mfs}. Therefore, the proposed data model includes the payment mode in the settlement status field, along with other common business fields. These findings inform the inclusion of payment-related fields in the
-data model; they do not establish comparative business-performance effects
-for individual mobile financial service providers.
+The SME operating context also includes mobile financial services (MFS).
+Interview-based research in Bangladesh identifies accessibility, spatial
+and temporal mobility, and access to information as factors shaping MFS use.
+It also identifies self-control and related affordances as relevant
+considerations \cite{hazra2021mfs}. Accordingly, the proposed data model
+records payment-related information at the transaction level, alongside
+other common business attributes. These findings support the inclusion of
+payment-related fields; they do not establish comparative business-performance
+effects for individual MFS providers.
 
 
 
@@ -2242,7 +2249,7 @@ the public repository contains code, schemas, checksums and aggregate outputs.
 \begin{table}[H]
 \centering
 \small
-\caption{Source-table coverage declared in the supplied real-business dataset manifest.}
+\caption{Source-table coverage declared in the supplied dataset manifest.}
 \label{tab:source_table_coverage}
 \begin{tabularx}{\textwidth}{|X|r|X|X|}
 \hline
@@ -2827,8 +2834,8 @@ the raw hurdle records 33.81\%, 35.54\% and 36.52\%.
 \end{tabularx}
 \end{table}
 
-Across shops, LightGBM has lower seven-day WAPE than CatBoost in 22 of 32 shops
-and in 14 of 16 categories. Median
+Across shops, LightGBM has lower seven-day WAPE than CatBoost in 22 of 32 shops and
+in 14 of 16 categories. Median
 shop-level WAPE is 35.89\% for LightGBM and 36.79\% for CatBoost.
 The context-aware model does not achieve the lowest WAPE for every shop;
 shop-level monitoring and abstention are therefore necessary.
@@ -3146,11 +3153,13 @@ superior model or support claims of unmeasured business impact.
 \section{Research Summary}
 
 This thesis develops and evaluates an integrated SME analytics framework
-using the supplied Bangladesh business records. The dataset manifest
-describes the package as containing SME sales transactions and individual-level customer records. Source tables
-were internally reconciled: sales lines join to orders, prepared SKU
-aggregates reproduce from transaction lines, category totals reproduce
-from SKU sales, and inventory sale movements match sales lines. The
+using the supplied Bangladesh business records. The dataset manifest describes the package as containing SME sales
+transactions and individual-level customer records. This provenance
+statement is reported as supplied and has not been independently verified
+through a field audit. The source tables were internally reconciled: sales
+lines join to orders, prepared SKU aggregates reproduce from transaction
+lines, category totals reproduce from SKU sales, and inventory sale
+movements match sales lines. The
 inventory audit also identifies negative-balance events and positive-sale
 days with non-positive reconstructed stock; these remain quarantined from
 SKU exposure labels pending correction.
