@@ -1,0 +1,9 @@
+evidence_field,cases_with_exact_numeric_value,total_cases,coverage_pct
+stock_units,1800,1800,100.0
+reorder_point_units,1800,1800,100.0
+pack_multiple_units,1800,1800,100.0
+available_budget_bdt,1800,1800,100.0
+numeric_lead_days,108,1800,6.0
+pending_purchase_units,173,1800,9.61111111111111
+suggested_order_qty_units,3,1800,0.16666666666666666
+unit_purchase_cost_bdt,0,1800,0.0
