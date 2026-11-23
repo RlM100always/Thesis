@@ -1,3 +1,24 @@
+## RQ2 classification-metric extension — 23 November 2026
+
+- Re-executed the RQ2 pipeline using the supplied snapshot export and order
+  history; the recorded SHA-256 hashes and 72,146-row label reconstruction
+  agreement remained unchanged.
+- Added test-set F1-score, per-model aggregate confusion matrices and a
+  21-point ROC-curve export for the selected CatBoost model. No row-level
+  customer predictions or identifiers are written to the repository.
+- CatBoost TEST results at the training-selected threshold 0.153927:
+  precision 0.5385, recall 0.9598, F1-score 0.6900 and ROC-AUC 0.8313.
+- CatBoost confusion matrix (actual rows; predicted columns; positive class
+  is inactivity): active/active 5,279; active/inactive 7,169;
+  inactive/active 350; inactive/inactive 8,366.
+- The threshold remains selected from calibrated rolling-origin TRAIN
+  predictions. TEST is used only for final evaluation.
+- The existing 500-resample customer-cluster bootstrap intervals were
+  retained because the rerun reproduced the same deterministic TEST metrics.
+- Research contract tests: 7 passed locally, including the new F1 and
+  confusion-count test. The LaTeX report build is triggered by the source
+  updates and is to be checked before publication.
+
 ## Academic language revision — 23 November 2026
 
 - Revised the active report source and included RQ1--RQ4 chapters to use
