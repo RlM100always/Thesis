@@ -129,5 +129,11 @@
     "roc_curve_points_file": "roc_curve_points.csv",
     "positive_class": "inactive_next_90d",
     "threshold_selection": "F2-maximising threshold selected from training-only calibrated rolling-origin predictions"
+  },
+  "classification_diagnostics_recomputation": {
+    "model_rerun": true,
+    "runtime_seconds": 28.32,
+    "test_metrics_reproduced_from_the_same_chronological_split": true,
+    "bootstrap_interval_source": "Retained from the existing 500-resample customer-cluster run because the rerun reproduced the same deterministic test metrics."
   }
 }
