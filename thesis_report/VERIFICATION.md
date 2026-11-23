@@ -22,6 +22,9 @@
   [45221403503](https://github.com/RlM100always/Thesis/actions/runs/45221403503).
   Final PDF: 87 A4 pages, 634,662 bytes; published at
   `output/pdf/main-thesis-report.pdf`.
+- Visual QA: the updated RQ2 classification comparison, ROC curve and
+  confusion-matrix figures were rendered and inspected on report pages 61--63.
+  Labels, axes, counts and captions are visible without clipping or overlap.
 
 ## Academic language revision — 23 November 2026
 
