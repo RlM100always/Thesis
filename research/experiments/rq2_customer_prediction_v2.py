@@ -326,7 +326,8 @@ def stage_score(data_dir: Path, output_dir: Path, snapshot_name: str, bootstrap_
             bins.append({"bin": index + 1, "n": int(mask.sum()),
                          "mean_predicted": float(probability[mask].mean()),
                          "observed_rate": float(y[mask].mean())})
-    bootstrap = cluster_bootstrap(y, probability, test.customer_id.astype(str), bootstrap_replicates)
+    bootstrap_raw = cluster_bootstrap(y, probability, test.customer_id.astype(str), bootstrap_replicates)
+    bootstrap = {key.lower(): value for key, value in bootstrap_raw.items()}
     importance = pd.DataFrame({
         "feature": state["features"], "importance": model.get_feature_importance()
     }).sort_values("importance", ascending=False)
