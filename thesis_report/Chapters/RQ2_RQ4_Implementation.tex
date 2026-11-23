@@ -39,9 +39,9 @@ quantity. Uncertainty is estimated by resampling shops, preserving the
 within-shop case structure.
 
 The source does not document the scenario-cost formula and does not provide
-the participating owner's actual current replenishment policy. Accordingly,
+the participating business's observed replenishment policy. Accordingly,
 the experiment is a paired scenario audit rather than a historical replay
-of the owner's policy. It cannot establish realised savings, causal policy
+of the participating business's policy. It cannot establish realised savings, causal policy
 effects or the full RQ3 claim.
 
 \section{RQ4 Decision Rule and Explanation Pipeline}
@@ -62,7 +62,7 @@ position, reorder point, target, pack arithmetic, feasible quantity, cost,
 budget and supplier lead time. A numeric-coverage audit checks generated
 English and Bangla explanations without exporting case-level text. The
 constant human-rating field is not treated as participant evidence; the
-counterbalanced owner study remains planned rather than completed.
+counterbalanced study involving SME owners and managers remains planned and has not yet been conducted.
 
 \begin{figure}[H]
 \centering
@@ -78,7 +78,7 @@ flow/.style={-{Latex[length=2mm]},thick,draw=gray!75}]
 \node[module] (rq2) at (3.7,-3.25) {RQ2: 90-day inactivity prediction\\recency, logistic regression, LightGBM and CatBoost};
 \node[module] (rq3) at (-3.7,-5.45) {RQ3: paired replenishment scenarios\\cost, stock and lost-unit trade-offs};
 \node[module] (rq4) at (3.7,-5.45) {RQ4: deterministic reorder rules\\bilingual evidence-based explanations};
-\node[result] (out) at (0,-7.45) {Aggregate evidence, uncertainty and explicit promotion gates\\Human review remains responsible for business actions};
+\node[result] (out) at (0,-7.45) {Aggregate evidence, uncertainty and predefined evaluation and deployment criteria\\Human review remains responsible for business actions};
 \draw[flow] (src)--(audit);
 \draw[flow] (audit)--(rq1); \draw[flow] (audit)--(rq2);
 \draw[flow] (audit)--(rq3); \draw[flow] (audit)--(rq4);
