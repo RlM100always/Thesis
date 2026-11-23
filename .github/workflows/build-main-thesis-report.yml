@@ -48,6 +48,14 @@ jobs:
           echo '--- LaTeX warnings ---'
           grep -n 'LaTeX Warning' main.log || true
 
+      - name: Upload compiled PDF artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: main-thesis-report-pdf
+          path: thesis_report/main.pdf
+          if-no-files-found: error
+          retention-days: 90
+
       - name: Publish the compiled main report PDF
         run: |
           git fetch origin main
