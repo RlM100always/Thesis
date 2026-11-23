@@ -1,0 +1,10 @@
+{
+  "cases":2500,"shops":32,"skus":477,"cutoff_dates":["2025-07-31"],
+  "synthetic_oracle_demand_units":8330.0,"baseline_lost_units":45.0,"trend_lost_units":100.0,
+  "baseline_lost_share_of_oracle_pct":0.5402160864345739,"trend_lost_share_of_oracle_pct":1.2004801920768307,
+  "case_counts":{"cost_lower":129,"cost_equal":2370,"cost_higher":1,"lost_units_lower":0,"lost_units_equal":2477,"lost_units_higher":23},
+  "baseline_order_pack_multiple_rate":1.0,"trend_order_pack_multiple_rate":1.0,
+  "cost_gap_identity_max_abs_error":1.4210854715202004e-13,
+  "scenario_cost_formula_documented_in_source":false,"owner_current_policy_available":false,
+  "interpretation":"Scenario trade-off only; synthetic oracle demand and supplied scenario costs are not observed business outcomes."
+}
