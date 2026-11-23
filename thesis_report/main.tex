@@ -524,8 +524,10 @@ claim of effectiveness across all SME sectors. This report is current to
 This thesis develops \system{}, an AI-powered business analytics and
 decision-support framework for performance evaluation, demand prediction,
 customer insight and feasible recommendations in Bangladeshi SMEs. The
-supplied dataset manifest identifies the business package as real SME sales
-and real people. The RQ1 daily panel contains 561,152 observations across
+According to the supplied dataset manifest, the source package contains
+SME sales transactions and individual-level customer records. This provenance
+statement is reported as supplied and has not been independently verified
+through a field audit. The RQ1 daily panel contains 561,152 observations across
 32 shops, 16 categories and 512 shop--category series from 2023 to 2025,
 with 1,580,361 observed units and 37.60\% explicit zero-sales observations.
 The forecasting target is recorded sales, not unobserved latent demand.
@@ -541,18 +543,21 @@ the split, and no causal retention-campaign effect is estimated.
 
 For RQ3, 2,500 paired replenishment scenarios show a trade-off: the trend
 policy has 0.87\% lower supplied scenario cost but 122.2\% more lost units.
-Future demand is synthetic oracle demand, the scenario-cost formula is
-undocumented, and the owner's observed policy is unavailable; the result
-is not evidence of realised savings. For RQ4, the reorder rule's suggested
+The future-demand values are synthetic oracle data, the scenario-cost
+formula is undocumented, and the participating business's observed
+replenishment policy was not supplied; these results do not establish
+realised savings. For RQ4, the reorder rule's suggested
 quantity, action and constraint reason match all 1,800 prepared cases.
 Generated Bangla and English explanations achieve complete coverage of
 branch-required numeric evidence, but the constant human-rating field is
-not participant feedback and the owner usability study remains pending.
+not participant feedback, and a usability study involving SME owners
+and managers has not yet been conducted.
 
-The results therefore provide task-specific development, temporal,
-scenario-audit and software-consistency evidence. They do not establish
-universal SME performance, SKU-level latent demand, realised inventory
-benefit or improved owner usability.
+Taken together, the results provide development evidence for RQ1,
+temporal prediction evidence for RQ2, a scenario-level policy comparison
+for RQ3, and a software-consistency audit for RQ4. They do not establish
+generalisable performance across SMEs, SKU-level latent demand, realised
+inventory savings, or improved usability among SME owners and managers.
 
 \clearpage
 
@@ -603,22 +608,23 @@ decisions \cite{chen2012business,fildes2022retail,makridakis2022m5}.
 The intended setting is Bangladeshi SMEs in retail, wholesale, distribution
 and related sectors. A shared operational core covers sales, purchases,
 expenses, payments, customers and performance indicators; inventory, batch,
-expiry and capacity modules apply where relevant. A common framework does not
-imply that one model suits every business.
+expiry and capacity modules apply where relevant. A shared framework does not imply that a single model is
+appropriate for every business.
 
 Bangladesh studies identify management support, perceived benefit, cost,
 complexity and organisational readiness as important influences on SME
 technology adoption \cite{hoque2016ict,shahadat2023digital}. These findings
-motivate low-friction data entry, local payment compatibility and owner-readable
-evidence. Results remain bounded to the businesses and periods represented
+motivate low-burden data-entry procedures, compatibility with local payment
+systems, and the presentation of evidence in a form interpretable by business
+owners. Results remain bounded to the businesses and periods represented
 in the supplied data.
 
 \section{Decision Environment and Stakeholder Requirements}
-The owner or manager makes the principal decisions, while operational,
+The business owner or manager makes the principal decisions, while operational,
 finance and supply staff create or validate supporting records. The system
 must preserve traceability from each result to its source events,
 transformation rules and historical cutoff. It must distinguish incomplete
-evidence from a valid zero and allow owners to inspect, modify or reject
+evidence from a valid zero and allow business owners to inspect, modify or reject
 recommendations.
 
 \begin{table}[H]
@@ -630,7 +636,7 @@ recommendations.
 \hline
 \textbf{Stakeholder} & \textbf{Responsibility} & \textbf{System requirement} \\
 \hline
-Owner or manager & Reorder, allocate cash and approve customer actions & Feasible options, uncertainty, supporting evidence and owner control \\
+Business owner or manager & Reorder, allocate cash and approve customer actions & Feasible options, uncertainty, supporting evidence and business-owner decision authority \\
 \hline
 Operational users & Maintain product, sales and stock records & Stable identifiers, validation and correction history \\
 \hline
@@ -674,18 +680,22 @@ constraints make an action infeasible; and absent follow-up prevents a
 credible impact claim.
 
 The thesis distinguishes descriptive KPIs, predictive estimates,
-prescriptive recommendations and realized business impact. Recorded sales
+prescriptive recommendations and realised business impact. Recorded sales
 may be censored demand when stock is unavailable. Future inactivity means
 no observed purchase within a defined window, not permanent customer loss.
 Model explanations describe model behaviour, not causal effects
 \cite{lundberg2017shap,miller2019explanation}. Claims are limited to the
-businesses, periods and tasks actually evaluated.
+businesses, periods and tasks evaluated empirically in this study.
 
 \section{Research Aim and Objectives}
 
 \subsection{General Objective}
 
-The overall goal is to create and test an AI-based business solution. The analytics framework is designed as a solution that allows Bangladeshi SME businesses to track their business performance, extract reliable and explainable insights, and prioritise feasible strategies while maintaining owner control.
+The study aims to design and evaluate an AI-based business analytics
+framework for SMEs in Bangladesh. The framework is intended to support
+business-performance monitoring, the generation of interpretable analytical
+insights, and the prioritisation of feasible operational strategies, while
+preserving decision authority for business owners and managers.
 
 
 \subsection{Specific Objectives}
@@ -720,8 +730,8 @@ Its three functions follow the approved project title:
 \emph{performance evaluation} reconciles sales, stock and financial indicators;
 \emph{insight extraction} identifies demand patterns, customer inactivity and
 operational anomalies; and \emph{strategy optimisation} ranks feasible
-purchasing or customer actions under business constraints. The owner retains
-final authority, and outcomes are recorded for audit and monitoring.
+purchasing or customer actions under business constraints. The business owner retains
+final decision authority, and outcomes are recorded for audit and monitoring.
 
 \section{Research Questions}
 
@@ -735,7 +745,7 @@ The thesis is based on four research questions:
 
 \item[RQ3.] Under the same demand and operating constraints, can a forecast-driven reorder policy reduce stock-outs and holding costs compared with the current policy of the participating business?
 
-\item[RQ4.] Do short Bangla action descriptions enhance owner task-friendliness, confidence, and perceived usability without causing information overload or increasing decision time?
+\item[RQ4.] Do concise Bangla explanations of stock and replenishment recommendations improve SME owners' task accuracy, confidence and perceived usability compared with a numeric recommendation card alone, without causing an unacceptable increase in decision time?
 
 \end{description}
 
@@ -747,13 +757,28 @@ experiment is at shop--category--day level and predicts observed sales; it
 does not establish SKU-level latent demand. Customer-risk analysis requires
 stable pseudonymous identifiers and complete follow-up. Inventory-policy
 claims require reconciled stock, cost and supplier constraints. Cross-sector
-generalisation and realized business impact require separate evaluation.
+generalisation and realised business impact require separate evaluation.
 
 \section{Expected Contributions and Significance}
 
-The evaluated integration of established research methods, constrained within the context and relevance of small SME businesses, is expected to be a research contribution. Specifically, the work is expected to include (i) a traceable business operational-to-analytical data design; (ii) reusable historical-snapshot protocols designed to avoid common forms of data leakage; (iii) a Bangladesh-aware comparison of forecasting and customer-inactivity approaches; and (iv) a clear link between prediction and constrained, actionable recommendations.
+The anticipated contribution is the integration and empirical evaluation of
+established analytical methods within a common decision-support framework for
+SMEs in Bangladesh. Specifically, the study develops (i) a traceable data
+architecture linking operational records to analytical outputs; (ii)
+reproducible historical-snapshot procedures that reduce temporal data leakage;
+(iii) an empirical comparison of forecasting and customer-inactivity methods
+using Bangladeshi SME data; and (iv) a procedure for translating predictive
+outputs into recommendations subject to operational constraints.
 
-The work also provides evidence of the ability of owners to interpret and apply the information presented to them. When making a recommendation, the system presents supporting evidence to help the owner understand the ``how and why'' of the recommendation, while using familiar rules and maintaining the owner's control over the action. It is not intended to exclude the owner from the decision or to label a numerical output as profitable without considering the business context. Before measuring the impact on the business, the system must first establish that its outputs are accurate, interpretable, and actionable.
+The framework is designed to present the evidence and decision logic
+underlying each recommendation, while retaining the business owner's authority
+to accept, modify or reject the proposed action. The planned usability study
+will assess whether SME owners and managers can interpret and apply these
+recommendations appropriately. The framework is intended to support, rather
+than replace, business-owner judgement; numerical estimates are not treated as
+evidence of profitability without reference to relevant operational
+constraints. Any assessment of business impact therefore requires prior
+evidence of predictive validity, interpretability and operational feasibility.
 
 
 \section{Anticipated Challenges}
@@ -777,18 +802,27 @@ Chapter~\ref{chapter_backStudy} builds up the technical and contextual backgroun
 
 \subsection{Business Intelligence and the Decision Continuum}
 
-Business intelligence (BI) is a blend of data, infrastructure, analytical techniques, best practices, experience, and organisational practice used to enhance decision-making. Chen, Chiang, and Storey trace its evolution from enterprise reporting to web, mobile, and sensor-rich analytics \cite{chen2012business}. This thesis follows a three-step approach: \emph{descriptive analytics} determines what happened and where; \emph{predictive analytics} predicts what is likely to happen next; and \emph{prescriptive analytics} compares feasible responses.
+Business intelligence (BI) integrates data, information infrastructure,
+analytical methods and organisational practices to support decision-making. Chen, Chiang, and Storey trace its evolution from enterprise reporting to web, mobile, and sensor-rich analytics \cite{chen2012business}. This thesis follows a three-step approach: \emph{descriptive analytics} determines what happened and where; \emph{predictive analytics} predicts what is likely to happen next; and \emph{prescriptive analytics} compares feasible responses.
 
-The stages are interconnected. An action recommendation is only as believable as the prediction that supports it, and a prediction is only as believable as the operational data from which it was obtained. There are also different integrity requirements for operational and analytical workloads. While a sale requires consistent updates to stock and payment records, an analytical model requires a historical feature view containing values that would not change once the evaluation point has been reached.
+These analytical stages are interdependent. The validity of an action
+recommendation depends on the predictive estimate supporting it, while
+predictive validity depends on the quality, completeness and temporal
+availability of the underlying operational data. There are also different integrity requirements for operational and analytical workloads. While a sale requires consistent updates to stock and payment records, an analytical model requires a historical feature view containing values that would not change once the evaluation point has been reached.
 
 The proposed framework therefore separates the transaction record from versioned analytical snapshots. It maintains the connection between them through source identifiers, timestamps, and transformation metadata.
 
 
 \subsection{SME Digitalization in Bangladesh}
 
-The decision to adopt technology is not only a matter of the accuracy of technology models. A mixed-method study indicates that the important factors determining ICT adoption among SMEs in rural Bangladesh are awareness of the benefits, government support, top-management support, and financial support \cite{hoque2016ict}. A later survey of 535 SME managers combines the technology--organization--environment model with diffusion-of-innovation concepts. The authors \cite{shahadat2023digital} recognize that factors such as relative advantage, complexity, perceived cost, management support, competitive pressure, and government support are important considerations. These studies suggest that organizational readiness and costs, as well as technological fit and workflow functionality, warrant attention when considering technology adoption. However, the two studies do not evaluate a retail prediction system.
+Technology adoption among SMEs depends on factors beyond the predictive
+accuracy of analytical models. A mixed-method study identifies awareness of
+potential benefits, government support, top-management support and financial
+support as important determinants of ICT adoption among SMEs in rural Bangladesh \cite{hoque2016ict}. A later survey of 535 SME managers combines the technology--organization--environment model with diffusion-of-innovation concepts. The authors \cite{shahadat2023digital} recognize that factors such as relative advantage, complexity, perceived cost, management support, competitive pressure, and government support are important considerations. These studies suggest that organizational readiness and costs, as well as technological fit and workflow functionality, warrant attention when considering technology adoption. However, the two studies do not evaluate a retail prediction system.
 
-This operating context also includes mobile financial services. Through in-depth interviews, accessibility, spatial and temporal mobility, and access to information were found to be important issues in the daily use of MFS in Bangladesh. Self-control and the affordances related to self-control are also important considerations \cite{hazra2021mfs}. Therefore, the proposed data model includes the payment mode in the settlement status field, along with other common business fields. The study should not be construed as providing evidence of better business performance for a named provider or of better performance of one local provider compared with another.
+This operating context also includes mobile financial services. Through in-depth interviews, accessibility, spatial and temporal mobility, and access to information were found to be important issues in the daily use of MFS in Bangladesh. Self-control and the affordances related to self-control are also important considerations \cite{hazra2021mfs}. Therefore, the proposed data model includes the payment mode in the settlement status field, along with other common business fields. These findings inform the inclusion of payment-related fields in the
+data model; they do not establish comparative business-performance effects
+for individual mobile financial service providers.
 
 
 
@@ -803,14 +837,15 @@ staff availability and delivery capacity. Fields that do not apply are marked
 not applicable rather than populated with invented values.
 
 The artifact supports business performance evaluation, insight extraction
-and feasible strategy recommendations. Owners retain authority over actions.
-Sector-specific requirements and owner constraints are assessed before an
+and feasible strategy recommendations. Business owners retain decision authority over actions.
+Sector-specific requirements and business-specific operational constraints are assessed before an
 analytical task is enabled; unsupported tasks return an explicit evidence gap.
 
 
 \subsection{Performance Evaluation and Data Foundations}
 
-Well-defined measures are the starting point for performance evaluation. Revenue, gross margin, average order value, stock turnover, return rate, and customer repeat rate each need to include a defined time window, an aggregation method, and appropriate treatment of events such as rescheduling, refunds, and lost fees. If any of these elements are not incorporated into a dashboard value, the resulting measure may be misleading or ignored. Definitions may also differ from the accounting records or may refer to different time periods. The canonical layer therefore maintains invoice lines and stock movements while creating analytical measures through documented views.
+Well-defined measures are the starting point for performance evaluation. Revenue, gross margin, average order value, stock turnover, return rate, and customer repeat rate each need to include a defined time window, an aggregation method, and appropriate treatment of events such as rescheduling, refunds, and lost fees. If any of these elements are omitted from a dashboard measure, the
+resulting value may be misleading or unsuitable for decision-making. Definitions may also differ from the accounting records or may refer to different time periods. The canonical layer therefore maintains invoice lines and stock movements while creating analytical measures through documented views.
 
 Data provenance concerns where a record came from, when it was received, and how it was transformed. Primary business data should be accompanied by provenance information, together with appropriate customer anonymisation and organisational anonymisation. For public data, the context and reasonable implications of the applicable licence should also be documented.
 
@@ -821,7 +856,7 @@ time, recording time, correction time and decision cutoff are not
 interchangeable. Historical features must use only information available by
 the cutoff; later corrections or outcomes must not leak into earlier
 snapshots \cite{kaufman2012leakage}. Missing records are not automatically
-zero, and unknown stock exposure remains unknown.
+zero, and stock availability cannot be inferred when exposure records are incomplete.
 
 A reproducible manifest records source, owner, collection period, schema,
 checksum, row counts, exclusions and transformation rules. Reconciliation
@@ -831,7 +866,10 @@ consistency; source documentation establishes declared origin.
 
 \subsection{Customer Analytics: RFM, CLV and Segmentation}
 
-A simple summary of \emph{recency}, \emph{frequency}, and \emph{monetary value} is provided by RFM. It summarises a customer's purchase or transaction history using features that are easy to calculate and maintain an unambiguous behavioural interpretation. Fader, Hardie, and Lee link RFM with Customer Lifetime Value (CLV) through the Pareto/NBD and gamma--gamma components, demonstrating how the value of a particular customer history can be estimated \cite{fader2005rfm}. CLV can be used as an outcome or planning measure, but it is not necessarily suitable as a direct prediction target or operational goal.
+RFM is a framework for summarising customer transaction history through
+three behavioural dimensions: \emph{recency}, \emph{frequency} and
+\emph{monetary value}. These features can be derived from transaction records
+and retain interpretable behavioural meanings. Fader, Hardie, and Lee link RFM with Customer Lifetime Value (CLV) through the Pareto/NBD and gamma--gamma components, demonstrating how the value of a particular customer history can be estimated \cite{fader2005rfm}. CLV can be used as an outcome or planning measure, but it is not necessarily suitable as a direct prediction target or operational goal.
 
 A field that defines a segment should not be admitted as an independent predictor of that same segment, as this would introduce information leakage. The question for unsupervised segmentation is whether coherent behavioural groups can be identified without an existing label. K-Means aims to:
 
@@ -842,7 +880,7 @@ A field that defines a segment should not be admitted as an independent predicto
   \label{eq:kmeans}
 \end{equation}
 
-The procedure returns clusters even when the data form a continuum. Therefore, both the number and the interpretation of the clusters need to be validated. The silhouette coefficient measures the similarity of observations within a cluster and their separation from the closest other cluster \cite{rousseeuw1987silhouettes}. The stability of the clustering parameters across resampling and the business usefulness of the resulting clusters should be treated as separate tests. An attractive label such as ``loyal'' does not, by itself, imply statistical stability or actionability of a cluster.
+The procedure returns clusters even when the data form a continuum. Therefore, both the number and the interpretation of the clusters need to be validated. The silhouette coefficient measures the similarity of observations within a cluster and their separation from the closest other cluster \cite{rousseeuw1987silhouettes}. The stability of the clustering parameters across resampling and the business usefulness of the resulting clusters should be treated as separate tests. A descriptive label such as ``loyal'' does not, by itself, establish the statistical stability or operational relevance of a cluster.
 
 
 \subsection{Retail Demand Forecasting}
@@ -851,9 +889,9 @@ A demand forecast estimates the number of units needed for a specific product, l
 
 Intermittent SKU demand contains numerous zero-demand periods between non-zero observations. Croston's method smooths the non-zero demand size and the interval between demands separately. Syntetos and Boylan examine the accuracy and bias of intermittent-demand estimates \cite{syntetos2005intermittent}. This work supports the use of an intermittent-demand baseline rather than requiring a uniform and constant baseline. For dense time series, an appropriate dense-series model can be used at the SKU level. Forecasts also need to be reconciled across different levels of aggregation, including product, category, branch, and overall business totals. Optimal-combination reconciliation provides a principled means of generating coherent hierarchical forecasts \cite{hyndman2011hierarchical}.
 
-When modelling, the model should be only as complex as the available evidence supports. ARIMA-family models represent serial dependence, including dependence after appropriate transformations; tree ensembles can learn nonlinear effects from lagged, calendar, and price variables; and sequence models can use ordered historical observations. Random Forest and XGBoost provide suitable tabular alternatives \cite{breiman2001rf,chen2016xgboost}. The M5 retail competition illustrates the importance of large-scale, hierarchical, and uncertainty-aware comparison \cite{makridakis2022m5}. A seasonal-naive forecast is therefore a necessary benchmark rather than a ceremonial baseline.
+Model complexity should be proportionate to the quantity and quality of the available evidence. ARIMA-family models represent serial dependence, including dependence after appropriate transformations; tree ensembles can learn nonlinear effects from lagged, calendar, and price variables; and sequence models can use ordered historical observations. Random Forest and XGBoost provide suitable tabular alternatives \cite{breiman2001rf,chen2016xgboost}. The M5 retail competition illustrates the importance of large-scale, hierarchical, and uncertainty-aware comparison \cite{makridakis2022m5}. A seasonal-naive forecast should therefore be included as a substantive benchmark in model evaluation.
 
-Although inventory usefulness is related to forecast accuracy, the two are not the same. Hyndman and Koehler discuss the limitations of common percentage-error measures and suggest alternative approaches, including MASE as a scale-free measure for comparison \cite{hyndman2006accuracy}. A study by Syntetos and colleagues associates the choice of forecasting methods with stock-control requirements, whereas forecasting selection based solely on statistical accuracy may not reflect the needs of inventory management \cite{syntetos2010stock}. The methods are therefore evaluated using point-forecast error, uncertainty, and simulated stock-out and holding costs rather than selecting a technique based on a single easily computed metric.
+Forecast accuracy and inventory decision utility are related but distinct outcomes. Hyndman and Koehler discuss the limitations of common percentage-error measures and suggest alternative approaches, including MASE as a scale-free measure for comparison \cite{hyndman2006accuracy}. A study by Syntetos and colleagues associates the choice of forecasting methods with stock-control requirements, whereas forecasting selection based solely on statistical accuracy may not reflect the needs of inventory management \cite{syntetos2010stock}. The methods are therefore evaluated using point-forecast error, uncertainty, and simulated stock-out and holding costs rather than selecting a method solely on the basis of a single metric that is straightforward to compute.
 
 
 \subsection{Forecastability, Demand Regimes and Decision Loss}
@@ -1947,7 +1985,7 @@ common forecast origins or comparable analytical instances. A held-out-business
 transfer test will be used where sufficient participating businesses are
 available.
 
-Uncertainty will be summarized using paired block-bootstrap intervals across
+Uncertainty will be summarised using paired block-bootstrap intervals across
 time or business units, depending on the relevant dependence structure.
 Differences between models will be reported using effect estimates and
 uncertainty intervals rather than significance labels alone.
@@ -1999,7 +2037,7 @@ Missing outcomes will be explicitly identified. An incomplete future horizon
 cannot automatically be treated as evidence of customer inactivity. An unknown
 inventory balance cannot be treated as zero stock. Similarly, a recommendation
 without a later observable outcome may support a usability analysis but cannot
-support a claim of realized business impact.
+support a claim of realised business impact.
 
 Where assumptions can reasonably be bounded, sensitivity analysis will be used.
 Otherwise, the corresponding claim will be classified as not evaluable with the
@@ -2011,7 +2049,7 @@ Replenishment policies are compared on identical demand paths and opening
 inventory using stock-out units, average inventory, holding cost, shortage
 cost, expiry and total cost. Retention value is estimated only when
 incremental response, contact cost and consent evidence exist; otherwise
-the task remains prioritisation, not realized-profit estimation.
+the task remains prioritisation, not realised-profit estimation.
 
 Owner evaluation measures decision correctness, completion time, confidence,
 error count and usability. Generated test records may support software-load
@@ -2099,7 +2137,7 @@ lack of convergence, numerical instability, training failure, resource
 exhaustion, and constraint infeasibility will be distinguished from ordinary
 evaluation outcomes.
 
-The number of attempted cases will be reported. Results will not be summarized
+The number of attempted cases will be reported. Results will not be summarised
 only over successful model runs while silently excluding failures.
 
 A method that fails on sparse or short series will therefore be evaluated
