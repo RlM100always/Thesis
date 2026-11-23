@@ -536,12 +536,14 @@ For RQ1, a leakage-controlled context-aware LightGBM Tweedie model reduced
 seven-day development WAPE from 33.47\% to 32.66\% across nine monthly
 origins, while under-forecast bias increased from -2.02\% to -6.05\%.
 For RQ2, a 90-day no-repeat-purchase target was reconstructed with complete
-agreement on 72,146 customer snapshots. CatBoost achieved TEST PR-AUC
-0.7470, ROC-AUC 0.8313 and Brier score 0.1647. At the threshold selected
-from training-only predictions, precision was 0.5385, recall was 0.9598
-and F1-score was 0.6900. This is a temporal test within the supplied
-customer population; repeated customers occur across the split, and no
-causal retention-campaign effect is estimated.
+agreement on 72,146 customer snapshots. The revised CatBoost operating
+threshold gives TEST precision 0.6064, recall 0.8866 and F1-score 0.7202;
+false positives fall by 30.0\% compared with the earlier F2-maximising
+threshold. PR-AUC is 0.7461 and ROC-AUC is 0.8314, so ranking performance
+remains similar. The TEST period was already examined in v1; this is a
+repeated-holdout diagnostic, not independent confirmation. The evaluation
+is temporal for the supplied customer population, and no causal
+retention-campaign effect is estimated.
 
 For RQ3, 2,500 paired replenishment scenarios show a trade-off: the trend
 policy has 0.87\% lower supplied scenario cost but 122.2\% more lost units.
