@@ -72,29 +72,31 @@ campaign.
 
 \begin{figure}[H]
 \centering
-\begin{tikzpicture}[x=0.23cm,y=0.72cm,font=\scriptsize]
-  \draw[->,thick] (0,0) -- (36,0) node[right] {Relative feature importance};
-  \foreach \x in {0,10,20,30} {
-    \draw[gray!40] (\x,0) -- (\x,5.4);
-    \node[below] at (\x,0) {\x};
-  }
-  \node[anchor=east] at (-0.8,4.8) {Lifetime orders};
-  \fill[dugreen] (0,4.55) rectangle (30.17,4.95);
-  \node[anchor=west] at (30.7,4.75) {30.17};
-  \node[anchor=east] at (-0.8,3.8) {Orders per tenure};
-  \fill[dugreen] (0,3.55) rectangle (19.45,3.95);
-  \node[anchor=west] at (20.0,3.75) {19.45};
-  \node[anchor=east] at (-0.8,2.8) {Orders in 180 days};
-  \fill[dugreen] (0,2.55) rectangle (12.96,2.95);
-  \node[anchor=west] at (13.5,2.75) {12.96};
-  \node[anchor=east] at (-0.8,1.8) {Snapshot year};
-  \fill[dugold] (0,1.55) rectangle (4.01,1.95);
-  \node[anchor=west] at (4.6,1.75) {4.01};
-  \node[anchor=east] at (-0.8,0.8) {Recency-frequency ratio};
-  \fill[dugold] (0,0.55) rectangle (3.77,0.95);
-  \node[anchor=west] at (4.3,0.75) {3.77};
+\begin{tikzpicture}[x=0.23cm,y=0.57cm,font=\scriptsize]
+  \draw[->,thick] (0,0)--(36,0) node[right] {Relative feature importance};
+  \foreach \x in {0,5,10,15,20,25,30,35} {\draw[gray!35] (\x,0)--(\x,10.4);\node[below] at (\x,0) {\x};}
+  \node[anchor=east] at (-5,9.8) {Lifetime orders};
+  \fill[dugreen] (0,9.55) rectangle (30.17,9.95); \node[anchor=west] at (30.7,9.75) {30.17};
+  \node[anchor=east] at (-5,8.8) {Orders per tenure};
+  \fill[dugreen] (0,8.55) rectangle (19.45,8.95); \node[anchor=west] at (20,8.75) {19.45};
+  \node[anchor=east] at (-5,7.8) {Orders in 180 days};
+  \fill[dugreen] (0,7.55) rectangle (12.96,7.95); \node[anchor=west] at (13.5,7.75) {12.96};
+  \node[anchor=east] at (-5,6.8) {Snapshot year};
+  \fill[dugold] (0,6.55) rectangle (4.01,6.95); \node[anchor=west] at (4.6,6.75) {4.01};
+  \node[anchor=east] at (-5,5.8) {Recency-frequency ratio};
+  \fill[dugold] (0,5.55) rectangle (3.77,5.95); \node[anchor=west] at (4.3,5.75) {3.77};
+  \node[anchor=east] at (-5,4.8) {Orders in 90 days};
+  \fill[softblue] (0,4.55) rectangle (3.05,4.95); \node[anchor=west] at (3.6,4.75) {3.05};
+  \node[anchor=east] at (-5,3.8) {Orders in days 90--180};
+  \fill[softblue] (0,3.55) rectangle (2.91,3.95); \node[anchor=west] at (3.5,3.75) {2.91};
+  \node[anchor=east] at (-5,2.8) {Recency days};
+  \fill[softblue] (0,2.55) rectangle (2.53,2.95); \node[anchor=west] at (3.1,2.75) {2.53};
+  \node[anchor=east] at (-5,1.8) {Orders in days 30--90};
+  \fill[softblue] (0,1.55) rectangle (2.17,1.95); \node[anchor=west] at (2.8,1.75) {2.17};
+  \node[anchor=east] at (-5,0.8) {Snapshot month};
+  \fill[softblue] (0,0.55) rectangle (2.04,0.95); \node[anchor=west] at (2.7,0.75) {2.04};
 \end{tikzpicture}
-\caption{Five largest CatBoost feature-importance values in the RQ2 final model. These values describe the fitted model's relative reliance on predictors; they do not establish causal effects.}
+\caption{Ten largest CatBoost feature-importance values in the RQ2 final model. Importance is a model-specific ranking, not a causal effect or direction-of-effect estimate.}
 \label{fig:rq2_feature_importance}
 \end{figure}
 
@@ -206,34 +208,27 @@ Unit purchase cost & 0 / 1,800 & 0.00\% \\
 
 \begin{figure}[H]
 \centering
-\begin{tikzpicture}[x=1.35cm,y=0.035cm,font=\scriptsize]
-  \draw[->,thick] (0,0) -- (7.8,0);
-  \draw[->,thick] (0,0) -- (0,108) node[above] {Exact numeric coverage (\%)};
-  \foreach \y in {0,25,50,75,100} {
-    \draw[gray!40] (0,\y) -- (7.5,\y);
-    \node[left] at (0,\y) {\y};
-  }
-  % Supplied explanation versus generated explanation; generated coverage is
-  % calculated only for evidence fields required by each decision branch.
-  \foreach \x/\v in {1/100,2/100,3/100,4/100,5/6,6/9.61,7/0.17} {
-    \fill[softblue] (\x-0.22,0) rectangle (\x-0.02,\v);
-  }
-  \foreach \x in {1,...,7} {
-    \fill[dugreen] (\x+0.02,0) rectangle (\x+0.22,100);
-  }
-  \node[align=center] at (1, -8) {On-hand\\stock};
-  \node[align=center] at (2, -8) {Reorder\\point};
-  \node[align=center] at (3, -8) {Pack\\size};
-  \node[align=center] at (4, -8) {Budget};
-  \node[align=center] at (5, -8) {Lead\\time};
-  \node[align=center] at (6, -8) {Pending\\purchase};
-  \node[align=center] at (7, -8) {Order\\quantity};
-  \fill[softblue] (1.4,-20) rectangle (1.65,-16);
-  \node[anchor=west] at (1.72,-18) {Supplied explanation};
-  \fill[dugreen] (4.3,-20) rectangle (4.55,-16);
-  \node[anchor=west] at (4.62,-18) {Generated explanation};
+\begin{tikzpicture}[x=0.10cm,y=0.72cm,font=\scriptsize]
+  \draw[->,thick] (0,0)--(112,0) node[right] {Cases with exact numeric value (\%)};
+  \foreach \x in {0,20,40,60,80,100} {\draw[gray!35] (\x,0)--(\x,8.7);\node[below] at (\x,0) {\x};}
+  \node[anchor=east] at (-2,7.9) {Stock units};
+  \fill[dugreen] (0,7.65) rectangle (100,8.10); \node[anchor=west] at (101,7.88) {100};
+  \node[anchor=east] at (-2,6.9) {Reorder point};
+  \fill[dugreen] (0,6.65) rectangle (100,7.10); \node[anchor=west] at (101,6.88) {100};
+  \node[anchor=east] at (-2,5.9) {Pack multiple};
+  \fill[dugreen] (0,5.65) rectangle (100,6.10); \node[anchor=west] at (101,5.88) {100};
+  \node[anchor=east] at (-2,4.9) {Available budget};
+  \fill[dugreen] (0,4.65) rectangle (100,5.10); \node[anchor=west] at (101,4.88) {100};
+  \node[anchor=east] at (-2,3.9) {Lead time};
+  \fill[dugold] (0,3.65) rectangle (6,4.10); \node[anchor=west] at (8,3.88) {6.00};
+  \node[anchor=east] at (-2,2.9) {Pending purchase};
+  \fill[dugold] (0,2.65) rectangle (9.61,3.10); \node[anchor=west] at (11,2.88) {9.61};
+  \node[anchor=east] at (-2,1.9) {Suggested order quantity};
+  \fill[softorange] (0,1.65) rectangle (0.17,2.10); \node[anchor=west] at (2,1.88) {0.17};
+  \node[anchor=east] at (-2,0.9) {Unit purchase cost};
+  \fill[softorange] (0,0.65) rectangle (0.02,1.10); \node[anchor=west] at (2,0.88) {0.00};
 \end{tikzpicture}
-\caption{Exact numeric evidence coverage in the supplied explanation and the generated bilingual template. Generated coverage is measured only for fields required by the relevant decision branch; it is not a measure of human comprehension or usability.}
+\caption{Exact numeric-field coverage in the supplied RQ4 explanation data across 1,800 prepared cases. Several fields occur in only a small fraction of supplied explanations; this is distinct from generated templates' branch-conditional coverage.}
 \label{fig:rq4_explanation_coverage}
 \end{figure}
 
@@ -247,6 +242,8 @@ for every case, so they contain no variation and cannot be treated as participan
 ratings. The RQ4 owner study remains pending; its counterbalanced design,
 tasks, measures and ethics requirements are specified in
 \texttt{docs/RQ4\_USER\_STUDY\_PROTOCOL.md}.
+
+\input{Chapters/RQ2_RQ4_Additional_Figures}
 
 \section{Cross-RQ Model and Solution Design Decision}
 

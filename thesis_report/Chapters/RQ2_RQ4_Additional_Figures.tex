@@ -1,0 +1,192 @@
+\section*{Supplementary graphical diagnostics for RQ2--RQ4}
+\subsection*{RQ2: Calibration, date stability and uncertainty}
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[x=7cm,y=7cm,font=\scriptsize]
+  \draw[->,thick] (0,0)--(1.04,0) node[right] {Mean predicted probability};
+  \draw[->,thick] (0,0)--(0,1.04) node[above] {Observed event rate};
+  \foreach \v in {0,0.2,0.4,0.6,0.8,1.0} {\draw[gray!30] (\v,0)--(\v,1.0);\draw[gray!30] (0,\v)--(1.0,\v);\node[below] at (\v,0) {\v};\node[left] at (0,\v) {\v};}
+  \draw[gray!65,dashed,thick] (0,0)--(1,1);
+  \draw[dugreen,thick] (0.04056,0.04501)--(0.14757,0.14104)--(0.24956,0.26116)--(0.35145,0.36537)--(0.45032,0.44105)--(0.55015,0.56800)--(0.64941,0.67413)--(0.75228,0.76187)--(0.83929,0.86067);
+  \foreach \x/\y in {0.04056/0.04501,0.14757/0.14104,0.24956/0.26116,0.35145/0.36537,0.45032/0.44105,0.55015/0.56800,0.64941/0.67413,0.75228/0.76187,0.83929/0.86067} {\fill[dugreen] (\x,\y) circle (2.5pt);}
+\end{tikzpicture}
+\caption{Reliability curve for the selected RQ2 CatBoost model on the temporal test set, grouped into nine probability bins. The dashed diagonal represents perfect calibration.}
+\label{fig:rq2_calibration_curve}
+\end{figure}\begin{figure}[H]
+\centering
+\begin{tikzpicture}[x=1.8cm,y=18cm,font=\scriptsize]
+  \draw[->,thick] (0,0)--(3.6,0) node[right] {Test snapshot date};
+  \draw[->,thick] (0,0)--(0,0.28) node[above] {Metric (axis starts at 0.65)};
+  \foreach \y/\lab in {0/0.65,0.05/0.70,0.10/0.75,0.15/0.80,0.20/0.85,0.25/0.90} {\draw[gray!35] (0,\y)--(3.4,\y);\node[left] at (0,\y) {\lab};}
+  \fill[dugreen] (0.55,0) rectangle (0.90,0.07508);
+  \fill[dugold] (0.95,0) rectangle (1.30,0.17982);
+  \fill[dugreen] (2.05,0) rectangle (2.40,0.11490);
+  \fill[dugold] (2.45,0) rectangle (2.80,0.18305);
+  \node[below] at (0.92,-0.012) {31 Mar 2025};
+  \node[below] at (2.42,-0.012) {30 Jun 2025};
+  \node[above] at (0.72,0.075) {0.725};
+  \node[above] at (1.12,0.180) {0.830};
+  \node[above] at (2.22,0.115) {0.765};
+  \node[above] at (2.62,0.183) {0.833};
+  \fill[dugreen] (0.3,-0.06) rectangle (0.45,-0.052);
+  \node[anchor=west] at (0.5,-0.056) {PR-AUC};
+  \fill[dugold] (1.7,-0.06) rectangle (1.85,-0.052);
+  \node[anchor=west] at (1.9,-0.056) {ROC-AUC};
+\end{tikzpicture}
+\caption{Selected CatBoost discrimination metrics at the two supplied temporal test snapshots. The vertical axis is truncated at 0.65 to make the small between-date differences visible.}
+\label{fig:rq2_test_date_performance}
+\end{figure}\begin{figure}[H]
+\centering
+\begin{tikzpicture}[font=\scriptsize]
+  \begin{scope}[shift={(0,0)}]
+    \node[anchor=west] at (0,2.0) {\textbf{PR-AUC}};
+    \draw[->] (0,0.7)--(3.6,0.7);
+    \draw[dugreen,very thick] (0.58,1.15)--(2.55,1.15);
+    \fill[dugreen] (1.57,1.15) circle (2.5pt);
+    \node[below] at (0.58,0.7) {0.736}; \node[below] at (2.55,0.7) {0.758}; \node[above] at (1.57,1.15) {0.747};
+  \end{scope}
+  \begin{scope}[shift={(4.4cm,0)}]
+    \node[anchor=west] at (0,2.0) {\textbf{ROC-AUC}};
+    \draw[->] (0,0.7)--(3.6,0.7);
+    \draw[dugold,very thick] (0.90,1.15)--(2.55,1.15);
+    \fill[dugold] (1.78,1.15) circle (2.5pt);
+    \node[below] at (0.90,0.7) {0.826}; \node[below] at (2.55,0.7) {0.837}; \node[above] at (1.78,1.15) {0.832};
+  \end{scope}
+  \begin{scope}[shift={(8.8cm,0)}]
+    \node[anchor=west] at (0,2.0) {\textbf{Brier score}};
+    \draw[->] (0,0.7)--(3.6,0.7);
+    \draw[softorange,very thick] (0.56,1.15)--(2.18,1.15);
+    \fill[softorange] (1.36,1.15) circle (2.5pt);
+    \node[below] at (0.56,0.7) {0.162}; \node[below] at (2.18,0.7) {0.167}; \node[above] at (1.36,1.15) {0.165};
+  \end{scope}
+\end{tikzpicture}
+\caption{Customer-cluster bootstrap 95\% intervals for RQ2 TEST metrics. Point labels show medians; endpoints show the 2.5th and 97.5th percentiles from 500 customer-level resamples. Each metric has its own scale.}
+\label{fig:rq2_bootstrap_intervals}
+\end{figure}
+\subsection*{RQ3: Paired scenario uncertainty and case outcomes}
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[font=\scriptsize]
+  \begin{scope}[shift={(0,0)}]
+    \node[anchor=west] at (0,2.1) {\textbf{Scenario cost delta (BDT per case)}};
+    \draw[->] (0,0.45)--(4.0,0.45);
+    \foreach \x/\lab in {0/{-10},1.3/{-8},2.6/{-6},3.9/{-4}} {\draw[gray!35] (\x,0.45)--(\x,1.55);\node[below] at (\x,0.45) {\lab};}
+    \draw[dugreen,very thick] (0.69,1.0)--(2.18,1.0); \fill[dugreen] (1.41,1.0) circle (2.5pt); \node[above] at (1.41,1.0) {-7.82};
+  \end{scope}
+  \begin{scope}[shift={(6.5cm,0)}]
+    \node[anchor=west] at (0,2.1) {\textbf{Lost units delta (units per case)}};
+    \draw[->] (0,0.45)--(4.0,0.45);
+    \foreach \x/\lab in {0/0,1/0.01,2/0.02,3/0.03,4/0.04} {\draw[gray!35] (\x,0.45)--(\x,1.55);\node[below] at (\x,0.45) {\lab};}
+    \draw[dugold,very thick] (1.27,1.0)--(3.20,1.0); \fill[dugold] (2.14,1.0) circle (2.5pt); \node[above] at (2.14,1.0) {+0.0214};
+  \end{scope}
+  \begin{scope}[shift={(0,-3.3)}]
+    \node[anchor=west] at (0,2.1) {\textbf{Average stock delta (units per case)}};
+    \draw[->] (0,0.45)--(4.0,0.45);
+    \foreach \x/\lab in {0/{-3.0},1/{-2.5},2/{-2.0},3/{-1.5},4/{-1.0}} {\draw[gray!35] (\x,0.45)--(\x,1.55);\node[below] at (\x,0.45) {\lab};}
+    \draw[dugreen,very thick] (1.10,1.0)--(2.44,1.0); \fill[dugreen] (1.77,1.0) circle (2.5pt); \node[above] at (1.77,1.0) {-2.117};
+  \end{scope}
+  \begin{scope}[shift={(6.5cm,-3.3)}]
+    \node[anchor=west] at (0,2.1) {\textbf{Order quantity delta (units per case)}};
+    \draw[->] (0,0.45)--(4.0,0.45);
+    \foreach \x/\lab in {0/{-3.5},1/{-3.0},2/{-2.5},3/{-2.0},4/{-1.5}} {\draw[gray!35] (\x,0.45)--(\x,1.55);\node[below] at (\x,0.45) {\lab};}
+    \draw[softblue,very thick] (0.73,1.0)--(2.47,1.0); \fill[softblue] (1.60,1.0) circle (2.5pt); \node[above] at (1.60,1.0) {-2.699};
+  \end{scope}
+\end{tikzpicture}
+\caption{Shop-cluster bootstrap medians and 95\% intervals for paired trend-minus-baseline differences per case. The 5,000 resamples use shops as the resampling unit; each metric has its own axis.}
+\label{fig:rq3_cluster_bootstrap_intervals}
+\end{figure}\begin{figure}[H]
+\centering
+\begin{tikzpicture}[x=0.005cm,y=1.0cm,font=\scriptsize]
+  \draw[->,thick] (0,0)--(2650,0) node[right] {Number of paired cases (out of 2,500)};
+  \foreach \x in {0,500,1000,1500,2000,2500} {\draw[gray!35] (\x,0)--(\x,2.8);\node[below] at (\x,0) {\x};}
+  \node[anchor=east] at (-30,2.15) {Scenario cost};
+  \fill[dugreen] (0,1.90) rectangle (129,2.35);
+  \fill[softgray] (129,1.90) rectangle (2499,2.35);
+  \fill[dugold] (2499,1.90) rectangle (2500,2.35);
+  \node[anchor=west] at (20,2.12) {Lower: 129};
+  \node at (1300,2.12) {Equal: 2,370};
+  \node[anchor=east] at (2490,2.55) {Higher: 1};
+  \node[anchor=east] at (-30,1.0) {Lost units};
+  \fill[softgray] (0,0.75) rectangle (2477,1.20);
+  \fill[dugold] (2477,0.75) rectangle (2500,1.20);
+  \node at (1200,0.98) {Equal: 2,477};
+  \node[anchor=east] at (2490,1.42) {Higher: 23};
+  \node[anchor=west] at (0,-0.55) {Lower: 0};
+\end{tikzpicture}
+\caption{Counts of paired cases in which the trend scenario has lower, equal or higher scenario cost and lost units than the baseline. Most cases are unchanged; the aggregate lost-unit increase is concentrated in 23 cases.}
+\label{fig:rq3_case_outcome_counts}
+\end{figure}
+\subsection*{RQ4: Generated explanation coverage and rule agreement}
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[x=0.10cm,y=0.85cm,font=\scriptsize]
+  \draw[->,thick] (0,0)--(112,0) node[right] {Required numeric evidence included (\%)};
+  \foreach \x in {0,20,40,60,80,100} {\draw[gray!35] (\x,0)--(\x,3.8);\node[below] at (\x,0) {\x};}
+  \node[anchor=east] at (-2,3.0) {Sufficient stock};
+  \fill[dugreen] (0,2.78) rectangle (100,3.02); \fill[dugold] (0,3.06) rectangle (100,3.30);
+  \node[anchor=west] at (101,3.04) {EN 100\%, BN 100\%};
+  \node[anchor=east] at (-2,2.0) {Reorder, budget OK};
+  \fill[dugreen] (0,1.78) rectangle (100,2.02); \fill[dugold] (0,2.06) rectangle (100,2.30);
+  \node[anchor=west] at (101,2.04) {EN 100\%, BN 100\%};
+  \node[anchor=east] at (-2,1.0) {Budget insufficient};
+  \fill[dugreen] (0,0.78) rectangle (100,1.02); \fill[dugold] (0,1.06) rectangle (100,1.30);
+  \node[anchor=west] at (101,1.04) {EN 100\%, BN 100\%};
+  \fill[dugreen] (0,0.05) rectangle (3,0.22); \node[anchor=west] at (4,0.13) {English};
+  \fill[dugold] (18,0.05) rectangle (21,0.22); \node[anchor=west] at (22,0.13) {Bangla};
+\end{tikzpicture}
+\caption{Generated explanation coverage by decision branch. Every required numeric field was present in both English and Bangla templates; branch sizes were 1,600 sufficient-stock cases, 199 feasible reorder cases and one budget-insufficient case.}
+\label{fig:rq4_generated_branch_coverage}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[x=0.0065cm,y=0.68cm,font=\scriptsize]
+\draw[->,thick] (0,0)--(1980.0000000000002,0) node[right] {Number of prepared cases}
+\draw[gray!35] (0,0)--(0,5.65);\node[below] at (0,0) {0};
+\draw[gray!35] (500,0)--(500,5.65);\node[below] at (500,0) {500};
+\draw[gray!35] (1000,0)--(1000,5.65);\node[below] at (1000,0) {1000};
+\draw[gray!35] (1500,0)--(1500,5.65);\node[below] at (1500,0) {1500};
+\node[anchor=east] at (-12,5) {NO ACTION};
+\fill[softgray] (0,4.82) rectangle (1601,5.18);
+\node[anchor=west] at (1601.5,5) {1,601};
+\node[anchor=east] at (-12,4) {REORDER};
+\fill[dugreen] (0,3.82) rectangle (199,4.18);
+\node[anchor=west] at (199.5,4) {199};
+\node[anchor=east] at (-12,3) {Sufficient stock reason};
+\fill[softgray] (0,2.82) rectangle (1600,3.18);
+\node[anchor=west] at (1600.5,3) {1,600};
+\node[anchor=east] at (-12,2) {Reorder, budget OK};
+\fill[dugreen] (0,1.82) rectangle (199,2.18);
+\node[anchor=west] at (199.5,2) {199};
+\node[anchor=east] at (-12,1) {Budget insufficient};
+\fill[softorange] (0,0.8200000000000001) rectangle (1,1.18);
+\node[anchor=west] at (1.5,1) {1};
+\end{tikzpicture}
+\caption{Decision and constraint-reason distribution across 1,800 prepared RQ4 cases. One case was budget-insufficient; it is too small to appear at this scale.}
+\label{fig:rq4_action_distribution}
+\end{figure}
+
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[x=0.1cm,y=0.72cm,font=\scriptsize]
+\draw[->,thick] (0,0)--(110.00000000000001,0) node[right] {Exact match rate (\%)}
+\draw[gray!35] (0,0)--(0,3.65);\node[below] at (0,0) {0};
+\draw[gray!35] (20,0)--(20,3.65);\node[below] at (20,0) {20};
+\draw[gray!35] (40,0)--(40,3.65);\node[below] at (40,0) {40};
+\draw[gray!35] (60,0)--(60,3.65);\node[below] at (60,0) {60};
+\draw[gray!35] (80,0)--(80,3.65);\node[below] at (80,0) {80};
+\draw[gray!35] (100,0)--(100,3.65);\node[below] at (100,0) {100};
+\node[anchor=east] at (-3,3) {Suggested quantity};
+\fill[dugreen] (0,2.82) rectangle (100,3.18);
+\node[anchor=west] at (100.5,3) {100\%};
+\node[anchor=east] at (-3,2) {Action};
+\fill[dugreen] (0,1.82) rectangle (100,2.18);
+\node[anchor=west] at (100.5,2) {100\%};
+\node[anchor=east] at (-3,1) {Constraint reason};
+\fill[dugreen] (0,0.8200000000000001) rectangle (100,1.18);
+\node[anchor=west] at (100.5,1) {100\%};
+\end{tikzpicture}
+\caption{Exact agreement between independently recomputed rule outputs and supplied fields across 1,800 prepared cases. This is a deterministic consistency audit, not a measure of forecast accuracy or user acceptance.}
+\label{fig:rq4_rule_exact_match}
+\end{figure}

@@ -1,0 +1,161 @@
+\subsection*{Supplementary graphical diagnostics for RQ1}
+
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[x=0.024cm,y=0.72cm,font=\scriptsize]
+\draw[->,thick] (0,0)--(385.00000000000006,0) node[right] {Number of shop--category series}
+\draw[gray!35] (0,0)--(0,4.65);\node[below] at (0,0) {0};
+\draw[gray!35] (100,0)--(100,4.65);\node[below] at (100,0) {100};
+\draw[gray!35] (200,0)--(200,4.65);\node[below] at (200,0) {200};
+\draw[gray!35] (300,0)--(300,4.65);\node[below] at (300,0) {300};
+\node[anchor=east] at (-8,4) {Lumpy};
+\fill[dugreen] (0,3.82) rectangle (342,4.18);
+\node[anchor=west] at (342.5,4) {342 (66.80\%)};
+\node[anchor=east] at (-8,3) {Erratic};
+\fill[dugold] (0,2.82) rectangle (153,3.18);
+\node[anchor=west] at (153.5,3) {153 (29.88\%)};
+\node[anchor=east] at (-8,2) {Smooth};
+\fill[softblue] (0,1.82) rectangle (13,2.18);
+\node[anchor=west] at (13.5,2) {13 (2.54\%)};
+\node[anchor=east] at (-8,1) {Intermittent};
+\fill[softorange] (0,0.8200000000000001) rectangle (4,1.18);
+\node[anchor=west] at (4.5,1) {4 (0.78\%)};
+\end{tikzpicture}
+\caption{Distribution of the 512 shop--category series across four demand regimes. The intermittent group contains only four independent series.}
+\label{fig:rq1_regime_distribution}
+\end{figure}
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[x=1.12cm,y=0.115cm,font=\scriptsize]
+  \draw[->,thick] (0,0)--(9.4,0) node[right] {Development origin};
+  \draw[->,thick] (0,0)--(0,46) node[above] {Seven-day WAPE (\%)};
+  \foreach \y in {0,10,20,30,40} {\draw[gray!35] (0,\y)--(9.1,\y);\node[left] at (0,\y) {\y};}
+  \foreach \x/\b/\c/\lab in {0/34.34/33.80/{Jan},1/36.06/35.54/{Feb},2/31.07/32.88/{Mar},3/29.23/28.36/{Apr},4/31.90/31.50/{May},5/32.34/33.50/{Jun},6/40.83/32.34/{Jul},7/34.01/33.71/{Aug},8/34.82/34.92/{Sep}} {
+    \fill[dugold] (\x+0.10,0) rectangle (\x+0.39,\b);
+    \fill[dugreen] (\x+0.43,0) rectangle (\x+0.72,\c);
+    \node[rotate=45,anchor=east] at (\x+0.4,-2) {\lab};
+  }
+  \fill[dugold] (1,-12) rectangle (1.3,-9);
+  \node[anchor=west] at (1.4,-10.5) {Historical baseline};
+  \fill[dugreen] (5,-12) rectangle (5.3,-9);
+  \node[anchor=west] at (5.4,-10.5) {Context-aware model};
+\end{tikzpicture}
+\caption{Nine monthly paired seven-day origins for the historical-feature baseline and context-aware LightGBM. The context model wins six origins; the baseline performs better in March, June and September.}
+\label{fig:rq1_context_origin_comparison}
+\end{figure}\begin{figure}[H]
+\centering
+\begin{tikzpicture}[x=1.35cm,y=0.060cm,font=\scriptsize]
+  \draw[->,thick] (0,0)--(5.0,0) node[right] {Cumulative horizon};
+  \draw[->,thick] (0,0)--(0,92) node[above] {WAPE (\%)};
+  \foreach \y in {0,20,40,60,80} {\draw[gray!35] (0,\y)--(4.7,\y);\node[left] at (0,\y) {\y};}
+  \foreach \x/\b/\c/\lab in {1/82.73/79.74/{1 day},2/33.47/32.66/{7 days},3/28.48/24.93/{14 days},4/19.35/18.46/{28 days}} {
+    \fill[dugold] (\x-0.19,0) rectangle (\x-0.02,\b);
+    \fill[dugreen] (\x+0.02,0) rectangle (\x+0.19,\c);
+    \node[below] at (\x,-2) {\lab};
+  }
+  \fill[dugold] (0.5,-10) rectangle (0.8,-7);
+  \node[anchor=west] at (0.9,-8.5) {Historical baseline};
+  \fill[dugreen] (2.7,-10) rectangle (3.0,-7);
+  \node[anchor=west] at (3.1,-8.5) {Context-aware model};
+\end{tikzpicture}
+\caption{Paired context-aware versus historical-feature LightGBM WAPE at four cumulative horizons. The seven-day comparison uses nine origins; the other horizons use three each.}
+\label{fig:rq1_context_horizon}
+\end{figure}\begin{figure}[H]
+\centering
+\begin{tikzpicture}[x=0.072cm,y=0.78cm,font=\scriptsize]
+  \draw[->,thick] (0,0)--(135,0) node[right] {WAPE (\%)};
+  \foreach \x in {0,25,50,75,100,125} {\draw[gray!35] (\x,0)--(\x,4.8);\node[below] at (\x,0) {\x};}
+  \node[anchor=east] at (-2,4.1) {Erratic};
+  \fill[dugreen] (0,3.78) rectangle (28.67,3.96);
+  \fill[dugold] (0,3.98) rectangle (28.50,4.16);
+  \fill[softorange] (0,4.18) rectangle (28.57,4.36);
+  \fill[softblue] (0,4.38) rectangle (32.38,4.56);
+  \node[anchor=east] at (-2,3.0) {Lumpy};
+  \fill[dugreen] (0,2.68) rectangle (42.06,2.86);
+  \fill[dugold] (0,2.88) rectangle (42.85,3.06);
+  \fill[softorange] (0,3.08) rectangle (45.60,3.26);
+  \fill[softblue] (0,3.28) rectangle (47.09,3.46);
+  \node[anchor=east] at (-2,1.9) {Smooth};
+  \fill[dugreen] (0,1.58) rectangle (19.89,1.76);
+  \fill[dugold] (0,1.78) rectangle (22.03,1.96);
+  \fill[softorange] (0,1.98) rectangle (20.60,2.16);
+  \fill[softblue] (0,2.18) rectangle (20.69,2.36);
+  \node[anchor=east] at (-2,0.8) {Intermittent};
+  \fill[dugreen] (0,0.48) rectangle (106.30,0.66);
+  \fill[dugold] (0,0.68) rectangle (121.62,0.86);
+  \fill[softorange] (0,0.88) rectangle (83.18,1.06);
+  \fill[softblue] (0,1.08) rectangle (77.02,1.26);
+  \fill[dugreen] (0,-0.45) rectangle (2,-0.22);
+  \node[anchor=west] at (3,-0.34) {LightGBM};
+  \fill[dugold] (25,-0.45) rectangle (27,-0.22);
+  \node[anchor=west] at (28,-0.34) {CatBoost};
+  \fill[softorange] (55,-0.45) rectangle (57,-0.22);
+  \node[anchor=west] at (58,-0.34) {Hurdle};
+  \fill[softblue] (85,-0.45) rectangle (87,-0.22);
+  \node[anchor=west] at (88,-0.34) {Croston--SBA};
+\end{tikzpicture}
+\caption{Seven-day WAPE by historical demand regime for four forecasting candidates. The intermittent group has only four series and twelve series-origin forecasts, so it does not support automatic model routing.}
+\label{fig:rq1_regime_model_comparison}
+\end{figure}\begin{figure}[H]
+\centering
+\begin{tikzpicture}[x=1.65cm,y=0.13cm,font=\scriptsize]
+  \draw[->,thick] (0,0)--(5.8,0) node[right] {Evaluation origin};
+  \draw[->,thick] (0,0)--(0,42) node[above] {Empirical coverage (\%)};
+  \foreach \y/\lab in {0/60,10/70,20/80,30/90,40/100} {\draw[gray!35] (0,\y)--(5.5,\y);\node[left] at (0,\y) {\lab};}
+  \draw[dugold,dashed,thick] (0,20)--(5.5,20);
+  \draw[softblue,dashed,thick] (0,30)--(5.5,30);
+  \draw[dugreen,thick] (0,15.78)--(1,24.77)--(2,11.29)--(3,22.81)--(4,22.62)--(5,19.30);
+  \draw[softorange,thick] (0,29.06)--(1,32.77)--(2,21.25)--(3,32.58)--(4,31.99)--(5,29.65);
+  \foreach \x/\y in {0/15.78,1/24.77,2/11.29,3/22.81,4/22.62,5/19.30} {\fill[dugreen] (\x,\y) circle (2pt);}
+  \foreach \x/\y in {0/29.06,1/32.77,2/21.25,3/32.58,4/31.99,5/29.65} {\fill[softorange] (\x,\y) circle (2pt);}
+  \foreach \x/\lab in {0/{Apr},1/{May},2/{Jun},3/{Jul},4/{Aug},5/{Sep}} {\node[below] at (\x,-2) {\lab};}
+  \draw[dugreen,thick] (0,-8)--(0.45,-8); \node[anchor=west] at (0.55,-8) {80\% interval};
+  \draw[softorange,thick] (2.8,-8)--(3.25,-8); \node[anchor=west] at (3.35,-8) {90\% interval};
+  \draw[dugold,dashed,thick] (0,-13)--(0.45,-13); \node[anchor=west] at (0.55,-13) {Nominal 80\%};
+  \draw[softblue,dashed,thick] (2.8,-13)--(3.25,-13); \node[anchor=west] at (3.35,-13) {Nominal 90\%};
+\end{tikzpicture}
+\caption{Prequential empirical interval coverage at six seven-day origins. Dashed reference lines show nominal coverage; month-to-month variation remains material.}
+\label{fig:rq1_interval_coverage}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[x=0.27cm,y=0.72cm,font=\scriptsize]
+\draw[->,thick] (0,0)--(38.5,0) node[right] {WAPE (\%)}
+\draw[gray!35] (0,0)--(0,4.65);\node[below] at (0,0) {0};
+\draw[gray!35] (10,0)--(10,4.65);\node[below] at (10,0) {10};
+\draw[gray!35] (20,0)--(20,4.65);\node[below] at (20,0) {20};
+\draw[gray!35] (30,0)--(30,4.65);\node[below] at (30,0) {30};
+\node[anchor=east] at (-1,4) {Shop--category};
+\fill[dugreen] (0,3.82) rectangle (32.66,4.18);
+\node[anchor=west] at (33.16,4) {32.66\%};
+\node[anchor=east] at (-1,3) {Shop total};
+\fill[dugold] (0,2.82) rectangle (14.95,3.18);
+\node[anchor=west] at (15.45,3) {14.95\%};
+\node[anchor=east] at (-1,2) {Category total};
+\fill[softblue] (0,1.82) rectangle (10.98,2.18);
+\node[anchor=west] at (11.48,2) {10.98\%};
+\node[anchor=east] at (-1,1) {Network total};
+\fill[softorange] (0,0.8200000000000001) rectangle (7.85,1.18);
+\node[anchor=west] at (8.35,1) {7.85\%};
+\end{tikzpicture}
+\caption{Seven-day WAPE at four coherent aggregation levels using the same leaf forecasts. Lower aggregate error partly reflects cancellation between series and does not replace shop--category accuracy.}
+\label{fig:rq1_hierarchy_wape}
+\end{figure}
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[x=4.5cm,y=1cm,font=\scriptsize]
+  \draw[->,thick] (-1.35,0)--(0.25,0) node[right] {WAPE difference (percentage points)};
+  \foreach \x/\lab in {-1.25/{-1.25},-1.0/{-1.00},-0.75/{-0.75},-0.5/{-0.50},-0.25/{-0.25},0/{0}} {\draw[gray!35] (\x,0)--(\x,1.6);\node[below] at (\x,0) {\lab};}
+  \draw[dugold,dashed,thick] (0,0)--(0,1.55);
+  \draw[dugreen,very thick] (-1.091,1.0)--(-0.517,1.0);
+  \draw[dugreen,thick] (-1.091,0.84)--(-1.091,1.16);
+  \draw[dugreen,thick] (-0.517,0.84)--(-0.517,1.16);
+  \fill[dugreen] (-0.811,1.0) circle (2.8pt);
+  \node[above] at (-0.811,1.18) {Median -0.811};
+  \node[below] at (-0.80,0.45) {95\% CI: [-1.091, -0.517]};
+\end{tikzpicture}
+\caption{Paired shop--category cluster-bootstrap uncertainty for the seven-day context-minus-baseline WAPE difference, based on 2,000 resamples of 512 series clusters. Negative values favour the context model.}
+\label{fig:rq1_context_bootstrap_ci}
+\end{figure}
