@@ -53,13 +53,58 @@ CatBoost & \textbf{0.7005} & \textbf{0.7470} & \textbf{0.8313} & \textbf{0.1647}
 \label{fig:rq2_test_pr_auc}
 \end{figure}
 
-The selected CatBoost model uses a threshold of 0.1539, fixed from
-training-only calibrated out-of-time predictions. On TEST this threshold
-gives precision 53.85\%, recall 95.98\% and F2 0.8300. If the business can
-review only the top 10\% of the risk-ranked customer queue, precision is
-84.65\%, recall is 20.56\% and lift over the test prevalence is 2.055.
-These are two different operating points: the F2 threshold favours recall,
-whereas the top-decile queue is more selective.
+\begin{table}[H]
+\centering
+\small
+\caption{Threshold-based classification metrics on the RQ2 temporal TEST set. Each classifier uses its own F2-maximising threshold selected from training-only calibrated rolling-origin predictions.}
+\label{tab:rq2_classification_metrics}
+\begin{tabularx}{\textwidth}{|Y|C{0.13\textwidth}|C{0.13\textwidth}|C{0.13\textwidth}|C{0.13\textwidth}|C{0.13\textwidth}|}
+\hline
+\textbf{Model} & \textbf{Threshold} & \textbf{Precision} & \textbf{Recall} & \textbf{F1-score} & \textbf{ROC-AUC} \\
+\hline
+Logistic regression & 0.1911 & 0.5131 & 0.9703 & 0.6713 & 0.8234 \\
+\hline
+LightGBM & 0.1633 & 0.5220 & 0.9687 & 0.6784 & 0.8301 \\
+\hline
+CatBoost & \textbf{0.1539} & \textbf{0.5385} & \textbf{0.9598} & \textbf{0.6900} & \textbf{0.8313} \\
+\hline
+\end{tabularx}
+\end{table}
+
+The positive class is inactivity within the following 90 days. For CatBoost,
+the threshold of 0.1539 gives precision 53.85\%, recall 95.98\% and an
+F1-score of 0.6900. The ROC-AUC of 0.8313 measures ranking discrimination
+across thresholds, whereas precision, recall and F1-score are calculated
+from the thresholded TEST predictions. The comparison in
+Figure~\ref{fig:rq2_classification_metrics} shows that CatBoost has the
+highest precision and F1-score among the evaluated classifiers, while
+Logistic regression has marginally higher recall.
+
+\begin{table}[H]
+\centering
+\small
+\caption{CatBoost confusion matrix on the RQ2 temporal TEST set at threshold 0.1539. The positive class is inactivity within 90 days.}
+\label{tab:rq2_confusion_matrix}
+\begin{tabularx}{0.82\textwidth}{|Y|C{0.25\textwidth}|C{0.25\textwidth}|}
+\hline
+\textbf{Actual class} & \textbf{Predicted active} & \textbf{Predicted inactive} \\
+\hline
+Active (0) & 5,279 (TN) & 7,169 (FP) \\
+\hline
+Inactive (1) & 350 (FN) & 8,366 (TP) \\
+\hline
+\end{tabularx}
+\end{table}
+
+The model detected 8,366 of the 8,716 actually inactive snapshots and
+missed 350. It correctly classified 5,279 active snapshots, while 7,169
+active snapshots were incorrectly classified as inactive. This operating
+point therefore favours recall but produces a substantial number of false
+positives. Figure~\ref{fig:rq2_roc_curve} presents the ROC curve, and
+Figure~\ref{fig:rq2_confusion_matrix} visualises the selected model's
+classification errors. The threshold was selected without using TEST data.
+
+
 
 A customer-cluster bootstrap with 500 resamples gives 95\% intervals of
 0.7364--0.7584 for PR-AUC, 0.8260--0.8370 for ROC-AUC and 0.1619--0.1673
