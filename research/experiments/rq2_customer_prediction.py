@@ -260,8 +260,7 @@ def run(data_dir: Path, output_dir: Path, snapshot_name: str, bootstrap_replicat
         oof["Logistic"].append(pd.DataFrame({**common, "score": logistic.predict_proba(x_validation)[:, 1]}))
 
         print("[RQ2] fit LightGBM", flush=True)
-        print("[RQ2] final LightGBM", flush=True)
-    lgbm, x_lgb_train = fit_lgbm(x_train, y_train)
+        lgbm, x_lgb_train = fit_lgbm(x_train, y_train)
         x_lgb_validation = x_validation.copy()
         for column in CATEGORICAL:
             x_lgb_validation[column] = pd.Categorical(x_lgb_validation[column], categories=x_lgb_train[column].cat.categories)
@@ -320,6 +319,7 @@ def run(data_dir: Path, output_dir: Path, snapshot_name: str, bootstrap_replicat
     final_models["Logistic"] = logistic
     test_probabilities["Logistic"] = apply_platt(calibrators["Logistic"], logistic.predict_proba(x_test)[:, 1])
 
+    print("[RQ2] final LightGBM", flush=True)
     lgbm, x_lgb_train = fit_lgbm(x_train, y_train)
     x_lgb_test = x_test.copy()
     for column in CATEGORICAL:
