@@ -419,7 +419,7 @@
 }
 
 \newcommand{\system}{B-SMART}
-\newcommand{\reportdate}{8 November 2026}
+\newcommand{\reportdate}{23 November 2026}
 \newcommand{\projectperiod}{February 2026 - February 2027}
 \newcommand{\cmark}{\cellcolor{softgreen}\textbf{C}}
 \newcommand{\amark}{\cellcolor{softorange}\textbf{A}}
@@ -527,21 +527,32 @@ customer insight and feasible recommendations in Bangladeshi SMEs. The
 supplied dataset manifest identifies the business package as real SME sales
 and real people. The RQ1 daily panel contains 561,152 observations across
 32 shops, 16 categories and 512 shop--category series from 2023 to 2025,
-with 1,580,361 observed units and 37.60\% zero-sales observations. The
-forecasting target is observed sales, not unobserved latent demand.
+with 1,580,361 observed units and 37.60\% explicit zero-sales observations.
+The forecasting target is recorded sales, not unobserved latent demand.
 
-A leakage-controlled LightGBM Tweedie experiment compared historical
-series features with additional shop, category and network context features.
-Across nine monthly seven-day development origins, pooled WAPE decreased
-from 33.47\% to 32.66\%; the context model won six of nine origins. Its
-aggregate bias increased in magnitude from -2.02\% to -6.05\%, illustrating
-the trade-off between absolute error and under-forecasting. The context
-model also improved pooled WAPE in the three-origin 1-, 14- and 28-day
-development comparisons. Prequential interval coverage and bottom-up
-hierarchical aggregation were evaluated as additional diagnostics.
-These results are development evidence, not a final untouched-test claim.
-SKU-level latent demand, inventory-policy benefit and customer-action
-effectiveness require separate evidence and evaluation.
+For RQ1, a leakage-controlled context-aware LightGBM Tweedie model reduced
+seven-day development WAPE from 33.47\% to 32.66\% across nine monthly
+origins, while under-forecast bias increased from -2.02\% to -6.05\%.
+For RQ2, a 90-day no-repeat-purchase target was reconstructed with complete
+agreement on 72,146 customer snapshots. CatBoost achieved TEST PR-AUC
+0.7470, ROC-AUC 0.8313 and Brier score 0.1647. This is a temporal test
+within the supplied customer population; repeated customers occur across
+the split, and no causal retention-campaign effect is estimated.
+
+For RQ3, 2,500 paired replenishment scenarios show a trade-off: the trend
+policy has 0.87\% lower supplied scenario cost but 122.2\% more lost units.
+Future demand is synthetic oracle demand, the scenario-cost formula is
+undocumented, and the owner's observed policy is unavailable; the result
+is not evidence of realised savings. For RQ4, the reorder rule's suggested
+quantity, action and constraint reason match all 1,800 prepared cases.
+Generated Bangla and English explanations achieve complete coverage of
+branch-required numeric evidence, but the constant human-rating field is
+not participant feedback and the owner usability study remains pending.
+
+The results therefore provide task-specific development, temporal,
+scenario-audit and software-consistency evidence. They do not establish
+universal SME performance, SKU-level latent demand, realised inventory
+benefit or improved owner usability.
 
 \clearpage
 

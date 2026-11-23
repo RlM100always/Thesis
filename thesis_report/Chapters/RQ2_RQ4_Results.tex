@@ -12,9 +12,9 @@ is selected before TEST is evaluated.
 \small
 \caption{RQ2 validation selection and held-out temporal test performance.}
 \label{tab:rq2_customer_prediction_results}
-\begin{tabularx}{\textwidth}{|X|r|r|r|r|r|}
+\begin{tabularx}{\textwidth}{|Y|C{0.12\textwidth}|C{0.13\textwidth}|C{0.15\textwidth}|C{0.13\textwidth}|C{0.11\textwidth}|}
 \hline
-\textbf{Model} & \textbf{OOF PR-AUC} & \textbf{TEST PR-AUC} & \textbf{TEST ROC-AUC} & \textbf{TEST Brier} & \textbf{TEST F2} \\
+\textbf{Model} & \textbf{\shortstack{OOF\\PR-AUC}} & \textbf{\shortstack{TEST\\PR-AUC}} & \textbf{\shortstack{TEST\\ROC-AUC}} & \textbf{\shortstack{TEST\\Brier}} & \textbf{\shortstack{TEST\\F2}} \\
 \hline
 Recency rule & 0.6398 & 0.6874 & 0.7559 & -- & -- \\
 \hline
@@ -110,9 +110,9 @@ stock, but it also has more lost units.
 \small
 \caption{Paired RQ3 scenario outcomes; differences are trend policy minus baseline.}
 \label{tab:rq3_policy_scenario_results}
-\begin{tabularx}{\textwidth}{|X|r|r|r|r|}
+\begin{tabularx}{\textwidth}{|Y|C{0.14\textwidth}|C{0.14\textwidth}|C{0.20\textwidth}|C{0.15\textwidth}|}
 \hline
-\textbf{Measure} & \textbf{Baseline total} & \textbf{Trend total} & \textbf{Mean difference per case} & \textbf{Relative change} \\
+\textbf{Measure} & \textbf{\shortstack{Baseline\\total}} & \textbf{\shortstack{Trend\\total}} & \textbf{\shortstack{Mean difference\\per case}} & \textbf{\shortstack{Relative\\change}} \\
 \hline
 Lost units & 45 & 100 & +0.0220 & +122.2\% \\
 \hline
@@ -145,7 +145,7 @@ Order quantity (units) & 7,356 & 654 & -2.6808 & -91.1\% \\
   \node[anchor=east] at (-5,1.55) {-0.87};
   \node[anchor=east] at (-108,0.6) {Order quantity};
   \fill[dugreen] (-91.1,0.35) rectangle (0,0.75);
-  \node[anchor=east] at (-93,0.55) {-91.1};
+  \node[anchor=west,text=white] at (-88,0.55) {-91.1};
 \end{tikzpicture}
 \caption{Relative change in trend-policy scenario outcomes compared with the baseline. The lower supplied scenario cost and stock coincide with a substantial increase in lost units; the cost and demand fields remain scenario data, not realised business outcomes.}
 \label{fig:rq3_scenario_tradeoff}

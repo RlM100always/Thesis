@@ -21,3 +21,6 @@ The compiled report is published at `output/pdf/main-thesis-report.pdf`. A GitHu
 ## Research evidence
 
 The RQ1 forecasting script and machine-readable development outputs are stored under `research/forecasting/`. The raw SME dataset remains in its controlled Google Drive location and is not committed to the public repository. Numerical results in Chapter 5 must be regenerated from the source panel and must not be manually typed or invented.
+
+
+The workflow also uploads the compiled PDF as the `main-thesis-report-pdf` Actions artifact (90-day retention), in addition to publishing it at `output/pdf/main-thesis-report.pdf`.
