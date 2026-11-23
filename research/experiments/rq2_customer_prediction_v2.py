@@ -159,13 +159,23 @@ def choose_threshold(y, probability, objective: str, recall_floor: float | None 
 
 
 def model_selection_metrics(y, probability):
-    return {
+    result = {
         "n": int(len(y)),
         "positive_rate": float(np.mean(y)),
         "pr_auc": float(average_precision_score(y, probability)),
         "roc_auc": float(roc_auc_score(y, probability)),
         "brier": float(brier_score_loss(y, probability)),
     }
+    for fraction in (0.10, 0.20):
+        count = max(1, int(np.ceil(len(y) * fraction)))
+        selected = np.argsort(-probability)[:count]
+        precision_at_k = float(np.mean(np.asarray(y, dtype=int)[selected]))
+        result[f"precision_at_{int(fraction * 100)}pct"] = precision_at_k
+        result[f"recall_at_{int(fraction * 100)}pct"] = float(
+            np.sum(np.asarray(y, dtype=int)[selected]) / max(1, np.sum(y))
+        )
+        result[f"lift_at_{int(fraction * 100)}pct"] = precision_at_k / float(np.mean(y))
+    return result
 
 
 def stage_select(data_dir: Path, output_dir: Path, snapshot_name: str):
@@ -279,6 +289,7 @@ def stage_score(data_dir: Path, output_dir: Path, snapshot_name: str, bootstrap_
             "train_threshold_precision": row["precision"],
             "train_threshold_recall": row["recall"],
             "train_threshold_f1": row["f1"],
+            "train_threshold_f2": row["f2"],
             **classification_metrics(y, probability, float(row["threshold"])),
         })
     operating = pd.DataFrame(operating_rows)
@@ -338,6 +349,9 @@ def stage_score(data_dir: Path, output_dir: Path, snapshot_name: str, bootstrap_
     audit = {
         "snapshot_rows": int(len(frame)), "unique_customers": int(frame.customer_id.nunique()),
         "train_rows": int(len(train)), "test_rows": int(len(test)),
+        "train_dates": [str(train.snapshot_date.min().date()), str(train.snapshot_date.max().date())],
+        "test_dates": [str(test.snapshot_date.min().date()), str(test.snapshot_date.max().date())],
+        "selected_feature_variant": state["selected_feature_variant"],
         "train_customer_count": int(train.customer_id.nunique()),
         "test_customer_count": int(test.customer_id.nunique()),
         "train_test_customer_overlap": int(len(set(train.customer_id.astype(str)) & set(test.customer_id.astype(str)))),
