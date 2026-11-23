@@ -1,3 +1,27 @@
+## Academic language revision — 23 November 2026
+
+- Revised the active report source and included RQ1--RQ4 chapters to use
+  formal academic terminology, precise comparative statements and consistent
+  British English in authored prose.
+- Replaced informal or product-oriented expressions, including
+  "owner-facing", "task-friendliness", "low-friction", "challenger" and
+  "model wins", with terms that describe the evaluated concepts and metrics.
+- Aligned the RQ4 research question and study-status statements with
+  `docs/RQ4_USER_STUDY_PROTOCOL.md`; the participant study is still planned
+  and is not reported as completed.
+- Corrected outdated report-structure and methodological-output text to
+  reflect the implemented system and the empirical results now included.
+- Clarified that dataset provenance is reported from the supplied manifest
+  and has not been independently verified through a field audit.
+- Experimental metrics, model outputs, source citations and figure data were
+  retained; the edits were to report wording and presentation.
+- LaTeX build: successful, GitHub Actions run
+  [45207685117](https://github.com/RlM100always/Thesis/actions/runs/45207685117).
+- Research contract tests: successful, run
+  [45207684975](https://github.com/RlM100always/Thesis/actions/runs/45207684975).
+- Final PDF: 85 A4 pages, 623,923 bytes, published at
+  `output/pdf/main-thesis-report.pdf`.
+
 ## Expanded research-figure revision — 23 November 2026
 
 - Added 15 further data-backed figures across RQ1--RQ4 and improved two
@@ -13,14 +37,14 @@
   outcomes and paired-case outcome counts.
 - RQ4 additions: generated bilingual branch coverage, decision/action counts
   and exact rule-output agreement. The supplied explanation coverage figure
-  now includes all eight audited numeric fields.
+  now includes all eight audited numerical fields.
 - Visual review: the new charts on report pages 55--63 were rendered and
   checked. Legend spacing and clipped axis titles were corrected.
 - Final LaTeX build: successful, GitHub Actions run
-  [45157069527](https://github.com/RlM100always/Thesis/actions/runs/45157069527).
+  [45207685117](https://github.com/RlM100always/Thesis/actions/runs/45207685117).
 - Research contract tests: successful, run
-  [45157069542](https://github.com/RlM100always/Thesis/actions/runs/45157069542).
-- Final PDF: 84 A4 pages, 621,232 bytes. Published at
+  [45207684975](https://github.com/RlM100always/Thesis/actions/runs/45207684975).
+- Final PDF: 85 A4 pages, 623,923 bytes. Published at
   `output/pdf/main-thesis-report.pdf` and uploaded as the
   `main-thesis-report-pdf` Actions artifact.
 
