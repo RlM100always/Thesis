@@ -1,3 +1,38 @@
+## RQ2 threshold refinement v2 — 23 November 2026
+
+- Reused the controlled snapshot and sales-order exports whose SHA-256
+  hashes match the recorded RQ2 inputs. Target reconstruction agreement
+  remained 100% across 72,146 snapshots.
+- Compared the original CatBoost feature set with a past-only trajectory
+  extension on the first two rolling-origin TRAIN folds. The original
+  feature set was retained because its pooled PR-AUC (0.6990) was marginally
+  higher than the trajectory variant (0.6988).
+- Fitted Platt calibration on the first two TRAIN origins and reserved
+  31 December 2024 as the threshold-selection origin. The selected rule
+  maximises precision subject to TRAIN-origin recall of at least 85%;
+  threshold 0.317603. TEST labels were not used for threshold selection.
+- On the 21,164 TEST snapshots, precision is 0.6064, recall 0.8866,
+  F1-score 0.7202, PR-AUC 0.7461 and ROC-AUC 0.8314. The confusion counts
+  are TN 7,432, FP 5,016, FN 988 and TP 7,728.
+- Compared with the v1 F2-maximising operating point, false positives fall
+  by 2,153 (30.0%); recall falls by 7.32 percentage points and false
+  negatives rise by 638. This is an explicit operating-point trade-off,
+  not a material improvement in ranking discrimination.
+- The latest TEST snapshot per 10,613 unique customers gives precision
+  0.6172, recall 0.9035 and F1-score 0.7334.
+- The TEST set was already evaluated in v1. The v2 TEST results are a
+  repeated-holdout diagnostic and must not be described as a pristine
+  independent confirmation. A later untouched period is required.
+- Added aggregate-only outputs under
+  `research/experiments/results/rq2_customer_prediction_v2/`. No raw
+  customer data, customer identifiers or row-level predictions were
+  committed.
+- GitHub Actions research tests: **37 passed** in 3.95 seconds
+  ([run 45236982573](https://github.com/RlM100always/Thesis/actions/runs/45236982573)).
+- LaTeX report build: successful; **88 A4 pages**, 636,671 bytes
+  ([run 45236025825](https://github.com/RlM100always/Thesis/actions/runs/45236025825)).
+- RQ1, RQ3 and RQ4 experimental outputs and conclusions were not changed.
+
 ## RQ2 classification-metric extension — 23 November 2026
 
 - Re-executed the RQ2 pipeline using the supplied snapshot export and order

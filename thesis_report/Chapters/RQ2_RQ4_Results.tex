@@ -1,16 +1,24 @@
 \section{RQ2: Ninety-Day Customer Inactivity Prediction}
 
 The target reconstruction agrees with the supplied label on all 72,146
-snapshots. The final chronological test contains 21,164 snapshots and has
-a 41.18\% positive rate. Model selection uses only three rolling-origin
-validation dates within TRAIN. CatBoost has the highest validation PR-AUC
-(0.7005) and the lowest calibrated validation Brier score (0.1692), so it
-is selected before TEST is evaluated.
+snapshots. The chronological test contains 21,164 snapshots from 10,613
+customers and has a 41.18\% positive rate. The target denotes no purchase
+during the 90 days after each snapshot cutoff; it is not permanent customer
+churn. The supplied TRAIN/TEST split is preserved.
+
+The initial classifier comparison selected CatBoost using rolling-origin
+validation within TRAIN. Logistic regression and LightGBM remain comparison
+models. The ranking results below are from the original v1 comparison; the
+threshold refinement in v2 retains CatBoost and changes only its operating
+point. A past-only customer-trajectory feature extension was also tested on
+the first two TRAIN origins. Its pooled PR-AUC was 0.6988, compared with
+0.6990 for the original CatBoost feature set, so the extension was not
+retained.
 
 \begin{table}[H]
 \centering
 \small
-\caption{RQ2 validation selection and held-out temporal test performance.}
+\caption{Initial RQ2 classifier comparison (v1). PR-AUC and ROC-AUC are ranking measures; F2 is calculated at the corresponding training-selected threshold.}
 \label{tab:rq2_customer_prediction_results}
 \begin{tabularx}{\textwidth}{|Y|C{0.12\textwidth}|C{0.13\textwidth}|C{0.15\textwidth}|C{0.13\textwidth}|C{0.11\textwidth}|}
 \hline
@@ -27,121 +35,130 @@ CatBoost & \textbf{0.7005} & \textbf{0.7470} & \textbf{0.8313} & \textbf{0.1647}
 \end{tabularx}
 \end{table}
 
-\begin{figure}[H]
-\centering
-\begin{tikzpicture}[x=1.30cm,y=0.17cm,font=\scriptsize]
-  \draw[->,thick] (0,60) -- (6.5,60) node[right] {Model};
-  \draw[->,thick] (0,60) -- (0,81) node[above] {TEST PR-AUC (\%)};
-  \foreach \y in {60,65,70,75,80} {
-    \draw[gray!40] (0,\y) -- (6.2,\y);
-    \node[left] at (0,\y) {\y};
-  }
-  \fill[softgray] (0.55,60) rectangle (1.15,68.74);
-  \fill[softblue] (2.05,60) rectangle (2.65,73.70);
-  \fill[dugold] (3.55,60) rectangle (4.15,74.52);
-  \fill[dugreen] (5.05,60) rectangle (5.65,74.70);
-  \node[above] at (0.85,68.74) {68.74};
-  \node[above] at (2.35,73.70) {73.70};
-  \node[above] at (3.85,74.52) {74.52};
-  \node[above] at (5.35,74.70) {74.70};
-  \node[align=center] at (0.85,58.4) {Recency\\rule};
-  \node[align=center] at (2.35,58.4) {Logistic\\regression};
-  \node[align=center] at (3.85,58.4) {LightGBM};
-  \node[align=center] at (5.35,58.4) {CatBoost};
-\end{tikzpicture}
-\caption{RQ2 held-out temporal-test PR-AUC by model. Higher values indicate better ranking of customers with no repeat purchase in the following 90 days.}
-\label{fig:rq2_test_pr_auc}
-\end{figure}
+\subsection{Threshold refinement}
+
+The v2 refinement separates model calibration from threshold selection.
+Platt calibration is fitted using the first two rolling-origin TRAIN
+prediction sets. The final TRAIN origin, 31 December 2024, is reserved for
+choosing the classification threshold. The selected policy maximises
+precision subject to a minimum TRAIN-origin recall of 85\%. No TEST labels
+are used to choose the threshold.
 
 \begin{table}[H]
 \centering
 \small
-\caption{Threshold-based classification metrics on the RQ2 temporal TEST set. Each classifier uses its own F2-maximising threshold selected from training-only calibrated rolling-origin predictions.}
-\label{tab:rq2_classification_metrics}
-\begin{tabularx}{\textwidth}{|Y|C{0.13\textwidth}|C{0.13\textwidth}|C{0.13\textwidth}|C{0.13\textwidth}|C{0.13\textwidth}|}
+\caption{CatBoost operating-point comparison on the temporal TEST set. All v2 thresholds were selected on the 31 December 2024 TRAIN origin.}
+\label{tab:rq2_threshold_refinement}
+\begin{tabularx}{\textwidth}{|Y|C{0.10\textwidth}|C{0.12\textwidth}|C{0.12\textwidth}|C{0.09\textwidth}|C{0.10\textwidth}|C{0.10\textwidth}|}
 \hline
-\textbf{Model} & \textbf{Threshold} & \textbf{Precision} & \textbf{Recall} & \textbf{F1-score} & \textbf{ROC-AUC} \\
+\textbf{Policy} & \textbf{Threshold} & \textbf{Precision} & \textbf{Recall} & \textbf{F1} & \textbf{FP} & \textbf{FN} \\
 \hline
-Logistic regression & 0.1911 & 0.5131 & 0.9703 & 0.6713 & 0.8234 \\
+v1 F2-max & 0.1539 & 53.85\% & 95.98\% & 69.00\% & 7,169 & 350 \\
 \hline
-LightGBM & 0.1633 & 0.5220 & 0.9687 & 0.6784 & 0.8301 \\
+v2 F2-max & 0.1645 & 53.11\% & 96.37\% & 68.48\% & 7,417 & 316 \\
 \hline
-CatBoost & \textbf{0.1539} & \textbf{0.5385} & \textbf{0.9598} & \textbf{0.6900} & \textbf{0.8313} \\
+v2 F1-max & 0.3398 & 61.71\% & 86.92\% & \textbf{72.18\%} & 4,700 & 1,140 \\
+\hline
+\textbf{v2 precision @ recall $\geq$ 85\%} & \textbf{0.3176} & \textbf{60.64\%} & \textbf{88.66\%} & 72.02\% & \textbf{5,016} & 988 \\
 \hline
 \end{tabularx}
 \end{table}
 
-The positive class is inactivity within the following 90 days. For CatBoost,
-the threshold of 0.1539 gives precision 53.85\%, recall 95.98\% and an
-F1-score of 0.6900. The ROC-AUC of 0.8313 measures ranking discrimination
-across thresholds, whereas precision, recall and F1-score are calculated
-from the thresholded TEST predictions. The comparison in
-Figure~\ref{fig:rq2_classification_metrics} shows that CatBoost has the
-highest precision and F1-score among the evaluated classifiers, while
-Logistic regression has marginally higher recall.
+At the selected v2 threshold of 0.3176, TEST precision rises from 53.85\%
+to 60.64\%, while recall falls from 95.98\% to 88.66\%. F1-score increases
+from 0.6900 to 0.7202. False positives fall from 7,169 to 5,016, a
+30.0\% reduction (2,153 fewer false-positive snapshots). The trade-off is
+638 additional false negatives compared with v1. The threshold therefore
+reduces unnecessary inactive classifications while retaining high recall;
+it does not eliminate missed inactive customers.
+
+The v2 ranking measures are PR-AUC 0.7461, ROC-AUC 0.8314 and Brier score
+0.1650. These are very close to the v1 values, indicating that the main
+change is the classification operating point rather than a material gain
+in ranking discrimination. The ROC curve is shown in
+Figure~\ref{fig:rq2_roc_curve}.
 
 \begin{table}[H]
 \centering
 \small
-\caption{CatBoost confusion matrix on the RQ2 temporal TEST set at threshold 0.1539. The positive class is inactivity within 90 days.}
+\caption{CatBoost confusion matrix on the RQ2 temporal TEST set at the selected v2 threshold of 0.3176. Inactivity within 90 days is the positive class.}
 \label{tab:rq2_confusion_matrix}
 \begin{tabularx}{0.82\textwidth}{|Y|C{0.25\textwidth}|C{0.25\textwidth}|}
 \hline
 \textbf{Actual class} & \textbf{Predicted active} & \textbf{Predicted inactive} \\
 \hline
-Active (0) & 5,279 (TN) & 7,169 (FP) \\
+Active (0) & 7,432 (TN) & 5,016 (FP) \\
 \hline
-Inactive (1) & 350 (FN) & 8,366 (TP) \\
+Inactive (1) & 988 (FN) & 7,728 (TP) \\
 \hline
 \end{tabularx}
 \end{table}
 
-The model detected 8,366 of the 8,716 actually inactive snapshots and
-missed 350. It correctly classified 5,279 active snapshots, while 7,169
-active snapshots were incorrectly classified as inactive. This operating
-point therefore favours recall but produces a substantial number of false
-positives. Figure~\ref{fig:rq2_roc_curve} presents the ROC curve, and
-Figure~\ref{fig:rq2_confusion_matrix} visualises the selected model's
-classification errors. The threshold was selected without using TEST data.
+\begin{table}[H]
+\centering
+\small
+\caption{Latest TEST snapshot per unique customer, evaluated at the selected v2 threshold.}
+\label{tab:rq2_latest_customer_metrics}
+\begin{tabularx}{0.92\textwidth}{|Y|C{0.13\textwidth}|C{0.15\textwidth}|C{0.15\textwidth}|C{0.15\textwidth}|}
+\hline
+\textbf{Evaluation} & \textbf{Customers} & \textbf{Precision} & \textbf{Recall} & \textbf{F1-score} \\
+\hline
+Latest snapshot & 10,613 & 61.72\% & 90.35\% & 73.34\% \\
+\hline
+\end{tabularx}
+\end{table}
 
-
+The two TEST dates give similar ranking results. On 31 March 2025,
+PR-AUC is 0.7237 and ROC-AUC is 0.8300; on 30 June 2025, PR-AUC is
+0.7633 and ROC-AUC is 0.8327. At the selected threshold, recall is
+86.78\% and 90.35\%, respectively. These date-specific results are
+reported separately because the 21,164 TEST rows contain repeated
+snapshots from the same customers.
 
 A customer-cluster bootstrap with 500 resamples gives 95\% intervals of
-0.7364--0.7584 for PR-AUC, 0.8260--0.8370 for ROC-AUC and 0.1619--0.1673
-for Brier score. The test contains repeated customers seen in TRAIN
-(10,483 overlapping customers). This is a temporal evaluation for the
-existing customer population, not an unseen-customer generalisation test.
-The outcome is no repeat purchase in a fixed 90-day window; it is not
-permanent churn and does not estimate the causal effect of a retention
-campaign.
+0.7364--0.7573 for PR-AUC, 0.8261--0.8372 for ROC-AUC and
+0.1623--0.1674 for Brier score. The selected CatBoost model's ten largest
+feature-importance values are shown in Figure~\ref{fig:rq2_feature_importance}.
+These values describe model-specific predictive contribution, not causal
+effects.
+
+The TEST set was already evaluated in v1. The v2 TEST results are therefore
+a repeated-holdout diagnostic, not a pristine independent confirmation.
+The threshold was selected without TEST data, but a later untouched period
+is still required for independent confirmation. Repeated customers also
+occur across TRAIN and TEST (10,483 overlapping customers), so the
+evaluation measures temporal performance for the supplied customer
+population, not cold-start generalisation. The target remains a fixed
+90-day no-repeat-purchase outcome and does not estimate the causal effect
+of a retention campaign.
 
 \begin{figure}[H]
 \centering
 \begin{tikzpicture}[x=0.23cm,y=0.57cm,font=\scriptsize]
   \draw[->,thick] (0,0)--(36,0) node[right] {Relative feature importance};
   \foreach \x in {0,5,10,15,20,25,30,35} {\draw[gray!35] (\x,0)--(\x,10.4);\node[below] at (\x,0) {\x};}
-  \node[anchor=east] at (-5,9.8) {Lifetime orders};
-  \fill[dugreen] (0,9.55) rectangle (30.17,9.95); \node[anchor=west] at (30.7,9.75) {30.17};
-  \node[anchor=east] at (-5,8.8) {Orders per tenure};
-  \fill[dugreen] (0,8.55) rectangle (19.45,8.95); \node[anchor=west] at (20,8.75) {19.45};
+  \node[anchor=east] at (-5,9.8) {Orders per tenure};
+  \fill[dugreen] (0,9.55) rectangle (24.91,9.95); \node[anchor=west] at (25.4,9.75) {24.91};
+  \node[anchor=east] at (-5,8.8) {Lifetime orders};
+  \fill[dugreen] (0,8.55) rectangle (24.40,8.95); \node[anchor=west] at (24.9,8.75) {24.40};
   \node[anchor=east] at (-5,7.8) {Orders in 180 days};
-  \fill[dugreen] (0,7.55) rectangle (12.96,7.95); \node[anchor=west] at (13.5,7.75) {12.96};
-  \node[anchor=east] at (-5,6.8) {Snapshot year};
-  \fill[dugold] (0,6.55) rectangle (4.01,6.95); \node[anchor=west] at (4.6,6.75) {4.01};
-  \node[anchor=east] at (-5,5.8) {Recency-frequency ratio};
-  \fill[dugold] (0,5.55) rectangle (3.77,5.95); \node[anchor=west] at (4.3,5.75) {3.77};
-  \node[anchor=east] at (-5,4.8) {Orders in 90 days};
-  \fill[softblue] (0,4.55) rectangle (3.05,4.95); \node[anchor=west] at (3.6,4.75) {3.05};
-  \node[anchor=east] at (-5,3.8) {Orders in days 90--180};
-  \fill[softblue] (0,3.55) rectangle (2.91,3.95); \node[anchor=west] at (3.5,3.75) {2.91};
-  \node[anchor=east] at (-5,2.8) {Recency days};
-  \fill[softblue] (0,2.55) rectangle (2.53,2.95); \node[anchor=west] at (3.1,2.75) {2.53};
-  \node[anchor=east] at (-5,1.8) {Orders in days 30--90};
-  \fill[softblue] (0,1.55) rectangle (2.17,1.95); \node[anchor=west] at (2.8,1.75) {2.17};
-  \node[anchor=east] at (-5,0.8) {Snapshot month};
-  \fill[softblue] (0,0.55) rectangle (2.04,0.95); \node[anchor=west] at (2.7,0.75) {2.04};
+  \fill[dugreen] (0,7.55) rectangle (15.87,7.95); \node[anchor=west] at (16.4,7.75) {15.87};
+  \node[anchor=east] at (-5,6.8) {Recency days};
+  \fill[dugold] (0,6.55) rectangle (3.42,6.95); \node[anchor=west] at (3.9,6.75) {3.42};
+  \node[anchor=east] at (-5,5.8) {Snapshot year};
+  \fill[dugold] (0,5.55) rectangle (3.30,5.95); \node[anchor=west] at (3.8,5.75) {3.30};
+  \node[anchor=east] at (-5,4.8) {Tenure years};
+  \fill[softblue] (0,4.55) rectangle (3.00,4.95); \node[anchor=west] at (3.5,4.75) {3.00};
+  \node[anchor=east] at (-5,3.8) {Recency-frequency ratio};
+  \fill[softblue] (0,3.55) rectangle (2.69,3.95); \node[anchor=west] at (3.2,3.75) {2.69};
+  \node[anchor=east] at (-5,2.8) {Tenure days};
+  \fill[softblue] (0,2.55) rectangle (2.23,2.95); \node[anchor=west] at (2.7,2.75) {2.23};
+  \node[anchor=east] at (-5,1.8) {Orders in 90 days};
+  \fill[softblue] (0,1.55) rectangle (2.20,1.95); \node[anchor=west] at (2.7,1.75) {2.20};
+  \node[anchor=east] at (-5,0.8) {Sales in 90 days};
+  \fill[softblue] (0,0.55) rectangle (2.06,0.95); \node[anchor=west] at (2.6,0.75) {2.06};
 \end{tikzpicture}
-\caption{Ten largest CatBoost feature-importance values in the RQ2 final model. Importance is a model-specific ranking, not a causal effect or direction-of-effect estimate.}
+\caption{Ten largest CatBoost feature-importance values in the RQ2 v2 final model. Importance is a model-specific ranking, not a causal effect or direction-of-effect estimate.}
 \label{fig:rq2_feature_importance}
 \end{figure}
 

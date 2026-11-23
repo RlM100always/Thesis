@@ -49,6 +49,41 @@ Ranking the top 10% by risk gives precision 0.8465, recall 0.2056 and lift 2.055
 
 The final snapshot-only feature policy removes undated customer-master attributes. The selected CatBoost model therefore has a cleaner point-in-time information set than the earlier exploratory run. This is predictive evidence only; it does not estimate the causal effect of a retention message or campaign. The temporal test contains repeated customers from TRAIN, so it does not establish cold-start performance for new customers.
 
+## RQ2 v2 — threshold refinement
+
+The v2 experiment preserves the same 72,146 snapshots, 10,613 customers,
+source hashes, target definition and chronological TRAIN/TEST split. The
+original CatBoost feature set was compared with a past-only customer
+trajectory extension on the first two rolling-origin TRAIN folds. The
+original feature set was retained: pooled PR-AUC was 0.6990, compared with
+0.6988 for the trajectory extension.
+
+Platt calibration was fitted on the first two TRAIN origins. The final
+TRAIN origin (31 December 2024) was reserved for threshold selection. The
+primary rule maximises precision subject to recall of at least 85% on that
+TRAIN origin, producing threshold 0.317603.
+
+| TEST operating point | Threshold | Precision | Recall | F1-score | False positives | False negatives |
+|---|---:|---:|---:|---:|---:|---:|
+| v1 F2 maximum | 0.1539 | 0.5385 | 0.9598 | 0.6900 | 7,169 | 350 |
+| v2 F2 maximum | 0.1645 | 0.5311 | 0.9637 | 0.6848 | 7,417 | 316 |
+| v2 F1 maximum | 0.3398 | 0.6171 | 0.8692 | 0.7218 | 4,700 | 1,140 |
+| v2 precision at recall >= 0.85 | **0.3176** | **0.6064** | **0.8866** | **0.7202** | **5,016** | **988** |
+
+The primary v2 operating point reduces false positives by 2,153 (30.0%)
+compared with v1, with recall decreasing by 7.32 percentage points. TEST
+PR-AUC is 0.7461, ROC-AUC 0.8314 and Brier 0.1650, so ranking performance
+remains close to v1. The latest TEST snapshot per unique customer (10,613
+customers) gives precision 0.6172, recall 0.9035 and F1-score 0.7334.
+
+The TEST set was already evaluated in v1. The v2 TEST results are therefore
+a repeated-holdout diagnostic, not independent confirmation. No TEST labels
+were used to choose the v2 threshold. A later untouched temporal period is
+needed for independent confirmation. The aggregate-only outputs and
+reproduction commands are stored in
+`research/experiments/results/rq2_customer_prediction_v2/` and
+`research/experiments/README.md`. RQ1, RQ3 and RQ4 were not changed.
+
 ## RQ3 — replenishment policy scenarios
 
 The supplied file contains 2,500 paired cases across 32 shops and 477 SKUs at a 31 July 2025 cutoff. The summed synthetic oracle demand is 8,330 units.

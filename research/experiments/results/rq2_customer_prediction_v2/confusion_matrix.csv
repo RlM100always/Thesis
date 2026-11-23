@@ -1,0 +1,2 @@
+model,threshold,positive_class,tn_active_correct,fp_active_flagged_inactive,fn_inactive_missed,tp_inactive_detected
+CatBoost,0.3176030722075383,inactive_next_90d,7432,5016,988,7728
