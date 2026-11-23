@@ -49,17 +49,17 @@ are used to choose the threshold.
 \small
 \caption{CatBoost operating-point comparison on the temporal TEST set. All v2 thresholds were selected on the 31 December 2024 TRAIN origin.}
 \label{tab:rq2_threshold_refinement}
-\begin{tabularx}{\textwidth}{|Y|C{0.12\textwidth}|C{0.13\textwidth}|C{0.13\textwidth}|C{0.12\textwidth}|C{0.12\textwidth}|C{0.12\textwidth}|}
+\begin{tabularx}{\textwidth}{|Y|C{0.10\textwidth}|C{0.12\textwidth}|C{0.12\textwidth}|C{0.09\textwidth}|C{0.10\textwidth}|C{0.10\textwidth}|}
 \hline
 \textbf{Policy} & \textbf{Threshold} & \textbf{Precision} & \textbf{Recall} & \textbf{F1} & \textbf{FP} & \textbf{FN} \\
 \hline
-v1: F2 maximum & 0.1539 & 53.85\% & 95.98\% & 69.00\% & 7,169 & 350 \\
+v1 F2-max & 0.1539 & 53.85\% & 95.98\% & 69.00\% & 7,169 & 350 \\
 \hline
-v2: F2 maximum & 0.1645 & 53.11\% & 96.37\% & 68.48\% & 7,417 & 316 \\
+v2 F2-max & 0.1645 & 53.11\% & 96.37\% & 68.48\% & 7,417 & 316 \\
 \hline
-v2: F1 maximum & 0.3398 & 61.71\% & 86.92\% & \textbf{72.18\%} & 4,700 & 1,140 \\
+v2 F1-max & 0.3398 & 61.71\% & 86.92\% & \textbf{72.18\%} & 4,700 & 1,140 \\
 \hline
-\textbf{v2: precision at recall $\geq$ 85\%} & \textbf{0.3176} & \textbf{60.64\%} & \textbf{88.66\%} & 72.02\% & \textbf{5,016} & 988 \\
+\textbf{v2 precision @ recall $\geq$ 85\%} & \textbf{0.3176} & \textbf{60.64\%} & \textbf{88.66\%} & 72.02\% & \textbf{5,016} & 988 \\
 \hline
 \end{tabularx}
 \end{table}
@@ -99,11 +99,11 @@ Inactive (1) & 988 (FN) & 7,728 (TP) \\
 \small
 \caption{Latest TEST snapshot per unique customer, evaluated at the selected v2 threshold.}
 \label{tab:rq2_latest_customer_metrics}
-\begin{tabularx}{0.92\textwidth}{|Y|C{0.17\textwidth}|C{0.17\textwidth}|C{0.17\textwidth}|C{0.17\textwidth}|}
+\begin{tabularx}{0.92\textwidth}{|Y|C{0.13\textwidth}|C{0.15\textwidth}|C{0.15\textwidth}|C{0.15\textwidth}|}
 \hline
-\textbf{Evaluation set} & \textbf{Customers} & \textbf{Precision} & \textbf{Recall} & \textbf{F1-score} \\
+\textbf{Evaluation} & \textbf{Customers} & \textbf{Precision} & \textbf{Recall} & \textbf{F1-score} \\
 \hline
-Latest snapshot per customer & 10,613 & 61.72\% & 90.35\% & 73.34\% \\
+Latest snapshot & 10,613 & 61.72\% & 90.35\% & 73.34\% \\
 \hline
 \end{tabularx}
 \end{table}
