@@ -27,6 +27,32 @@ CatBoost & \textbf{0.7005} & \textbf{0.7470} & \textbf{0.8313} & \textbf{0.1647}
 \end{tabularx}
 \end{table}
 
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[x=1.30cm,y=0.17cm,font=\scriptsize]
+  \draw[->,thick] (0,60) -- (6.5,60) node[right] {Model};
+  \draw[->,thick] (0,60) -- (0,81) node[above] {TEST PR-AUC (\%)};
+  \foreach \y in {60,65,70,75,80} {
+    \draw[gray!40] (0,\y) -- (6.2,\y);
+    \node[left] at (0,\y) {\y};
+  }
+  \fill[softgray] (0.55,60) rectangle (1.15,68.74);
+  \fill[softblue] (2.05,60) rectangle (2.65,73.70);
+  \fill[dugold] (3.55,60) rectangle (4.15,74.52);
+  \fill[dugreen] (5.05,60) rectangle (5.65,74.70);
+  \node[above] at (0.85,68.74) {68.74};
+  \node[above] at (2.35,73.70) {73.70};
+  \node[above] at (3.85,74.52) {74.52};
+  \node[above] at (5.35,74.70) {74.70};
+  \node[align=center] at (0.85,58.4) {Recency\\rule};
+  \node[align=center] at (2.35,58.4) {Logistic\\regression};
+  \node[align=center] at (3.85,58.4) {LightGBM};
+  \node[align=center] at (5.35,58.4) {CatBoost};
+\end{tikzpicture}
+\caption{RQ2 held-out temporal-test PR-AUC by model. Higher values indicate better ranking of customers with no repeat purchase in the following 90 days.}
+\label{fig:rq2_test_pr_auc}
+\end{figure}
+
 The selected CatBoost model uses a threshold of 0.1539, fixed from
 training-only calibrated out-of-time predictions. On TEST this threshold
 gives precision 53.85\%, recall 95.98\% and F2 0.8300. If the business can
@@ -43,6 +69,34 @@ existing customer population, not an unseen-customer generalisation test.
 The outcome is no repeat purchase in a fixed 90-day window; it is not
 permanent churn and does not estimate the causal effect of a retention
 campaign.
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[x=0.23cm,y=0.72cm,font=\scriptsize]
+  \draw[->,thick] (0,0) -- (36,0) node[right] {Relative feature importance};
+  \foreach \x in {0,10,20,30} {
+    \draw[gray!40] (\x,0) -- (\x,5.4);
+    \node[below] at (\x,0) {\x};
+  }
+  \node[anchor=east] at (-0.8,4.8) {Lifetime orders};
+  \fill[dugreen] (0,4.55) rectangle (30.17,4.95);
+  \node[anchor=west] at (30.7,4.75) {30.17};
+  \node[anchor=east] at (-0.8,3.8) {Orders per tenure};
+  \fill[dugreen] (0,3.55) rectangle (19.45,3.95);
+  \node[anchor=west] at (20.0,3.75) {19.45};
+  \node[anchor=east] at (-0.8,2.8) {Orders in 180 days};
+  \fill[dugreen] (0,2.55) rectangle (12.96,2.95);
+  \node[anchor=west] at (13.5,2.75) {12.96};
+  \node[anchor=east] at (-0.8,1.8) {Snapshot year};
+  \fill[dugold] (0,1.55) rectangle (4.01,1.95);
+  \node[anchor=west] at (4.6,1.75) {4.01};
+  \node[anchor=east] at (-0.8,0.8) {Recency-frequency ratio};
+  \fill[dugold] (0,0.55) rectangle (3.77,0.95);
+  \node[anchor=west] at (4.3,0.75) {3.77};
+\end{tikzpicture}
+\caption{Five largest CatBoost feature-importance values in the RQ2 final model. These values describe the fitted model's relative reliance on predictors; they do not establish causal effects.}
+\label{fig:rq2_feature_importance}
+\end{figure}
 
 \section{RQ3: Replenishment Policy Scenario Trade-Off}
 
@@ -70,6 +124,32 @@ Order quantity (units) & 7,356 & 654 & -2.6808 & -91.1\% \\
 \hline
 \end{tabularx}
 \end{table}
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[x=0.045cm,y=0.78cm,font=\scriptsize]
+  \draw[->,thick] (-105,0) -- (135,0) node[right] {Relative change (\%)};
+  \foreach \x in {-100,-50,0,50,100} {
+    \draw[gray!40] (\x,0) -- (\x,4.3);
+    \node[below] at (\x,0) {\x};
+  }
+  \draw[thick,dugold] (0,0) -- (0,4.3);
+  \node[anchor=east] at (-108,3.6) {Lost units};
+  \fill[dugold] (0,3.35) rectangle (122.2,3.75);
+  \node[anchor=west] at (124,3.55) {+122.2};
+  \node[anchor=east] at (-108,2.6) {Average stock};
+  \fill[dugreen] (-1.34,2.35) rectangle (0,2.75);
+  \node[anchor=east] at (-5,2.55) {-1.34};
+  \node[anchor=east] at (-108,1.6) {Scenario cost};
+  \fill[dugreen] (-0.87,1.35) rectangle (0,1.75);
+  \node[anchor=east] at (-5,1.55) {-0.87};
+  \node[anchor=east] at (-108,0.6) {Order quantity};
+  \fill[dugreen] (-91.1,0.35) rectangle (0,0.75);
+  \node[anchor=east] at (-93,0.55) {-91.1};
+\end{tikzpicture}
+\caption{Relative change in trend-policy scenario outcomes compared with the baseline. The lower supplied scenario cost and stock coincide with a substantial increase in lost units; the cost and demand fields remain scenario data, not realised business outcomes.}
+\label{fig:rq3_scenario_tradeoff}
+\end{figure}
 
 The shop-cluster bootstrap gives 95\% intervals for mean per-case
 trend-minus-baseline differences of -BDT 8.94 to -BDT 6.65 for scenario
@@ -123,6 +203,39 @@ Unit purchase cost & 0 / 1,800 & 0.00\% \\
 \hline
 \end{tabularx}
 \end{table}
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[x=1.35cm,y=0.035cm,font=\scriptsize]
+  \draw[->,thick] (0,0) -- (7.8,0);
+  \draw[->,thick] (0,0) -- (0,108) node[above] {Exact numeric coverage (\%)};
+  \foreach \y in {0,25,50,75,100} {
+    \draw[gray!40] (0,\y) -- (7.5,\y);
+    \node[left] at (0,\y) {\y};
+  }
+  % Supplied explanation versus generated explanation; generated coverage is
+  % calculated only for evidence fields required by each decision branch.
+  \foreach \x/\v in {1/100,2/100,3/100,4/100,5/6,6/9.61,7/0.17} {
+    \fill[softblue] (\x-0.22,0) rectangle (\x-0.02,\v);
+  }
+  \foreach \x in {1,...,7} {
+    \fill[dugreen] (\x+0.02,0) rectangle (\x+0.22,100);
+  }
+  \node[align=center] at (1, -8) {On-hand\\stock};
+  \node[align=center] at (2, -8) {Reorder\\point};
+  \node[align=center] at (3, -8) {Pack\\size};
+  \node[align=center] at (4, -8) {Budget};
+  \node[align=center] at (5, -8) {Lead\\time};
+  \node[align=center] at (6, -8) {Pending\\purchase};
+  \node[align=center] at (7, -8) {Order\\quantity};
+  \fill[softblue] (1.4,-20) rectangle (1.65,-16);
+  \node[anchor=west] at (1.72,-18) {Supplied explanation};
+  \fill[dugreen] (4.3,-20) rectangle (4.55,-16);
+  \node[anchor=west] at (4.62,-18) {Generated explanation};
+\end{tikzpicture}
+\caption{Exact numeric evidence coverage in the supplied explanation and the generated bilingual template. Generated coverage is measured only for fields required by the relevant decision branch; it is not a measure of human comprehension or usability.}
+\label{fig:rq4_explanation_coverage}
+\end{figure}
 
 A deterministic bilingual explanation generator was added with separate
 branches for sufficient stock, a feasible reorder and a budget-blocked
