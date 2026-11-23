@@ -455,7 +455,7 @@
     Strategy Optimization\par}
     \vspace{0.30cm}
     {\large\bfseries Initial Thesis Progress Report\par}
-    {\normalsize Application Scope: Bangladeshi SME Businesses\par}
+    {\normalsize Application Scope: SMEs in Bangladesh\par}
     \vspace{0.15cm}
     {\normalsize Project Period: \projectperiod\par}
     {\normalsize Status Date: \reportdate\par}
@@ -523,8 +523,7 @@ claim of effectiveness across all SME sectors. This report is current to
 \end{center}
 This thesis develops \system{}, an AI-powered business analytics and
 decision-support framework for performance evaluation, demand prediction,
-customer insight and feasible recommendations in Bangladeshi SMEs. The
-According to the supplied dataset manifest, the source package contains
+customer insight and feasible recommendations in Bangladeshi SMEs. According to the supplied dataset manifest, the source package contains
 SME sales transactions and individual-level customer records. This provenance
 statement is reported as supplied and has not been independently verified
 through a field audit. The RQ1 daily panel contains 561,152 observations across
@@ -604,7 +603,7 @@ and promotion effects create further analytical risks. This research connects
 operational events to valid predictions and explainable, constraint-aware
 decisions \cite{chen2012business,fildes2022retail,makridakis2022m5}.
 
-\section{Bangladesh SME Business Context}
+\section{SME Context in Bangladesh}
 The intended setting is Bangladeshi SMEs in retail, wholesale, distribution
 and related sectors. A shared operational core covers sales, purchases,
 expenses, payments, customers and performance indicators; inventory, batch,
@@ -636,7 +635,7 @@ recommendations.
 \hline
 \textbf{Stakeholder} & \textbf{Responsibility} & \textbf{System requirement} \\
 \hline
-Business owner or manager & Reorder, allocate cash and approve customer actions & Feasible options, uncertainty, supporting evidence and business-owner decision authority \\
+Business owner or manager & Reorder, allocate cash and approve customer actions & Feasible options, uncertainty, supporting evidence and final decision authority \\
 \hline
 Operational users & Maintain product, sales and stock records & Stable identifiers, validation and correction history \\
 \hline
@@ -720,7 +719,7 @@ The study will:
 \end{enumerate}
 
 
-\section{Initial Solution Concept}
+\section{Proposed Decision-Support Framework}
 The proposed solution is \system{}, a multi-sector SME decision-support
 framework with a shared operational core and configurable analytical tasks.
 It validates business events, creates time-frozen analytical views, compares
@@ -751,7 +750,7 @@ The thesis is based on four research questions:
 \end{description}
 
 
-\section{Scope and Boundaries}
+\section{Scope and Limitations}
 Empirical claims are restricted to the supplied Bangladesh business dataset
 and tasks for which its fields are suitable. The current forecasting
 experiment is at shop--category--day level and predicts observed sales; it
@@ -790,9 +789,18 @@ comparisons, temporal validation, uncertainty reporting and proportionate
 claims. Insufficient evidence is reported as not evaluable, not replaced
 with assumptions.
 
-\section{Organization of the Report}
+\section{Organisation of the Report}
 
-Chapter~\ref{chapter_backStudy} builds up the technical and contextual background, reviews the relevant literature, and identifies the research gap. Chapter~\ref{chapter_methodology} introduces the research design, data protocol, formal tasks, proposed framework, and evaluation plan. The Implementation and Experimental Results chapters are kept as placeholders in this preliminary report. The Conclusions chapter brings together only what can be concluded from the current background study and proposed methodology. Final conclusions based on empirical outcomes will be drawn from the evidence obtained during the implementation and experimental evaluation.
+The report is organised as follows. Chapter~\ref{chapter_backStudy}
+presents the technical and contextual background, reviews the relevant
+literature and identifies the research gap. Chapter~\ref{chapter_methodology}
+describes the research design, data protocol, analytical tasks, proposed
+framework and evaluation procedures. Chapter~\ref{chapter_implementation}
+documents the system implementation, data reconciliation and experimental
+configuration. Chapter~\ref{chapter_experimentalResults} presents the
+empirical findings for RQ1--RQ4. The Conclusions chapter synthesises the
+findings, discusses the study's limitations and identifies the additional
+validation required before operational deployment.
 
 
 \cleardoublepage
@@ -829,7 +837,7 @@ for individual mobile financial service providers.
 
 \subsection{Shared SME Core and Sector-Specific Requirements}
 
-The research scope covers SME businesses across sectors. Shared entities
+The research scope covers SMEs across sectors. Shared entities
 support comparable performance indicators, while sector-specific extensions
 capture differences in products, service capacity, sales cycles, procurement
 and operating constraints. Inventory-based firms may require SKU, stock, pack,
@@ -1029,8 +1037,8 @@ evidence evaluated empirically in this study.
 
 \section{Multi-Sector Applicability and Validation}
 
-The intended scope is SME business analytics across sectors, rather than one
-industry. A common core models organizations, branches, transactions, expenses,
+The study addresses analytics for SMEs across multiple sectors rather
+than a single industry. A common core models organisations, branches, transactions, expenses,
 payments, customers and suppliers. Configurable sector extensions preserve
 differences in products, services, inventory, resource capacity and operating
 rules. Demand and reorder experiments apply to inventory-based firms; service
@@ -1054,7 +1062,7 @@ No universal accuracy or business-value claim follows from framework coverage.
 
 This thesis adopts a design-science research approach supported by empirical
 evaluation. Design science is appropriate because the study develops an artifact
-intended to address an applied organizational problem and evaluates that artifact
+intended to address an applied organisational problem and evaluates that artifact
 against explicitly defined requirements \cite{hevner2004design}. The principal
 artifact is the \system{} framework, including its canonical operational data
 design, time-aware analytical pipeline, constraint-aware recommendation process,
@@ -1197,7 +1205,7 @@ records across participating businesses, subject to data availability, data
 quality, owner consent, and ethics approval. A business with substantially less
 history may still contribute to testing data collection, mapping, schema, and
 data-quality procedures, but such a business shall not independently determine
-claims of temporal or cross-business generalization.
+claims of temporal or cross-business generalisation.
 
 Businesses will be purposively recruited because participation depends on access
 to relevant longitudinal evidence, including invoice, stock, purchase, batch,
@@ -1238,7 +1246,7 @@ public, or generated data cannot silently alter the claim being tested.
 Consenting Bangladesh business invoice, stock, purchase, batch, expiry, customer,
 and constraint records &
 Primary business forecasting, customer-risk, strategy, and usability evaluation &
-Generalization beyond sampled businesses or untested transfer across SME
+Generalisation beyond sampled businesses or untested transfer across SME
 verticals \\
 \hline
 
@@ -1601,7 +1609,7 @@ rates. The outcome label is constructed from a subsequent future window. Where
 required, a purge interval will separate the observation and label windows to
 prevent overlap or delayed events from introducing leakage.
 
-Customer identifiers used for an entity-generalization test will not appear on
+Customer identifiers used for an entity-generalisation test will not appear on
 both sides of the corresponding training--test boundary.
 
 
@@ -1683,7 +1691,7 @@ validated model/baseline versions \(M\), and candidate actions \(A\)
 Ranked feasible recommendations \(R_t\)
 }
 
-Check sources, schema, timestamps, and organizational ownership\;
+Check sources, schema, timestamps, and organisational ownership\;
 
 Create the historical feature snapshot \(X_t\)\;
 
@@ -2181,27 +2189,31 @@ effects, inventory-policy savings or transfer to every SME sector. Those
 claims require additional validated fields or separate participant-based
 evaluation. Unavailable evidence is reported as a limitation.
 
-\section{Expected Methodological Outputs}
+\section{Methodological Outputs and Remaining Validation Requirements}
 \label{sec:expected_methodological_outputs}
 
-At completion, the methodology is expected to produce a documented canonical
-business schema and data dictionary, a versioned feature and partner-data
-protocol, and explicit specifications for transparent baselines,
-pooled-business models, and eligible shop-adapted models.
+The methodological outputs developed for this study include a documented
+canonical business schema and data dictionary, a versioned feature and
+partner-data protocol, and specifications for transparent baselines,
+pooled-business models and eligible shop-adapted models.
 
-The study will also produce a reproducible evaluation package, a
-constraint-aware recommendation procedure, and a study protocol and instruments for evaluation with SME owners and managers.
+The study also includes a reproducible evaluation package and a
+constraint-aware recommendation procedure. A protocol and instruments for
+evaluation with SME owners and managers have been prepared; participant data
+for the RQ4 usability study have not yet been collected.
 
-Effectiveness claims will be restricted to the sampled businesses,
-sectors, tasks and periods evaluated empirically in this study. Transfer to a new sector requires
-schema and constraint mapping, new evidence and held-out-sector evaluation.
+Effectiveness claims are restricted to the sampled businesses, sectors,
+tasks and periods evaluated empirically in this study. Transfer to a new
+sector requires schema and constraint mapping, additional evidence and
+held-out-sector evaluation.
 
 The system supports business decisions under the oversight of business
 owners or managers; automated actions outside the evaluated business tasks
 remain excluded.
 
-Implementation details, observed numerical results, and conclusions will be
-reported only when the corresponding empirical evidence is available.
+The current implementation and empirical results are presented in the
+following chapters. Further claims will be made only when supported by
+corresponding evidence.
 
 \clearpage
 
@@ -2614,8 +2626,8 @@ study has not been conducted. Negative-ledger events and positive-sale days
 with non-positive reconstructed stock remain quarantined before SKU
 availability labels are used. Untouched future and held-out-business tests,
 inventory replay with a documented cost model, and a study involving SME
-owners and managers remain prerequisites for further evaluation and potential deployment. Real-data provenance alone does not establish
-generalisation or business impact.
+owners and managers remain prerequisites for further evaluation and potential deployment. The dataset's stated provenance alone does not establish
+generalisability or business impact.
 
 \cleardoublepage
 \chapter{Experimental Results}
@@ -2623,8 +2635,10 @@ generalisation or business impact.
 
 \section{Evidence Boundary and Panel Integrity}
 
-The supplied dataset manifest identifies the package as real SME business
-data. The shop--category panel contains 561,152 observations, 512 unique
+According to the supplied dataset manifest, the package contains SME sales
+transactions and individual-level customer records. This provenance statement
+is reported as supplied and has not been independently verified through a
+field audit. The shop--category panel contains 561,152 observations, 512 unique
 series and 1,096 daily observations per series. It totals 1,580,361 units;
 37.5962\% of rows are explicit zero-sales observations. The audit found no
 duplicate shop--category--date keys, missing required values, zero-flag
@@ -2813,8 +2827,8 @@ the raw hurdle records 33.81\%, 35.54\% and 36.52\%.
 \end{tabularx}
 \end{table}
 
-Across shops, LightGBM has lower seven-day WAPE than CatBoost in
-22 of 32 shops; and has lower WAPE in 14 of 16 categories. Median
+Across shops, LightGBM has lower seven-day WAPE than CatBoost in 22 of 32 shops
+and in 14 of 16 categories. Median
 shop-level WAPE is 35.89\% for LightGBM and 36.79\% for CatBoost.
 The context-aware model does not achieve the lowest WAPE for every shop;
 shop-level monitoring and abstention are therefore necessary.
