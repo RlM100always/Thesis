@@ -1,3 +1,29 @@
+## Expanded research-figure revision — 23 November 2026
+
+- Added 15 further data-backed figures across RQ1--RQ4 and improved two
+  existing figures. The compiled report now contains 25 figures in total.
+- RQ1 additions: demand-regime distribution, nine-origin paired comparison,
+  context-versus-baseline horizon comparison, regime-level model comparison,
+  prequential interval coverage, hierarchy-level WAPE and cluster-bootstrap
+  uncertainty.
+- RQ2 additions: calibration reliability, test-date discrimination and
+  customer-cluster bootstrap intervals. The feature-importance figure now
+  shows the ten leading predictors.
+- RQ3 additions: shop-cluster bootstrap intervals for all four scenario
+  outcomes and paired-case outcome counts.
+- RQ4 additions: generated bilingual branch coverage, decision/action counts
+  and exact rule-output agreement. The supplied explanation coverage figure
+  now includes all eight audited numeric fields.
+- Visual review: the new charts on report pages 55--63 were rendered and
+  checked. Legend spacing and clipped axis titles were corrected.
+- Final LaTeX build: successful, GitHub Actions run
+  [45157069527](https://github.com/RlM100always/Thesis/actions/runs/45157069527).
+- Research contract tests: successful, run
+  [45157069542](https://github.com/RlM100always/Thesis/actions/runs/45157069542).
+- Final PDF: 84 A4 pages, 621,232 bytes. Published at
+  `output/pdf/main-thesis-report.pdf` and uploaded as the
+  `main-thesis-report-pdf` Actions artifact.
+
 # Verification record
 
 ## RQ1–RQ4 integration and final report build — 23 November 2026
