@@ -3,10 +3,15 @@
 For RQ2, the 90-day no-repeat-purchase target was reconstructed from order
 headers with complete agreement. A snapshot-only CatBoost classifier was
 selected through rolling-origin validation and achieved a test PR-AUC of
-0.7470, ROC-AUC of 0.8313 and Brier score of 0.1647. This supports temporal
-risk ranking for the existing customer population. It does not establish
-permanent churn, cold-start performance or the causal effect of contacting
-customers.
+0.7470, ROC-AUC of 0.8313 and Brier score of 0.1647. At the threshold
+selected from training-only predictions, precision was 0.5385, recall was
+0.9598 and F1-score was 0.6900. The corresponding confusion matrix contains
+8,366 true positives, 350 false negatives, 7,169 false positives and
+5,279 true negatives. The selected operating point therefore prioritises
+recall but also flags a substantial number of active customers as inactive.
+These results support temporal risk ranking for the existing customer
+population; they do not establish permanent churn, cold-start performance
+or the causal effect of contacting customers.
 
 For RQ3, the supplied trend-policy scenario had lower scenario cost and
 average stock but higher lost units than the baseline. Because future demand
