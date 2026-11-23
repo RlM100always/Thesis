@@ -12,12 +12,17 @@ from __future__ import annotations
 import argparse
 import json
 import platform
+import sys
 import time
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 from catboost import CatBoostClassifier
+REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
+if str(REPOSITORY_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPOSITORY_ROOT))
+
 from sklearn.metrics import (
     average_precision_score, balanced_accuracy_score, brier_score_loss,
     confusion_matrix, f1_score, fbeta_score, precision_recall_curve,
