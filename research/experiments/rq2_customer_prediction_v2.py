@@ -262,7 +262,7 @@ def stage_threshold(data_dir: Path, output_dir: Path, snapshot_name: str):
         "n": int(len(y)), "precision": float(precision_score(y, probability >= primary)),
         "recall": float(recall_score(y, probability >= primary)),
     }
-    state["threshold_rows"] = thresholds.to_dict("records")
+    state["threshold_rows"] = thresholds.astype(object).where(pd.notna(thresholds), None).to_dict("records")
     state["target_reconstruction_agreement"] = agreement
     state_path.write_text(json.dumps(state, indent=2), encoding="utf-8")
     thresholds.to_csv(output_dir / "threshold_selection_train_only.csv", index=False)
