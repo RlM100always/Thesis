@@ -27,6 +27,10 @@
   `research/experiments/results/rq2_customer_prediction_v2/`. No raw
   customer data, customer identifiers or row-level predictions were
   committed.
+- GitHub Actions research tests: **37 passed** in 3.95 seconds
+  ([run 45236982573](https://github.com/RlM100always/Thesis/actions/runs/45236982573)).
+- LaTeX report build: successful; **88 A4 pages**, 636,671 bytes
+  ([run 45236025825](https://github.com/RlM100always/Thesis/actions/runs/45236025825)).
 - RQ1, RQ3 and RQ4 experimental outputs and conclusions were not changed.
 
 ## RQ2 classification-metric extension — 23 November 2026
