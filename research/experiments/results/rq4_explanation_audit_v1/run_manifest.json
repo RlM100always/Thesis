@@ -1,0 +1,12 @@
+{
+  "experiment":"rq4_rule_and_explanation_audit_v1","input_file":"rq4_explanation_cases_A.csv",
+  "input_sha256":"690890fde22e4a1aa34dbfa450f15e85525519a5110700966e7c7a86d981a9fc",
+  "products_file":"products.csv","products_sha256":"ab96545725e7ff96120da8f151b79419ec8bdf255a333edd97e097346a0efe4e",
+  "rows":1800,
+  "decision_rule":{"inventory_position":"on_hand + pending_purchase","reorder_trigger":"inventory_position < reorder_point","target_stock":"2 * reorder_point","pack_rounding":"ceil((target_stock - inventory_position) / case_pack_units) * case_pack_units","budget_cap":"floor(available_budget / (unit_cost * case_pack_units)) * case_pack_units","suggested_quantity":"min(pack_rounded_requirement, budget_cap)"},
+  "exact_match_rates":{"quantity":1.0,"action":1.0,"constraint_reason":1.0},
+  "generated_explanation_coverage_file":"generated_explanation_coverage.csv",
+  "human_rating_warning":"All human_rating values are YES; this constant field is not evidence of a participant study.",
+  "limitations":["All cases are prepared scenarios at the same as-of date.","A constant human_rating field cannot measure usability or explanation effectiveness.","The RQ4 research question still requires consenting target users and counterbalanced tasks."],
+  "runtime_seconds":0.32,"python":"3.13.5","pandas":"2.2.3","numpy":"2.3.5"
+}
