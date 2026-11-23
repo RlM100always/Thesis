@@ -1,0 +1,94 @@
+\section{RQ2 Customer Inactivity Pipeline}
+
+The selected customer-snapshot export contains 72,146 observations for
+10,613 customers. The supplied chronological split contains 50,982 TRAIN
+rows from 31 December 2023 through 31 December 2024 and 21,164 TEST rows
+at 31 March and 30 June 2025. The outcome is one when no order occurs in
+the 90-day interval after the snapshot cutoff. It was reconstructed from
+order headers and matched the supplied label on all 72,146 rows.
+
+The feature policy uses only fields present in the historical snapshot and
+deterministic transformations of those fields. Predictors include recency,
+30-, 90- and 180-day order counts, 90-day sales and basket value, lifetime
+orders, tenure, frequency and recency ratios, calendar seasonality and the
+snapshot's home-shop identifier. Customer IDs, names, snapshot IDs, split
+labels and future horizon fields are excluded. Current customer-master
+attributes without effective-date history are also excluded because their
+historical availability cannot be established.
+
+Rolling-origin validation uses 30 June, 30 September and 31 December 2024.
+The training window for each origin excludes labels whose 90-day outcome
+window has not finished by that origin. A recency ranking rule, logistic
+regression, LightGBM and CatBoost are compared. Platt calibration and the
+F2 decision threshold are fitted from training-only out-of-time predictions.
+The model is selected on validation PR-AUC, with calibrated Brier score as
+the tie-breaker. The supplied TEST split is opened only after this selection.
+The implementation writes aggregate metrics, date-level metrics,
+calibration bins, customer-cluster bootstrap intervals and feature
+importance; it does not write row-level customer predictions.
+
+\section{RQ3 Replenishment Scenario Audit}
+
+The supplied comparison table contains 2,500 paired cases across 32 shops
+and 477 SKUs at a single cutoff date, 31 July 2025. Its future-demand field
+is explicitly labelled synthetic oracle demand. The audit joins the product
+master, verifies that both policy quantities are multiples of the case pack,
+checks the supplied cost-gap identity, and calculates paired differences
+in scenario lost units, average stock, supplied scenario cost and order
+quantity. Uncertainty is estimated by resampling shops, preserving the
+within-shop case structure.
+
+The source does not document the scenario-cost formula and does not provide
+the participating owner's actual current replenishment policy. Accordingly,
+the experiment is a paired scenario audit rather than a historical replay
+of the owner's policy. It cannot establish realised savings, causal policy
+effects or the full RQ3 claim.
+
+\section{RQ4 Decision Rule and Explanation Pipeline}
+
+The richer RQ4 export contains 1,800 prepared cases across 32 shops and
+467 SKUs, all dated 31 December 2025. The rule audit joins the product
+master and independently recomputes inventory position as on-hand stock
+plus pending purchases. Reordering is triggered when this position is below
+the reorder point. The target is twice the reorder point; the required
+quantity is rounded up to a case-pack multiple and capped by the number of
+packs affordable under the supplied budget. Suggested quantity, action and
+constraint reason are compared with the supplied fields.
+
+A deterministic bilingual explanation generator has separate branches for
+sufficient stock, a feasible reorder and a budget-blocked reorder. It states
+the evidence relevant to each branch, including stock components, inventory
+position, reorder point, target, pack arithmetic, feasible quantity, cost,
+budget and supplier lead time. A numeric-coverage audit checks generated
+English and Bangla explanations without exporting case-level text. The
+constant human-rating field is not treated as participant evidence; the
+counterbalanced owner study remains planned rather than completed.
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[scale=0.86,transform shape,
+source/.style={draw=dugreen,rounded corners,fill=softgreen,text width=4.2cm,minimum height=0.8cm,align=center,font=\footnotesize},
+gate/.style={draw=dugold,rounded corners,fill=softorange,text width=4.2cm,minimum height=0.8cm,align=center,font=\footnotesize},
+module/.style={draw=dugreen,rounded corners,fill=white,text width=4.4cm,minimum height=1.0cm,align=center,font=\footnotesize},
+result/.style={draw=dugreen,rounded corners,fill=softblue,text width=5.2cm,minimum height=0.8cm,align=center,font=\footnotesize},
+flow/.style={-{Latex[length=2mm]},thick,draw=gray!75}]
+\node[source] (src) at (0,0) {Controlled SME data exports and dataset manifest};
+\node[gate] (audit) at (0,-1.35) {Schema, provenance, join and point-in-time eligibility checks};
+\node[module] (rq1) at (-3.7,-3.25) {RQ1: observed-sales forecasting\\LightGBM, CatBoost and statistical baselines};
+\node[module] (rq2) at (3.7,-3.25) {RQ2: 90-day inactivity prediction\\recency, logistic regression, LightGBM and CatBoost};
+\node[module] (rq3) at (-3.7,-5.45) {RQ3: paired replenishment scenarios\\cost, stock and lost-unit trade-offs};
+\node[module] (rq4) at (3.7,-5.45) {RQ4: deterministic reorder rules\\bilingual evidence-based explanations};
+\node[result] (out) at (0,-7.45) {Aggregate evidence, uncertainty and explicit promotion gates\\Human review remains responsible for business actions};
+\draw[flow] (src)--(audit);
+\draw[flow] (audit)--(rq1); \draw[flow] (audit)--(rq2);
+\draw[flow] (audit)--(rq3); \draw[flow] (audit)--(rq4);
+\draw[flow] (rq1)--(out); \draw[flow] (rq2)--(out);
+\draw[flow] (rq3)--(out); \draw[flow] (rq4)--(out);
+\end{tikzpicture}
+\caption{Task-specific research pipelines under a shared evidence and data-quality gate.}
+\label{fig:rq1_rq4_research_pipelines}
+\end{figure}
+
+The shared source package does not imply that every table is a valid
+predictor or outcome for every research question. Each task retains its own
+target definition, temporal boundary, evidence class and claim limit.
