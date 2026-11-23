@@ -3,37 +3,28 @@
 
 \begin{figure}[H]
 \centering
-\begin{tikzpicture}[x=0.105cm,y=0.045cm,font=\scriptsize]
-  \draw[->,thick] (0,0)--(82,0) node[right] {Model};
-  \draw[->,thick] (0,0)--(0,106) node[above] {Metric (\%)};
+\begin{tikzpicture}[x=0.085cm,y=0.045cm,font=\scriptsize]
+  \draw[->,thick] (0,0)--(112,0) node[right] {Operating point};
+  \draw[->,thick] (0,0)--(0,108) node[above] {Metric (\%)};
   \foreach \y in {0,20,40,60,80,100} {
-    \draw[gray!35] (0,\y)--(80,\y);
+    \draw[gray!35] (0,\y)--(108,\y);
     \node[left] at (0,\y) {\y};
   }
-  % Logistic regression
-  \fill[softblue] (6,0) rectangle (8.2,51.31);
-  \fill[dugold] (9,0) rectangle (11.2,97.03);
-  \fill[dugreen] (12,0) rectangle (14.2,67.13);
-  \fill[softorange] (15,0) rectangle (17.2,82.34);
-  % LightGBM
-  \fill[softblue] (33,0) rectangle (35.2,52.20);
-  \fill[dugold] (36,0) rectangle (38.2,96.87);
-  \fill[dugreen] (39,0) rectangle (41.2,67.84);
-  \fill[softorange] (42,0) rectangle (44.2,83.01);
-  % CatBoost
-  \fill[softblue] (60,0) rectangle (62.2,53.85);
-  \fill[dugold] (63,0) rectangle (65.2,95.98);
-  \fill[dugreen] (66,0) rectangle (68.2,69.00);
-  \fill[softorange] (69,0) rectangle (71.2,83.13);
-  \node[align=center] at (11.6,-9) {Logistic\\regression};
-  \node[align=center] at (38.1,-9) {LightGBM};
-  \node[align=center] at (65.6,-9) {CatBoost};
-  \fill[softblue] (1,-24) rectangle (4,-19); \node[anchor=west] at (5,-21.5) {Precision};
-  \fill[dugold] (21,-24) rectangle (24,-19); \node[anchor=west] at (25,-21.5) {Recall};
-  \fill[dugreen] (40,-24) rectangle (43,-19); \node[anchor=west] at (44,-21.5) {F1-score};
-  \fill[softorange] (60,-24) rectangle (63,-19); \node[anchor=west] at (64,-21.5) {ROC-AUC};
+  % v1 F2 threshold
+  \fill[softblue] (12,0) rectangle (16,53.85);
+  \fill[dugold] (17,0) rectangle (21,95.98);
+  \fill[dugreen] (22,0) rectangle (26,69.00);
+  % v2 precision-constrained threshold
+  \fill[softblue] (63,0) rectangle (67,60.64);
+  \fill[dugold] (68,0) rectangle (72,88.66);
+  \fill[dugreen] (73,0) rectangle (77,72.02);
+  \node[align=center] at (19,-10) {v1: F2-max};
+  \node[align=center] at (70,-10) {v2: precision at recall $\geq$ 85\%};
+  \fill[softblue] (8,-24) rectangle (11,-19); \node[anchor=west] at (12,-21.5) {Precision};
+  \fill[dugold] (39,-24) rectangle (42,-19); \node[anchor=west] at (43,-21.5) {Recall};
+  \fill[dugreen] (72,-24) rectangle (75,-19); \node[anchor=west] at (76,-21.5) {F1-score};
 \end{tikzpicture}
-\caption{Threshold-based precision, recall and F1-score, together with threshold-independent ROC-AUC, for the three fitted classifiers on the temporal TEST set. Precision, recall and F1 use each model's F2-maximising threshold selected from training-only predictions.}
+\caption{CatBoost TEST precision, recall and F1-score under the original v1 F2-maximising threshold and the v2 precision-constrained threshold. The v2 operating point reduces false positives while retaining high recall.}
 \label{fig:rq2_classification_metrics}
 \end{figure}
 
@@ -50,17 +41,17 @@
   }
   \draw[gray!65,dashed,thick] (0,0)--(1,1);
   \draw[dugreen,very thick] plot coordinates {
-    (0.00,0.00011) (0.05,0.31494) (0.10,0.47396)
-    (0.15,0.59913) (0.20,0.68942) (0.25,0.75126)
-    (0.30,0.80289) (0.35,0.84764) (0.40,0.88481)
-    (0.45,0.91510) (0.50,0.93850) (0.55,0.95468)
-    (0.60,0.96455) (0.65,0.97568) (0.70,0.98440)
-    (0.75,0.98944) (0.80,0.99346) (0.85,0.99690)
-    (0.90,0.99874) (0.95,0.99943) (1.00,1.00)
+    (0.00,0.00057) (0.05,0.31980) (0.10,0.48095)
+    (0.15,0.60039) (0.20,0.68541) (0.25,0.75275)
+    (0.30,0.80197) (0.35,0.84936) (0.40,0.88504)
+    (0.45,0.91579) (0.50,0.93942) (0.55,0.95296)
+    (0.60,0.96466) (0.65,0.97625) (0.70,0.98440)
+    (0.75,0.98910) (0.80,0.99426) (0.85,0.99713)
+    (0.90,0.99828) (0.95,0.99943) (1.00,1.00)
   };
-  \node[draw=dugreen,rounded corners,fill=white,align=center] at (0.72,0.22) {CatBoost\\ROC-AUC = 0.8313};
+  \node[draw=dugreen,rounded corners,fill=white,align=center] at (0.72,0.22) {CatBoost v2\\ROC-AUC = 0.8314};
 \end{tikzpicture}
-\caption{Receiver operating characteristic curve for the selected CatBoost model on the 21,164-snapshot temporal TEST set. The plotted points are interpolated from the held-out predictions; the reported ROC-AUC is calculated from the full, unrounded score vector.}
+\caption{Receiver operating characteristic curve for the selected CatBoost v2 model on the temporal TEST set. The plotted points are sampled from the full held-out ROC curve; the reported ROC-AUC is calculated from the full prediction scores.}
 \label{fig:rq2_roc_curve}
 \end{figure}
 
@@ -76,12 +67,12 @@
   \fill[softorange,draw=gray!70] (2.65,1.35) rectangle (5.20,2.65);
   \fill[softorange,draw=gray!70] (0,0.00) rectangle (2.55,1.25);
   \fill[softgreen,draw=gray!70] (2.65,0.00) rectangle (5.20,1.25);
-  \node[align=center] at (1.275,2.12) {\Large 5,279\\[2pt]True negative};
-  \node[align=center] at (3.925,2.12) {\Large 7,169\\[2pt]False positive};
-  \node[align=center] at (1.275,0.62) {\Large 350\\[2pt]False negative};
-  \node[align=center] at (3.925,0.62) {\Large 8,366\\[2pt]True positive};
+  \node[align=center] at (1.275,2.12) {\Large 7,432\\[2pt]True negative};
+  \node[align=center] at (3.925,2.12) {\Large 5,016\\[2pt]False positive};
+  \node[align=center] at (1.275,0.62) {\Large 988\\[2pt]False negative};
+  \node[align=center] at (3.925,0.62) {\Large 7,728\\[2pt]True positive};
 \end{tikzpicture}
-\caption{CatBoost confusion matrix on the temporal TEST set at threshold 0.1539. Inactivity within 90 days is the positive class. The false-positive count indicates active customers who were classified as inactive.}
+\caption{CatBoost v2 confusion matrix on the temporal TEST set at threshold 0.3176. Inactivity within 90 days is the positive class.}
 \label{fig:rq2_confusion_matrix}
 \end{figure}
 
@@ -91,64 +82,72 @@
 \begin{tikzpicture}[x=7cm,y=7cm,font=\scriptsize]
   \draw[->,thick] (0,0)--(1.04,0) node[right] {Mean predicted probability};
   \draw[->,thick] (0,0)--(0,1.04) node[above] {Observed event rate};
-  \foreach \v in {0,0.2,0.4,0.6,0.8,1.0} {\draw[gray!30] (\v,0)--(\v,1.0);\draw[gray!30] (0,\v)--(1.0,\v);\node[below] at (\v,0) {\v};\node[left] at (0,\v) {\v};}
+  \foreach \v in {0,0.2,0.4,0.6,0.8,1.0} {
+    \draw[gray!30] (\v,0)--(\v,1.0);
+    \draw[gray!30] (0,\v)--(1.0,\v);
+    \node[below] at (\v,0) {\v};
+    \node[left] at (0,\v) {\v};
+  }
   \draw[gray!65,dashed,thick] (0,0)--(1,1);
-  \draw[dugreen,thick] (0.04056,0.04501)--(0.14757,0.14104)--(0.24956,0.26116)--(0.35145,0.36537)--(0.45032,0.44105)--(0.55015,0.56800)--(0.64941,0.67413)--(0.75228,0.76187)--(0.83929,0.86067);
-  \foreach \x/\y in {0.04056/0.04501,0.14757/0.14104,0.24956/0.26116,0.35145/0.36537,0.45032/0.44105,0.55015/0.56800,0.64941/0.67413,0.75228/0.76187,0.83929/0.86067} {\fill[dugreen] (\x,\y) circle (2.5pt);}
+  \draw[dugreen,thick] (0.04153,0.03613)--(0.14846,0.13005)--(0.25104,0.22569)--(0.35150,0.35501)--(0.45012,0.43915)--(0.54973,0.55701)--(0.64998,0.68281)--(0.74968,0.78301)--(0.82667,0.86024);
+  \foreach \x/\y in {0.04153/0.03613,0.14846/0.13005,0.25104/0.22569,0.35150/0.35501,0.45012/0.43915,0.54973/0.55701,0.64998/0.68281,0.74968/0.78301,0.82667/0.86024} {\fill[dugreen] (\x,\y) circle (2.5pt);}
 \end{tikzpicture}
-\caption{Reliability curve for the selected RQ2 CatBoost model on the temporal test set, grouped into nine probability bins. The dashed diagonal represents perfect calibration.}
+\caption{Reliability curve for the selected RQ2 CatBoost v2 model on TEST, grouped into nine non-empty probability bins. The dashed diagonal represents perfect calibration.}
 \label{fig:rq2_calibration_curve}
-\end{figure}\begin{figure}[H]
+\end{figure}
+
+\begin{figure}[H]
 \centering
 \begin{tikzpicture}[x=1.8cm,y=18cm,font=\scriptsize]
   \draw[->,thick] (0,0)--(3.6,0) node[right] {Test snapshot date};
   \draw[->,thick] (0,0)--(0,0.28) node[above] {Metric (axis starts at 0.65)};
   \foreach \y/\lab in {0/0.65,0.05/0.70,0.10/0.75,0.15/0.80,0.20/0.85,0.25/0.90} {\draw[gray!35] (0,\y)--(3.4,\y);\node[left] at (0,\y) {\lab};}
-  \fill[dugreen] (0.55,0) rectangle (0.90,0.07508);
-  \fill[dugold] (0.95,0) rectangle (1.30,0.17982);
-  \fill[dugreen] (2.05,0) rectangle (2.40,0.11490);
-  \fill[dugold] (2.45,0) rectangle (2.80,0.18305);
+  \fill[dugreen] (0.55,0) rectangle (0.90,0.07369);
+  \fill[dugold] (0.95,0) rectangle (1.30,0.18001);
+  \fill[dugreen] (2.05,0) rectangle (2.40,0.11330);
+  \fill[dugold] (2.45,0) rectangle (2.80,0.18266);
   \node[below] at (0.92,-0.012) {31 Mar 2025};
   \node[below] at (2.42,-0.012) {30 Jun 2025};
-  \node[above] at (0.72,0.075) {0.725};
-  \node[above] at (1.12,0.180) {0.830};
-  \node[above] at (2.22,0.115) {0.765};
-  \node[above] at (2.62,0.183) {0.833};
-  \fill[dugreen] (0.3,-0.06) rectangle (0.45,-0.052);
-  \node[anchor=west] at (0.5,-0.056) {PR-AUC};
-  \fill[dugold] (1.7,-0.06) rectangle (1.85,-0.052);
-  \node[anchor=west] at (1.9,-0.056) {ROC-AUC};
+  \node[above] at (0.72,0.07369) {0.724};
+  \node[above] at (1.12,0.18001) {0.830};
+  \node[above] at (2.22,0.11330) {0.763};
+  \node[above] at (2.62,0.18266) {0.833};
+  \fill[dugreen] (0.3,-0.06) rectangle (0.45,-0.052); \node[anchor=west] at (0.5,-0.056) {PR-AUC};
+  \fill[dugold] (1.7,-0.06) rectangle (1.85,-0.052); \node[anchor=west] at (1.9,-0.056) {ROC-AUC};
 \end{tikzpicture}
-\caption{Selected CatBoost discrimination metrics at the two supplied temporal test snapshots. The vertical axis is truncated at 0.65 to make the small between-date differences visible.}
+\caption{CatBoost v2 discrimination metrics at the two supplied temporal TEST snapshots. The vertical axis starts at 0.65 to make the between-date differences visible.}
 \label{fig:rq2_test_date_performance}
-\end{figure}\begin{figure}[H]
+\end{figure}
+
+\begin{figure}[H]
 \centering
 \begin{tikzpicture}[font=\scriptsize]
   \begin{scope}[shift={(0,0)}]
     \node[anchor=west] at (0,2.0) {\textbf{PR-AUC}};
     \draw[->] (0,0.7)--(3.6,0.7);
     \draw[dugreen,very thick] (0.58,1.15)--(2.55,1.15);
-    \fill[dugreen] (1.57,1.15) circle (2.5pt);
-    \node[below] at (0.58,0.7) {0.736}; \node[below] at (2.55,0.7) {0.758}; \node[above] at (1.57,1.15) {0.747};
+    \fill[dugreen] (1.55,1.15) circle (2.5pt);
+    \node[below] at (0.58,0.7) {0.736}; \node[below] at (2.55,0.7) {0.757}; \node[above] at (1.55,1.15) {0.747};
   \end{scope}
   \begin{scope}[shift={(4.4cm,0)}]
     \node[anchor=west] at (0,2.0) {\textbf{ROC-AUC}};
     \draw[->] (0,0.7)--(3.6,0.7);
     \draw[dugold,very thick] (0.90,1.15)--(2.55,1.15);
-    \fill[dugold] (1.78,1.15) circle (2.5pt);
-    \node[below] at (0.90,0.7) {0.826}; \node[below] at (2.55,0.7) {0.837}; \node[above] at (1.78,1.15) {0.832};
+    \fill[dugold] (1.80,1.15) circle (2.5pt);
+    \node[below] at (0.90,0.7) {0.826}; \node[below] at (2.55,0.7) {0.837}; \node[above] at (1.80,1.15) {0.832};
   \end{scope}
   \begin{scope}[shift={(8.8cm,0)}]
     \node[anchor=west] at (0,2.0) {\textbf{Brier score}};
     \draw[->] (0,0.7)--(3.6,0.7);
     \draw[softorange,very thick] (0.56,1.15)--(2.18,1.15);
-    \fill[softorange] (1.36,1.15) circle (2.5pt);
-    \node[below] at (0.56,0.7) {0.162}; \node[below] at (2.18,0.7) {0.167}; \node[above] at (1.36,1.15) {0.165};
+    \fill[softorange] (1.38,1.15) circle (2.5pt);
+    \node[below] at (0.56,0.7) {0.162}; \node[below] at (2.18,0.7) {0.167}; \node[above] at (1.38,1.15) {0.165};
   \end{scope}
 \end{tikzpicture}
-\caption{Customer-cluster bootstrap 95\% intervals for RQ2 TEST metrics. Point labels show medians; endpoints show the 2.5th and 97.5th percentiles from 500 customer-level resamples. Each metric has its own scale.}
+\caption{Customer-cluster bootstrap 95\% intervals for RQ2 v2 TEST metrics. Point labels show medians; endpoints show the 2.5th and 97.5th percentiles from 500 customer-level resamples. Each metric has its own scale.}
 \label{fig:rq2_bootstrap_intervals}
 \end{figure}
+
 \subsection*{RQ3: Paired scenario uncertainty and case outcomes}
 \begin{figure}[H]
 \centering
